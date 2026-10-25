@@ -190,7 +190,7 @@ def features(ctx, g, team, opp, aid, pos, mu, pm, rate, line):
     return out
 
 
-def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None, moved=False, cand_rule='asof', dress=None):
+def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None, moved=False, cand_rule='asof', dress=None, pool=None):
     """v1's projection exactly (the 'tip' clock), plus v2 features, for every player-game from 2023 on.
     Injuries: who actually sat before 2025 (no archived reports), the report 30 min pre-tip from 2025.
     base='v3' swaps in the v3 base (docs/v3-plan.md B + C): minutes model v3 (role, returns, new team, market spread;
@@ -273,6 +273,15 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
                     pm = {a: min(48.0, m * f) for a, m in pm.items()}
                 if dress is not None:      # every candidate's projected minutes and whether he dressed (nba/scripts/build_dress_table.py)
                     dress.extend((g['season'], pm[r['athlete_id']], bool(r['played'])) for r in cand)
+                if pool is not None:       # rotation-minutes test (docs/rotation-minutes-test.md): every candidate's as-of state, whether or not he dressed
+                    nrot = sum(1 for a in rot if out.get(a))
+                    for r in cand:
+                        aid = r['athlete_id']; p0 = ms.pl[aid]; x0 = mfeat(g, team, aid, out)
+                        pool.append({'gid': g['game_id'], 'season': g['season'], 'team': team, 'aid': aid, 'min': r['minutes'] if r['played'] else 0.0, 'played': bool(r['played']),
+                                     'pm': pm[aid], 'm': p0['m'], 'st': p0['st'], 'n': p0['n'], 'last_days': (g['tip'] - p0['last']).total_seconds() / 86400.0,
+                                     'vs': x0[0], 'vo': x0[1], 'b2b': x0[6], 'nout': nrot, 'home': 1.0 if team == g['home'] else 0.0,
+                                     'e': (margins.get(g['game_id']) or 0.0) if margins.get(g['game_id']) is not None else None,
+                                     'fm': abs((g.get('hs') or 0) - (g.get('as') or 0))})
                 present = [rt[r['athlete_id']] for r in cand]
                 for r in cand:
                     aid = r['athlete_id']
