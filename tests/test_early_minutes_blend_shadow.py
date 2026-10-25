@@ -61,5 +61,23 @@ class SettleEndToEnd(unittest.TestCase):
         self.assertEqual(day["blend"], {"n": 2, "mae_v2": 3.5, "mae_blend": 2.5})       # v2: |24-30|, |20-19| = 6, 1; blend: |28-30|, |22-19| = 2, 3
 
 
+
+class ForwardScorer(unittest.TestCase):
+    def test_scores_only_players_who_played_with_a_blend_value_and_waits_for_the_sample(self):
+        import json, tempfile, ledger as L, test_early_minutes_blend as T
+        root, tip = tempfile.mkdtemp(), 1792800000
+        d = os.path.join(root, "snapshots", L.tip_day(tip))
+        os.makedirs(d); os.makedirs(os.path.join(root, "results"))
+        rows = {1: [24.0, 27.0, None, 0, None, 28.0], 2: [20.0, 20.0, None, 0, None, 22.0], 3: [30.0, 30.0, None, 0, None], 4: [20.0, 20.0, None, 0, None, 25.0]}
+        with open(os.path.join(d, "meta.jsonl"), "w") as f, open(os.path.join(d, "minutes.jsonl"), "w") as g:
+            for pid, v in rows.items():
+                f.write(json.dumps({"k": f"G1|{pid}", "src": "minutes", "game": "G1", "tip": tip, "matchup": "A @ B", "pid": pid, "player": f"P{pid}", "team": "B"}, separators=(",", ":")) + "\n")
+                g.write(json.dumps({"t": tip - 3600, "k": f"G1|{pid}", "v": v}, separators=(",", ":")) + "\n")
+        json.dump({"1": {"minutes": 30.0}, "2": {"minutes": 19.0}, "3": {"minutes": 31.0}, "4": {"minutes": 0.0}}, open(os.path.join(root, "results", "G1.json"), "w"))
+        res = T.forward(root, now=tip + 4 * 3600)
+        self.assertEqual((res["games"], res["rows"], res["verdict"]), (1, 2, "COLLECTING"))      # player 3 has no blend, player 4 did not play
+
+
+
 if __name__ == "__main__":
     unittest.main()

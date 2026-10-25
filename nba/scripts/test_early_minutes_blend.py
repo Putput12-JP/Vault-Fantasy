@@ -180,5 +180,52 @@ def round2():
     json.dump(res, open(OUT2, 'w'), indent=1)
 
 
+OUT3 = os.path.join(HERE, '..', 'data', 'early_minutes_blend_forward.json')
+FWD_MIN_GAMES, FWD_MIN_ROWS = 60, 800
+
+
+def forward(root, now=None):
+    """Forward confirmation (docs/early-minutes-blend-test.md, "Shadow field and forward rule"). root = a checkout of the nba-data branch.
+    Players who played, in games whose Minutes record row carries a blend value (value 6). Last pre-tip row for each; minutes MAE of the blend
+    against v2 on the same players, game as the unit, paired bootstrap (2,000 draws, seed 7). Needs 60 games and 800 player-games; confirmed at t >= 2.5."""
+    import time
+    import ledger as L
+    now = now or int(time.time())
+    by, n_rows = defaultdict(list), 0
+    for k, x in L.load_src(root, 'minutes', '2026-10-14').items():
+        m = x['meta']
+        pre = [v for t, v in sorted(x['series']) if v is not None and m and t < m['tip']]
+        if not m or not pre or len(pre[-1]) < 6 or pre[-1][5] is None or now < m['tip'] + L.SETTLE_AFTER_S:
+            continue
+        path = os.path.join(root, 'results', f"{m['game']}.json")
+        if not os.path.exists(path):
+            continue
+        st_ = json.load(open(path)).get(str(m['pid']))
+        actual = (st_ or {}).get('minutes') or 0.0
+        if actual <= 0:
+            continue                                                                  # did not play: not scored, as in the backtest
+        by[str(m['game'])].append(abs(pre[-1][0] - actual) - abs(pre[-1][5] - actual))
+        n_rows += 1
+    res = {'games': len(by), 'rows': n_rows, 'read_on': datetime.now(timezone.utc).strftime('%Y-%m-%d')}
+    if len(by) < FWD_MIN_GAMES or n_rows < FWD_MIN_ROWS:
+        res['verdict'] = 'COLLECTING'
+        print(json.dumps(res, indent=1))
+        return res
+    b = boot(by)
+    res.update({'gain': round(b['mean'], 5), 'sd': round(b['sd'], 5), 't': round(b['t'], 3) if b['t'] is not None else None, 'ci95': [round(x, 5) for x in b['ci']]})
+    res['verdict'] = 'CONFIRMED' if (b['t'] is not None and b['t'] >= 2.5 and b['mean'] > 0) else 'NOT CONFIRMED'
+    print(json.dumps(res, indent=1))
+    if os.path.exists(OUT3):
+        print('The forward read was already made; the first read stands. Not overwritten.')
+        return json.load(open(OUT3))
+    json.dump(res, open(OUT3, 'w'), indent=1)
+    return res
+
+
 if __name__ == '__main__':
-    round2() if '--round2' in sys.argv else main()
+    if '--forward' in sys.argv:
+        forward(sys.argv[sys.argv.index('--forward') + 1])
+    elif '--round2' in sys.argv:
+        round2()
+    else:
+        main()
