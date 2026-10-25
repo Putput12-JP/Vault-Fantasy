@@ -35,3 +35,13 @@ Nothing recorded earlier is restated: bets, leans and the Track Record are as pr
 ## Not done here
 
 Points, rebounds, steals, blocks and turnovers. Points can use the same shot-mix data and gets its own registered test next; rebounds, steals, blocks and turnovers need new extraction from the play-by-play (the shot table does not carry them). Nothing is built for them until that test passes.
+
+## Simulations (checked 2026-10-25)
+
+The Game Simulation and the Props Simulation take each player's stat means from the same functions that carry the term (`sim_engine.inputs` calls `pricer.mu_for`; the page's `simInputs` calls `muFor`), so they pick it up for 3PM and assists with nothing more built. Checked on two real games: 98 of 189 player-stat means moved, none of the points means.
+`check_sim_parity.py` (needs Chromium) is the proof that page and Python still agree on inputs; it was not run here.
+
+## First look at this season's games (descriptive, 2026-10-22 to 10-24, 18 games, no verdict)
+
+`scripts/backtest_matchup_this_season.py` applies the term to the settled 3PM and assist leans, with the matchup data as committed the morning of each game. At this size it shows nothing either way:
+3PM (192 leans) MAE 0.993 to 0.989, assists (162) 1.525 to 1.535; the term flipped 4 and 12 lean sides, the new side winning 3 of 4 and 6 of 12. The registered read above is the test.
