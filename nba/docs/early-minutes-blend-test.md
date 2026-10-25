@@ -61,7 +61,7 @@ The historical run passed (`early-minutes-blend-results.md`), so the blend is lo
 
 **Forward rule, fixed now.** Players who played in games logged with a blend value; last pre-tip value for each, minutes MAE of the blend against v2 on the same players, game as the unit, paired bootstrap (2,000 draws, seed 7).
 Read **once, on or after 2026-11-18**, when every team has passed game 10. Needs at least **60 games and 800 player-games**. **Confirmed** if the blend's MAE is lower with t >= 2.5; **not confirmed** otherwise.
-The shadow starts at the first daily state job after this merges, so it covers each team's games from about number 6 on, not the whole window. A price-level companion (the blend's effect on the lean's probability against the line) is registered separately before it is read.
+The shadow starts at the first daily state job after this merges, so it covers each team's games from about number 6 on, not the whole window. The scorer is `test_early_minutes_blend.py --forward <nba-data checkout>` (committed 2026-10-25, before any shadow row exists; it reads the Minutes record rows' sixth value and the cached box scores, and writes `data/early_minutes_blend_forward.json` once). A price-level companion (the blend's effect on the lean's probability against the line) is registered separately before it is read.
 
 ## Reading rules
 
