@@ -305,6 +305,25 @@ class Pricer:
         cache[key] = pm
         return pm
 
+    # ── shadow: early-season blend (docs/early-minutes-blend-test.md), logged next to v2, never priced ─────
+    def game_minutes_blend(self, team, g, gm):
+        """{pid: minutes} for team games 4 to 10 of the season: v2's minutes moved toward the player's average over his team's
+        first three games, w x (that average - v2's), w fitted once on 2024-25 and frozen (data/early_minutes_blend.json, carried in the
+        state's minutes block). Needs 2 of the 3 games with this team. Empty outside the window, in the preseason, or with no state."""
+        eb = (self.MM or {}).get('early_blend')
+        first3, gn = (self.state or {}).get('first3'), (self.state or {}).get('team_gn')
+        if not eb or not first3 or gn is None or (g or {}).get('season_type') == 1:
+            return {}
+        k = gn.get(team, 0) + 1                               # this game's number for the team
+        if not (eb['lo'] <= k <= eb['hi']):
+            return {}
+        out = {}
+        for pid, G in gm.items():
+            v = first3.get(str(pid))
+            if v and v[0] == team and len(v) - 1 >= eb['min_games']:
+                out[pid] = G['min'] + eb['w'] * (sum(v[1:]) / (len(v) - 1) - G['min'])
+        return out
+
     # ── shadow: minutes GBM (docs/reverse-engineering-targets.md items 8-10), logged next to v2 and v3, never priced ───
     def game_minutes_gbm(self, team, g, status, cache):
         """{pid: minutes} from the gradient-boosted minutes model (scripts/minutes_gbm.py) on the state the daily job exports.

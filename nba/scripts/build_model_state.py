@@ -68,6 +68,15 @@ def export(ctx, rt, ms, keep, season, base=False, asof=None, m3=None):
             'm3_games': dict(m3.tg) if m3 else None}
 
 
+def early_blend():
+    """Weight and window of the early-season minutes blend (shadow, never priced): w was fitted once on 2024-25 and frozen by
+    scripts/test_early_minutes_blend.py; the window is team games 4 to 10. None until that file exists."""
+    path = os.path.join(DATA, 'early_minutes_blend.json')
+    if not os.path.exists(path):
+        return None
+    return {'w': json.load(open(path))['w'], 'lo': 4, 'hi': 10, 'min_games': 2}
+
+
 def m3_row(p):
     return [p['m'], p['st'], p['pos'], p['team'], int(p['last'].timestamp()), p.get('ms'), p.get('mb'), p.get('st_last'),
             p.get('idx'), p.get('since')]
@@ -122,6 +131,7 @@ def main():
     gbw = MG.Walk()
     prior = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
     example, last_day, n = None, None, 0
+    fg, f3 = defaultdict(int), defaultdict(list)     # the current season's team game count and each player's minutes in his team's first three games (early-season blend shadow)
     for g in C.games(seasons):
         rows = box.get(g['game_id'], [])
         if not rows:
@@ -131,11 +141,21 @@ def main():
             example['asof'] = g['tip_et'].strftime('%Y-%m-%d')
         V2.update_after(g, rows, rt, prior, ms, ctx)
         m3.update(g, rows)
+        if g['season'] == cur:
+            for t in {r['team'] for r in rows}:
+                fg[t] += 1
+                if fg[t] <= 3:
+                    for r in rows:
+                        if r['team'] == t and r['played']:
+                            f3[(r['athlete_id'], t)].append(round(r['minutes'], 2))
         gbw.update(g, rows, MM.group)
         names.update({r['athlete_id']: r['name'] for r in rows if r.get('name')})
         last_day, n = g['tip_et'].strftime('%Y-%m-%d'), n + 1
     live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None, m3=m3)
     live['asof'] = last_day
+    # early-season blend shadow (docs/early-minutes-blend-test.md): [team, minutes in his team's games 1 to 3 that he played] per player, games played per team
+    live['first3'] = {str(a): [t, *v] for (a, t), v in f3.items()}
+    live['team_gn'] = dict(fg)
     # minutes GBM shadow (scripts/minutes_gbm.py): per-player and per-team state its features read; the trees are data/minutes_gbm.json
     live['gbm'] = gbw.export(max(ms.team_last.values()).timestamp(), keep=keep) if ms.team_last else None
     game = game_state(box, seasons, cur, roster={x['id']: t for t, T in proj['teams'].items() for x in T['players']}, names=names)
@@ -145,7 +165,7 @@ def main():
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'seasons': seasons,
            'games': n, 'live': live, 'example': example, 'game': game,
            # minutes model v2 as the backtest ran it: weights in MM.FEATURES order, team total, rotation rule, usage cascade
-           'minutes': {'features': MM.FEATURES, 'beta': [mm['beta'][f] for f in MM.FEATURES],
+           'minutes': {'early_blend': early_blend(), 'features': MM.FEATURES, 'beta': [mm['beta'][f] for f in MM.FEATURES],
                        'team_min': V2.team_min(), 'rot_min': MM.ROT_MIN, 'rot_days': MM.ROT_DAYS,
                        # P(dress | projected minutes), data/dress_table.json: the Game Simulation drops likely non-dressers with it
                        'dress': json.load(open(os.path.join(DATA, 'dress_table.json')))['bins'],

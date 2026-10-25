@@ -51,6 +51,18 @@ Interpretation of the request, stated so it can be corrected: "the first 2/3 gam
 
 If this passes, the confirmation is the 2026-27 season's own window E (team games 4 to 10, ending about 2026-11-17), scored the same way from the lean log's first-look minutes and the box scores. It is registered in a separate follow-up before it is read.
 
+## Shadow field and forward rule (added 2026-10-25, after the historical result, before any shadow row exists)
+
+The historical run passed (`early-minutes-blend-results.md`), so the blend is logged live as a **shadow, never priced**:
+- `build_model_state.py` records each player's minutes in his team's first three games of the season (`live.first3`) and each team's games played (`live.team_gn`), and carries the frozen w (`minutes.early_blend`).
+- `pricing.py` `game_minutes_blend` returns the blended minutes for team games 4 to 10 for players with 2 of the 3 games with that team; empty otherwise.
+- `ledger.minutes_log` stores it as the sixth value of the Minutes record row (after v2, recent average, v3, starters flag, GBM); `minutes_record` scores it each day beside v2 on the same players (`blend` block).
+- Priced output is unchanged: `check_pricing_regression.py` is identical on the example board, v2 minutes, and both v3 shadows against main.
+
+**Forward rule, fixed now.** Players who played in games logged with a blend value; last pre-tip value for each, minutes MAE of the blend against v2 on the same players, game as the unit, paired bootstrap (2,000 draws, seed 7).
+Read **once, on or after 2026-11-18**, when every team has passed game 10. Needs at least **60 games and 800 player-games**. **Confirmed** if the blend's MAE is lower with t >= 2.5; **not confirmed** otherwise.
+The shadow starts at the first daily state job after this merges, so it covers each team's games from about number 6 on, not the whole window. A price-level companion (the blend's effect on the lean's probability against the line) is registered separately before it is read.
+
 ## Reading rules
 
 Nothing under 100 rows is quoted as a rate. Any improving cell is flagged for close monitoring with its sample size. Sharp money is not an input. This question has not been run before; the 2025-26 walk has been used many times for other questions

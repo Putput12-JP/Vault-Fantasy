@@ -381,11 +381,17 @@ def minutes_log(board, now):
             except Exception as e:
                 PX.row_error(f"minutes {g['id']}|{team}", e)
                 continue
+            try:
+                eb = pr.game_minutes_blend(team, g, gm)      # shadow (early-season blend), never priced
+            except Exception as e:
+                PX.row_error(f"minutes blend {g['id']}|{team}", e)
+                eb = {}
             for pid, G in gm.items():
                 try:
                     k = f"{g['id']}|{pid}"
                     rows[k] = [round(G['min'], 2), round(((pr.state['players'].get(str(pid)) or {}).get('ms') or [0])[0], 2),
-                               round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None]
+                               round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None,
+                               round(eb[pid], 2) if pid in eb else None]
                     meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
                                'player': names.get(pid, str(pid)), 'team': team}
                 except Exception as e:                      # one player's bad field skips that player, not the game
@@ -476,7 +482,8 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
             replayed[tip_day(m['tip'])] += 1
         per_day[tip_day(m['tip'])].append([m['player'], m['team'], m['matchup'], round(pre[-1][0], 1), round(actual, 1), reason,
                                            round(v3, 1) if v3 is not None else None, pre[-1][3] if len(pre[-1]) > 3 else 0,
-                                           round(pre[-1][4], 1) if len(pre[-1]) > 4 and pre[-1][4] is not None else None])
+                                           round(pre[-1][4], 1) if len(pre[-1]) > 4 and pre[-1][4] is not None else None,
+                                           round(pre[-1][5], 1) if len(pre[-1]) > 5 and pre[-1][5] is not None else None])
     for d, rows in per_day.items():
         played = [r for r in rows if r[5] != 'did not play']
         err = [r[3] - r[4] for r in played]
@@ -484,7 +491,11 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
         e2, e3 = [r[3] - r[4] for r in both], [r[6] - r[4] for r in both]
         gbs = [r for r in played if len(r) > 8 and r[8] is not None]       # the GBM shadow, with v2 on the same players
         eg, e2g = [r[8] - r[4] for r in gbs], [r[3] - r[4] for r in gbs]
+        ebs = [r for r in played if len(r) > 9 and r[9] is not None]         # the early-season blend shadow, with v2 on the same players
+        eb_new, eb_old = [r[9] - r[4] for r in ebs], [r[3] - r[4] for r in ebs]
         days[d] = {'n': len(played), 'dnp': len(rows) - len(played),
+                   'blend': {'n': len(ebs), 'mae_v2': round(sum(abs(e) for e in eb_old) / len(eb_old), 3) if eb_old else None,
+                             'mae_blend': round(sum(abs(e) for e in eb_new) / len(eb_new), 3) if eb_new else None},
                    'gbm': {'n': len(gbs), 'mae_v2': round(sum(abs(e) for e in e2g) / len(e2g), 3) if e2g else None,
                            'mae_gbm': round(sum(abs(e) for e in eg) / len(eg), 3) if eg else None,
                            'miss8_v2': sum(abs(e) >= 8 for e in e2g), 'miss8_gbm': sum(abs(e) >= 8 for e in eg)},
