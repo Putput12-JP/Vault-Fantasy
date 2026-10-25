@@ -16,7 +16,7 @@ sys.path.insert(0, HERE)
 import build_diet_defense as DD
 import test_early_minutes_blend as EB       # boot()
 
-OUT = os.path.join(HERE, '..', 'data', 'matchup_volume.json')
+OUT = os.path.join(HERE, '..', 'data', 'matchup_volume_corrected.json')
 CACHE = os.environ.get('MATCHUP_CACHE', '/tmp/matchup_recs.json')
 FIT, TEST, SEED = 2025, 2026, 7
 MIN_GAMES, THIN_FGA, THIN_AST = 15, 200.0, 80.0
@@ -24,6 +24,7 @@ MIN_SHOTS, MIN_3SHARE, MIN_ASTS = 50.0, 0.05, 30.0
 ZK = ['ra', 'paint', 'mid', 'c3', 'ab3']
 AK = ['rim', 'smid', 'lmid', 'c3', 'arc3']
 CLIP = (0.7, 1.3)
+REAL_TEAM_GAMES = 20                    # a real team has played this many games (the All-Star game's teams have one); the page's file uses the same cut (MIN_TEAM_G)
 
 
 def walk_records():
@@ -38,7 +39,17 @@ def walk_records():
 
 
 def read_pbp(season):
+    """Shots and minutes per game, **real teams only**. The play-by-play carries the All-Star game as a regular-season game with invented teams
+    (CAN, CHK, KEN, SHQ in 2024-25; STARS, STRIPES, WORLD in 2025-26); counted as defenses they distorted the league mean of the first run."""
     shots, maxp, _ = DD.read(os.path.join(DD.RAW, f'pbp_{season}.csv'))
+    n = defaultdict(int)
+    for s_ in shots:
+        n[s_[4]] += 1
+    games = defaultdict(set)
+    for s_ in shots:
+        games[s_[4]].add(s_[1])
+    real = {t for t, g in games.items() if len(g) >= REAL_TEAM_GAMES}
+    shots = [s_ for s_ in shots if s_[4] in real and s_[5] in real]
     return sorted(shots, key=lambda x: x[0]), {g: 48 + 5 * max(0, p - 4) for g, p in maxp.items()}
 
 

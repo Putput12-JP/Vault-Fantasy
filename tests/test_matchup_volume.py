@@ -30,5 +30,21 @@ class Pieces(unittest.TestCase):
         self.assertAlmostEqual(t["A"][("a", "rim")], 0.0)
 
 
+class RealTeams(unittest.TestCase):
+    def test_all_star_teams_are_not_defenses(self):
+        import tempfile, csv
+        shots = [("2026-01-01", "g%d" % i, "p", "n", "AAA", "BBB", "c3", "", None, "", "", False, 0, 0) for i in range(25)]
+        shots += [("2026-01-01", "g%d" % i, "q", "n", "BBB", "AAA", "c3", "", None, "", "", False, 0, 0) for i in range(25)]
+        shots += [("2026-02-15", "asg", "p", "n", "STARS", "WORLD", "c3", "", None, "", "", False, 0, 0)]
+        orig = M.DD.read
+        M.DD.read = lambda path: (list(shots), {s[1]: 4 for s in shots}, "2026")
+        try:
+            out, mins = M.read_pbp(2026)
+        finally:
+            M.DD.read = orig
+        self.assertEqual({s[4] for s in out} | {s[5] for s in out}, {"AAA", "BBB"})
+        self.assertEqual(len(out), 50)
+
+
 if __name__ == "__main__":
     unittest.main()

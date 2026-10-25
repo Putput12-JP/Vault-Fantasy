@@ -1,5 +1,7 @@
 # Matchup volume test, Stage 1: results
 
+> **SUPERSEDED, run 1 was invalid.** The league mean in this run included the All-Star game's invented teams (see "Correction" at the end and `matchup-volume-corrected-results.md`). Numbers below are kept as the record of that run and must not be quoted.
+
 Rules: [matchup-volume-test.md](matchup-volume-test.md), committed before the runner (`d01f34aac`, clarifications `7fc4a3d64`). Numbers: `nba/data/matchup_volume.json`. Run once on 2026-10-25. Nothing here changes what the page prices or bets.
 
 ## Verdict: **FAIL on the registered rule for both stats, but the matchup signal is real in 2025-26**
@@ -38,3 +40,9 @@ The registered test froze a slope fitted on 2024-25 and applied it to 2025-26. T
 - It does **not** show the diet score belongs in pricing. The registered rule failed, and the slope that works on 2025-26 was estimated on 2025-26 itself, so any gain from it is in-sample.
 - It **does** say the earlier NO-GO (`diet-test.md`) was not evidence that matchups carry nothing. Both indices predict the model's volume miss with a dose response, at t 3.5 and 6.9.
 - The next test has to avoid the fit-season problem: freeze the slope from 2025-26 (**3PM 0.12, AST 0.36**) and score it on the 2026-27 games as they happen (a never-priced shadow with a forward read), which is a genuine out-of-sample test with a full prior-season blend. That is registered before it is read, together with the player-mix against opponent-only comparison.
+
+## Correction (2026-10-25, found after this run while building the live term)
+
+The play-by-play carries the All-Star game as a regular-season game with invented teams (2024-25: CAN, CHK, KEN, SHQ; 2025-26: STARS, STRIPES, WORLD). The runner counted them as defenses, so the league mean in the vs-league tables had 37 teams instead of 30 and every index
+carried a constant positive offset of about +0.10 that drifted through the season (+0.078 in October to +0.13 in March). A drifting offset can correlate with a league-wide trend in volume, so the 2025-26 slopes and the dose response above may be partly that, not the matchup.
+The fix is a bug fix and changes no rule: real teams only (20 or more games, the page's own cut). The corrected run is `matchup-volume-corrected-results.md`; it was run after seeing run 1, with the same pass conditions, and both are reported.
