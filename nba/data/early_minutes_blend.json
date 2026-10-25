@@ -1,0 +1,133 @@
+{
+ "w": 0.3939,
+ "w_unclipped": 0.3939,
+ "counts": {
+  "fit_E_rows": 2201,
+  "fit_E_blended": 1797,
+  "test_E_rows": 2208,
+  "test_E_blended": 1886,
+  "test_E_games": 132,
+  "test_C_rows": 3204,
+  "test_C_blended": 2770
+ },
+ "test_E_minutes": {
+  "mean": 0.49668,
+  "sd": 0.06854,
+  "t": 7.24634,
+  "games": 132,
+  "rows": 1886,
+  "ci95": [
+   0.37033,
+   0.62983
+  ],
+  "mae_old": 5.1188,
+  "mae_new": 4.6221
+ },
+ "test_E_props": {
+  "pooled_gain": 0.01904,
+  "sd": 0.00319,
+  "t": 5.965,
+  "ci95": [
+   0.01263,
+   0.02521
+  ],
+  "games": 132,
+  "rows_x_stats": 7544,
+  "per_stat": {
+   "pts": {
+    "mae_old": 4.8882,
+    "mae_new": 4.7631,
+    "better": true
+   },
+   "reb": {
+    "mae_old": 1.915,
+    "mae_new": 1.8735,
+    "better": true
+   },
+   "ast": {
+    "mae_old": 1.3922,
+    "mae_new": 1.3721,
+    "better": true
+   },
+   "3pm": {
+    "mae_old": 0.9405,
+    "mae_new": 0.9269,
+    "better": true
+   }
+  }
+ },
+ "halves_minutes_gain": [
+  0.51852,
+  0.46871
+ ],
+ "conditions": {
+  "minutes_t_ge_2_5": true,
+  "props_t_ge_2_5": true,
+  "no_stat_worse": true,
+  "both_halves_positive": true,
+  "w_strictly_inside": true
+ },
+ "verdict": "PASS",
+ "context": {
+  "fit_E_in_sample_minutes": {
+   "mean": 0.37229,
+   "sd": 0.05979,
+   "t": 6.22669,
+   "games": 113,
+   "rows": 1797,
+   "ci95": [
+    0.25483,
+    0.49426
+   ],
+   "mae_old": 4.9615,
+   "mae_new": 4.5892
+  },
+  "test_C_minutes": {
+   "mean": 0.11857,
+   "sd": 0.03951,
+   "t": 3.00141,
+   "games": 181,
+   "rows": 2770,
+   "ci95": [
+    0.04231,
+    0.19684
+   ],
+   "mae_old": 4.5807,
+   "mae_new": 4.4622
+  },
+  "test_C_props": {
+   "pooled_gain": 0.00963,
+   "sd": 0.00231,
+   "t": 4.168,
+   "ci95": [
+    0.00535,
+    0.0144
+   ],
+   "games": 181,
+   "rows_x_stats": 11080,
+   "per_stat": {
+    "pts": {
+     "mae_old": 4.5759,
+     "mae_new": 4.4874,
+     "better": true
+    },
+    "reb": {
+     "mae_old": 1.8992,
+     "mae_new": 1.8939,
+     "better": true
+    },
+    "ast": {
+     "mae_old": 1.3337,
+     "mae_new": 1.3279,
+     "better": true
+    },
+    "3pm": {
+     "mae_old": 0.8833,
+     "mae_new": 0.8727,
+     "better": true
+    }
+   }
+  }
+ },
+ "generated": "2026-10-25T13:25Z"
+}
