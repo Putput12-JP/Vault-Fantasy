@@ -77,16 +77,16 @@ Vault vs market disagreements of 8+ pts (close):
 _When Pinnacle's no-vig line sat half a point or more off the recreational books 3+ hours out, did those books move toward it by kickoff? FanDuel is the control: an off-the-pack book gets pulled back toward the pack whoever it is, so Pinnacle only counts as sharp if it clearly beats FanDuel. Weeks 1-3 are replayed from the saved odds feed; later weeks are logged live._
 
 ```
-spread  Pinnacle    n= 66  toward  39 / away  15  avg move toward +0.53 pts ±0.13
-spread  FanDuel     n= 57  toward  29 / away  17  avg move toward +0.23 pts ±0.15
-        -> NO-GO: not ahead of the control (+0.30 pts, z +1.5)
-total   Pinnacle    n= 34  toward  21 / away  11  avg move toward +0.29 pts ±0.18
-total   FanDuel     n= 39  toward  22 / away  12  avg move toward +0.06 pts ±0.15
-        -> too few games (34 of 50)
-props   Pinnacle    n=171  toward  81 / away  12  net share toward +0.40 ±0.07
+spread  Pinnacle    n= 66  toward  39 / away  15  avg move toward +0.49 pts ±0.11
+spread  FanDuel     n= 55  toward  29 / away  15  avg move toward +0.25 pts ±0.15
+        -> NO-GO: not ahead of the control (+0.25 pts, z +1.3)
+total   Pinnacle    n= 33  toward  21 / away  10  avg move toward +0.32 pts ±0.18
+total   FanDuel     n= 37  toward  21 / away  11  avg move toward +0.08 pts ±0.16
+        -> too few games (33 of 50)
+props   Pinnacle    n=171  toward  83 / away  12  net share toward +0.41 ±0.07
 props   FanDuel     n= 45  toward  23 / away   8  net share toward +0.33 ±0.14
 props   DraftKings  n= 27  toward  10 / away   4  net share toward +0.22 ±0.19
-        -> NO-GO: not ahead of the controls (+0.07, z +0.5)
+        -> NO-GO: not ahead of the controls (+0.08, z +0.5)
 ```
 
 ## Signals: Kalshi, Polymarket sharp accounts, withheld props
