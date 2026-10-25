@@ -122,14 +122,14 @@ def log(day, board, now):
             S['held'] += 1                            # still logged, into the separate preseason record)
             if k in held_tracked or trigger_gate(c) != 'no-go':       # a hold keeps it from being a bet, but a GO or WATCH candidate it kept out is
                 held_rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),      # recorded apart (source 'heldbets'), never a bet
-                                c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
+                                c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or []), round(c.get('mt') or 0, 3)]
                 P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
                 held_meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0], 'team': P[1], 'stat': c['s'],
                                 'venue': c['venue'], 'book': bk, 'side': c['side'], 'line': c['line'], 'hold': c['hold']['why']}
             continue
         S['logged'] += k not in rows
         rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),
-                   c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
+                   c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or []), round(c.get('mt') or 0, 3)]
         P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
         meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0],
                    'team': P[1], 'stat': c['s'], 'venue': c['venue'], 'book': bk, 'side': c['side'], 'line': c['line']}
@@ -667,7 +667,7 @@ def bet_from(k, m, series):
     return {'k': k, 'game': m['game'], 'tip': m['tip'], 'matchup': m['matchup'], 'pid': m['pid'], 'player': m['player'],
             'team': m['team'], 'stat': m['stat'], 'venue': m['venue'], 'book': m['book'], 'side': m['side'], 'line': m['line'],
             'gate': gate, 'etype': etype, 't': te, 'price': ve[0], 'fair': ve[1], 'edge': max(ve[2], gap_of(ve) or -1) if 'gap' in trig else ve[2],
-            'model_edge': ve[2], 'cons': ve[6] if len(ve) > 6 else None, 'gap_edge': gap_of(ve), 'mu': ve[4], 'min': ve[5],
+            'model_edge': ve[2], 'cons': ve[6] if len(ve) > 6 else None, 'gap_edge': gap_of(ve), 'mu': ve[4], 'min': ve[5], 'mt': ve[10] if len(ve) > 10 else None,
             'types': [x for x in (ve[9] if len(ve) > 9 else '').split(',') if x] or [{'model': 'model', 'gap': 'gap', 'both': 'gap'}[etype]],
             't_close': tc, 'price_close': vc[0], 'fair_close': vc[1], 'edge_close': vc[2],
             'clv': round(cc - ce, 4) if ce is not None and cc is not None else None,
