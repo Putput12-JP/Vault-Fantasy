@@ -1,0 +1,205 @@
+{
+ "w": 0.3939,
+ "seasons": {
+  "2023": {
+   "rows": 2223,
+   "blended": 1819,
+   "games": 114,
+   "minutes": {
+    "mean": 0.06089,
+    "sd": 0.03261,
+    "t": 1.86734,
+    "games": 114,
+    "rows": 1819,
+    "ci95": [
+     -0.00187,
+     0.12537
+    ],
+    "mae_old": 4.9056,
+    "mae_new": 4.8447
+   },
+   "props": {
+    "pooled_gain": 0.00688,
+    "sd": 0.00183,
+    "t": 3.753,
+    "ci95": [
+     0.00335,
+     0.0105
+    ],
+    "games": 114,
+    "rows_x_stats": 7276,
+    "per_stat": {
+     "pts": {
+      "mae_old": 4.9089,
+      "mae_new": 4.8556,
+      "better": true
+     },
+     "reb": {
+      "mae_old": 2.0111,
+      "mae_new": 2.0004,
+      "better": true
+     },
+     "ast": {
+      "mae_old": 1.3407,
+      "mae_new": 1.3301,
+      "better": true
+     },
+     "3pm": {
+      "mae_old": 0.914,
+      "mae_new": 0.9108,
+      "better": true
+     }
+    }
+   },
+   "halves_minutes_gain": [
+    0.09098,
+    0.01944
+   ],
+   "conditions": {
+    "minutes_t_ge_2_5": false,
+    "props_t_ge_2_5": true,
+    "no_stat_worse": true,
+    "both_halves_positive": true
+   },
+   "verdict": "FAIL",
+   "buckets": {
+    "4-6": {
+     "n": 792,
+     "mae_old": 4.756,
+     "mae_new": 4.654
+    },
+    "7-10": {
+     "n": 1027,
+     "mae_old": 5.021,
+     "mae_new": 4.992
+    },
+    "11-15": {
+     "n": 1214,
+     "mae_old": 4.628,
+     "mae_new": 4.729
+    },
+    "16-20": {
+     "n": 1159,
+     "mae_old": 4.599,
+     "mae_new": 4.717
+    },
+    "21-30": {
+     "n": 2224,
+     "mae_old": 4.834,
+     "mae_new": 4.86
+    },
+    "31-50": {
+     "n": 4344,
+     "mae_old": 4.619,
+     "mae_new": 4.683
+    },
+    "51-82": {
+     "n": 5847,
+     "mae_old": 4.784,
+     "mae_new": 4.942
+    }
+   }
+  },
+  "2024": {
+   "rows": 2163,
+   "blended": 1813,
+   "games": 113,
+   "minutes": {
+    "mean": 0.56368,
+    "sd": 0.08063,
+    "t": 6.99079,
+    "games": 113,
+    "rows": 1813,
+    "ci95": [
+     0.40796,
+     0.72707
+    ],
+    "mae_old": 5.2372,
+    "mae_new": 4.6735
+   },
+   "props": {
+    "pooled_gain": 0.02048,
+    "sd": 0.00355,
+    "t": 5.777,
+    "ci95": [
+     0.01379,
+     0.02778
+    ],
+    "games": 113,
+    "rows_x_stats": 7252,
+    "per_stat": {
+     "pts": {
+      "mae_old": 4.8594,
+      "mae_new": 4.7239,
+      "better": true
+     },
+     "reb": {
+      "mae_old": 2.0187,
+      "mae_new": 1.9595,
+      "better": true
+     },
+     "ast": {
+      "mae_old": 1.4037,
+      "mae_new": 1.3777,
+      "better": true
+     },
+     "3pm": {
+      "mae_old": 0.896,
+      "mae_new": 0.8904,
+      "better": true
+     }
+    }
+   },
+   "halves_minutes_gain": [
+    0.8197,
+    0.23805
+   ],
+   "conditions": {
+    "minutes_t_ge_2_5": true,
+    "props_t_ge_2_5": true,
+    "no_stat_worse": true,
+    "both_halves_positive": true
+   },
+   "verdict": "PASS",
+   "buckets": {
+    "4-6": {
+     "n": 758,
+     "mae_old": 5.969,
+     "mae_new": 5.134
+    },
+    "7-10": {
+     "n": 1055,
+     "mae_old": 4.711,
+     "mae_new": 4.342
+    },
+    "11-15": {
+     "n": 1388,
+     "mae_old": 4.622,
+     "mae_new": 4.461
+    },
+    "16-20": {
+     "n": 1271,
+     "mae_old": 4.416,
+     "mae_new": 4.548
+    },
+    "21-30": {
+     "n": 2460,
+     "mae_old": 4.693,
+     "mae_new": 4.843
+    },
+    "31-50": {
+     "n": 4613,
+     "mae_old": 4.743,
+     "mae_new": 4.949
+    },
+    "51-82": {
+     "n": 6226,
+     "mae_old": 4.729,
+     "mae_new": 5.036
+    }
+   }
+  }
+ },
+ "round2": "MIXED",
+ "generated": "2026-10-25T13:33Z"
+}

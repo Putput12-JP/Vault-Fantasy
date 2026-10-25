@@ -146,5 +146,39 @@ def main():
     json.dump(res, open(OUT, 'w'), indent=1)
 
 
+ROUND2_SEASONS = (2023, 2024)           # walk seasons 2022-23 and 2023-24: docs/early-minutes-blend-round2.md
+OUT2 = os.path.join(HERE, '..', 'data', 'early_minutes_blend_round2.json')
+BUCKETS = [(4, 6), (7, 10), (11, 15), (16, 20), (21, 30), (31, 50), (51, 82)]
+
+
+def round2():
+    """Round 2: the frozen w from round 1, scored on two held-out seasons, each on its own. Rules: docs/early-minutes-blend-round2.md."""
+    w = json.load(open(OUT))['w']
+    recs = walk_records()
+    rows, _ = annotate(recs)
+    res = {'w': w, 'seasons': {}}
+    for season in ROUND2_SEASONS:
+        E = [r for r in rows if r['season'] == season and E_LO <= r['k'] <= E_HI]
+        blended = [r for r in E if r['f'] is not None]
+        mg, pg = minutes_gain(E, w), prop_gain(E, w)
+        halves = [round(st.mean(abs(r['min'] - r['pm']) - abs(r['min'] - new_pm(r, w)) for r in h if r['f'] is not None), 5)
+                  for h in ([r for r in E if r['k'] <= 7], [r for r in E if r['k'] >= 8])]
+        conds = {'minutes_t_ge_2_5': (mg['t'] or 0) >= 2.5, 'props_t_ge_2_5': (pg['t'] or 0) >= 2.5,
+                 'no_stat_worse': all(v['better'] for v in pg['per_stat'].values()), 'both_halves_positive': all(x > 0 for x in halves)}
+        buckets = {}
+        for lo, hi in BUCKETS:
+            R = [r for r in rows if r['season'] == season and lo <= r['k'] <= hi and r['f'] is not None]
+            if R:
+                buckets[f'{lo}-{hi}'] = {'n': len(R), 'mae_old': round(st.mean(abs(r['min'] - r['pm']) for r in R), 3),
+                                         'mae_new': round(st.mean(abs(r['min'] - new_pm(r, w)) for r in R), 3)}
+        res['seasons'][str(season)] = {'rows': len(E), 'blended': len(blended), 'games': mg['games'], 'minutes': mg, 'props': pg, 'halves_minutes_gain': halves,
+                                       'conditions': conds, 'verdict': 'PASS' if all(conds.values()) else 'FAIL', 'buckets': buckets}
+    v = [x['verdict'] for x in res['seasons'].values()]
+    res['round2'] = 'HOLDS' if all(x == 'PASS' for x in v) else ('MIXED' if 'PASS' in v else 'FAILS')
+    res['generated'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+    print(json.dumps(res, indent=1))
+    json.dump(res, open(OUT2, 'w'), indent=1)
+
+
 if __name__ == '__main__':
-    main()
+    round2() if '--round2' in sys.argv else main()
