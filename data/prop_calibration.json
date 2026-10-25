@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "generated": "2026-10-25T19:31:25.255241+00:00",
+  "generated": "2026-10-25T19:46:31.670430+00:00",
   "line_basis": "close",
   "latest_week": 7,
   "skipped": 624,
@@ -4016,6 +4016,30 @@
             }
           ]
         },
+        "pass_yd": {
+          "n": 4,
+          "pred_avg": 59.9,
+          "actual_avg": 75.0,
+          "brier": 0.2251,
+          "logloss": 0.6423,
+          "ece": 15.1,
+          "reliability": [
+            {
+              "bucket": "50\u201355%",
+              "n": 1,
+              "pred": 51.4,
+              "actual": 100.0,
+              "gap": 48.6
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 3,
+              "pred": 62.8,
+              "actual": 66.7,
+              "gap": 3.9
+            }
+          ]
+        },
         "pass_td": {
           "n": 4,
           "pred_avg": 62.5,
@@ -4068,30 +4092,6 @@
               "pred": 60.4,
               "actual": 50.0,
               "gap": -10.4
-            }
-          ]
-        },
-        "pass_yd": {
-          "n": 4,
-          "pred_avg": 59.9,
-          "actual_avg": 75.0,
-          "brier": 0.2251,
-          "logloss": 0.6423,
-          "ece": 15.1,
-          "reliability": [
-            {
-              "bucket": "50\u201355%",
-              "n": 1,
-              "pred": 51.4,
-              "actual": 100.0,
-              "gap": 48.6
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 3,
-              "pred": 62.8,
-              "actual": 66.7,
-              "gap": 3.9
             }
           ]
         },
