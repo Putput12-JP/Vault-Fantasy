@@ -31,6 +31,12 @@ class Pricer:
         self.PR = PR or render_app.pricing()
         ms = MS or json.load(open(os.path.join(DATA, 'model_state.json')))
         self.MS_all = ms
+        self.DDF = self.MT = None                      # shot-diet matchup term (docs/matchup-live.md): diet_defense.json + matchup_terms.json
+        try:
+            self.DDF = json.load(open(os.path.join(DATA, 'diet_defense.json')))
+            self.MT = json.load(open(os.path.join(DATA, 'matchup_terms.json')))
+        except (OSError, ValueError):
+            self.DDF = self.MT = None
         self.state = ms.get('example' if example else 'live') if ms else None
         if self.state and isinstance(self.state.get('players'), dict):
             # A null player record, or a null field in one, means "not known": the same as absent. Left in, one such player made every ledger poll
@@ -96,8 +102,39 @@ class Pricer:
         return res
 
     # ── prop model v2 ────────────────────────────────────────────────────────────────────────
+    def matchup_idx(self, pid, opp, s):
+        """The player's shot-diet matchup index for a stat (docs/matchup-volume-test.md, point in time as the Matchups page builds it), or None.
+        3pm: his 3-point mix (corner, above the break) against the opponent's 3-point allowance. ast: his assist-location mix against the opponent's
+        assists allowed by location. Fractions (0.10 = ten percent softer than the league)."""
+        dd, mt = self.DDF, self.MT
+        if not dd or not mt or not mt.get('enabled') or s not in (mt.get('stats') or {}) or not opp:
+            return None
+        P, tm = dd['players'].get(str(pid)), dd['teams'].get(opp)
+        if not P or not tm:
+            return None
+        if s == '3pm':
+            z = P['zone']
+            s3 = z['c3'] + z['ab3']
+            if P['fga'] < 50 or s3 < 0.05:
+                return None
+            return (z['c3'] * tm['zone']['c3'][2] + z['ab3'] * tm['zone']['ab3'][2]) / s3 / 100.0
+        sh = P.get('ast_share')
+        if not sh or P['ast'] < 30:
+            return None
+        return sum(sh[k] * tm['ast'][k][2] for k in ('rim', 'smid', 'lmid', 'c3', 'arc3')) / 100.0
+
+    def matchup_term(self, pid, opp, s, mu):
+        """Stat-unit term: mu x (clip(1 + beta x index) - 1). Shadow of the frozen slopes in data/matchup_terms.json; 0 when off or undefined."""
+        if self.example or not self.MT:
+            return 0.0
+        idx = self.matchup_idx(pid, opp, s)
+        if idx is None:
+            return 0.0
+        lo, hi = self.MT.get('clip', [0.7, 1.3])
+        return mu * (min(hi, max(lo, 1 + self.MT['stats'][s]['beta'] * idx)) - 1)
+
     def v2_terms(self, team, p, s, mu, mn, g):
-        zero = {'opp': 0, 'pace': 0, 'market': 0, 'shooting': 0, 'season': 0, 'home': 0, 'b2b': 0, 'bias': 0}
+        zero = {'opp': 0, 'pace': 0, 'market': 0, 'shooting': 0, 'season': 0, 'home': 0, 'b2b': 0, 'bias': 0, 'matchup': 0}
         st = self.state
         if not self.PR.get('stacker') or s not in self.PR['stacker'] or not st or not g or not (mn > 0):
             return zero
@@ -117,7 +154,8 @@ class Pricer:
         season = mn * ((z['S'][s] + 200 * rate) / (z['M'] + 200) - rate) if z and z.get('season') == st['season'] and z['M'] > 0 else 0
         f = [mu * (oppF - 1), mu * (pace - 1), mu * (mkt - 1), struct, season, mu * (home - .5), mu * b2b, mu, 1]
         c = [x * b for x, b in zip(f, self.PR['stacker'][s])]
-        return {'opp': c[0], 'pace': c[1], 'market': c[2], 'shooting': c[3], 'season': c[4], 'home': c[5], 'b2b': c[6], 'bias': c[7] + c[8]}
+        return {'opp': c[0], 'pace': c[1], 'market': c[2], 'shooting': c[3], 'season': c[4], 'home': c[5], 'b2b': c[6], 'bias': c[7] + c[8],
+                'matchup': self.matchup_term(p['id'], opp, s, mu)}
 
     # ── tonight's minutes: minutes model v2 on the backtest's own state (build_prop_model_v2.walk) ─────────
     def game_minutes(self, team, g, status, cache):
@@ -372,14 +410,15 @@ class Pricer:
             return None
         else:
             return self.mu_lab(pid, stat, g, cache, outs, team, p)
-        mu = 0
+        mu = mt = 0
         for s in COMBO.get(stat, [stat]):
             t = self.v2_terms(team, p, s, x[s], mn, g)
             mu += max(0, x[s] + sum(t.values()))
+            mt += t.get('matchup', 0)                                       # the shot-matchup term inside mu, logged so a forward read can take it out
         P = self.state['players'].get(str(pid)) if self.state else None
         sdm = P['sdm'] if P else 6
         rate = sum(p['rate'][s] for s in COMBO.get(stat, [stat]))
-        return {'mu': mu, 'min': mn, 'team': team, 'extra': (rate * sdm) ** 2, 'src': src}
+        return {'mu': mu, 'min': mn, 'team': team, 'extra': (rate * sdm) ** 2, 'src': src, 'mt': mt}
 
     def mu_lab(self, pid, stat, g, cache, outs, team, p):
         """Fallback for players with no minutes history on their current team (moved, rookies): Minutes Lab minutes
@@ -478,7 +517,7 @@ class Pricer:
             cands.append({'venue': 'pickem', 'bk': app, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - (po if po is not None else PK_BE), 'fair': fair, 'mkt': po, 'g': 'no-go', 't': t})
             cands.append({'venue': 'pickem', 'bk': app, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - (pu if pu is not None else PK_BE), 'fair': 1 - fair, 'mkt': pu, 'g': 'no-go', 't': t})
         self.add_consensus(e, s, cands, model, mm['extra'])
-        return {'mu': mm['mu'], 'min': mm['min'], 'team': mm['team'], 'cands': cands, 'src': mm.get('src')}
+        return {'mu': mm['mu'], 'min': mm['min'], 'team': mm['team'], 'cands': cands, 'src': mm.get('src'), 'mt': mm.get('mt', 0)}
 
     # ── consensus (consensus.py): every other venue's price moved to this line ──────────────────
     def add_consensus(self, e, s, cands, model, extra):
@@ -688,7 +727,7 @@ def price_board(board, pricer=None):
                 part = []
                 for c in r['cands']:
                     c['types'] = edge_types(c, [t for v, t in times if v != c['bk']], news.get(r['team'], []), board.get('t'))
-                    part.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team'], hold=hold))
+                    part.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], mt=r.get('mt', 0), min=r['min'], team=r['team'], hold=hold))
                 rows += part
         except Exception as ex:
             row_error(f"price {e.get('g')}|{e.get('p')}|{e.get('s')}", ex)
