@@ -1,0 +1,147 @@
+{
+ "coverage": {
+  "3pm": {
+   "fit_scored_of": [
+    16873,
+    27345
+   ],
+   "test_scored_of": [
+    22319,
+    27797
+   ]
+  },
+  "ast": {
+   "fit_scored_of": [
+    15110,
+    27345
+   ],
+   "test_scored_of": [
+    22534,
+    27797
+   ]
+  }
+ },
+ "3pm": {
+  "volume": "volume=3PA",
+  "fit_rows": 16873,
+  "test_rows": 22319,
+  "beta_fit_2024_25": 0.881,
+  "beta_own_2025_26": 0.7081,
+  "beta_own_t": 10.46,
+  "eval_2025_26": {
+   "matchup": {
+    "vol_mae_gain": 0.00596,
+    "vol_t": 3.59,
+    "stat_mae_gain": 0.00264,
+    "stat_t": 4.47,
+    "games": 1216,
+    "rows": 22319
+   },
+   "control": {
+    "vol_mae_gain": -0.00789,
+    "vol_t": -5.2,
+    "stat_mae_gain": -0.00193,
+    "stat_t": -3.51,
+    "games": 1216,
+    "rows": 22319
+   },
+   "team_only_context": {
+    "vol_mae_gain": 0.00572,
+    "vol_t": 3.56,
+    "stat_mae_gain": 0.00251,
+    "stat_t": 4.44,
+    "games": 1216,
+    "rows": 22319
+   },
+   "halves_vol_gain": [
+    0.00284,
+    0.00902
+   ],
+   "quintile_mean_residual_pct": [
+    -5.05,
+    -0.38,
+    3.15,
+    5.03,
+    8.8
+   ],
+   "quintile_mean_index": [
+    -0.0839,
+    -0.0321,
+    -0.0047,
+    0.0283,
+    0.0897
+   ]
+  },
+  "conditions": {
+   "beta_fit_positive": true,
+   "volume_gain_t_ge_2_5": true,
+   "control_not_t_ge_2_5": true,
+   "own_slope_2025_26_positive_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "stat_mae_not_worse": true
+  },
+  "verdict": "PASS"
+ },
+ "ast": {
+  "volume": "volume=assists",
+  "fit_rows": 15110,
+  "test_rows": 22534,
+  "beta_fit_2024_25": 0.7776,
+  "beta_own_2025_26": 0.7627,
+  "beta_own_t": 9.12,
+  "eval_2025_26": {
+   "matchup": {
+    "vol_mae_gain": 0.00419,
+    "vol_t": 3.88,
+    "stat_mae_gain": 0.00419,
+    "stat_t": 3.88,
+    "games": 1216,
+    "rows": 22534
+   },
+   "control": {
+    "vol_mae_gain": -0.00301,
+    "vol_t": -3.0,
+    "stat_mae_gain": -0.00301,
+    "stat_t": -3.0,
+    "games": 1216,
+    "rows": 22534
+   },
+   "team_only_context": {
+    "vol_mae_gain": 0.00421,
+    "vol_t": 4.12,
+    "stat_mae_gain": 0.00421,
+    "stat_t": 4.12,
+    "games": 1216,
+    "rows": 22534
+   },
+   "halves_vol_gain": [
+    0.0035,
+    0.00484
+   ],
+   "quintile_mean_residual_pct": [
+    -3.16,
+    0.59,
+    7.11,
+    8.63,
+    10.27
+   ],
+   "quintile_mean_index": [
+    -0.0893,
+    -0.0321,
+    0.0042,
+    0.0304,
+    0.0859
+   ]
+  },
+  "conditions": {
+   "beta_fit_positive": true,
+   "volume_gain_t_ge_2_5": true,
+   "control_not_t_ge_2_5": true,
+   "own_slope_2025_26_positive_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "stat_mae_not_worse": true
+  },
+  "verdict": "PASS"
+ },
+ "generated": "2026-10-25T20:20Z"
+}
