@@ -1,0 +1,357 @@
+{
+ "T": 239.59,
+ "validation": {
+  "rows": 10904,
+  "games": 523,
+  "top8_bias_by_pool_size": {
+   "12_or_fewer": {
+    "n": 2505,
+    "A": 0.674,
+    "C3": 0.069
+   },
+   "13_to_14": {
+    "n": 3186,
+    "A": -0.503,
+    "C3": -0.072
+   },
+   "15_or_more": {
+    "n": 2297,
+    "A": -2.503,
+    "C3": -0.217
+   }
+  },
+  "bias_by_rank_group": {
+   "rank_1_8": {
+    "n": 7988,
+    "A": -0.709,
+    "C3": -0.07
+   },
+   "rank_9_10": {
+    "n": 1492,
+    "A": 0.047,
+    "C3": -0.799
+   },
+   "rank_11_plus": {
+    "n": 1424,
+    "A": 0.384,
+    "C3": 0.253
+   }
+  },
+  "mae": {
+   "A": 5.1546,
+   "C3": 4.9706
+  },
+  "primary": {
+   "gain": 0.184,
+   "t": 6.96,
+   "ci95": [
+    0.1313,
+    0.2358
+   ],
+   "games": 523,
+   "rows": 10904
+  },
+  "cuts": {
+   "fringe_rank_9_to_12": {
+    "gain": -0.0708,
+    "t": -1.86,
+    "ci95": [
+     -0.1445,
+     0.0043
+    ],
+    "games": 521,
+    "rows": 2358
+   },
+   "a_rotation_player_out": {
+    "gain": 0.1511,
+    "t": 5.69,
+    "ci95": [
+     0.1006,
+     0.2037
+    ],
+    "games": 457,
+    "rows": 7744
+   },
+   "b_lopsided_pregame": {
+    "gain": 0.2261,
+    "t": 5.16,
+    "ci95": [
+     0.1421,
+     0.3152
+    ],
+    "games": 165,
+    "rows": 3511
+   }
+  },
+  "props": {
+   "pooled_gain": -0.0002,
+   "t": -0.16,
+   "games": 523,
+   "per_stat": {
+    "pts": {
+     "mae_old": 4.6242,
+     "mae_new": 4.6106,
+     "better": true
+    },
+    "reb": {
+     "mae_old": 1.9258,
+     "mae_new": 1.9281,
+     "better": false
+    },
+    "ast": {
+     "mae_old": 1.3377,
+     "mae_new": 1.3398,
+     "better": false
+    },
+    "3pm": {
+     "mae_old": 0.9002,
+     "mae_new": 0.901,
+     "better": false
+    }
+   }
+  }
+ },
+ "context": {
+  "C_round1_features_on_validation": {
+   "rows": 10904,
+   "games": 523,
+   "top8_bias_by_pool_size": {
+    "12_or_fewer": {
+     "n": 2505,
+     "A": 0.674,
+     "C": 0.383
+    },
+    "13_to_14": {
+     "n": 3186,
+     "A": -0.503,
+     "C": -0.214
+    },
+    "15_or_more": {
+     "n": 2297,
+     "A": -2.503,
+     "C": -0.846
+    }
+   },
+   "bias_by_rank_group": {
+    "rank_1_8": {
+     "n": 7988,
+     "A": -0.709,
+     "C": -0.208
+    },
+    "rank_9_10": {
+     "n": 1492,
+     "A": 0.047,
+     "C": -0.834
+    },
+    "rank_11_plus": {
+     "n": 1424,
+     "A": 0.384,
+     "C": 0.253
+    }
+   },
+   "mae": {
+    "A": 5.1546,
+    "C": 5.0194
+   },
+   "primary": {
+    "gain": 0.1353,
+    "t": 5.72,
+    "ci95": [
+     0.0894,
+     0.1805
+    ],
+    "games": 523,
+    "rows": 10904
+   },
+   "cuts": {
+    "fringe_rank_9_to_12": {
+     "gain": -0.1058,
+     "t": -2.6,
+     "ci95": [
+      -0.1844,
+      -0.0269
+     ],
+     "games": 521,
+     "rows": 2358
+    },
+    "a_rotation_player_out": {
+     "gain": 0.1109,
+     "t": 4.48,
+     "ci95": [
+      0.064,
+      0.1595
+     ],
+     "games": 457,
+     "rows": 7744
+    },
+    "b_lopsided_pregame": {
+     "gain": 0.1875,
+     "t": 4.8,
+     "ci95": [
+      0.1112,
+      0.2661
+     ],
+     "games": 165,
+     "rows": 3511
+    }
+   },
+   "props": {
+    "pooled_gain": -6e-05,
+    "t": -0.05,
+    "games": 523,
+    "per_stat": {
+     "pts": {
+      "mae_old": 4.6242,
+      "mae_new": 4.6123,
+      "better": true
+     },
+     "reb": {
+      "mae_old": 1.9258,
+      "mae_new": 1.9287,
+      "better": false
+     },
+     "ast": {
+      "mae_old": 1.3377,
+      "mae_new": 1.3385,
+      "better": false
+     },
+     "3pm": {
+      "mae_old": 0.9002,
+      "mae_new": 0.9008,
+      "better": false
+     }
+    }
+   }
+  },
+  "C3_fit_on_all_scored_on_2025_26": {
+   "rows": 27797,
+   "games": 1308,
+   "top8_bias_by_pool_size": {
+    "12_or_fewer": {
+     "n": 7078,
+     "A": 1.216,
+     "C3": 0.523
+    },
+    "13_to_14": {
+     "n": 8413,
+     "A": -0.386,
+     "C3": 0.463
+    },
+    "15_or_more": {
+     "n": 4606,
+     "A": -1.826,
+     "C3": 0.34
+    }
+   },
+   "bias_by_rank_group": {
+    "rank_1_8": {
+     "n": 20097,
+     "A": -0.151,
+     "C3": 0.456
+    },
+    "rank_9_10": {
+     "n": 3962,
+     "A": 0.193,
+     "C3": -0.748
+    },
+    "rank_11_plus": {
+     "n": 3738,
+     "A": 0.175,
+     "C3": -0.268
+    }
+   },
+   "mae": {
+    "A": 4.9218,
+    "C3": 4.7707
+   },
+   "primary": {
+    "gain": 0.1511,
+    "t": 9.69,
+    "ci95": [
+     0.121,
+     0.1811
+    ],
+    "games": 1308,
+    "rows": 27797
+   },
+   "cuts": {
+    "fringe_rank_9_to_12": {
+     "gain": -0.0087,
+     "t": -0.44,
+     "ci95": [
+      -0.0473,
+      0.031
+     ],
+     "games": 1306,
+     "rows": 6362
+    },
+    "a_rotation_player_out": {
+     "gain": 0.1317,
+     "t": 7.78,
+     "ci95": [
+      0.0996,
+      0.1651
+     ],
+     "games": 1213,
+     "rows": 21183
+    },
+    "b_lopsided_pregame": {
+     "gain": 0.1277,
+     "t": 4.34,
+     "ci95": [
+      0.0697,
+      0.1858
+     ],
+     "games": 363,
+     "rows": 7806
+    },
+    "e_first_15_team_games": {
+     "gain": 0.2282,
+     "t": 6.09,
+     "ci95": [
+      0.1542,
+      0.3024
+     ],
+     "games": 218,
+     "rows": 4485
+    }
+   },
+   "props": {
+    "pooled_gain": 0.0015,
+    "t": 1.91,
+    "games": 1308,
+    "per_stat": {
+     "pts": {
+      "mae_old": 4.5495,
+      "mae_new": 4.5264,
+      "better": true
+     },
+     "reb": {
+      "mae_old": 1.8702,
+      "mae_new": 1.8651,
+      "better": true
+     },
+     "ast": {
+      "mae_old": 1.3289,
+      "mae_new": 1.3289,
+      "better": false
+     },
+     "3pm": {
+      "mae_old": 0.8849,
+      "mae_new": 0.8865,
+      "better": false
+     }
+    }
+   }
+  }
+ },
+ "conditions": {
+  "pool_size_bias_within_0_5_all_buckets_n_ge_1000": true,
+  "overall_mae_t_ge_2_5": true,
+  "fringe_gain_ge_0": false,
+  "rotation_player_out_t_ge_2_5": true,
+  "props_t_ge_2_5_no_stat_worse": false,
+  "top8_bias_within_0_3_and_9_10_within_0_5": false
+ },
+ "verdict": "FAIL"
+}
