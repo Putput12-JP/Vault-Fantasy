@@ -49,7 +49,9 @@ its logistic fit with the same ridge, its metric (log-loss over every scored lin
 1. The candidate has lower log-loss than the incumbent in all three folds.
 2. The lower end of the game-clustered paired bootstrap 95% interval of the pooled gain is above 0 (1,000 draws, seed 11, the harness's own).
 3. The pooled mean gain beats the harness bar, `0.0003 x ln(1 + looks)` with `looks = 15 + 11 + 1 = 27` (about 0.00099 log-loss), counting this look.
-4. The game-clustered t of the pooled gain is at least 2.5.
+4. The game-clustered t of the pooled gain is at least 2.5, where t = the pooled mean gain / the standard deviation of the 1,000 bootstrap pooled means in condition 2.
+
+**c** is the value at index `int(0.9 x N)` of the sorted |gap| values of the first 40% of rows.
 
 Anything else is REJECT. An ACCEPT here means "worth a shadow-tracked candidate in the pricer", not "ship"; the harness incumbent is a research stand-in for the shipped pricer
 (`pricing.py` `Pricer.cal` then `blend`), not the same code, and a pass would need its own pull request and its own forward test.
@@ -70,7 +72,7 @@ placed a bet when the edge still held at the last look before tip, would the bet
 **Why this cannot run on history.** The walk harness projects once, at the tip clock. A first-look projection and a last-look projection of the same prop exist only in the live ledger
 (`bets/<day>.json` on `nba-data`: `fair`, `edge`, `price` at entry; `fair_close`, `price_close` at the last poll before tip; `result`, `pnl`).
 
-**Data.** Settled bets from the live ledger with a tip on or after **2026-10-26**, regular season only, with a stored `price` (the pick'em rows have none and are out), a stored
+**Data.** Settled bets from the live ledger with a tip on or after **2026-10-26**, regular season only, with a stored `price` (a row with no stored price is out, which includes some pick'em rows), a stored
 `fair_close`, and a result of win or loss.
 
 **The gate, fixed now.** For each bet, `edge_at_last_look = edge + (fair_close - fair)`: the entry edge, moved by how much our own blended fair moved between the two looks. The price is
@@ -129,3 +131,8 @@ so a gain that also shows up later is read as "the blend over-trusts the model a
 | 3. Early-season weight | once, on or after 2026-11-18 | same files, appended; counts only until then |
 
 Until Tests 2 and 3 are read, the runner prints **row counts only** (how many bets and leans qualify, by arm for Test 2). It prints no ROI, win rate or log-loss for them, so the dry runs cannot become peeks.
+
+## Corrections made before anything was scored
+
+- 2026-10-25, before the runner existed: (a) the Test 2 data line said pick'em rows carry no price; some do (the ledger stores a price for them). The rule is simply "a stored price".
+  (b) Test 1 condition 4 now says how t is computed, and the 90th percentile is given as an index. Neither changes what is tested.
