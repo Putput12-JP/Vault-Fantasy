@@ -143,13 +143,15 @@ function how(){return `<details class="how"><summary>How a play qualifies</summa
 
 function plays(){
   const cnt={all:0,nfl:0,cfb:0,nba:0};CAND.filter(c=>c.tier==='play').forEach(c=>{cnt.all++;cnt[c.sport]++});
-  const nP=Q('play').length,nW=Q('watch').length,nX=Q('pass').length;
+  const nP=Q('play').length,nW=Q('watch').length,nX=Q('pass').length,OR=v2Rows().filter(r=>r.p.status==='open'&&(st.sport==='all'||r.p.sport===st.sport)).sort((a,b)=>a.p.start-b.p.start);
   let h=`<div class="sec"><span>Plays</span><span class="num">${snapDate()}</span></div>`;
   h+=chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport');
-  h+=chips([['play','Plays',nP],['watch','Watch',nW],['pass','Passed',nX]],st.tier,'tier');
+  h+=chips([['play','Plays',nP],['open','Open',OR.length],['watch','Watch',nW],['pass','Passed',nX]],st.tier,'tier');
   const list=Q(st.tier);
   if(st.tier==='play'){
     h+=list.length?list.map(playCard).join(''):`<div class="card empty"><b>Nothing clears every gate right now.</b>That is the honest answer. ${nW?nW+' price'+(nW===1?' has':'s have')+' one reference only (Watch). ':''}${nX?nX+' looked good against one price but failed a gate (Passed).':''}</div>`;
+  }else if(st.tier==='open'){
+    h+=`<p class="sub">Logged plays still waiting on the game. A play leaves Plays when a gate stops clearing, but it stays in the record.</p><div class="card">${OR.length?OR.map(r=>{const p=r.p,f=p.first||{},gk=p.game&&p.game.gk;return `<div class="pass"${gk?` data-go="game/${esc(gk)}" style="cursor:pointer"`:''}><div><b>${esc(f.title)}</b> <span class="mut">at ${esc(f.price.book)} ${am(f.price.am)}</span><div class="r">${esc(f.sub||'')} · first seen ${when(p.firstSeen)} · ${(f.refs||[]).map(x=>esc(x.n)+' '+spct(x.edge)).join(', ')}</div></div><div class="mut num" style="text-align:right;white-space:nowrap">${SPORT[p.sport]}<br>${p.start?when(p.start).split(' ').slice(0,3).join(' '):''}</div></div>`}).join(''):'<div class="empty"><b>No open plays.</b></div>'}</div>`;
   }else if(st.tier==='watch'){
     h+=`<p class="sub">Beats one reference but has no second price to confirm it. Do not treat as a play.</p>`+(list.length?list.map(playCard).join(''):'<div class="card empty"><b>Nothing on watch.</b></div>');
   }else{
