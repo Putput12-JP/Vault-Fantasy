@@ -629,11 +629,11 @@ table.pb tr.open td{background:rgb(var(--ink) / .02);border-bottom-color:transpa
 .sc-two b{display:block;font:600 14px var(--font-mono)}.sc-two small{font:500 10.5px var(--font-mono);color:var(--fg3)}
 .sc-hit{display:inline-flex;flex-direction:column;align-items:center;gap:2px;min-width:40px}.sc-hit b{font-weight:600;font-size:13px}.sc-hit small{font:500 10px var(--font-mono);color:var(--fg3)}
 .sc-bet b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sc-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.sc-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}.sc-chips .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .sc .chip{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:7px;background:var(--raised);font:500 10.5px var(--font-mono);color:var(--fg2);white-space:nowrap}
 .sc .chip i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
 .sc .chip.up{background:rgba(95,207,140,.12);color:var(--up)}.sc .chip.warn{background:rgba(229,185,85,.12);color:var(--warn)}.sc .chip.blue{background:rgba(122,180,255,.12);color:var(--c-blue,#7ab4ff)}
-.sc-ev{font-family:var(--font-mono);font-size:13px}.sc-ev small{display:block;font:500 10px var(--font-mono);color:var(--fg3);white-space:nowrap}
+.sc-ev{font-family:var(--font-mono);font-size:13px}.sc-ev small{display:block;font:500 10px var(--font-mono);color:var(--fg3);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.sc-opp{margin-top:10px;padding:9px 11px;border-radius:9px;background:var(--surface2);border:1px solid var(--border)}.sc-opp b{color:var(--fg)}
 .sc-chev{width:10px;height:10px;border-right:2px solid var(--fg3);border-bottom:2px solid var(--fg3);transform:rotate(-45deg);transition:transform .2s cubic-bezier(.23,1,.32,1);justify-self:center}
 .sc-row.open .sc-chev{transform:rotate(45deg)}
 .sc-card{display:none}
@@ -4454,8 +4454,13 @@ function renderProps(){
     const sc = scFacts(r), b = r.best;
     const bet = b ? {name: b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`, price: b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price, edge: b.edge, gate: `<span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span>`}
       : r.pkBest ? {name: `${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line}`, price: r.pkBest.price != null ? r.pkBest.price : 'flat', edge: r.pkBest.edge, gate: `<span class="gate" title="Pick'em lines are shown, never a gated best bet">PICK'EM</span>`} : null;
+    const sideOf = x => /^(over|yes)$/i.test(x) ? 'over' : /^(under|no)$/i.test(x) ? 'under' : null;   // a Kalshi YES is the over, NO the under
+    const betSide = b ? sideOf(b.side) : r.pkBest ? sideOf(r.pkBest.side) : null;
+    const evSide = sc.ev && sc.ev.v != null && sc.ev.v > 0 ? sc.ev.side.toLowerCase() : null;
+    sc.opp = bet && bet.edge > 0 && betSide && evSide && betSide !== evSide ? {bet: betSide, ev: evSide} : null;   // the model backs one side, the market check backs the other
+    const BKS = {Polymarket: 'Poly', DraftKings: 'DK', FanDuel: 'FD', BetMGM: 'MGM', Kalshi: 'Kalshi'};
     const edgeC = bet ? `<span class="edge ${bet.edge > 0 ? 'pos' : 'neg'}">${ec(bet.edge)}</span>` : '';
-    const evC = sc.ev && sc.ev.v != null ? `<b class="${sc.ev.v >= .02 ? 'pos' : sc.ev.v >= 0 ? '' : 'muted'}" title="${esc(sc.ev.bk)} ${sc.ev.side} ${sc.ev.px > 0 ? '+' : ''}${sc.ev.px} against Pinnacle's no-vig fair of ${pc(sc.ev.side === 'Over' ? sc.ev.pf : 1 - sc.ev.pf)}">${ec(sc.ev.v)}</b><small>${esc(sc.ev.bk)}</small>` : `<span class="muted">${sc.ev ? 'none' : '-'}</span>`;
+    const evC = sc.ev && sc.ev.v != null ? `<b class="${sc.ev.v >= .02 ? 'pos' : sc.ev.v >= 0 ? '' : 'muted'}" title="${esc(sc.ev.bk)} ${sc.ev.side} ${sc.ev.px > 0 ? '+' : ''}${sc.ev.px} against Pinnacle's no-vig fair of ${pc(sc.ev.side === 'Over' ? sc.ev.pf : 1 - sc.ev.pf)}">${ec(sc.ev.v)}</b><small title="${esc(sc.ev.bk)} ${sc.ev.side}">${sc.ev.side} ${esc(BKS[sc.ev.bk] || sc.ev.bk)}</small>` : `<span class="muted">${sc.ev ? 'none' : '-'}</span>`;
     const nm = x => x == null ? '<span class="muted">none</span>' : pc(x);
     const who = g ? `${gname(g)} · ${clock(g.tip)}` : esc(r.team);   // the game names both teams: no team prefix, the column is narrow
     const tchips = sc.tells.map(t => `<span class="chip ${SC_TELL[t][1]}"><i></i>${SC_TELL[t][0]}</span>`).join('');
@@ -4469,7 +4474,7 @@ function renderProps(){
   <span class="c">${sc.move}</span>
   <span class="c">${scHit(sc.l5)}</span><span class="c">${scHit(sc.l10)}</span><span class="c">${scHit(sc.h2h)}</span>
   <span class="c num">${nm(r.pm)}</span><span class="c num">${nm(r.mkt)}</span><span class="c num">${nm(r.fair)}</span>
-  <span class="sc-bet">${bet ? `<b>${bet.name}</b>` : '<span class="muted">no price</span>'}<span class="sc-chips">${tchips || (r.passing ? '<span class="chip up"><i></i>Passes its gate</span>' : '')}</span></span>
+  <span class="sc-bet">${bet ? `<b>${bet.name}</b>` : '<span class="muted">no price</span>'}<span class="sc-chips">${sc.opp ? `<span class="chip" title="The best bet is the ${sc.opp.bet}, from the model-blended fair price. The +EV check against Pinnacle is on the ${sc.opp.ev}. Open the row for why.">+EV: ${sc.opp.ev}</span>` : ''}${tchips || (r.passing ? '<span class="chip up"><i></i>Passes its gate</span>' : '')}</span></span>
   <span class="c num">${bet ? bet.price : ''}</span><span class="c num">${edgeC}</span><span class="c sc-ev">${evC}</span><span class="c">${bet ? bet.gate : ''}</span>
   <span class="sc-chev"></span></button>
  <button class="sc-card press" type="button" aria-expanded="${open}">
@@ -4665,7 +4670,7 @@ function scDetail(r, sc, status = ''){
     <div><h4>Model against the market</h4><div class="sc-mm">${bar('Model', r.pm, 'var(--c-blue,#7ab4ff)')}${bar('Market', r.mkt, 'var(--fg3)')}${bar('Fair', r.fair, 'var(--fg)')}${ev ? bar('Pinnacle', ev.pf, '#ff5fa2') : ''}</div>
       <p class="lab">How often it went over ${r.line ?? ''}</p>${hl('Last 5', sc.l5)}${hl('Last 10', sc.l10)}${hl('Vs ' + esc(opp), sc.h2h)}</div>
     <div><h4>Market tells</h4><div class="sc-chips" style="margin-bottom:10px">${tch || '<span class="muted">No market tell on this prop.</span>'}</div>
-      ${ev && ev.v != null ? `<h4 style="margin-top:14px">+EV against Pinnacle</h4>${scEvTable(r, ev)}${ev.v > .1 ? '<p class="hint">Edges this big are often a stale quote. Check before you act.</p>' : ''}` : ev ? '<p class="hint">Pinnacle prices this prop, and no other book is on its number.</p>' : '<p class="hint">Pinnacle does not price this prop, so there is no market fair to measure a price against.</p>'}
+      ${ev && ev.v != null ? `<h4 style="margin-top:14px">+EV against Pinnacle</h4>${scEvTable(r, ev)}${sc.opp ? `<p class="hint sc-opp"><b>The best bet is the ${sc.opp.bet}; this +EV is on the ${sc.opp.ev}.</b> They answer different questions. The best bet and Edge compare our model-blended fair chance with the price you would pay. +EV only compares a book with Pinnacle's price, with no model. When they point opposite ways, the model and the market disagree on this prop.</p>` : ''}${ev.v > .1 ? '<p class="hint">Edges this big are often a stale quote. Check before you act.</p>' : ''}` : ev ? '<p class="hint">Pinnacle prices this prop, and no other book is on its number.</p>' : '<p class="hint">Pinnacle does not price this prop, so there is no market fair to measure a price against.</p>'}
       ${status ? `<h4 style="margin-top:14px">Status</h4><p class="hint">${esc(status)}</p>` : ''}</div>
   </div>${detailRow(r, false, true)}`;
 }

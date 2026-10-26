@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-27T05:00', tag:'Improved', title:'Props Table: shows when the best bet and +EV are on opposite sides',
+    items:[
+      'The +EV column now says which side it is (like "Over Poly"). When the best bet is one side and the +EV is the other, the row tags it "+EV: over" and the open row explains why: the best bet comes from our model-blended price, and +EV only compares a book with Pinnacle. When they disagree, the model and the market disagree on that prop.'
+    ]
+  },
+  {
     ts:'2026-10-27T04:00', tag:'Improved', title:'Props Table: sort by any column, see the +EV math, cleaner player rows',
     items:[
       'Every column header sorts. Click once for the best first, click again to flip it. Empty values stay at the bottom. On a phone, use the Sort menu.',
