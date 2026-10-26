@@ -611,6 +611,15 @@ table.pb tr.open td{background:rgb(var(--ink) / .02);border-bottom-color:transpa
 .sc-list{display:grid;gap:6px}
 .sc-row{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .15s}
 .sc-row:hover{border-color:var(--border2)}
+.sc-sh{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;padding:2px 3px;border-radius:5px}
+.sc-sh:hover{color:var(--fg)}.sc-sh:focus-visible{outline:2px solid var(--fg);outline-offset:1px}.sc-sh.on{color:var(--fg)}
+.sc-sh.on:after{content:"";border:4px solid transparent;border-top-color:currentColor;border-bottom:0;margin-top:1px}.sc-sh.on[data-dir="1"]:after{border-top:0;border-bottom:4px solid currentColor;margin-top:0}
+.sc-flag{display:inline-block;margin-left:6px;vertical-align:1px;font:600 10px var(--font-mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:var(--raised);color:var(--fg2)}
+.sc-flag.warn{background:rgba(229,185,85,.14);color:var(--warn)}.sc-flag.neg{background:rgba(236,127,127,.14);color:var(--down)}
+.sc-dot{display:inline-block;width:5px;height:5px;margin-left:4px;border-radius:50%;background:var(--c-blue,#7ab4ff);vertical-align:2px}
+.sc-top .sc-evt table{width:100%;min-width:0;border-collapse:collapse;font-size:12.5px;margin-top:8px}.sc-evt th{font:500 10px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);text-align:right;padding:4px 6px}.sc-evt th.l{text-align:left}
+.sc-evt td{padding:5px 6px;border-top:1px solid var(--border);text-align:right}.sc-evt td.l{text-align:left;color:var(--fg2)}.sc-px{font:500 11.5px var(--font-mono);color:var(--fg3)}.sc-evt b{font:600 12.5px var(--font-mono)}.sc-evt .sc-hl{background:rgba(95,207,140,.14);border-radius:5px;padding:1px 5px}
+
 .sc-rb{width:100%;text-align:left;padding:10px 14px;background:none;border:0;color:inherit;cursor:pointer}
 .sc-pl{display:flex;gap:10px;align-items:center;min-width:0}
 .sc-who{min-width:0}.sc-who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -630,7 +639,7 @@ table.pb tr.open td{background:rgb(var(--ink) / .02);border-bottom-color:transpa
 .sc-card{display:none}
 .sc-dt{border-top:1px solid var(--border);background:rgb(var(--ink) / .02);padding:16px 16px 6px;animation:scin .22s cubic-bezier(.23,1,.32,1)}
 @keyframes scin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.sc-top{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:22px;padding:0 4px 16px}
+.sc-top{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1fr);gap:22px;padding:0 4px 16px}.sc-top>div{min-width:0}
 .sc-top h4{margin:0 0 10px;font-size:13px;font-weight:600}
 .sc-mm{display:grid;gap:10px}.sc-mm .t{display:grid;grid-template-columns:62px 1fr 44px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}.sc-mm .t b{font:600 12.5px var(--font-mono);color:var(--fg);text-align:right}
 .sc-bar{height:3px;border-radius:2px;background:var(--raised);position:relative;overflow:hidden}.sc-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
@@ -2291,9 +2300,7 @@ th{font-weight:500}
           <div><h2>Props board</h2><p id="psub">Every listed prop next to our projection. Click a row for the Kalshi ladder and each book.</p></div>
           <div class="filters">
             <div class="seg" id="pstat" role="group" aria-label="Stat"></div>
-            <select class="sel" id="psort" aria-label="Sort">
-              <option value="edge">Sort: best edge</option><option value="proj">Sort: projection</option><option value="game">Sort: game, player</option>
-            </select>
+            <select class="sel" id="psort" aria-label="Sort"></select>
             <input class="pfind" id="pq" type="search" placeholder="Filter players" autocomplete="off" aria-label="Filter players">
             <label class="switch" for="pgated"><input type="checkbox" id="pgated" role="switch"> Passing gates only</label>
           </div>
@@ -2301,7 +2308,7 @@ th{font-weight:500}
         <div class="card-b">
           <div class="sc-wrap"><div class="sc" id="pscan">
             <div class="sc-gh" aria-hidden="true"><span style="grid-column:1/3">Prop</span><span style="grid-column:3/7">Setup</span><span style="grid-column:7/10" class="c">Over rate</span><span style="grid-column:10/13" class="c">Model vs market</span><span style="grid-column:13/19">Best bet</span></div>
-            <div class="sc-h" role="row"><span>Player</span><span class="c">Stat</span><span class="c" title="Minutes the projection uses. Change them in the Minutes Lab.">Min</span><span class="c">Proj</span><span class="c" title="Main line: Pinnacle, then DraftKings, then the Kalshi rung nearest even">Line</span><span class="c" title="How far the line has moved since it first posted: Pinnacle's, else the first book's. The small number is where it opened.">Move</span><span class="c" title="Share of the last 5 games over the line">L5</span><span class="c" title="Share of the last 10 games over the line">L10</span><span class="c" title="Share of games over the line against tonight's opponent, last two seasons">H2H</span><span class="c" title="Model chance of going over that line">Model</span><span class="c" title="Market chance of over, vig removed">Market</span><span class="c" title="Market and model blended with the weights fit on held-out games">Fair</span><span>Bet</span><span class="c">Price</span><span class="c" title="Fair chance minus the break-even chance of the price, after fees">Edge</span><span class="c" title="The best book price against Pinnacle's no-vig fair at Pinnacle's own number. Only props Pinnacle prices have one. It does not use the model.">+EV</span><span class="c">Gate</span><span></span></div>
+            <div class="sc-h" role="row"><span role="columnheader" data-col="player"><button class="sc-sh" type="button" data-sort="player">Player</button></span><span class="c" role="columnheader" data-col="stat"><button class="sc-sh" type="button" data-sort="stat">Stat</button></span><span class="c" role="columnheader" data-col="min"><button class="sc-sh" type="button" data-sort="min" title="Minutes the projection uses. Change them in the Minutes Lab.">Min</button></span><span class="c" role="columnheader" data-col="proj"><button class="sc-sh" type="button" data-sort="proj">Proj</button></span><span class="c" role="columnheader" data-col="line"><button class="sc-sh" type="button" data-sort="line" title="Main line: Pinnacle, then DraftKings, then the Kalshi rung nearest even">Line</button></span><span class="c" role="columnheader" data-col="move"><button class="sc-sh" type="button" data-sort="move" title="How far the line has moved since it first posted: Pinnacle's, else the first book's. The small number is where it opened.">Move</button></span><span class="c" role="columnheader" data-col="l5"><button class="sc-sh" type="button" data-sort="l5" title="Share of the last 5 games over the line">L5</button></span><span class="c" role="columnheader" data-col="l10"><button class="sc-sh" type="button" data-sort="l10" title="Share of the last 10 games over the line">L10</button></span><span class="c" role="columnheader" data-col="h2h"><button class="sc-sh" type="button" data-sort="h2h" title="Share of games over the line against tonight's opponent, last two seasons">H2H</button></span><span class="c" role="columnheader" data-col="pm"><button class="sc-sh" type="button" data-sort="pm" title="Model chance of going over that line">Model</button></span><span class="c" role="columnheader" data-col="mkt"><button class="sc-sh" type="button" data-sort="mkt" title="Market chance of over, vig removed">Market</button></span><span class="c" role="columnheader" data-col="fair"><button class="sc-sh" type="button" data-sort="fair" title="Market and model blended with the weights fit on held-out games">Fair</button></span><span role="columnheader" data-col="bet"><button class="sc-sh" type="button" data-sort="bet">Bet</button></span><span class="c" role="columnheader" data-col="price"><button class="sc-sh" type="button" data-sort="price">Price</button></span><span class="c" role="columnheader" data-col="edge"><button class="sc-sh" type="button" data-sort="edge" title="Fair chance minus the break-even chance of the price, after fees">Edge</button></span><span class="c" role="columnheader" data-col="ev"><button class="sc-sh" type="button" data-sort="ev" title="The best book price against Pinnacle's no-vig fair at Pinnacle's own number. Only props Pinnacle prices have one. It does not use the model. Click a row to see the math.">+EV</button></span><span class="c" role="columnheader" data-col="gate"><button class="sc-sh" type="button" data-sort="gate">Gate</button></span><span></span></div>
             <div class="sc-list" id="prows"></div>
           </div></div>
           <div class="more" id="pmore" hidden></div>
@@ -3731,7 +3738,7 @@ const PKN = {prizepicks: 'PrizePicks', underdog: 'Underdog', sleeper: 'Sleeper'}
 const PK_BE = 0.5425;              // pick'em break-even per pick on standard 5- and 6-pick flex entries (flat-payout lines)
 let PS = {board: null, mode: 'none', at: null};
 let boardTried = false, boardTimer = null, showExample = false;
-let pf = {game: 'all', stat: 'all', sort: 'edge', q: '', gated: false, open: new Set(), limit: 120, rows: [], logKey: null, logIdx: null};
+let pf = {game: 'all', stat: 'all', sort: 'edge', dir: null, q: '', gated: false, open: new Set(), limit: 120, rows: [], logKey: null, logIdx: null};
 
 const erf = x => { const t = 1 / (1 + 0.3275911 * Math.abs(x)); const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x); return x >= 0 ? y : -y; };
 const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
@@ -4410,11 +4417,9 @@ function renderProps(){
   const nowS = Date.now() / 1000, beforeTip = shown.length;
   shown = shown.filter(r => !(tipOf[String(r.e.g)] <= nowS));
   const tippedN = beforeTip - shown.length;
-  shown.sort(pf.sort === 'edge' ? (a, b) => (!!b.best - !!a.best) || ((b.best ? b.best.edge : b.pkBest?.edge ?? -9) - (a.best ? a.best.edge : a.pkBest?.edge ?? -9))   // priced bets first, then pick'em-only rows by their pick'em edge
-    : pf.sort === 'proj' ? (a, b) => (b.mu ?? -1) - (a.mu ?? -1)
-    : (a, b) => (tipOf[a.e.g] - tipOf[b.e.g]) || a.name.localeCompare(b.name) || STATS.findIndex(x => x[0] === a.e.s) - STATS.findIndex(x => x[0] === b.e.s));
+  scSort(shown, tipOf);
   const favP = new Set(PRO.players.map(String));          // favorite players (Profile) first; the sort is stable, so everyone keeps the order chosen above
-  if (favP.size) shown.sort((a, b) => favP.has(String(b.e.p)) - favP.has(String(a.e.p)));
+  if (favP.size && pf.sort === 'edge' && pf.dir == null) shown.sort((a, b) => favP.has(String(b.e.p)) - favP.has(String(a.e.p)));   // favorites lead the default order only; a sort you pick is not overridden
 
   // KPIs
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
@@ -4441,23 +4446,24 @@ function renderProps(){
     const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
     const moved = PS.mode !== 'example' && r.src === 'lab' && r.min != null && Math.abs(r.min - r.min0) > .05;
     const edited = moved && edits[r.tm] && Object.keys(edits[r.tm]).length;
-    const flags = [LINEUP[r.lu] || '', r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '',
-      edited ? '<span class="warnt" title="You changed this team\'s minutes in the Minutes Lab">minutes edited</span>'
-        : moved && r.min > 0 ? `<span class="muted" title="Minutes rebalanced for teammates listed Out or Inactive">${sign(r.min - r.min0)} min, teammates out</span>`
-        : r.src === 'yours' ? '<span class="warnt" title="You set his minutes on the Tonight page">your minutes</span>' : ''].filter(Boolean).join(' · ');
+    // The row stays quiet: only a real injury designation or an inactive player gets a chip. Lineup role, "Available" and minute edits go in the open row's Status line.
+    const injBad = r.inj && !/^available$/i.test(r.inj) ? r.inj : '';
+    const flagChip = injBad ? `<span class="sc-flag ${/out|inactive/i.test(injBad) ? 'neg' : /doubtful|question/i.test(injBad) ? 'warn' : ''}">${esc(injBad)}</span>` : r.lu === 'X' ? '<span class="sc-flag neg">Inactive</span>' : '';
+    const minNote = edited ? 'You changed this team\'s minutes in the Minutes Lab' : moved && r.min > 0 ? `${sign(r.min - r.min0)} min, teammates out` : r.src === 'yours' ? 'You set his minutes on the Tonight page' : '';
+    const status = [LU_PLAIN[r.lu], r.inj, minNote].filter(Boolean).join(' · ');
     const sc = scFacts(r), b = r.best;
     const bet = b ? {name: b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`, price: b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price, edge: b.edge, gate: `<span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span>`}
       : r.pkBest ? {name: `${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line}`, price: r.pkBest.price != null ? r.pkBest.price : 'flat', edge: r.pkBest.edge, gate: `<span class="gate" title="Pick'em lines are shown, never a gated best bet">PICK'EM</span>`} : null;
     const edgeC = bet ? `<span class="edge ${bet.edge > 0 ? 'pos' : 'neg'}">${ec(bet.edge)}</span>` : '';
     const evC = sc.ev && sc.ev.v != null ? `<b class="${sc.ev.v >= .02 ? 'pos' : sc.ev.v >= 0 ? '' : 'muted'}" title="${esc(sc.ev.bk)} ${sc.ev.side} ${sc.ev.px > 0 ? '+' : ''}${sc.ev.px} against Pinnacle's no-vig fair of ${pc(sc.ev.side === 'Over' ? sc.ev.pf : 1 - sc.ev.pf)}">${ec(sc.ev.v)}</b><small>${esc(sc.ev.bk)}</small>` : `<span class="muted">${sc.ev ? 'none' : '-'}</span>`;
     const nm = x => x == null ? '<span class="muted">none</span>' : pc(x);
-    const who = `${g ? `${gname(g)} · ${clock(g.tip)}` : esc(r.team)}${flags ? ' · ' + flags : ''}`;   // the game names both teams: no team prefix, the column is narrow
+    const who = g ? `${gname(g)} · ${clock(g.tip)}` : esc(r.team);   // the game names both teams: no team prefix, the column is narrow
     const tchips = sc.tells.map(t => `<span class="chip ${SC_TELL[t][1]}"><i></i>${SC_TELL[t][0]}</span>`).join('');
     return `<article class="sc-row${open ? ' open' : ''}" data-k="${key}">
  <button class="sc-rb press" type="button" aria-expanded="${open}">
-  <span class="sc-pl">${cutImg(r.e.p, r.name, 40)}<span class="sc-who"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}</b><small title="${esc(r.team)}">${who}</small></span></span>
+  <span class="sc-pl">${cutImg(r.e.p, r.name, 40)}<span class="sc-who"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}${flagChip}</b><small title="${esc(r.team)}">${who}</small></span></span>
   <span class="c"><span class="sc-stat">${SLABEL[r.e.s]}</span></span>
-  <span class="c num">${r.min == null ? '<span class="muted">none</span>' : fmt(r.min)}</span>
+  <span class="c num"${minNote ? ` title="${esc(minNote)}"` : ''}>${r.min == null ? '<span class="muted">none</span>' : fmt(r.min)}${minNote ? '<i class="sc-dot"></i>' : ''}</span>
   <span class="c sc-two"><b>${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}</b><small>${rg ? `${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : '&nbsp;'}</small></span>
   <span class="c sc-two"><b>${r.line ?? '<span class="muted">none</span>'}</b><small>${r.lineFrom ? esc(r.lineFrom) : '&nbsp;'}</small></span>
   <span class="c">${sc.move}</span>
@@ -4472,8 +4478,9 @@ function renderProps(){
   <span class="sc-cbet">${bet ? `<b>${bet.name}</b> <span class="muted">${bet.price}</span>` : '<span class="muted">no price</span>'}</span>
   <span class="sc-nums"><div><small>L5</small>${scHit(sc.l5)}</div><div><small>L10</small>${scHit(sc.l10)}</div><div><small>+EV</small>${sc.ev && sc.ev.v != null ? `<b class="${sc.ev.v >= .02 ? 'pos' : ''}">${ec(sc.ev.v)}</b>` : '<b class="muted">none</b>'}</div></span>
   ${tchips ? `<span class="sc-chips">${tchips}</span>` : ''}</button>
- ${open ? `<div class="sc-dt">${scDetail(r, sc)}</div>` : ''}</article>`;
+ ${open ? `<div class="sc-dt">${scDetail(r, sc, status)}</div>` : ''}</article>`;
   }).join('') : `<p class="empty" style="padding:16px">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p>`;
+  scSortUi();
   $('pmore').hidden = shown.length <= pf.limit;
   $('pmore').innerHTML = `<button class="btn" type="button" id="pmorebtn">Show all ${shown.length.toLocaleString()}</button>`;
   $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props${tippedN ? ` (${tippedN.toLocaleString()} hidden: the game has tipped)` : ''}. Click a row for the Kalshi ladder and each book.`;
@@ -4558,6 +4565,37 @@ function niceTicks(max){
   const out = []; for (let v = 0; v <= max; v += st) out.push(+v.toFixed(2)); return out;
 }
 
+// ── Props Table v2: sorting. Every column header sorts; click again to flip. Empty values always go last.
+const scOf = r => r.sc || (r.sc = scFacts(r));
+const scEdgeOf = r => r.best ? r.best.edge : r.pkBest ? r.pkBest.edge : null;
+const scPayOf = r => { const b = r.best; if (!b) return null; if (b.venue === 'kalshi') return b.price > 0 ? 1 / b.price - 1 : null; const a = +b.price; return isFinite(a) && a !== 0 ? (a < 0 ? 100 / -a : a / 100) : null; };
+const scHitOf = k => r => { const h = scOf(r)[k]; return h && h.n ? h.pct : null; };
+const SC_SORT = {   // d: the direction a first click sorts in (1 up, -1 down)
+  player: {l: 'Player', d: 1, g: r => r.name}, stat: {l: 'Stat', d: 1, g: r => SLABEL[r.e.s]},
+  min: {l: 'Minutes', d: -1, g: r => r.min}, proj: {l: 'Projection', d: -1, g: r => r.mu}, line: {l: 'Line', d: -1, g: r => r.line},
+  move: {l: 'Line move', d: -1, g: r => { const m = scOf(r).dm; return m == null ? null : Math.abs(m); }},
+  l5: {l: 'L5', d: -1, g: scHitOf('l5')}, l10: {l: 'L10', d: -1, g: scHitOf('l10')}, h2h: {l: 'H2H', d: -1, g: scHitOf('h2h')},
+  pm: {l: 'Model', d: -1, g: r => r.pm}, mkt: {l: 'Market', d: -1, g: r => r.mkt}, fair: {l: 'Fair', d: -1, g: r => r.fair},
+  bet: {l: 'Best bet', d: 1, g: r => r.best ? (r.best.venue === 'kalshi' ? 'Kalshi' : r.best.bk) : r.pkBest ? (PKN[r.pkBest.bk] || r.pkBest.bk) : null},
+  price: {l: 'Price', d: -1, g: scPayOf}, edge: {l: 'Edge', d: -1, g: scEdgeOf},
+  ev: {l: '+EV', d: -1, g: r => { const e = scOf(r).ev; return e && e.v != null ? e.v : null; }},
+  gate: {l: 'Gate', d: -1, g: r => r.best ? {go: 3, watch: 2, 'no-go': 1}[r.best.g] : r.pkBest ? 0 : null},
+  game: {l: 'Game, then player', d: 1}
+};
+const SC_MENU = ['edge', 'ev', 'proj', 'l10', 'game'];
+function scSort(rows, tipOf){
+  const def = SC_SORT[pf.sort] || SC_SORT.edge, dir = pf.dir ?? def.d;   // dir: 1 = low to high, -1 = high to low
+  if (pf.sort === 'game'){ rows.sort((a, b) => dir * ((tipOf[a.e.g] - tipOf[b.e.g]) || a.name.localeCompare(b.name) || STATS.findIndex(x => x[0] === a.e.s) - STATS.findIndex(x => x[0] === b.e.s))); return; }
+  if (pf.sort === 'edge'){ rows.sort((a, b) => (!!b.best - !!a.best) || ((scEdgeOf(b) ?? -9) - (scEdgeOf(a) ?? -9))); if (dir > 0) rows.reverse(); return; }   // priced bets first, then pick'em-only rows by their pick'em edge
+  const g = def.g;
+  rows.sort((a, b) => { const x = g(a), y = g(b); if (x == null || y == null) return (x == null) - (y == null); return dir * (typeof x === 'string' ? x.localeCompare(y) : x - y) || a.name.localeCompare(b.name); });
+}
+function scSortUi(){
+  const k = SC_SORT[pf.sort] ? pf.sort : 'edge', dir = pf.dir ?? SC_SORT[k].d;
+  document.querySelectorAll('#pscan .sc-sh').forEach(b => { const on = b.dataset.sort === k; b.parentElement.setAttribute('aria-sort', on ? (dir > 0 ? 'ascending' : 'descending') : 'none'); b.classList.toggle('on', on); b.dataset.dir = on ? dir : ''; });
+  const opts = SC_MENU.includes(k) ? SC_MENU : [...SC_MENU, k];
+  $('psort').innerHTML = opts.map(o => `<option value="${o}"${o === k ? ' selected' : ''}>Sort: ${o === 'edge' ? 'best edge' : o === 'ev' ? 'best +EV' : o === 'proj' ? 'projection' : SC_SORT[o].l.toLowerCase()}${o === k && pf.dir != null ? (dir > 0 ? ', low to high' : ', high to low') : ''}</option>`).join('');
+}
 // ── Props Table v2 (the scanner): the facts a row adds to priceRow()
 const SC_TELL = {p_pin: ['Pinnacle moved', 'blue'], p_acct: ['Sharp accts', 'up'], p_kal: ['Kalshi money', 'warn'], p_behind: ['Behind Pinnacle', 'up'], p_behind_x: ['Behind Pinnacle', 'up']};
 const scHit = h => !h || !h.n ? '<span class="sc-hit"><b class="muted">none</b><small>&nbsp;</small></span>'
@@ -4588,7 +4626,7 @@ function scFacts(r){
   if (t.has('p_behind_x')) t.add('p_behind');
   t.delete('p_behind_x');
   if (ev && ev.v != null && ev.v >= .03) t.add('p_behind');
-  return {l5: hr('L5'), l10: hr('L10'), h2h: hr('H2H'), ev, move, tells: [...t]};
+  return {l5: hr('L5'), l10: hr('L10'), h2h: hr('H2H'), ev, move, dm: mb ? dm : null, tells: [...t]};
 }
 const SC_COL = {Pinnacle: '#ff5fa2', DraftKings: '#5ec269', Polymarket: '#7ab4ff', FanDuel: '#4aa3ff', BetMGM: '#d9a93f'};
 // Opening line to the line now for each book, on the line it posts nearest the main line. All the board stores until the prop tape ships.
@@ -4606,7 +4644,17 @@ function scChart(r, w = 520, h = 170){
   </svg><div class="sc-leg">${pts.map(b => `<span style="--c:${SC_COL[b.bk] || '#a2a7b1'}">${esc(b.bk)} <b>${b.line}</b></span>`).join('')}</div>
   <p class="hint">Opening line to the line now. Hour by hour history comes with the prop tape.</p>`;
 }
-function scDetail(r, sc){
+const LU_PLAIN = {S: 'Starting', s: 'Expected to start', B: 'Bench', b: 'Expected off the bench', X: 'Inactive'};
+function scEvTable(r, ev){
+  const pin = (r.e.books || []).find(b => b[0] === 'Pinnacle'); if (!pin || !ev) return '';
+  const f = ev.pf, pay = a => a < 0 ? 100 / -a : a / 100, ok = a => isFinite(a) && a !== 0 && Math.abs(a) <= 300;
+  const rows = (r.e.books || []).filter(b => b[0] !== 'Pinnacle' && b[1] === pin[1]).map(b => ({bk: b[0], o: b[2], u: b[3], eo: ok(+b[2]) ? f * (1 + pay(+b[2])) - 1 : null, eu: ok(+b[3]) ? (1 - f) * (1 + pay(+b[3])) - 1 : null}));
+  if (!rows.length) return '';
+  const best = Math.max(...rows.flatMap(x => [x.eo, x.eu]).filter(v => v != null && v < .25), -9);
+  const cell = (px, e) => e == null ? '<td class="muted">no price</td>' : `<td><span class="sc-px">${px}</span> <b class="${e >= 0 ? 'pos' : 'neg'}${e === best ? ' sc-hl' : ''}">${e >= 0 ? '+' : ''}${(e * 100).toFixed(1)}%</b></td>`;
+  return `<div class="sc-evt"><p class="hint">Pinnacle at ${pin[1]}: over ${pin[2]}, under ${pin[3]}. With its vig removed that is ${pc(f)} over and ${pc(1 - f)} under. Each book's +EV is that chance times its payout, minus 1.</p><table><thead><tr><th class="l">Book</th><th>Over</th><th>Under</th></tr></thead><tbody>${rows.map(x => `<tr><td class="l">${esc(x.bk)}</td>${cell(x.o, x.eo)}${cell(x.u, x.eu)}</tr>`).join('')}</tbody></table></div>`;
+}
+function scDetail(r, sc, status = ''){
   const bar = (l, v, c) => v == null ? '' : `<div class="t"><span>${l}</span><div class="sc-bar"><i style="width:${v * 100}%;background:${c}"></i></div><b>${pc(v)}</b></div>`;
   const opp = ((r.game && [r.game.away, r.game.home].find(t => t !== r.team)) || 'opponent');
   const hl = (l, h) => `<div class="kv"><span>${l}</span><b>${h && h.n ? `${h.over} of ${h.n} over` : 'none'}</b></div>`;
@@ -4617,7 +4665,8 @@ function scDetail(r, sc){
     <div><h4>Model against the market</h4><div class="sc-mm">${bar('Model', r.pm, 'var(--c-blue,#7ab4ff)')}${bar('Market', r.mkt, 'var(--fg3)')}${bar('Fair', r.fair, 'var(--fg)')}${ev ? bar('Pinnacle', ev.pf, '#ff5fa2') : ''}</div>
       <p class="lab">How often it went over ${r.line ?? ''}</p>${hl('Last 5', sc.l5)}${hl('Last 10', sc.l10)}${hl('Vs ' + esc(opp), sc.h2h)}</div>
     <div><h4>Market tells</h4><div class="sc-chips" style="margin-bottom:10px">${tch || '<span class="muted">No market tell on this prop.</span>'}</div>
-      ${ev && ev.v != null ? `<p class="hint">Best price against Pinnacle's fair: <b>${esc(ev.bk)} ${ev.side} ${ev.px > 0 ? '+' : ''}${ev.px}</b> is ${ec(ev.v)}.${ev.v > .1 ? ' Edges this big are often a stale quote. Check before you act.' : ''}</p>` : ev ? '<p class="hint">Pinnacle prices this prop, and no other book is on its number.</p>' : '<p class="hint">Pinnacle does not price this prop, so there is no market fair to measure a price against.</p>'}</div>
+      ${ev && ev.v != null ? `<h4 style="margin-top:14px">+EV against Pinnacle</h4>${scEvTable(r, ev)}${ev.v > .1 ? '<p class="hint">Edges this big are often a stale quote. Check before you act.</p>' : ''}` : ev ? '<p class="hint">Pinnacle prices this prop, and no other book is on its number.</p>' : '<p class="hint">Pinnacle does not price this prop, so there is no market fair to measure a price against.</p>'}
+      ${status ? `<h4 style="margin-top:14px">Status</h4><p class="hint">${esc(status)}</p>` : ''}</div>
   </div>${detailRow(r, false, true)}`;
 }
 function detailRow(r, parts = false, asDiv = false){
@@ -4669,7 +4718,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-lab-
 $('pv-since').addEventListener('click', e => { if (e.target.closest('[data-since-x]')){ sinceHtml = ''; $('pv-since').innerHTML = ''; } });
 $('pv-games').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pv.game = b.dataset.g; renderPropsV2(); } });
 $('pgames').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pf.game = b.dataset.g; renderProps(); } });
-$('psort').addEventListener('change', e => { pf.sort = e.target.value; renderProps(); });
+$('psort').addEventListener('change', e => { pf.sort = e.target.value; pf.dir = null; renderProps(); });
+$('pscan').querySelector('.sc-h').addEventListener('click', e => { const b = e.target.closest('.sc-sh'); if (!b) return; const k = b.dataset.sort; if (pf.sort === k) pf.dir = -(pf.dir ?? SC_SORT[k].d); else { pf.sort = k; pf.dir = null; } renderProps(); });
 $('pstat').addEventListener('click', e => { const s = e.target.closest('button')?.dataset.s; if (s){ pf.stat = s; renderProps(); } });
 $('pq').addEventListener('input', e => { pf.q = e.target.value; renderProps(); });
 $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; renderProps(); });
