@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-27T01:00', tag:'Fixed', title:'Line movement chart: no more wild spikes on totals',
+    items:[
+      'One sportsbook was sometimes shown with another period\'s total (like 115.5 on a 232 game). That stretched the chart so the real lines were squashed flat. Those readings are now thrown out, and the old ones are cleaned from the history.',
+      'The same fix applies to the best price shown for that book on Game Lines.'
+    ]
+  },
+  {
     ts:'2026-10-27T00:30', tag:'Improved', title:'NBA Game Lines: tells you when sharp data is missing',
     items:[
       'When the sharp data (Pinnacle moves, Polymarket accounts, Kalshi tickets) is not on the board, Game Lines now says so at the top instead of quietly showing only Novig and the money split.',

@@ -590,6 +590,17 @@ def game_markets(games, last, meta, gkey, nicks, when=None):
             po['win'] = round(mid if nick(first) == nicks_rev(g, 'home') else 1 - mid, 4)
         elif str(first).lower() == 'over' and m.get('line') is not None:
             po['total'], po['over'] = float(m['line']), round(mid, 4)
+    for o in out.values():                              # a line far from the consensus line is another period's market, not that book's price (Action hands BetMGM those): drop it
+        ref = o['books'].get('Consensus') or o['books'].get('Open')
+        if not ref:
+            continue
+        for b, r in o['books'].items():
+            if b in ('Consensus', 'Open'):
+                continue
+            if r[5] is not None and ref[5] is not None and abs(r[5] - ref[5]) > 0.15 * ref[5]:
+                r[5] = r[6] = r[7] = None
+            if r[0] is not None and ref[0] is not None and abs(r[0] - ref[0]) > 10:
+                r[0] = r[1] = r[2] = None
     return {gid: dict(o, books=[[b] + r for b, r in o['books'].items()]) for gid, o in out.items()}
 
 
