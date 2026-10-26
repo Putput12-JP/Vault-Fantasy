@@ -18,7 +18,7 @@ const HTML = path.join(ROOT, 'sharp-money', 'v2', 'index.html');
 const gates = createRequire(import.meta.url)(path.join(ROOT, 'sharp-money', 'v2', 'gates.js'));
 const before = JSON.parse(fs.readFileSync(path.join(FIX, 'page_before.json'), 'utf8'));
 const fx = loadFixtures(), ts = fx.data.ts;
-const SCEN = { base: [fx, ts + 60], j11: [jitter(fx, 11), ts + 60], j22: [jitter(fx, 22, 0.1), ts + 120], late: [fx, ts + 40 * 60] };
+const SCEN = { base: [fx, ts + 60], j11: [jitter(fx, 11), ts + 60], j22: [jitter(fx, 22, 0.1), ts + 120], late: [fx, ts + 40 * 60], near: [jitter(fx, 22, 0.1), ts + 50 * 3600] };   // near: 50h on, so the games of the weekend are inside the 48h window and an exchange-priced game can be a Play
 
 /* The recorded page output holds floats from this machine's Math.pow. Another Node or V8 build can differ in the last digit or two (Node 20 on CI vs the
    Node that recorded it), which says nothing about the rules. Compare numbers to 9 decimals; everything else, text and rendered pages, stays exact. */
@@ -48,5 +48,5 @@ test('the stored snapshot has plays of more than one kind, and every tier appear
   const tiers = new Set(), kinds = new Set();
   for (const s of Object.values(before)) if (s.all) for (const c of s.all) { tiers.add(c.tier); if (c.tier === 'play') kinds.add(c.kind) }
   assert.deepEqual([...tiers].sort(), ['none', 'pass', 'play', 'watch']);
-  assert.ok(kinds.has('prop') && kinds.has('book'));
+  assert.ok(kinds.has('prop') && kinds.has('exch'));     // no 'book' play survives the strict gates in the stored snapshot: its only US-book game plays are long shots (27%) called 5 days out
 });

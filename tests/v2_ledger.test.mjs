@@ -20,7 +20,7 @@ test('logs each play once, with the price, both references, edges and time', () 
   const L = fresh(), added = logPlays(L, build(), TS, opts);
   const plays = build().filter(c => c.tier === 'play');
   assert.equal(added.length, plays.length);
-  assert.ok(plays.length >= 4);
+  assert.ok(plays.length >= 2);      // the strict gates (price 50%+, under 48h) leave two props in the stored snapshot; the 'near' scenario in v2_gates.test.mjs covers a game play
   for (const c of plays) {
     const r = L.plays[ledgerKey(c)];
     assert.equal(r.firstSeen, TS);
@@ -50,7 +50,7 @@ test('a logged play is frozen: a later price, a better book, or the play droppin
 });
 
 test('a play is one row per pick, not one per book', () => {
-  const c = build().find(x => x.tier === 'play' && x.kind === 'book');
+  const c = build().find(x => x.kind === 'book');          // any US-book game pick: the key ignores the tier and the book
   const other = { ...c, price: { ...c.price, book: 'DraftKings', am: c.price.am + 5 }, id: c.id + 'x' };
   assert.equal(ledgerKey(c), ledgerKey(other));
 });

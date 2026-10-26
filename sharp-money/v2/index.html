@@ -74,7 +74,7 @@ table.t td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line)}
   <nav class="tabs" id="tabs" aria-label="Sections"><a href="#plays" data-t="plays">Plays</a><a href="#board" data-t="board">Board</a><a href="#props" data-t="props">Props</a><a href="#models" data-t="models">Models</a><a href="#signals" data-t="signals">Signals</a><a href="#record" data-t="record">Record</a></nav>
 </header>
 <main class="wrap" id="scr" aria-live="polite"></main>
-<script src="gates.js?v=1"></script>
+<script src="gates.js?v=2"></script>
 <script>
 /* Sharp Money V2. One plain page, no build step. Sharp-account money is context only: it never ranks a play and never counts toward an agree total.
    Evidence behind every gate: docs/retro/sharp-v2-evidence.md (PR 133) and docs/retro/sharp-v2-data.md (PR 134). */
@@ -136,7 +136,9 @@ function how(){return `<details class="how"><summary>How a play qualifies</summa
  <li>Two independent fair prices exist: Pinnacle, and the exchange (Kalshi and Novig where they list the exact line). A moneyline play can use Kalshi and Novig; a prop needs both.</li>
  <li>Props are anchored on the exchange: the price must beat the exchange by ${pct(GATES.MIN_EDGE,0)} or more, and Pinnacle must sit within ${GATES.AGREE*100} points and not price it the other way. Games must beat <b>both</b> by ${pct(GATES.MIN_EDGE,0)}.</li>
  <li>The edge is not over ${pct(GATES.BIG_EDGE,0)}: calls that big have lost money (21-32, ROI -15%).</li>
- <li>Both sides of the same market are not flagged at once.</li></ol>
+ <li>Both sides of the same market are not flagged at once.</li>
+ <li>The price is ${pct(GATES.MIN_PRICE,0)} or better, not plus money: long-shot prices went 24-41 (ROI -17%) on 65 settled live plays.</li>
+ <li>The game is under ${GATES.EARLY_H} hours away: calls made ${GATES.EARLY_H}h or more out went 18-27 (ROI -22%) on 45 settled live plays.</li></ol>
  <p class="sub">Ranked by the <b>worst-case</b> edge, not the best one. A play is a better price than the market, not a prediction: the stored record is 8 days old and no signal has cleared the 100-decision bar. Sharp-account money is context only. <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/133">Evidence</a> · <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/134">Independent close</a></p></details>`}
 
 function plays(){
@@ -333,7 +335,7 @@ function models(){
 
 /* ---- V2's own record: the forward log (scripts/track-v2-plays.mjs writes it, sharp-data/v2_plays.json). Each Play is written once at first sight and frozen. ---- */
 const PLAY_STATE={won:['Won','good'],lost:['Lost','bad'],push:['Push',''],void:['Void',''],open:['Open','acc']};
-function v2Rows(){return Object.values((PL&&PL.plays)||{}).map(p=>({p,result:p.status==='won'?1:p.status==='lost'?-1:p.status==='push'?0:null,fair:p.first&&p.first.fairMean,clv:p.clv==null?null:p.clv,units:p.status==='won'||p.status==='lost'||p.status==='push'?p.units:null}))}
+function v2Rows(){return Object.values((PL&&PL.plays)||{}).filter(p=>!V2Gates.heldBack(p).length).map(p=>({p,result:p.status==='won'?1:p.status==='lost'?-1:p.status==='push'?0:null,fair:p.first&&p.first.fairMean,clv:p.clv==null?null:p.clv,units:p.status==='won'||p.status==='lost'||p.status==='push'?p.units:null}))}
 function v2Card(name,desc,rows){
   const s=stat(rows),cnt=k=>rows.filter(r=>r.p.status===k).length,wins=rows.filter(r=>r.units>0).map(r=>r.units).sort((a,b)=>b-a).slice(0,5);
   const roi=s.n&&s.units!=null?s.units/s.n:null,roiX=s.n>wins.length&&s.units!=null?(s.units-wins.reduce((a,b)=>a+b,0))/(s.n-wins.length):null;
@@ -356,13 +358,17 @@ function v2Recent(rows){
     return `<div class="pass"><div><b>${esc(f.title)}</b> <span class="mut">at ${esc(px.book)} ${am(px.am)}</span><div class="r">${esc(f.sub||'')} · first seen ${when(p.firstSeen)} · ${rf}</div>${p.close?`<div class="r">Exchange close ${pct(p.close.p)} (${esc(p.close.src)}), CLV ${spct(p.clv)}</div>`:''}</div>
     <div style="text-align:right;white-space:nowrap"><span class="badge ${st[1]}">${st[0]}</span>${p.units!=null&&p.status!=='open'&&p.status!=='void'?`<div class="num ${p.units>0?'pos':p.units<0?'neg':'mut'}" style="margin-top:4px">${sgn(+p.units.toFixed(2))}u</div>`:''}</div></div>`}).join('')}</div>`;
 }
+function heldNote(){
+  const hb=Object.values((PL&&PL.plays)||{}).filter(p=>V2Gates.heldBack(p).length);if(!hb.length)return '';
+  const set=hb.filter(p=>p.status==='won'||p.status==='lost'),w=set.filter(p=>p.status==='won').length,u=set.reduce((a,p)=>a+(p.units||0),0);
+  return `<p class="sub">Held back by the strict gates (a price under ${pct(GATES.MIN_PRICE,0)}, or a call ${GATES.EARLY_H}h or more out): ${hb.length} earlier play${hb.length===1?'':'s'}, ${w}-${set.length-w} ${sgn(+u.toFixed(1))}u. They are not counted above.</p>`}
 function v2Section(){
   let h=`<div class="sec"><span>V2 plays</span><span>forward log</span></div>`;
   if(!PL||!PL.plays)return h+`<div class="card"><div class="gtop"><span>Forward log</span><span class="badge warn">Not started</span></div><div class="sub" style="margin:0">The log of V2 plays has not been published yet. Every Play on the Plays page will be written here once, at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.</div></div>`;
   const rows=v2Rows();
   if(!rows.length)return h+`<div class="card empty"><b>No play logged yet.</b>The log is running. A play is written the first time one clears every gate before kickoff.</div>`;
   const since=Math.min(...rows.map(r=>r.p.firstSeen));
-  h+=`<p class="sub">${rows.length} play${rows.length===1?'':'s'} logged since ${new Date(since*1000).toLocaleDateString('en-US',{...CT,month:'short',day:'numeric'})}. Each is written once at first sight, then frozen.</p>
+  h+=`<p class="sub">${rows.length} play${rows.length===1?'':'s'} logged since ${new Date(since*1000).toLocaleDateString('en-US',{...CT,month:'short',day:'numeric'})}. Each is written once at first sight, then frozen.</p>${heldNote()}
   <details class="how"><summary>How this is counted</summary><ul><li>A play is logged the first time it clears every gate before kickoff, at the price, book and both reference prices it showed. Nothing is edited afterwards.</li><li>Flat 1 unit at the stored price. Props settle from the box score, games from the final score. A push is 0 units and not counted in W-L.</li><li>CLV is the exchange close over the stored price. The exchange did not raise the call, so it is a check, not a repeat of the call. Plays with no exchange read at the same line before kickoff have no CLV and are left out of it.</li><li>Edge claimed is the smaller of the two reference edges at first sight. Won rate vs references is the win rate minus the chance the two references gave on average.</li><li>The five biggest wins are removed from the sample for the without-top-5 figures, so one longshot cannot carry a record.</li><li>Trust needs 100+ settled plays, a win rate clearly above the references (z of 1.64+) and positive CLV. Under 30 settled is Too few. Sharp-account money is context only and is never counted here.</li></ul></details>`;
   h+=v2Card('All V2 plays','Props and games together.',rows)+v2Card('Props','Player props, settled from the box score.',rows.filter(r=>r.p.kind==='prop'))+v2Card('Games','Moneyline, spread and total, settled from the final score.',rows.filter(r=>r.p.kind!=='prop'));
   return h+v2Recent(rows);

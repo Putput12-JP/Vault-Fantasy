@@ -25,6 +25,7 @@ import argparse, collections, datetime as dt, json, os, urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 US = ('DraftKings', 'FanDuel', 'BetMGM', 'BetRivers', 'bet365')
 MIN_EDGE, AGREE, BIG_EDGE = 0.02, 0.04, 0.10
+MIN_PRICE, EARLY_H = 0.50, 48        # the strict gates in sharp-money/v2/gates.js: a price under 50% or a call 48h or more out is a Pass
 ALIVE = 2 * 3600
 CT = dt.timezone(dt.timedelta(hours=-5))
 ALIAS = {'LAR': 'LA', 'WSH': 'WAS', 'JAC': 'JAX'}
@@ -86,7 +87,7 @@ def state_at(rows, t):
     return s
 
 
-def judge(price, refs, contradicted=False):
+def judge(price, refs, contradicted=False, hours=None):
     """refs: list of fair chances of this side. Returns (tier, worst, best, reason). Mirrors sharp-money/v2/gates.js judge for a two-reference price."""
     edges = [f / price - 1 for f in refs]
     worst, best = min(edges), max(edges)
@@ -100,6 +101,10 @@ def judge(price, refs, contradicted=False):
         return 'none', worst, best, 'does not beat both'
     if worst > BIG_EDGE:
         return 'pass', worst, best, 'edge over 10%'
+    if price < MIN_PRICE:
+        return 'pass', worst, best, 'price under 50% (plus money)'
+    if hours is not None and hours >= EARLY_H:
+        return 'pass', worst, best, 'called 48h or more out'
     return 'play', worst, best, 'clears every gate'
 
 
@@ -169,7 +174,7 @@ def replay_game(key, rows, fin):
                     c = min(pool, key=lambda x: x['p'])
                     other = [x for x in cands[opp] if x['kind'] == kind]
                     contra = bool(other) and min(x_r[1] / min(o['p'] for o in other) - 1 for x_r in min(other, key=lambda x: x['p'])['refs']) >= MIN_EDGE
-                    tier, worst, best, why = judge(c['p'], [r[1] for r in c['refs']], contra)
+                    tier, worst, best, why = judge(c['p'], [r[1] for r in c['refs']], contra, (start - t) / 3600)
                     if tier == 'none':
                         continue
                     pid = '|'.join([kind, m, away, home, str(start), side])

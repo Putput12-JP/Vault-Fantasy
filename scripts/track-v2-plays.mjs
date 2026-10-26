@@ -22,6 +22,9 @@
      ledger reads; a game that is not final, or whose box has under 300 player minutes, is not settled yet; a player with no minutes is void) and
      their CLV is the exchange read at the exact line from the last run before tip, kept on the row as `lastRead` and frozen as the close when the
      game starts. A read older than 3 hours, or at another line, is not a close.
+   Strict gates (gates.js MIN_PRICE and EARLY_H): a play at a price under 50%, or first seen 48h or more before the game, is a Pass and is logged to
+     v2_passed.json, not here. Rows already in v2_plays.json that fail them are NOT moved or edited (the first-sight record is frozen and the
+     snapshot guard refuses a vanished id); gates.heldBack(row) re-scores them from the stored price and first-sight time, and every record reads it.
    Sharp-account money is context only. It is not read here, does not rank a play and does not count toward an agree total.
 
    usage: node scripts/track-v2-plays.mjs --dir=sharp-out [--data=data] [--now=UNIX]
@@ -245,7 +248,8 @@ export function makeFinals(D, results) {
 export function summary(L) {
   const xs = Object.values(L.plays), done = xs.filter(x => x.status === 'won' || x.status === 'lost'), cl = xs.filter(x => x.clv != null);
   return { n: xs.length, open: xs.filter(x => x.status === 'open').length, w: done.filter(x => x.status === 'won').length, l: done.filter(x => x.status === 'lost').length,
-    push: xs.filter(x => x.status === 'push').length, void: xs.filter(x => x.status === 'void').length, units: r3(done.reduce((s, x) => s + x.units, 0)), clvN: cl.length, clv: cl.length ? r4(mean(cl.map(x => x.clv))) : null };
+    push: xs.filter(x => x.status === 'push').length, void: xs.filter(x => x.status === 'void').length, units: r3(done.reduce((s, x) => s + x.units, 0)), clvN: cl.length, clv: cl.length ? r4(mean(cl.map(x => x.clv))) : null,
+    held: xs.filter(x => gates.heldBack(x).length).length };      // rows the strict gates (price under 50%, 48h+ out) would not log today; they stay in the file and are re-scored out of the Play record on read
 }
 
 /* ---- run ---- */
@@ -299,5 +303,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   L.updated = nowS;
   writeFileSync(file + '.tmp', JSON.stringify(L)); renameSync(file + '.tmp', file);
   const s = summary(L);
-  console.log(`v2 plays: ${added.length} new, ${out.settled} settled, ${out.void} void, ${out.closed} closes frozen; ledger ${s.n} plays (${s.open} open, ${s.w}-${s.l}, ${s.push} push, ${s.void} void, ${s.units}u, CLV on ${s.clvN})${skippedExch ? '; exchange list too old, game plays off it not logged this run' : ''}`);
+  console.log(`v2 plays: ${added.length} new, ${out.settled} settled, ${out.void} void, ${out.closed} closes frozen; ledger ${s.n} plays (${s.open} open, ${s.w}-${s.l}, ${s.push} push, ${s.void} void, ${s.units}u, CLV on ${s.clvN}${s.held ? `, ${s.held} held back by the strict gates` : ''})${skippedExch ? '; exchange list too old, game plays off it not logged this run' : ''}`);
 }
