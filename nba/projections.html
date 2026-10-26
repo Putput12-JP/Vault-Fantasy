@@ -4132,10 +4132,11 @@ const PARTS = ['opp', 'pace', 'market', 'shooting', 'season', 'home', 'b2b', 'ma
 const PART_LABEL = {base: 'Minutes × rate', opp: 'Opponent defense', pace: 'Pace', market: 'Game total', shooting: 'Shooting volume',
                     season: 'Season form', home: 'Home / road', b2b: 'Back-to-back', matchup: 'Shot matchup', bias: 'Calibration'};
 // Shot-diet matchup term (docs/matchup-live.md; scripts/pricing.py matchup_idx / matchup_term are the same arithmetic, check_matchup_js_parity.py proves it).
-const MT = {"enabled":true,"since":"2026-10-26","clip":[0.7,1.3],"stats":{"3pm":{"beta":0.881,"index":"own 3-point shot mix against the opponent's 3-point allowance (corner and above the break)"},"ast":{"beta":0.778,"index":"own assist-location mix against the opponent's assists allowed by location"}},"source":"nba/docs/matchup-volume-corrected-results.md: slopes fitted on 2024-25 and frozen (3PM 0.881, AST 0.778); on 2025-26 they cut volume error (3PM t 3.59, AST t 3.88) while a random-defense control did not. Confirmation is the 2026-27 forward read in nba/docs/matchup-live.md.","kill_switch":"set enabled to false (the nba-daily job re-renders the page and the recorder reads this file on its next poll)"};
+const MT = {"enabled":true,"since":"2026-10-26","clip":[0.7,1.3],"stats":{"3pm":{"beta":0.881,"index":"own 3-point shot mix against the opponent's 3-point allowance (corner and above the break)"},"ast":{"beta":0.778,"index":"own assist-location mix against the opponent's assists allowed by location"},"pts":{"team_terms":[{"index":"P_vol","beta":0.6845},{"index":"P_eff","beta":0.7}],"index":"the opponent's field-goal attempts allowed per 48 and field-goal points allowed per attempt, each against the league (data/team_allowance.json)"},"reb":{"team_terms":[{"index":"R_miss","beta":0.259}],"index":"misses per 48 in the opponent's games against the league (data/team_allowance.json)"}},"source":"nba/docs/matchup-volume-corrected-results.md: slopes fitted on 2024-25 and frozen (3PM 0.881, AST 0.778); on 2025-26 they cut volume error (3PM t 3.59, AST t 3.88) while a random-defense control did not. Confirmation is the 2026-27 forward read in nba/docs/matchup-live.md. Points and rebounds: nba/docs/matchup-points-rebounds-results.md (slopes fitted on 2024-25 and frozen; points use the registered joint pair 0.6845 and 0.700).","kill_switch":"set enabled to false (the nba-daily job re-renders the page and the recorder reads this file on its next poll)","since_pts_reb":"2026-10-27"};
+const TA = null;                           // team allowance for points and rebounds (build_team_allowance.py)
 // MATCHUP-IDX-START
 function matchupIdx(dd, mt, pid, opp, s){
-  if (!dd || !mt || !mt.enabled || !mt.stats || !mt.stats[s] || !opp) return null;
+  if (!dd || !mt || !mt.enabled || !mt.stats || !mt.stats[s] || !opp || (s !== '3pm' && s !== 'ast')) return null;
   const P = dd.players[String(pid)], tm = dd.teams[opp];
   if (!P || !tm) return null;
   if (s === '3pm'){
@@ -4147,11 +4148,21 @@ function matchupIdx(dd, mt, pid, opp, s){
   if (!sh || P.ast < 30) return null;
   return ['rim', 'smid', 'lmid', 'c3', 'arc3'].reduce((a, k) => a + sh[k] * tm.ast[k][2], 0) / 100;
 }
+function matchupX(dd, ta, mt, pid, opp, s){
+  if (!mt || !mt.enabled || !mt.stats || !mt.stats[s] || !opp) return null;
+  const cfg = mt.stats[s];
+  if (cfg.team_terms){
+    const row = ta && ta.teams && ta.teams[opp];
+    return row ? cfg.team_terms.reduce((a, t) => a + t.beta * row[t.index], 0) : null;
+  }
+  const idx = matchupIdx(dd, mt, pid, opp, s);
+  return idx == null ? null : cfg.beta * idx;
+}
 function matchupTerm(pid, opp, s, mu){
-  const idx = matchupIdx(DD, MT, pid, opp, s);
-  if (idx == null) return 0;
+  const x = matchupX(DD, TA, MT, pid, opp, s);
+  if (x == null) return 0;
   const c = MT.clip || [0.7, 1.3];
-  return mu * (Math.min(c[1], Math.max(c[0], 1 + MT.stats[s].beta * idx)) - 1);
+  return mu * (Math.min(c[1], Math.max(c[0], 1 + x)) - 1);
 }
 // MATCHUP-IDX-END
 function v2Terms(pl, s, mu, min, g, state){

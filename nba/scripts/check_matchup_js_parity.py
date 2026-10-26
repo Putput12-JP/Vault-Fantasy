@@ -12,11 +12,15 @@ src = open(TPL).read()
 js = src[src.index('// MATCHUP-IDX-START'):src.index('// MATCHUP-IDX-END')]
 dd = json.load(open(os.path.join(HERE, '..', 'data', 'diet_defense.json')))
 mt = json.load(open(os.path.join(HERE, '..', 'data', 'matchup_terms.json')))
+ta_path = os.path.join(HERE, '..', 'data', 'team_allowance.json')
+ta = json.load(open(ta_path)) if os.path.exists(ta_path) else None          # build it first: python3 nba/scripts/build_team_allowance.py [--season N]
 pr = PX.Pricer.__new__(PX.Pricer)
-pr.DDF, pr.MT, pr.example = dd, mt, False
+pr.DDF, pr.MT, pr.TA, pr.example = dd, mt, ta, False
 pairs = [(pid, t, s) for pid in dd['players'] for t in dd['teams'] for s in ('3pm', 'ast')]
+if ta:
+    pairs += [('0', t, s) for t in ta['teams'] for s in ('pts', 'reb')]       # team-level stats do not depend on the player
 py = [(pr.matchup_idx(pid, t, s), pr.matchup_term(pid, t, s, 2.5)) for pid, t, s in pairs]
-prog = f"""const DD = {json.dumps(dd)}; const MT = {json.dumps(mt)};
+prog = f"""const DD = {json.dumps(dd)}; const MT = {json.dumps(mt)}; const TA = {json.dumps(ta)};
 {js}
 const pairs = {json.dumps(pairs)};
 console.log(JSON.stringify(pairs.map(([p, t, s]) => [matchupIdx(DD, MT, p, t, s), matchupTerm(p, t, s, 2.5)])));"""

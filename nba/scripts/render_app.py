@@ -175,6 +175,7 @@ def render():
                .replace('/*MATCHUPS*/null', json.dumps(load('matchups.json'), separators=(',', ':')))
                .replace('/*DIETDEF*/null', json.dumps(load('diet_defense.json'), separators=(',', ':')))
                .replace('/*MATCHUP*/null', json.dumps(load('matchup_terms.json'), separators=(',', ':')))
+               .replace('/*TEAMALLOW*/null', json.dumps(load('team_allowance.json'), separators=(',', ':')))
                .replace('/*PHOTOS*/null', json.dumps(load('photos.json'), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.html')
     open(out, 'w').write(html)

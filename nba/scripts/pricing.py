@@ -37,6 +37,10 @@ class Pricer:
             self.MT = json.load(open(os.path.join(DATA, 'matchup_terms.json')))
         except (OSError, ValueError):
             self.DDF = self.MT = None
+        try:
+            self.TA = json.load(open(os.path.join(DATA, 'team_allowance.json')))      # team-level indices for points and rebounds (build_team_allowance.py)
+        except (OSError, ValueError):
+            self.TA = None
         self.state = ms.get('example' if example else 'live') if ms else None
         if self.state and isinstance(self.state.get('players'), dict):
             # A null player record, or a null field in one, means "not known": the same as absent. Left in, one such player made every ledger poll
@@ -107,7 +111,7 @@ class Pricer:
         3pm: his 3-point mix (corner, above the break) against the opponent's 3-point allowance. ast: his assist-location mix against the opponent's
         assists allowed by location. Fractions (0.10 = ten percent softer than the league)."""
         dd, mt = self.DDF, self.MT
-        if not dd or not mt or not mt.get('enabled') or s not in (mt.get('stats') or {}) or not opp:
+        if not dd or not mt or not mt.get('enabled') or s not in (mt.get('stats') or {}) or not opp or s not in ('3pm', 'ast'):
             return None
         P, tm = dd['players'].get(str(pid)), dd['teams'].get(opp)
         if not P or not tm:
@@ -123,15 +127,30 @@ class Pricer:
             return None
         return sum(sh[k] * tm['ast'][k][2] for k in ('rim', 'smid', 'lmid', 'c3', 'arc3')) / 100.0
 
+    def matchup_x(self, pid, opp, s):
+        """beta x index, the fraction added to 1 inside the clip, or None. 3pm and ast: a player's own mix (matchup_idx). pts and reb: the opponent's team-level
+        allowance (data/team_allowance.json), one slope per index (points use two)."""
+        mt = self.MT
+        if not mt or not mt.get('enabled') or not opp:
+            return None
+        cfg = (mt.get('stats') or {}).get(s)
+        if not cfg:
+            return None
+        if 'team_terms' in cfg:
+            row = ((self.TA or {}).get('teams') or {}).get(opp)
+            return None if not row else sum(t['beta'] * row[t['index']] for t in cfg['team_terms'])
+        idx = self.matchup_idx(pid, opp, s)
+        return None if idx is None else cfg['beta'] * idx
+
     def matchup_term(self, pid, opp, s, mu):
-        """Stat-unit term: mu x (clip(1 + beta x index) - 1). Shadow of the frozen slopes in data/matchup_terms.json; 0 when off or undefined."""
+        """Stat-unit term: mu x (clip(1 + x) - 1). The frozen slopes in data/matchup_terms.json; 0 when off or undefined."""
         if self.example or not self.MT:
             return 0.0
-        idx = self.matchup_idx(pid, opp, s)
-        if idx is None:
+        x = self.matchup_x(pid, opp, s)
+        if x is None:
             return 0.0
         lo, hi = self.MT.get('clip', [0.7, 1.3])
-        return mu * (min(hi, max(lo, 1 + self.MT['stats'][s]['beta'] * idx)) - 1)
+        return mu * (min(hi, max(lo, 1 + x)) - 1)
 
     def v2_terms(self, team, p, s, mu, mn, g):
         zero = {'opp': 0, 'pace': 0, 'market': 0, 'shooting': 0, 'season': 0, 'home': 0, 'b2b': 0, 'bias': 0, 'matchup': 0}

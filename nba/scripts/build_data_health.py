@@ -32,6 +32,7 @@ INPUTS = [
     ('player_projections.json', 'Minutes Lab projections', 'build_player_projections.py', 2),
     ('gamelogs.json', 'Game logs (hit rates)', 'build_gamelogs.py', 2),
     ('model_state.json', 'Prop model v2 state (defense, pace, shooting)', 'build_model_state.py', 2),
+    ('team_allowance.json', 'Team allowance for the matchup term (points, rebounds)', 'build_team_allowance.py', 2),
     ('prop_model_v2.json', 'Prop model v2 fit and backtest', 'build_prop_model_v2.py', 45),
     ('minutes_model.json', 'Minutes model', 'build_minutes_model.py', 21),
     ('usage_cascade.json', 'Usage cascade', 'build_usage_cascade.py', 21),
