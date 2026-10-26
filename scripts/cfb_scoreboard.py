@@ -13,7 +13,7 @@ off its number is never touched again. A game first seen after kickoff is kept b
 Our numbers are the board's frozen projections in data/cfb_model.json; the open line is ESPN's recorded open (data/cfbd/espn_opens_2026.json), else CollegeFootballData's.
 Run: python3 scripts/cfb_scoreboard.py        Needs pandas + pyarrow (sportsdataverse schedule for game ids and finals).
 """
-import json, math, os, re, sys, tempfile, time, urllib.request
+import json, math, os, re, sys, tempfile, time, urllib.error, urllib.request
 import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cfb_model as cm
@@ -31,7 +31,18 @@ REPORTED = os.path.join(ROOT, 'data', 'jpplus_reported.json')
 def fetch_jp():
     """the JP+ games page's embedded game list (Next.js flight data); None when the page changes shape or is unreachable"""
     req = urllib.request.Request(JP_URL, headers={'User-Agent': 'Mozilla/5.0 (vault-fantasy scoreboard)'})
-    html = urllib.request.urlopen(req, timeout=60).read().decode('utf-8', 'replace')
+    html = None
+    for attempt in range(4):
+        try:
+            html = urllib.request.urlopen(req, timeout=60).read().decode('utf-8', 'replace')
+            break
+        except urllib.error.HTTPError as e:
+            # 429 / 5xx: back off (honour Retry-After, capped) and try again; any other status is a real failure
+            if e.code not in (429, 500, 502, 503, 504) or attempt == 3: raise
+            try: wait = min(float(e.headers.get('Retry-After', '')), 90)
+            except (TypeError, ValueError): wait = 15 * 2 ** attempt
+            print(f'JP+ fetch got HTTP {e.code}; retrying in {wait:.0f}s', file=sys.stderr)
+            time.sleep(wait)
     t = ''.join(json.loads('"' + c + '"') for c in re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)</script>', html, re.S))
     i = t.find('"games":[{"game_id"')
     if i < 0: return None
