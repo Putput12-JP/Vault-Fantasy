@@ -421,6 +421,42 @@ def snap_at(series, t):
     return next((s for s in reversed(series) if s[0] <= t), None)
 
 
+def pin_move(series, m, side, line, prop=False):
+    """Pinnacle's last move on the number a soft book is behind on: {'t': when the current Pinnacle row was first seen,
+    'line0': the line before it, 'p0': Pinnacle's no-vig chance for `side` before it, 'p1': now}. Only the MAIN number is in
+    the stored series, so an alternate number, or a market with no earlier row, gives None (never a guess). Game series rows are
+    [t, sp, spP, tot, oP, ml, lim]; prop rows are [t, line, P(over), lim]. t is the poll that first saw the row, so it is
+    the move's time to within the polling gap."""
+    if not series:
+        return None
+    if prop:
+        key = lambda r: (r[1], r[2])
+        P = lambda r: None if r[2] is None else (r[2] if side == 'over' else 1 - r[2])
+        L = lambda r: r[1]
+    elif m == 'ml':
+        key = lambda r: (r[5],)
+        P = lambda r: None if r[5] is None else (r[5] if side == 'home' else 1 - r[5])
+        L = lambda r: None
+    elif m == 'sp':
+        key = lambda r: (r[1], r[2])
+        P = lambda r: None if r[2] is None else (r[2] if side == 'home' else 1 - r[2])
+        L = lambda r: r[1]
+    else:
+        key = lambda r: (r[3], r[4])
+        P = lambda r: None if r[4] is None else (r[4] if side == 'over' else 1 - r[4])
+        L = lambda r: r[3]
+    cur = series[-1]
+    if line is not None and L(cur) != line:
+        return None
+    i = len(series) - 1
+    while i > 0 and key(series[i - 1]) == key(cur):
+        i -= 1
+    if i == 0 or P(cur) is None or P(series[i - 1]) is None:
+        return None
+    prev = series[i - 1]
+    return {'t': series[i][0], 'line0': L(prev), 'p0': r3(P(prev)), 'p1': r3(P(cur))}
+
+
 # ── the board's sharp block ──────────────────────────────────────────────────────────────────────
 def build(board, day, root, now, team, parse_event, kal_vol=None):
     """board -> board['sharp'] = {games: {gid: {...}}, alerts: [...], accounts: {...}}, and the day's new alerts and
@@ -531,8 +567,10 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
                     behind.append({'venue': 'Kalshi', 'm': 'ml', 'side': side, 'line': None, 'price': round(v[1], 3), 'fair': r3(f), 'ev': r3(f / c - 1)})
         behind.sort(key=lambda x: -x['ev'])
         for x in behind:
+            x['move'] = pin_move(S, x['m'], x['side'], x['line'])
             if x['ev'] >= BEHIND_ALERT:
-                alerts.append(dict(base, t=now, type='behind', **x, id=f"{gid}:behind:{x['venue']}:{x['m']}:{x['side']}:{x['line']}:{x['price']}"))
+                alerts.append(dict(base, t=now, type='behind', **x,
+                                   id=f"{gid}:behind:{x['venue']}:{x['m']}:{x['side']}:{x['line']}:{x['price']}"))
         # flow
         T = sorted(tape.get(gid, []), key=lambda x: x['t'])
         day_ago = now - 86400
@@ -922,6 +960,7 @@ def prop_behind(board, by_id, pin_props, now):
                 out.append({'g': gid, 'pid': e['p'], 'stat': e['s'], 'type': 'p_behind', 't': now, 'side': side, 'line': pin[1],
                             'venue': PB_BOOK, 'price': int(a), 'fair': r3(f), 'ev': r3(ev), 'lim': last[3],
                             'hrs': round((g['tip'] - now) / 3600, 2), 'settled': round((now - last[0]) / 60),
+                            'move': pin_move(S, None, side, pin[1], prop=True),
                             'id': f"{gid}:p_behind:{e['p']}:{e['s']}:{side}:{pin[1]}"})
     return out
 

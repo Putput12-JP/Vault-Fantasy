@@ -7588,6 +7588,10 @@ function ladFair(lad, m, side, line){
   const p = k ? pDevig(L[k][0], L[k][1]) : null;
   return p == null ? null : (side === 'home' || side === 'over') ? p : 1 - p;
 }
+// Pinnacle's last move on the number a price is behind on (sharp.py pin_move): its no-vig chance for the side before and now, and how long ago.
+// Null when the stored series had no earlier row for that number, so nothing is shown rather than guessed. Context only.
+const pinMv = (mv, line) => { if (!mv || mv.p0 == null || mv.p1 == null) return ''; const m = Math.max(1, Math.round((Date.now() / 1000 - mv.t) / 60)), w = m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d';
+  return ` Pinnacle ${mv.line0 != null && line != null && mv.line0 !== line ? 'moved the number, now ' + pc(mv.p1) : pc(mv.p0) + ' to ' + pc(mv.p1)}, ${w} ago.`; };
 const pAm = p => p == null || !(p > 0 && p < 1) ? '' : (p >= .5 ? '-' + Math.round(100 * p / (1 - p)) : '+' + Math.round(100 * (1 - p) / p));
 const usdK = x => Math.abs(x) >= 1000 ? '$' + (Math.abs(x) / 1000).toFixed(Math.abs(x) >= 1e4 ? 0 : 1) + 'k' : '$' + Math.abs(Math.round(x));
 function xSide(a, g){
@@ -7606,7 +7610,7 @@ function xText(a, g){
       : a.m === 'sp' ? `${g.home} ${fmt(a.from)} to ${fmt(a.to)}` : `${fmt(a.from)} to ${fmt(a.to)}`;
     return `Pinnacle moved the ${XMK[a.m]} toward ${tm}: ${f}`;
   }
-  if (a.type === 'behind') return `${esc(a.venue)} still has ${S} ${a.venue === 'Kalshi' ? Math.round(a.price * 100) + '¢' : (a.price > 0 ? '+' : '') + a.price}; Pinnacle's fair is ${pAm(a.fair)} (${pc(a.ev, 1)} EV)`;
+  if (a.type === 'behind') return `${esc(a.venue)} still has ${S} ${a.venue === 'Kalshi' ? Math.round(a.price * 100) + '¢' : (a.price > 0 ? '+' : '') + a.price}; Pinnacle's fair is ${pAm(a.fair)} (${pc(a.ev, 1)} EV).${pinMv(a.move, a.line)}`;
   if (a.type === 'sharp') return `${a.accts > 1 ? a.accts + ' sharp accounts' : 'Sharp account ' + esc(a.who || 'unnamed')} put ${usdK(a.usd)} on ${S} at ${Math.round(a.px * 100)}¢${a.rec ? ` <span class="muted">(${a.rec[3].toUpperCase()} record: ${a.rec[0]} trades, ${a.rec[1] >= 0 ? '+' : ''}${(a.rec[1] * 100).toFixed(1)}% vs close)</span>` : ''}`;
   if (a.type === 'cross') return `Sharp accounts' 24-hour net on ${S} reached ${usdK(a.usd)} (${a.n} ${a.n === 1 ? 'trade' : 'trades'}; ${Math.abs(a.crowd) < 1000 ? 'everyone else about even' : `everyone else ${usdK(a.crowd)} ${(a.crowd > 0) === (a.side === 'home') ? 'with them' : 'against them'}`})`;
   if (a.type === 'whale') return `${usdK(a.usd)} ticket on ${S} at ${Math.round(a.px * 100)}¢ (${esc(a.venue)}${a.cls === 'sharp' ? ', sharp account' : a.cls === 'dull' ? ', usually-losing account' : ''})`;
@@ -7858,7 +7862,7 @@ function tlAgg(){
 function tlText(x, stat){
   const side = x.side === 'over' ? 'Over' : 'Under';
   if (x.type === 'p_pin') return x.from[0] !== x.to[0] ? `Pinnacle moved the line ${x.from[0]} to ${x.to[0]}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}` : `Pinnacle moved toward the ${side.toLowerCase()} at ${x.line}: over ${pc(x.from[1])} to ${pc(x.to[1])}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`;
-  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side.toLowerCase()} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}. Pinnacle's fair is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, Pinnacle unchanged for ${x.settled} min`;
+  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side.toLowerCase()} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}. Pinnacle's fair is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, Pinnacle unchanged for ${x.settled} min.${pinMv(x.move, x.line)}`;
   if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on one Kalshi rung in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
   if (x.type === 'p_acct') return `${x.accts > 1 ? x.accts + ' sharp Polymarket accounts' : 'Sharp Polymarket account ' + esc(x.who || '')} bought ${side} ${x.line}: $${x.usd.toLocaleString()} at ${Math.round(x.px * 100)}¢`;
   return '';
@@ -8578,7 +8582,7 @@ function pvSharpText(x, r){
   if (x.type === 'p_pin') return x.from[0] !== x.to[0] ? `Pinnacle moved the line ${x.from[0]} to ${x.to[0]}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`
     : `Pinnacle moved toward the ${side} at ${x.line}: over ${pc(x.from[1])} to ${pc(x.to[1])}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`;
   if (x.type === 'p_acct') return `${x.accts > 1 ? x.accts + ' sharp Polymarket accounts' : 'Sharp Polymarket account ' + esc(x.who || '')} bought ${side === 'over' ? 'Over' : 'Under'} ${x.line}: $${x.usd.toLocaleString()} at ${Math.round(x.px * 100)}¢${x.rec ? ` (${x.rec[3].toUpperCase()} record: ${x.rec[0]} trades, ${x.rec[1] >= 0 ? '+' : ''}${(x.rec[1] * 100).toFixed(1)}% vs the close)` : ''}`;
-  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}; Pinnacle's fair price for it is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, with Pinnacle unchanged for ${x.settled} min`;
+  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}; Pinnacle's fair price for it is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, with Pinnacle unchanged for ${x.settled} min.${pinMv(x.move, x.line)}`;
   if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on Kalshi ${pvK(x.line)} in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
   return `Venues moving the same way: ${esc(x.txt)}`;
 }

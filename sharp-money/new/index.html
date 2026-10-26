@@ -149,6 +149,7 @@ const am=n=>n==null?'-':(n>0?'+':'')+n;
 const cents=p=>p==null?'-':Math.round(p*100)+'¢';
 const when=ts=>new Date(ts*1000).toLocaleString('en-US',{...CT,weekday:'short',hour:'numeric',minute:'2-digit'}).replace(',','')+' CT';
 const day=ts=>new Date(ts*1000).toLocaleString('en-US',{...CT,weekday:'long',month:'short',day:'numeric'});
+const mvTxt=(mv,line)=>{if(!mv||mv.p0==null||mv.p1==null)return'';const m=Math.max(1,Math.round((REF-mv.t)/60)),w=m<60?m+'m':m<1440?Math.round(m/60)+'h':Math.round(m/1440)+'d';return 'Pinnacle '+(mv.line0!=null&&line!=null&&mv.line0!==line?'moved the number, now ':Math.round(mv.p0*100)+'% to ')+Math.round(mv.p1*100)+'% '+w+' ago'};
 const ago=ts=>{const m=Math.max(1,Math.round((REF-ts)/60));return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'};
 const SPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA'};
 const TYPES={steam:['Pinnacle move','acc',"Pinnacle, the book that takes the biggest limits and moves first, shifted a line past the sport's threshold within about 30 minutes. This is the market reacting to real money."],
@@ -348,7 +349,7 @@ function alertCard(a){
  const g=GM[a.game],col=g?(a.side==='home'?g.home.color:a.side==='away'?g.away.color:'#8e8e93'):'#8e8e93',t=TYPES[a.type];
  const res=a.result==null?'':`<span class="badge ${a.result>0?'good':a.result<0?'bad':''}">${a.result>0?'Won':a.result<0?'Lost':'Push'}</span>`;
  const clv=typeof a.clv==='number'?`<span class="badge ${a.clv>0?'good':a.clv<0?'bad':''}">${a.type==='behind'?sgn(a.clv*100,1)+'% EV':sgn(a.clv*100,2)+' pts vs close'}</span>`:'';
- return `<div class="card alert press tap" ${g?`data-go="game/${esc(g.key)}"`:''}><div class="sw" style="background:${lift(col,.2)}"></div><div><div class="t" style="display:flex;align-items:center;gap:8px">${g&&(a.side==='home'||a.side==='away')?logo(g[a.side],'xs',g.sport):''}${esc(a.gameLbl)}</div><div class="x">${esc(a.text)}</div><div class="tags" style="margin-top:6px"><span class="badge ${t[1]}">${t[0]}</span>${res}${clv}<span class="badge">${ago(a.ts)}</span></div></div><div class="amt cond">${a.usd?money(a.usd):''}</div></div>`;
+ return `<div class="card alert press tap" ${g?`data-go="game/${esc(g.key)}"`:''}><div class="sw" style="background:${lift(col,.2)}"></div><div><div class="t" style="display:flex;align-items:center;gap:8px">${g&&(a.side==='home'||a.side==='away')?logo(g[a.side],'xs',g.sport):''}${esc(a.gameLbl)}</div><div class="x">${esc(a.text)}</div>${a.type==='behind'&&mvTxt(a.move,a.hline??a.line)?`<div class="m" style="color:var(--mut);font-size:12px;margin-top:2px">${esc(mvTxt(a.move,a.hline??a.line))}</div>`:''}<div class="tags" style="margin-top:6px"><span class="badge ${t[1]}">${t[0]}</span>${res}${clv}<span class="badge">${ago(a.ts)}</span></div></div><div class="amt cond">${a.usd?money(a.usd):''}</div></div>`;
 }
 function alerts(){
  const A=D.alerts.filter(a=>st.asport==='all'||a.sport===st.asport),cnt={all:A.length};Object.keys(TYPES).forEach(k=>cnt[k]=A.filter(a=>a.type===k).length);
@@ -886,7 +887,7 @@ function lvEv(d){
   if(!(g.start>d))continue;
   for(const b of g.behind||[]){
    const team=b.m==='tot'?null:rTn(g,b.side),pick=b.m==='ml'?team+' ML':b.m==='tot'?(b.side==='over'?'Over':'Under')+' '+b.line:team+' '+(b.hline==null?'spread':mSn(b.side==='home'?b.hline:-b.hline));
-   o.push({k:b.ev,y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:(b.ev>=.1?'<span class="badge warn">verify: edges this big are often stale</span> ':'')+`<span class="badge good">+${(b.ev*100).toFixed(1)}% EV</span>`,rows:[['Book',(SHB[b.book]||b.book)+' '+am(b.price)],['Pinnacle fair',cent(b.fair)+' to win ('+am(rAm(b.fair))+')'],['Edge',(b.ev*100).toFixed(1)+"% over Pinnacle's fair price"],['Kickoff','in '+hrsTxt((g.start-d)/3600)]]}});
+   o.push({k:b.ev,y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:(b.ev>=.1?'<span class="badge warn">verify: edges this big are often stale</span> ':'')+`<span class="badge good">+${(b.ev*100).toFixed(1)}% EV</span>`,rows:[['Book',(SHB[b.book]||b.book)+' '+am(b.price)],['Pinnacle fair',cent(b.fair)+' to win ('+am(rAm(b.fair))+')'],['Edge',(b.ev*100).toFixed(1)+"% over Pinnacle's fair price"],...(mvTxt(b.move,b.hline??b.line)?[['Pinnacle moved',mvTxt(b.move,b.hline??b.line).replace('Pinnacle ','')]]:[]),['Kickoff','in '+hrsTxt((g.start-d)/3600)]]}});
   }
  }
  return o.sort((x,w)=>w.k-x.k).map(x=>x.y);

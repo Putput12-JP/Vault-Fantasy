@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-26T16:00', tag:'New', title:'Sharp Money and NBA: see when the sharp book moved',
+    items:[
+      'When a sportsbook is still showing a price that beats the sharp book\'s fair price, the alert now also shows what the sharp book did: where its chance was, where it is now, and how long ago it moved.',
+      'It shows on Sharp Money and on the NBA game and player prop alerts. It is shown for context and is not a bet signal. If we did not record the earlier price, nothing is shown.'
+    ]
+  },
+  {
     ts:'2026-10-24T12:00', tag:'Fixed', title:'NBA Track Record: graded model sides now show up',
     items:[
       'The "Model side vs the line" section was stuck on "No leans graded yet" even though games had been graded. The graded days were never saved where the page reads them.',
