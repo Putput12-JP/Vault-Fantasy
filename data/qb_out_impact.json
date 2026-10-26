@@ -1,12 +1,12 @@
 {
- "generated": "2026-10-25T10:56:20.711605+00:00",
+ "generated": "2026-10-26T12:27:27.338557+00:00",
  "since": 2007,
  "min_events": 40,
  "note": "median teammate market multiplier when the team's primary QB is out; measured from nflverse weekly stats, sign- and stability-gated",
  "buckets": {
   "QB|pass_yd": {
-   "mult": 0.904,
-   "n": 614,
+   "mult": 0.905,
+   "n": 615,
    "iqr": [
     0.668,
     1.184
@@ -14,28 +14,28 @@
   },
   "WR|rec_yd": {
    "mult": 0.833,
-   "n": 219,
+   "n": 221,
    "iqr": [
-    0.393,
+    0.397,
     1.462
    ]
   }
  },
  "rejected": {
   "QB|pass_att": {
-   "mult": 0.979,
-   "n": 642,
+   "mult": 0.974,
+   "n": 643,
    "iqr": [
     0.764,
     1.209
    ],
    "even": 1.0,
    "odd": 0.972,
-   "rejected": "no material effect (|0.979-1|<0.05) \u2014 keep withholding"
+   "rejected": "no material effect (|0.974-1|<0.05) \u2014 keep withholding"
   },
   "QB|pass_td": {
    "mult": 1.0,
-   "n": 558,
+   "n": 559,
    "iqr": [
     0.0,
     1.0
@@ -68,7 +68,7 @@
   },
   "RB|rush_att": {
    "mult": 1.0,
-   "n": 922,
+   "n": 924,
    "iqr": [
     0.615,
     1.368
@@ -78,19 +78,19 @@
    "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding"
   },
   "RB|rush_yd": {
-   "mult": 0.931,
-   "n": 865,
+   "mult": 0.933,
+   "n": 866,
    "iqr": [
     0.46,
-    1.47
+    1.476
    ],
-   "even": 0.929,
+   "even": 0.931,
    "odd": 0.944,
-   "rejected": "median 0.931<1 (expected up)"
+   "rejected": "median 0.933<1 (expected up)"
   },
   "TE|rec": {
    "mult": 1.0,
-   "n": 645,
+   "n": 646,
    "iqr": [
     0.5,
     1.333
@@ -123,7 +123,7 @@
   },
   "WR|rec": {
    "mult": 1.0,
-   "n": 1587,
+   "n": 1590,
    "iqr": [
     0.5,
     1.429
@@ -134,14 +134,14 @@
   },
   "WR|rec_td": {
    "mult": 0.0,
-   "n": 25,
+   "n": 26,
    "iqr": [
     0.0,
     2.0
    ],
    "even": 0.0,
    "odd": 1.0,
-   "rejected": "n=25<40; unstable |\u0394|=1.000>0.1"
+   "rejected": "n=26<40; unstable |\u0394|=1.000>0.1"
   }
  }
 }
