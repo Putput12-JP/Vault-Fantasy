@@ -1,0 +1,206 @@
+{
+ "league_mean_teams": 30,
+ "tables": {
+  "2025": 214,
+  "2026": 212
+ },
+ "P_vol": {
+  "stat": "pts",
+  "fit_rows": 27345,
+  "test_rows": 27797,
+  "beta_fit_2024_25": 0.7057,
+  "beta_own_2025_26": 0.8399,
+  "beta_own_t": 7.29,
+  "eval_2025_26": {
+   "matchup": {
+    "vol_mae_gain": 0.0064,
+    "vol_t": 4.71,
+    "stat_mae_gain": 0.0064,
+    "stat_t": 4.71,
+    "games": 1308,
+    "rows": 27797
+   },
+   "control": {
+    "vol_mae_gain": -0.00546,
+    "vol_t": -3.68,
+    "stat_mae_gain": -0.00546,
+    "stat_t": -3.68,
+    "games": 1308,
+    "rows": 27797
+   },
+   "team_only_context": {
+    "vol_mae_gain": 0.0064,
+    "vol_t": 4.71,
+    "stat_mae_gain": 0.0064,
+    "stat_t": 4.71,
+    "games": 1308,
+    "rows": 27797
+   },
+   "halves_vol_gain": [
+    0.00579,
+    0.007
+   ],
+   "quintile_mean_residual_pct": [
+    -4.98,
+    -4.76,
+    0.82,
+    1.12,
+    3.23
+   ],
+   "quintile_mean_index": [
+    -0.0361,
+    -0.0175,
+    -0.0026,
+    0.0115,
+    0.0407
+   ]
+  },
+  "conditions": {
+   "beta_fit_positive": true,
+   "stat_gain_t_ge_2_5": true,
+   "control_not_t_ge_2_5": true,
+   "own_slope_2025_26_positive_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "league_mean_over_30_teams": true
+  },
+  "verdict": "PASS",
+  "multiplier_p5_p50_p95": [
+   0.971,
+   0.998,
+   1.036
+  ]
+ },
+ "P_eff": {
+  "stat": "pts",
+  "fit_rows": 27345,
+  "test_rows": 27797,
+  "beta_fit_2024_25": 0.7274,
+  "beta_own_2025_26": 0.6568,
+  "beta_own_t": 6.22,
+  "eval_2025_26": {
+   "matchup": {
+    "vol_mae_gain": 0.00557,
+    "vol_t": 3.43,
+    "stat_mae_gain": 0.00557,
+    "stat_t": 3.43,
+    "games": 1308,
+    "rows": 27797
+   },
+   "control": {
+    "vol_mae_gain": -0.00257,
+    "vol_t": -1.61,
+    "stat_mae_gain": -0.00257,
+    "stat_t": -1.61,
+    "games": 1308,
+    "rows": 27797
+   },
+   "team_only_context": {
+    "vol_mae_gain": 0.00557,
+    "vol_t": 3.43,
+    "stat_mae_gain": 0.00557,
+    "stat_t": 3.43,
+    "games": 1308,
+    "rows": 27797
+   },
+   "halves_vol_gain": [
+    0.00342,
+    0.00772
+   ],
+   "quintile_mean_residual_pct": [
+    -4.57,
+    -3.75,
+    -0.68,
+    1.23,
+    3.2
+   ],
+   "quintile_mean_index": [
+    -0.0429,
+    -0.0155,
+    -0.0024,
+    0.0116,
+    0.0416
+   ]
+  },
+  "conditions": {
+   "beta_fit_positive": true,
+   "stat_gain_t_ge_2_5": true,
+   "control_not_t_ge_2_5": true,
+   "own_slope_2025_26_positive_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "league_mean_over_30_teams": true
+  },
+  "verdict": "PASS",
+  "multiplier_p5_p50_p95": [
+   0.963,
+   0.998,
+   1.037
+  ]
+ },
+ "R_miss": {
+  "stat": "reb",
+  "fit_rows": 27345,
+  "test_rows": 27797,
+  "beta_fit_2024_25": 0.2594,
+  "beta_own_2025_26": 0.5933,
+  "beta_own_t": 4.54,
+  "eval_2025_26": {
+   "matchup": {
+    "vol_mae_gain": 0.00066,
+    "vol_t": 3.23,
+    "stat_mae_gain": 0.00066,
+    "stat_t": 3.23,
+    "games": 1308,
+    "rows": 27797
+   },
+   "control": {
+    "vol_mae_gain": -2e-05,
+    "vol_t": -0.11,
+    "stat_mae_gain": -2e-05,
+    "stat_t": -0.11,
+    "games": 1308,
+    "rows": 27797
+   },
+   "team_only_context": {
+    "vol_mae_gain": 0.00066,
+    "vol_t": 3.23,
+    "stat_mae_gain": 0.00066,
+    "stat_t": 3.23,
+    "games": 1308,
+    "rows": 27797
+   },
+   "halves_vol_gain": [
+    0.00095,
+    0.00038
+   ],
+   "quintile_mean_residual_pct": [
+    -0.45,
+    0.49,
+    0.02,
+    3.37,
+    2.26
+   ],
+   "quintile_mean_index": [
+    -0.0427,
+    -0.0128,
+    0.0009,
+    0.0162,
+    0.0376
+   ]
+  },
+  "conditions": {
+   "beta_fit_positive": true,
+   "stat_gain_t_ge_2_5": true,
+   "control_not_t_ge_2_5": true,
+   "own_slope_2025_26_positive_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "league_mean_over_30_teams": true
+  },
+  "verdict": "PASS",
+  "multiplier_p5_p50_p95": [
+   0.987,
+   1.0,
+   1.011
+  ]
+ },
+ "generated": "2026-10-26T11:37Z"
+}
