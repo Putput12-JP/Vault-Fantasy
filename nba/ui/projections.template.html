@@ -5059,9 +5059,9 @@ function gapVerdict(a){ return a.n < GAP_MIN ? pill('idle', 'collecting') : a.z 
 function renderGapRecord(){
   const rows = gapPicks(), pre = TR && TR.data && TR.data.preseason && TR.data.preseason.gap_days ? Object.values(TR.data.preseason.gap_days).flat().length : 0;
   const preTxt = pre ? ` ${pre} preseason ${pre === 1 ? 'pick is' : 'picks are'} scored apart and counted nowhere.` : '';
-  $('tpgsub').textContent = `Each game, the one prop where our model and the price disagree most, scored against the box score. It is where to look, not a bet: there is no stake or payout, so no profit number. Once ${GAP_MIN} picks have settled, the page says whether the hit rate is ahead of or behind what the price expected.${preTxt}`;
+  $('tpgsub').textContent = `Each game, the one prop where our model and the price disagree most, locked ${(TR && TR.data && TR.data.gap_lock_min) || 90} minutes before tip and then scored against the box score. It is where to look, not a bet: there is no stake or payout, so no profit number. Once ${GAP_MIN} picks have settled, the page says whether the hit rate is ahead of or behind what the price expected.${preTxt}`;
   if (!rows.length){
-    $('tpg').innerHTML = '<tbody><tr><td class="l"><p class="empty">No Biggest gap picks settled yet. Each game\'s pick is fixed in the last look before tip and scored after the game.</p></td></tr></tbody>';
+    $('tpg').innerHTML = '<tbody><tr><td class="l"><p class="empty">No Biggest gap picks settled yet. Each game\'s pick is locked 90 minutes before tip and scored after the game.</p></td></tr></tbody>';
     $('tpgl').innerHTML = ''; $('tpgnote').textContent = ''; return;
   }
   const R = [...SIM_STATS, 'all'].map(s => [s, gapStats(s === 'all' ? rows : rows.filter(r => r.stat === s))]).filter(([s, a]) => s === 'all' || a.n || a.voids);
@@ -6013,12 +6013,18 @@ const ps2 = {game: null, pid: null, stat: 'pts', side: null, line: null};
 const PS_LBL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers'}, PS_ABB = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM'};
 const PS_PER_TEAM = 5;
 // the main line for one prop: sportsbooks first (the line most books agree on, with the over chance in the price, vig removed), else the
-// pick'em apps (Underdog prices both sides; PrizePicks is a flat line with no price to read a chance from)
+// pick'em apps (Underdog prices both sides; PrizePicks is a flat line with no price to read a chance from). Same rule as prop_sim_record.main_line:
+// Polymarket lists a ladder of thresholds, not one line, so its rungs are never the main line; a tie goes to the line Pinnacle posts, then to a line
+// that carries a two-sided price, then to the lower line. (Before 2026-10-26 a tie went to the lowest line alone, so a Polymarket rung won whenever one
+// sportsbook posted a prop: 4.5 points for a player the books had at 10.5, 1.5 rebounds for one at 6.5.)
 function psMarket(B, pid, s, gid){
   const e = (B.props || []).find(x => String(x.p) === String(pid) && x.s === s && String(x.g) === String(gid));
   if (!e) return null;
-  const modal = rows => { const cnt = {}; rows.forEach(x => cnt[x.line] = (cnt[x.line] || 0) + 1); return +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]; };
-  const bk = (e.books || []).map(([n, line, o, u]) => ({n, line, po: amP(o), pu: amP(u)})).filter(x => x.line != null && x.po != null && x.pu != null);
+  const modal = rows => { const cnt = {}, first = new Set(), priced = new Set();
+    rows.forEach(x => { cnt[x.line] = (cnt[x.line] || 0) + 1; if (x.n === 'Pinnacle') first.add(x.line); if (x.po != null && x.pu != null) priced.add(x.line); });
+    const rank = (set, k) => set.has(+k) ? 0 : 1;
+    return +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || rank(first, a) - rank(first, b) || rank(priced, a) - rank(priced, b) || a - b)[0]; };
+  const bk = (e.books || []).filter(r => r[0] !== 'Polymarket').map(([n, line, o, u]) => ({n, line, po: amP(o), pu: amP(u)})).filter(x => x.line != null && x.po != null && x.pu != null);
   if (bk.length){ const line = modal(bk), at = bk.filter(x => x.line === line); return {line, pOver: at.reduce((a, x) => a + x.po / (x.po + x.pu), 0) / at.length, src: at.length > 1 ? `${at.length} sportsbooks` : at[0].n}; }
   const pk = (e.pk || []).map(([n, line, o, u]) => ({n, line, po: o != null ? amP(o) : null, pu: u != null ? amP(u) : null})).filter(x => x.line != null);
   if (!pk.length) return null;
@@ -6085,7 +6091,12 @@ function renderPropSim(){
         <div class="n"><b>${esc(r.name)}</b><small><i style="background:${col}"></i>${r.team}</small></div>
         <div class="ps-ps"><span class="mn"><em>MIN</em><b>${fmt(r.min, 1)}</b></span>${['pts', 'reb', 'ast'].map(s => `<span><em>${PS_ABB[s]}</em><b>${fmt(r.mu[s], 1)}</b></span>`).join('')}</div>
         <div class="ps-pf">${i.line != null ? `<span>o/u ${i.line}</span><span class="${i.lean === 'over' ? 'pos' : 'neg'}">${psSg(i.edge)} · ${Math.round(i.pLean * 100)}% ${i.lean === 'over' ? 'o' : 'u'}</span>` : '<span>no line yet</span><span>model only</span>'}</div></button>`; };
-    $('pstop').innerHTML = (top ? `<button type="button" class="ps-top" data-top="${top.r.pid}|${top.s}"><b class="tag">${top.priced ? 'BIGGEST GAP' : 'STRONGEST LEAN'}</b><span style="color:#e8edf5;font-size:15px">${esc(top.r.name)} <b>${top.i.lean.toUpperCase()} ${top.i.line} ${PS_ABB[top.s]}</b></span><span>model ${fmt(top.i.mu, 1)} · ${Math.round(top.i.pLean * 100)}%${top.priced ? ` vs ${Math.round(top.i.mktLean * 100)}% in the price` : ''}</span></button>` : '') + gapChip();
+    // The Biggest gap is fixed GAP_LOCK_MIN minutes before tip (prop_sim_record.locked_pick, published in track.json gap_locks) and is what the record scores.
+    // Until it locks, the pick shown here is a live preview that can change; after it locks, this shows the locked pick, whatever the prices do next.
+    const lockMin = (TR && TR.data && TR.data.gap_lock_min) || 90, lk = TR && TR.data && TR.data.gap_locks && TR.data.gap_locks[gid], lockAt = g.tip - lockMin * 60;
+    const lockedTop = lk && lk.pm != null ? `<button type="button" class="ps-top" data-top="${lk.pid}|${lk.stat}"><b class="tag">BIGGEST GAP · LOCKED</b><span style="color:#e8edf5;font-size:15px">${esc(lk.player)} <b>${String(lk.side).toUpperCase()} ${lk.line} ${PS_ABB[lk.stat]}</b></span><span>model ${fmt(lk.mu, 1)} · ${Math.round(lk.p * 100)}% vs ${Math.round(lk.pm * 100)}% in the price · locked ${clock(lk.lock)} ${TZL}${lk.late ? ', late' : ''}${lk.held ? ' · roster guard held this team' : ''}</span></button>` : '';
+    const liveTop = top ? `<button type="button" class="ps-top" data-top="${top.r.pid}|${top.s}"><b class="tag">${top.priced ? 'BIGGEST GAP' : 'STRONGEST LEAN'}</b><span style="color:#e8edf5;font-size:15px">${esc(top.r.name)} <b>${top.i.lean.toUpperCase()} ${top.i.line} ${PS_ABB[top.s]}</b></span><span>model ${fmt(top.i.mu, 1)} · ${Math.round(top.i.pLean * 100)}%${top.priced ? ` vs ${Math.round(top.i.mktLean * 100)}% in the price` : ''}${top.priced ? ` · ${Date.now() / 1000 < lockAt ? `not locked yet, can still change; locks ${clock(lockAt)} ${TZL}` : 'locks with the next update'}` : ''}</span></button>` : '';
+    $('pstop').innerHTML = (lockedTop || liveTop) + gapChip();
     $('pscards').innerHTML = `<div class="card-h"><div><h2>${g.away} at ${g.home}</h2><p>${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})}, ${clock(g.tip)} ${TZL}</p></div><span class="ps-lbl">Tap a player</span></div>
       <div class="card-b"><div class="ps-cards">${infos.map(cardHtml).join('')}</div></div>`;
 
