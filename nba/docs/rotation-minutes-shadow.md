@@ -34,3 +34,13 @@ Pricing, the Game Simulation (the frozen B3 model and its 2026-11-16 holdout are
 2. State export (`last3`, `last_idx`); `Pricer.game_minutes_rot`; Minutes record and daily block; tests.
 3. Scorer `score_rotation_forward.py` implementing the rule above; scheduled read.
 4. One pull request with a before-and-after (priced output identical).
+
+
+## As built (2026-10-26)
+
+- **Model file:** `data/rotation_minutes_model.json`: T 239.67, fit on 101,425 pool rows (walk seasons 2023 to 2025), P(plays) on 34,161 rows of 2024-25. 2025-26 not in the fit.
+- **Proof that the saved weights and the live scoring module equal the registered round 3 model:** on the 2025-26 pools, minutes MAE 4.9218 (v2) to **4.7707**, and top-8 bias by pool size +0.52, +0.46, +0.34 (v2 +1.22, -0.39, -1.83), the numbers round 3 reported as context. `tests/test_rotation_minutes_shadow.py` also proves the features, state probabilities and the whole-pool score equal the registered test's functions.
+- **What could not be proven offline, stated plainly:** that the live feature construction (`Pricer.game_minutes_rot`, from the daily state and the board) gives the same inputs the backtest had. A trial on an end-of-season state (stars long out, no injury statuses, tip after the playoffs) was off-distribution and showed the model well above v2 for the top players, so it proves nothing either way. The method logs nothing until the daily state carries `last3` and `last_idx`.
+- **Launch check (operational, not a verdict), registered now:** after the first two settled nights, `minutes_days[...].rot` must show, over players who played, a mean (C3 minus v2) for the top 8 by `m` within **1.5 minutes**, and C3's MAE not above v2's by more than **0.3**. If either fails, the shadow is turned off by a pull request until the live inputs are understood. This check cannot keep or promote anything.
+- **Logged:** Minutes record row values 6 to 9 (`rot`, `size`, `tgn`, `rank`); the daily block's `rot` (n, mae_v2, mae_rot, top-8 bias by pool size). Scorer `score_rotation_forward.py` with the rule above; read on or after 2026-12-15.
+- Priced output is identical (`check_pricing_regression`: all four sections IDENTICAL). 25 related tests pass.
