@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-26T23:30', tag:'Fixed', title:'NBA Game Lines: +EV fills in, rows no longer crowd',
+    items:[
+      'The +EV column was empty on most games. It now shows the biggest price over the sharp book\'s fair price from any book, even a small one, and says none only when no book beats it. Quotes that are 30 minutes behind the market are skipped.',
+      'Game rows no longer run past the edge of the card on mid-size screens: they switch to the stacked layout sooner, and the column header hides with them.',
+      'The line movement chart sits to the right of the sharp read with the "behind the market" note under the sharp read.'
+    ]
+  },
+  {
     ts:'2026-10-26T22:30', tag:'Improved', title:'NBA Game Lines: new open-game layout and a +EV column',
     items:[
       'The Vault line is now a small row above the three cards (spread, total, win chance) instead of sitting beside the sharp read.',
