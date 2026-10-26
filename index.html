@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-27T00:30', tag:'Improved', title:'NBA Game Lines: tells you when sharp data is missing',
+    items:[
+      'When the sharp data (Pinnacle moves, Polymarket accounts, Kalshi tickets) is not on the board, Game Lines now says so at the top instead of quietly showing only Novig and the money split.',
+      'A problem with the player prop side no longer takes the game sharp read down with it.'
+    ]
+  },
+  {
     ts:'2026-10-26T23:30', tag:'Fixed', title:'NBA Game Lines: +EV fills in, rows no longer crowd',
     items:[
       'The +EV column was empty on most games. It now shows the biggest price over the sharp book\'s fair price from any book, even a small one, and says none only when no book beats it. Quotes that are 30 minutes behind the market are skipped.',

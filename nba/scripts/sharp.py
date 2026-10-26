@@ -38,7 +38,7 @@ The study's verdict stands until this season says otherwise: sharp accounts beat
 later does not, so these are context until a type earns it with a pass rule written down before its alerts were graded
 (docs/novig-money.md, docs/prop-behind-pinnacle.md); the page shows no verdict for a type without one.
 """
-import datetime as dt, glob, json, math, os, time
+import datetime as dt, glob, json, math, os, time, traceback
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -644,11 +644,15 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
                    for x in T if x['usd'] >= 5000 or (x['cls'] == 'sharp' and x['usd'] >= SHARP_MIN)][-12:]
         out[gid] = {'pin': thin(S, 60), 'lad': lad_json(lad), 'behind': behind[:8], 'flow': flow, 'tickets': tickets}
     # per-prop signals (Player Props): Pinnacle prop moves, sharp accounts on Polymarket props, heavy Kalshi rung flow
-    pin_props, pkeys = {}, board.get('_pkeys') or {}
+    pin_props, pkeys, prop_err = {}, board.get('_pkeys') or {}, None
     if pkeys:
-        pin_props = pin_prop_series(dirs, pkeys.get('pinnacle') or {}, tips)
-        alerts += prop_signals(by_id, pkeys, pin_props, polls, _tape_rows(day_dirs(root, now, 1)), W, day, now, kal_vol or {})
-        alerts += prop_behind(board, by_id, pin_props, now)
+        try:                                            # a prop-side failure must not take the game signals (Pinnacle moves, flow, behind) off the board with it
+            pin_props = pin_prop_series(dirs, pkeys.get('pinnacle') or {}, tips)
+            alerts += prop_signals(by_id, pkeys, pin_props, polls, _tape_rows(day_dirs(root, now, 1)), W, day, now, kal_vol or {})
+            alerts += prop_behind(board, by_id, pin_props, now)
+        except Exception:
+            traceback.print_exc(limit=3)
+            prop_err = traceback.format_exc(limit=3)[-700:]
     # first sighting wins: an alert keeps the time and fair price of the poll that first saw it
     saved = load_signals(dirs)
     for a in alerts:
@@ -662,7 +666,7 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
     per_prop = defaultdict(list)
     for a in sorted((a for a in every.values() if a['g'] in by_id and a['type'].startswith('p_')), key=lambda a: a['t']):
         per_prop[f"{a['pid']}|{a['stat']}"].append({k: v for k, v in a.items() if k not in ('g', 'tip', 'tday', 'home', 'away', 'hn', 'pid', 'stat')})
-    return {'games': out, 'alerts': shown, 'props': dict(per_prop),
+    return {'games': out, 'alerts': shown, 'props': dict(per_prop), 'prop_err': prop_err,
             'accounts': {'sharp': len(W['sharp']), 'nba_sharp': sum(1 for s in W['sharp'].values() if s == 'nba'), 'dull': len(W['dull']),
                          'scored': W['n'], 'generated': W['generated']}}
 

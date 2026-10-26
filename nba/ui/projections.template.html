@@ -1586,6 +1586,7 @@ table.nt.sx-tk{min-width:420px}
 .lw-dt{display:none;padding:6px 18px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.14)}.lw.open .lw-dt{display:block}
 .lw-meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 16px;color:var(--fg3);font-size:12px;min-height:6px;padding-top:4px}
 .lw-meta .lv-vault{padding:0;border:0;background:none;color:var(--fg2)}.lw-meta .lv-vault small{margin-left:0}.lw-asof{margin-left:auto}
+.lw-note{margin:0 2px 10px;font-size:12.5px;line-height:1.45;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .lw-evc{display:grid;gap:2px;justify-items:start}.lw-evc small{color:var(--fg3);font:500 11px var(--mono,ui-monospace,monospace);white-space:nowrap}.lw-ev{color:var(--up);font:700 15px var(--mono,ui-monospace,monospace)}.lw-ev.sm{color:var(--fg2);font-weight:600}
 .lw .lv-chart{padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.2)}
 .lw .lv-chart .vlm-edge{display:none}   /* the Novig-vs-Pinnacle table under the chart is ~500px tall and sits next to a short sharp read: the Sharp Money page keeps it */
@@ -7245,7 +7246,8 @@ function renderSlate(){
   $('sgames').classList.toggle('lw-list', lines);
   if (lines && !sv.roInit && G.length){ sv.roInit = true; if (innerWidth >= 1000) sv.ro[G[0].id] = true; }   // the first game opens on a wide screen; the rest stay slim
   const GL = lines && sv.sort !== 'time' ? [...G].sort((a, b) => lwMetric(b, B, sv.sort) - lwMetric(a, B, sv.sort)) : G;
-  $('sgames').innerHTML = (lines ? lwHead : '') + GL.map(g => lines ? lineCard(g, B, status) : slateCard(g, B, status)).join('');
+  const sharpNote = lines && !(B.sharp && B.sharp.games) ? '<p class="muted lw-note">Sharp data is not on the board right now, so the sharp read shows only Novig and the money split: Pinnacle moves, Polymarket accounts, Kalshi tickets and the Behind Pinnacle prices are missing. The recorder retries every poll.</p>' : '';
+  $('sgames').innerHTML = sharpNote + (lines ? lwHead : '') + GL.map(g => lines ? lineCard(g, B, status) : slateCard(g, B, status)).join('');
   if (lines) lvCharts();
   renderSlateRatings();
   if (!lines){
