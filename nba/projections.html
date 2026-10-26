@@ -3533,7 +3533,20 @@ function labBase(team){   // minutes map the Lab compares against, or null for t
   if (!labTC[team] || labTC[team].k !== k){ const model = gameMinutes(team, g, {}), m = {}; for (const p of T.players) m[p.id] = model[p.id] ? Math.round(model[p.id].min * 10) / 10 : 0; labTC[team] = {k, m}; }
   return labTC[team].m;
 }
+let labPruned = {};
+// A minutes edit saved earlier outlives the injury report: Naji was saved at 29.7 and kept showing it after he was ruled Out. Once per visit, per team,
+// drop saved minutes for anyone the board now lists Out or Inactive. Marking him back in during the visit still sticks (this does not run again).
+function labPruneOuts(team){
+  const sb = slateBoard(); if (labPruned[team] || sb.mode === 'empty') return;
+  labPruned[team] = 1;
+  const e = edits[team], st = statusFromBoard(sb.board); if (!e) return;
+  let n = 0; for (const id of Object.keys(e)) if (e[id] > 0 && /^(Out|Inactive)$/.test(st[id] || '')){ delete e[id]; n++; }
+  if (!n) return;
+  if (!Object.keys(e).length) delete edits[team];
+  store.set('nml-edits', edits);
+}
 function labM(team){   // the minutes the Lab shows: your edits, else tonight's model on a game day, else the season-start projection
+  labPruneOuts(team);
   const has = edits[team] && Object.keys(edits[team]).length, b = labBase(team);
   return !has && b ? {...b} : mins(team);
 }
