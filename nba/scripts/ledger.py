@@ -387,14 +387,14 @@ def minutes_log(board, now):
                 PX.row_error(f"minutes rot {g['id']}|{team}", e)
                 rt = {}
             try:
-                eb = pr.game_minutes_blend(team, g, gm)      # shadow (early-season blend), never priced
+                eb = pr.game_minutes_blend(team, g, gm)      # early-season blend: priced now; this is the column that scores it against the model's own minutes
             except Exception as e:
                 PX.row_error(f"minutes blend {g['id']}|{team}", e)
                 eb = {}
             for pid, G in gm.items():
                 try:
                     k = f"{g['id']}|{pid}"
-                    rows[k] = [round(G['min'], 2), round(((pr.state['players'].get(str(pid)) or {}).get('ms') or [0])[0], 2),
+                    rows[k] = [round(G.get('min_v2', G['min']), 2), round(((pr.state['players'].get(str(pid)) or {}).get('ms') or [0])[0], 2),
                                round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None,
                                round(eb[pid], 2) if pid in eb else None,
                                round(rt[pid]['min'], 2) if pid in rt else None, rt[pid]['size'] if pid in rt else None, rt[pid]['tgn'] if pid in rt else None,

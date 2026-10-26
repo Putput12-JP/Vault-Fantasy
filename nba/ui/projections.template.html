@@ -3910,8 +3910,14 @@ function gameMinutes(team, g, cache){
     }
     pm = rescale(project(Object.keys(info).map(Number)))[0];
   }
+  const v2min = {...pm};                                          // the model's own minutes, before the early-season blend
+  { const eb = M.early_blend, f3 = state.first3, gn = state.team_gn;      // pricing.py blend_minutes: team games 4 to 10, 2 of his first 3 games with this team
+    const k = gn ? (gn[team] || 0) + 1 : 0;
+    if (eb && f3 && gn && g.season_type !== 1 && k >= eb.lo && k <= eb.hi) for (const a in pm){ const v = f3[a];
+      if (v && v[0] === team && v.length - 1 >= eb.min_games) pm[a] = Math.min(48, Math.max(0, pm[a] + eb.w * (v.slice(1).reduce((x, y) => x + y, 0) / (v.length - 1) - pm[a]))); } }
   const ids = Object.keys(info).map(Number);
   for (const a of ids) parts[a].rescale = pm[a] - parts[a].pre;
+  for (const a of ids) parts[a].blend = pm[a] - v2min[a];
   // what-if: your minutes for tonight, the change moved to teammates by the Lab's rule (in proportion to minutes,
   // same position NB x more). Only this page and your browser see it; the shadow ledger never does.
   const ed = cache.__noEdits ? {} : (tonightEdits[String(g.id)] || {}), mine = new Set();
@@ -3941,7 +3947,7 @@ function gameMinutes(team, g, cache){
         mu[s] = Math.max(0, pm[a] * rate + pm[a] / 48 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel));
       } else mu[s] = Math.max(0, pm[a] * rate);
     }
-    res[a] = {min: pm[a], rate: rates, pos, mu, base: info[a][0], stt: info[a][1], parts: parts[a], mine: mine.has(a), sdm: S(a).sdm, lab: labs.has(a)};
+    res[a] = {min: pm[a], min_v2: v2min[a], rate: rates, pos, mu, base: info[a][0], stt: info[a][1], parts: parts[a], mine: mine.has(a), sdm: S(a).sdm, lab: labs.has(a)};
   }
   cache[key] = res;
   return res;
@@ -5795,7 +5801,7 @@ function renderTonight(){
       ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
         <td><span class="nt-min"><input type="number" min="0" max="48" step="0.5" data-pid="${r.pid}" value="${fmt(r.min)}" class="${r.mine ? 'mine' : ''}" aria-label="Minutes for ${esc(r.name)}" ${r.src === 'lab' ? 'disabled title="Edit this team in the Minutes Lab"' : ''}></span>${r.lo != null ? `<small>${fmt(r.lo, 0)} to ${fmt(r.hi, 0)}</small>` : ''}</td>
-        <td class="l"><div class="nt-parts">${r.mine ? '<span class="nt-p" style="color:var(--warn)">your minutes</span>' : r.parts ? `<span class="nt-p">avg ${fmt(r.parts.base)}</span>${chip(r.parts.vac, 'teammates out')}${chip(r.parts.blow, 'blowout risk')}${chip(r.parts.b2b, 'back-to-back')}${chip(r.parts.other + r.parts.rescale, 'team fit')}` : ''}</div></td>
+        <td class="l"><div class="nt-parts">${r.mine ? '<span class="nt-p" style="color:var(--warn)">your minutes</span>' : r.parts ? `<span class="nt-p">avg ${fmt(r.parts.base)}</span>${chip(r.parts.vac, 'teammates out')}${chip(r.parts.blow, 'blowout risk')}${chip(r.parts.b2b, 'back-to-back')}${chip(r.parts.blend || 0, 'recent games')}${chip(r.parts.other + r.parts.rescale, 'team fit')}` : ''}</div></td>
         <td>${r.v3 != null ? `<span class="muted">${fmt(r.v3)}</span><small>${r.v3 - r.min >= 0 ? '+' : ''}${fmt(r.v3 - r.min)}</small>` : ''}</td>
         <td>${r.gb != null ? `<span class="muted">${fmt(r.gb)}</span><small>${r.gb - r.min >= 0 ? '+' : ''}${fmt(r.gb - r.min)}</small>` : ''}</td>
         <td>${r.mkt ? `<span class="nt-mkt ${Math.abs(r.mkt.min - r.min) >= MKT_FLAG ? 'flag' : ''}" title="Market ${SLABEL[r.mkt.stat]} mean ${fmt(r.mkt.mean)} vs our ${fmt(r.mkt.ours)}">${fmt(r.mkt.min)}</span><small>${r.mkt.min - r.min >= 0 ? '+' : ''}${fmt(r.mkt.min - r.min)}</small>` : '<span class="muted">none</span>'}</td>
