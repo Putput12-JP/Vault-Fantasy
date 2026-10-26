@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-26T22:30', tag:'Improved', title:'NBA Game Lines: new open-game layout and a +EV column',
+    items:[
+      'The Vault line is now a small row above the three cards (spread, total, win chance) instead of sitting beside the sharp read.',
+      'The line movement chart is open as soon as you open a game, to the right of the sharp read. You no longer have to click Details.',
+      'Each game row has a new +EV column showing the biggest price over the sharp book\'s fair price right now, and which book and side it is. It shows none when there isn\'t one. Context only, not a bet signal.'
+    ]
+  },
+  {
     ts:'2026-10-26T20:30', tag:'Improved', title:'NBA: more books behind the sharp book, and a line movement chart',
     items:[
       'The "behind Pinnacle" flag on NBA player props used to cover DraftKings only. It now also flags Polymarket, Novig and Kalshi when they show a better price than the sharp book\'s fair price on the same line.',

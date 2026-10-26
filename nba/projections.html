@@ -1731,7 +1731,7 @@ table.nt.sx-tk{min-width:420px}
 .sv-mp{display:flex;gap:4px;justify-content:flex-end}
 /* Game Lines scan list (mocks/lines/lines-c-scan.html): slim rows, open one for the tiles, sharp read and book board */
 .lw-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px}
-.lw-hd,.lw-b{display:grid;grid-template-columns:78px minmax(170px,1.25fr) 150px 112px 150px minmax(210px,1.5fr) 150px 22px;gap:16px;align-items:center}
+.lw-hd,.lw-b{display:grid;grid-template-columns:78px minmax(170px,1.25fr) 150px 112px 150px minmax(210px,1.5fr) 96px 150px 22px;gap:16px;align-items:center}
 .lw-hd{padding:4px 18px;font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
 .lw{container:lw / inline-size;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .15s}
 .lw:hover{border-color:var(--fg3)}.lw.open{border-color:var(--fg3)}
@@ -1749,7 +1749,10 @@ table.nt.sx-tk{min-width:420px}
 .lw-pips{display:flex;gap:4px}.lw-pips i{display:block;width:26px;height:6px;border-radius:3px;background:rgba(255,255,255,.1);position:relative}.lw-pips i::after{content:"";position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;background:var(--fg3)}.lw-pips b{position:absolute;top:0;bottom:0;border-radius:3px}
 .lw-chv{width:12px;height:12px;border-right:2px solid var(--fg3);border-bottom:2px solid var(--fg3);transform:rotate(45deg);transition:transform .18s}.lw.open .lw-chv{transform:rotate(225deg)}
 .lw-dt{display:none;padding:6px 18px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.14)}.lw.open .lw-dt{display:block}
-.lw-meta{display:flex;justify-content:flex-end;color:var(--fg3);font-size:12px;min-height:6px;padding-top:4px}
+.lw-meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 16px;color:var(--fg3);font-size:12px;min-height:6px;padding-top:4px}
+.lw-meta .lv-vault{padding:0;border:0;background:none;color:var(--fg2)}.lw-meta .lv-vault small{margin-left:0}.lw-asof{margin-left:auto}
+.lw-evc{display:grid;gap:2px;justify-items:start}.lw-evc small{color:var(--fg3);font:500 11px var(--mono,ui-monospace,monospace);white-space:nowrap}.lw-ev{color:var(--up);font:700 15px var(--mono,ui-monospace,monospace)}
+.lw .lv-chart{padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.2)}
 .lw-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:8px}
 .lw-tile{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:16px;padding:14px 16px;min-width:0}
 .lw-tile h4{margin:0;display:flex;justify-content:space-between;font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
@@ -1766,7 +1769,7 @@ table.nt.sx-tk{min-width:420px}
 .lw-sg{font-size:12.5px}.lw-sg>span:first-child{color:var(--fg2)}.lw-sg>span:last-child{text-align:right;color:var(--fg2);font-size:12px}
 .lw-bar{position:relative;height:12px;border-radius:6px;background:rgba(255,255,255,.06)}.lw-bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:var(--fg3);border-radius:2px}.lw-bar i{position:absolute;top:0;bottom:0;border-radius:6px}
 .lw-vl{display:grid;gap:10px;min-width:0}.lw .lv-board{margin-top:12px}
-@container lw (max-width:1020px){.lw-b{grid-template-columns:62px minmax(0,1fr) 22px;grid-template-areas:"t m c" "t s c" "t w c" "t b c" "t k c";gap:8px 12px}.lw-b>*:nth-child(1){grid-area:t}.lw-b>*:nth-child(2){grid-area:m}.lw-b>*:nth-child(3){grid-area:s}.lw-b>*:nth-child(4){display:none}.lw-b>*:nth-child(5){grid-area:w}.lw-b>*:nth-child(6){grid-area:b}.lw-b>*:nth-child(7){grid-area:k}.lw-b>*:nth-child(8){grid-area:c}.lw-tiles,.lw-two{grid-template-columns:minmax(0,1fr)}}
+@container lw (max-width:1020px){.lw-b{grid-template-columns:62px minmax(0,1fr) 22px;grid-template-areas:"t m c" "t s c" "t w c" "t b c" "t e c" "t k c";gap:8px 12px}.lw-b>*:nth-child(1){grid-area:t}.lw-b>*:nth-child(2){grid-area:m}.lw-b>*:nth-child(3){grid-area:s}.lw-b>*:nth-child(4){display:none}.lw-b>*:nth-child(5){grid-area:w}.lw-b>*:nth-child(6){grid-area:b}.lw-b>*:nth-child(7){grid-area:e}.lw-b>*:nth-child(8){grid-area:k}.lw-b>*:nth-child(9){grid-area:c}.lw-tiles,.lw-two{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:1280px){.lw-hd{display:none}}
 @media (prefers-reduced-motion:reduce){.lw,.lw-b,.lw-chv{transition:none}}
 .mu-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1;min-width:0}
@@ -7025,7 +7028,7 @@ function lvSignals(g, mk, o, nf){                                               
   return out;
 }
 // The shared line-movement chart (sharp-money/line-chart.js): every book's spread, total and moneyline from the book tape, matched to this game by teams and tip.
-const lvChartHost = gid => `<div class="lv-chart"><p class="lv-lab">Line movement, every book</p><div data-vlm-key="${gid}"></div></div>`;
+const lvChartHost = gid => `<div class="lv-chart"><p class="lv-lab">Line movement, every book</p><div data-vlm-key="${gid}"></div></div>`;   // sits right of the sharp read, only while the row is open
 function lvCharts(){
   if (!window.VaultLineChart) return;
   const B = (slateBoard() || {}).board || {}, games = [...(B.games || []), ...(B.opening || [])];
@@ -7065,7 +7068,7 @@ function lineCard(g, B, status){
       <div><p class="lv-lab">Novig tickets of $25 and up</p>${tk || '<p class="muted">None yet.</p>'}<p class="lv-fine">Anonymous, like Kalshi. A ticket shows size and side, not who. Context, not a bet.</p></div></div>`;
   };
   const sharpRow = SIG.length ? `<div class="lv-sr"><span class="lv-vd" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span>${SIG.map(x => `<span class="lv-sp" title="${esc(x.tip)}"><b>${x.k}</b>${lvMini(x.v)}<span>${esc(x.tiny)}</span></span>`).join('')}
-      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</div>${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}${sdOpen ? lvChartHost(gid) : ''}` : '';
+      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</div>${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}` : '';
   // tiles
   const spVal = c ? `${g.home} ${lvF1(c[1])}` : M && M.spread != null ? spTxt(g, M.spread) : 'n/a', toVal = c && c[3] != null ? c[3].toFixed(1) : M && M.total != null ? fmt(M.total) : 'n/a', wnVal = c && c[5] != null ? pc(c[5], 1) : M && M.win != null ? pc(M.win, 1) : 'n/a';
   const from = c ? 'Pinnacle' : M && M.spFrom || '';
@@ -7077,8 +7080,9 @@ function lineCard(g, B, status){
     ${tile(`${g.home} win`, wnVal, c ? 'no vig' : '', p0 && c && p0[5] != null ? `Started the day at <b>${pc(p0[5], 1)}</b>` : '', pill('Kalshi', K.win != null ? pc(K.win) : '') + pill('Novig', nvM ? pc(nvM.win) : '') + pill('Polymarket', PM.win != null ? pc(PM.win) : ''))}</div>` : '<p class="muted lv-none">No book has posted yet.</p>';
   // Vault line (regular season)
   const dS = V && M && M.spread != null ? V.spread - M.spread : null, dT = V && M && M.total != null && !noT ? V.total - M.total : null, dW = V && M && M.win != null ? V.win - M.win : null;
-  const vault = V ? `<div class="lv-vault"><b>Vault</b><span>${spTxt(g, V.spread)}</span><span>${noT ? '<span class="muted" title="Left out for the first weeks of a season: it ran about 4 points under the close">total later</span>' : fmt(V.total)}</span><span>${g.home} ${pc(V.win)}</span>
-      <small>${dS != null ? (Math.abs(dS) < .25 ? 'matches the market' : `leans ${dS < 0 ? g.home : g.away} by ${fmt(Math.abs(dS))} vs the market`) : ''} · context, not a bet${early ? " · last season's rosters" : ''}</small></div>${early ? movesHtml(g) : ''}` : '';
+  const vaultRow = V ? `<div class="lv-vault"><b>Vault</b><span>${spTxt(g, V.spread)}</span><span>${noT ? '<span class="muted" title="Left out for the first weeks of a season: it ran about 4 points under the close">total later</span>' : fmt(V.total)}</span><span>${g.home} ${pc(V.win)}</span>
+      <small>${dS != null ? (Math.abs(dS) < .25 ? 'matches the market' : `leans ${dS < 0 ? g.home : g.away} by ${fmt(Math.abs(dS))} vs the market`) : ''} · context, not a bet${early ? " · last season's rosters" : ''}</small></div>` : '';
+  const vaultMoves = V && early ? movesHtml(g) : '', vault = vaultRow + vaultMoves;
   // books behind the market
   const behind = cons ? books.filter(b => !b.pin && b.ts && cons.ts - b.ts > 1800 && ((b.s && cons.s && Math.abs(b.s.l - cons.s.l) >= 1) || (b.t && cons.t && Math.abs(b.t.l - cons.t.l) >= 1))) : [];
   const spot = behind.length ? `<div class="lv-spot"><i></i><p><b>${behind.map(b => esc(b.n)).join(' and ')}</b> ${behind.length === 1 ? 'is' : 'are'} behind the market (${behind.map(b => `${b.s ? `${g.home} ${lvF1(b.s.l)}` : ''}${b.s && b.t ? ', ' : ''}${b.t ? `total ${b.t.l}` : ''}`).join(' and ')} against ${cons.s ? `${g.home} ${lvF1(cons.s.l)}` : ''}${cons.s && cons.t ? ' and ' : ''}${cons.t ? cons.t.l : ''}), updated up to ${Math.round((cons.ts - Math.min(...behind.map(b => b.ts))) / 60)} minutes earlier.</p></div>` : '';
@@ -7125,11 +7129,13 @@ function lineCard(g, B, status){
       ${hw != null ? `<div class="lw-split"><i style="width:${(1 - hw) * 100}%;background:${ac}"></i><i style="width:${hw * 100}%;background:${hcl}"></i></div>` : ''}
       ${bMa && bMh ? `<div class="lw-bl">Best price</div>${bp(g.away, lvPx(bMa.m.a), '', bMa.n)}${bp(g.home, lvPx(bMh.m.h), '', bMh.n)}` : ''}
       <div class="lw-ex">${pill('Kalshi', K.win != null ? pc(K.win) : '')}${pill('Novig', nvM ? pc(nvM.win) : '')}${pill('Polymarket', PM.win != null ? pc(PM.win) : '')}</div></div>`;
+    const evTop = (o && o.behind || []).reduce((a, b) => !a || b.ev > a.ev ? b : a, null);   // the biggest price over Pinnacle's fair on this game (sharp.py 'behind', 2% and up)
+    const sumEv = evTop ? `<b class="lw-ev" title="${esc(evTop.venue)} ${esc(xSide(evTop, g))}: ${pc(evTop.ev, 1)} over Pinnacle's no-vig fair. Context, not a bet.">+${(evTop.ev * 100).toFixed(1)}%</b><small>${esc(abbr(evTop.venue))} ${esc(xSide(evTop, g))}</small>` : `<span class="muted">${o ? 'none' : '-'}</span>`;
     const vcls = nA && nH ? 'mix' : nA || nH ? 'lean' : '';
     const bars = SIG.map(x => { const w = Math.min(50, Math.abs(x.v) * 50); return `<div class="lw-sg" title="${esc(x.tip)}"><span>${esc(x.k)}</span><div class="lw-bar"><i style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${w}%;background:${x.v < 0 ? ac : hcl}"></i></div><span class="num">${esc(x.tiny)}</span></div>`; }).join('');
     const sh = SIG.length ? `<section class="lw-sh"><div class="lw-vh"><span class="lw-vd ${vcls}" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span><small>${nA} toward ${esc(g.away)}, ${nH} toward ${esc(g.home)}. Context, not a bet.</small></div>
       <div class="lw-dvh"><span></span><span><span style="color:${ac}">← ${esc(g.away)}</span><span style="color:${hcl}">${esc(g.home)} →</span></span><span></span></div>${bars}
-      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}${sdOpen ? lvChartHost(gid) : ''}</section>` : '';
+      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}</section>` : '';
     const sumSpread = hs != null ? `${esc(spTxt(g, hs))}<small>${op.spread != null ? (mvS ? `<b>${Math.abs(mvS).toFixed(1)} to ${esc(mvS > 0 ? g.away : g.home)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
     const sumTotal = tt != null ? `${fmt(tt)}<small>${op.total != null ? (mvT ? `<b>${mvT > 0 ? 'up' : 'down'} ${Math.abs(mvT).toFixed(1)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
     const sumWin = hw != null ? `<div class="lw-split"><i style="width:${(1 - hw) * 100}%;background:${ac}"></i><i style="width:${hw * 100}%;background:${hcl}"></i></div><div class="lw-wl"><span>${esc(g.away)} ${Math.round((1 - hw) * 100)}</span><span>${Math.round(hw * 100)} ${esc(g.home)}</span></div>` : '<span class="muted">n/a</span>';
@@ -7137,10 +7143,10 @@ function lineCard(g, B, status){
     const pips = SIG.map(x => `<i title="${esc(x.k)}: ${esc(x.tiny)}"><b style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${Math.min(50, Math.abs(x.v) * 50)}%;background:${x.v < 0 ? ac : hcl}"></b></i>`).join('');
     return `<article class="lw${ro ? ' open' : ''}" id="sg-${gid}" style="--a:${ac};--h:${hcl}"><button class="lw-b" type="button" data-lrow="${gid}" aria-expanded="${ro}">
       <div class="lw-t">${clock(g.tip)}<small>${etFmt(g.tip, {weekday: 'short'})} ${TZL}</small></div><div class="lw-m"><div class="lw-mt">${lgImg(g.away, 28)}<b>${esc(g.away)}</b><i>@</i>${lgImg(g.home, 28)}<b>${esc(g.home)}</b></div>${badges ? `<div class="lw-bd">${badges}</div>` : ''}</div>
-      <div class="lw-v">${sumSpread}</div><div class="lw-v">${sumTotal}</div><div class="lw-wn">${sumWin}</div><div class="lw-bs">${sumBest}</div>
+      <div class="lw-v">${sumSpread}</div><div class="lw-v">${sumTotal}</div><div class="lw-wn">${sumWin}</div><div class="lw-bs">${sumBest}</div><div class="lw-evc">${sumEv}</div>
       <div class="lw-sk">${SIG.length ? `<span class="lw-vd ${vcls}">${esc(verdict)}</span><span class="lw-pips">${pips}</span>` : '<span class="muted">Early</span>'}</div><span class="lw-chv"></span></button>
-      <div class="lw-dt"><div class="lw-meta">${asof ? `<span>${asof}</span>` : ''}</div>${M || c ? `<div class="lw-tiles">${tS}${tT}${tW}</div>` : '<p class="muted lv-none">No book has posted yet.</p>'}
-        <div class="lw-two">${sh}<div class="lw-vl">${vault}${spot}</div></div>${board}</div></article>`;
+      <div class="lw-dt"><div class="lw-meta">${vaultRow}${asof ? `<span class="lw-asof">${asof}</span>` : ''}</div>${M || c ? `<div class="lw-tiles">${tS}${tT}${tW}</div>` : '<p class="muted lv-none">No book has posted yet.</p>'}
+        <div class="lw-two">${sh}<div class="lw-vl">${ro ? lvChartHost(gid) : ''}${vaultMoves}${spot}</div></div>${board}</div></article>`;
   }
   return `<article class="card sl-card lv-card${sv.bk[gid] ? ' bk' : ''}" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
@@ -7152,7 +7158,7 @@ function lwMetric(g, B, how){                                   // sort keys for
   const NV = B.novig && B.novig.games && B.novig.games[String(g.id)], nf = NV ? nvFlow(g, B) : null;
   return Math.abs(lvSignals(g, mk, o, nf).reduce((a, x) => a + x.v, 0));
 }
-const lwHead = '<div class="lw-hd"><span>Tip</span><span>Game</span><span>Spread</span><span>Total</span><span>Win chance</span><span>Best spread prices</span><span>Sharp read</span><span></span></div>';
+const lwHead = '<div class="lw-hd"><span>Tip</span><span>Game</span><span>Spread</span><span>Total</span><span>Win chance</span><span>Best spread prices</span><span>+EV</span><span>Sharp read</span><span></span></div>';
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el){ el.outerHTML = lineCard(g, B, statusFromBoard(B)); lvCharts(); } }
 $('sgames').addEventListener('click', e => {
   if (e.target.closest('[data-golines]')){ goView('lines'); return; }
