@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Props Table v2, option B: Two-line rows</title>
+<style>/*BASE_CSS*/
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.list{display:grid;gap:8px;margin-top:6px}
+.row{display:grid;grid-template-columns:minmax(200px,1.25fr) minmax(170px,1fr) 150px minmax(190px,1.1fr) minmax(230px,1.15fr);gap:6px 24px;align-items:center;width:100%;text-align:left;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;transition:border-color .15s,background .15s}
+.row:hover{border-color:var(--border2);background:var(--surface2)}
+.pl{display:flex;gap:11px;align-items:center;min-width:0}
+.pl .av{width:42px;height:42px;border-radius:12px}
+.pl b{display:block;font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl small{display:block;color:var(--fg3);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prop .big{display:flex;align-items:baseline;gap:8px}
+.prop .big b{font:600 22px var(--font-mono);letter-spacing:-.02em}
+.prop .big span{font:600 11px var(--font-mono);color:var(--fg2);background:var(--raised);padding:2px 7px;border-radius:6px}
+.prop small{display:block;color:var(--fg3);font:500 11px var(--font-mono);margin-top:3px}
+.rng{position:relative;height:6px;border-radius:3px;background:var(--raised);margin:9px 0 3px}
+.rng i{position:absolute;top:0;bottom:0;border-radius:3px;background:rgba(122,180,255,.35)}
+.rng u{position:absolute;top:-3px;width:2px;height:12px;background:var(--fg);text-decoration:none;border-radius:1px}
+.rng em{position:absolute;top:-3px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)}
+.formg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center}
+.formg small{display:block;font:500 10px var(--font-mono);letter-spacing:.06em;color:var(--fg3);text-transform:uppercase}
+.mrow{display:grid;gap:5px}
+.mrow .n{display:flex;justify-content:space-between;font:500 11px var(--font-mono);color:var(--fg3)}
+.mrow .n b{color:var(--fg);font-weight:600}
+.bet{display:grid;grid-template-columns:1fr auto;gap:2px 14px;align-items:center}
+.bet .b1{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bet .b1 small{display:block;font:500 11px var(--font-mono);color:var(--fg3)}
+.nums{display:flex;gap:16px;align-items:flex-end}
+.nums div{text-align:right}.nums small{display:block;font:500 9.5px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.nums b{font:600 15px var(--font-mono)}
+.l2{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:10px;margin-top:4px;border-top:1px solid var(--border)}
+.l2 .mv{margin-left:auto;font:500 11.5px var(--font-mono);color:var(--fg3)}
+.l2 .mv b{color:var(--fg);font-weight:600}
+.ghost{color:var(--fg3);font-size:12px}
+/* slide-over */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--surface);border-left:1px solid var(--border2);transform:translateX(104%);transition:transform .32s var(--ease-out);z-index:21;overflow-y:auto;padding:22px 22px 40px}
+body.show .scrim{opacity:1;pointer-events:auto}body.show .sheet{transform:none}
+.sheet .x{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:10px;background:var(--raised);font-size:18px;color:var(--fg2)}
+.sheet h2{margin:0;font-size:20px;letter-spacing:-.02em}
+.hd{display:flex;gap:14px;align-items:center;margin-bottom:16px;padding-right:40px}.hd .av{width:52px;height:52px;border-radius:14px}
+.betcard{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:1fr repeat(3,auto);gap:12px 18px;align-items:end;margin-bottom:18px}
+.betcard .w{grid-column:1/-1}.betcard h3{margin:0;font-size:15px}.betcard small{display:block;font:500 10px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.betcard b.big{font:600 20px var(--font-mono)}
+.sec{margin:0 0 20px}.sec h4{margin:0 0 10px;font-size:13px}
+.tellrow{display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:1180px){.row{grid-template-columns:minmax(0,1fr) auto;gap:10px 14px}.row .prop,.row .formz,.row .mz{grid-column:1/-1}.row .prop .big{justify-content:flex-start}.l2 .mv{margin-left:0;width:100%}}
+@media (max-width:760px){.wrap{padding:14px 12px 60px}.sheet{top:auto;left:0;width:100%;max-height:88dvh;border-left:0;border-top:1px solid var(--border2);border-radius:20px 20px 0 0;transform:translateY(104%)}.betcard{grid-template-columns:1fr 1fr 1fr}.betcard .w{grid-column:1/-1}.row{padding:13px 14px}.search{min-width:0!important;flex:1}}
+</style></head><body><div class="wrap">
+<div class="top"><div><p class="crumb">Markets / Props Table</p><h1>Props Table</h1><p class="sub">Option B, Two-line rows. Each prop reads like a card on two lines. Click a row and the full detail slides in from the right (a bottom sheet on a phone).</p></div>
+<div class="key"><span><u style="background:var(--blue)"></u>Model</span><span><u style="background:var(--fg3)"></u>Market</span><span><u style="background:var(--fg)"></u>Fair</span></div></div>
+<div class="filters"><div class="seg" id="stats"></div><div class="search">Filter players</div><span class="toggle"><i></i>Passing gates only</span><div class="seg" style="margin-left:auto"><button class="on">Best edge</button><button>Best +EV</button><button>Tip time</button></div></div>
+<div class="list" id="list"></div>
+<p class="note">Real rows from the live Props Table. The blue bar on each row is the model's likely range for the stat, the white tick is the line, the dot is the projection: the line sitting outside the bar is the whole story at a glance. +EV is a price against Pinnacle's no-vig fair, so it only exists where Pinnacle prices the prop.</p>
+</div><div class="scrim" id="scrim"></div><aside class="sheet" id="sheet" aria-label="Prop detail"></aside>
+<script>window.PROPS=/*DATA*/;</script>
+<script>/*LIB_JS*/
+const stats=['All',...new Set(R.map(r=>r.stat))];
+document.getElementById('stats').innerHTML=stats.map((s,i)=>`<button class="${i?'':'on'}">${s}</button>`).join('');
+const rng=r=>{const hi=Math.max(r.line*1.6,r.rg?r.rg[1]:0,1),pctx=v=>Math.max(0,Math.min(100,v/hi*100));return r.rg?`<div class="rng" title="Likely range ${r.rg[0]} to ${r.rg[1]}, projection ${r.mu}, line ${r.line}"><i style="left:${pctx(r.rg[0])}%;width:${pctx(r.rg[1])-pctx(r.rg[0])}%"></i><em style="left:${pctx(r.mu)}%"></em><u style="left:${pctx(r.line)}%"></u></div>`:''};
+const rowHtml=(r,i)=>`<button class="row press" type="button" data-i="${i}">
+ <span class="pl">${av(r)}<span style="min-width:0"><b>${r.name}</b><small>${r.tm} · ${r.gm} · ${r.tip}${r.fl?' · '+r.fl:''}</small></span></span>
+ <span class="prop"><span class="big"><b>${r.line}</b><span>${r.stat}</span></span>${rng(r)}<small>proj ${r.mu} (${r.rg?r.rg[0]+' to '+r.rg[1]:''}) · ${r.min} min</small></span>
+ <span class="formz"><span class="formg"><span><small>L5</small>${hit(r.l5)}</span><span><small>L10</small>${hit(r.l10)}</span><span><small>H2H</small>${hit(r.h2h)}</span></span></span>
+ <span class="mz mrow">${meter(r)}<span class="n"><span>Model <b>${pc(r.pm)}</b></span><span>Mkt <b>${pc(r.mkt)}</b></span><span>Fair <b>${pc(r.fair)}</b></span></span></span>
+ <span class="bet"><span class="b1">${betTxt(r)}<small>${priceTxt(r)} · ${r.best?GATE[r.best[5]]:''}</small></span><span class="nums"><div><small>Edge</small>${edgeTxt(r)}</div><div><small>+EV</small>${evTxt(r)}</div></span></span>
+ <span class="l2">${tellChips(r)||'<span class="ghost">No market tell</span>'}${r.pass?'<span class="chip up"><i></i>Passes its gate</span>':''}<span class="mv">Line <b>${moveTxt(r)}</b> since open · ${r.ev?'<b>'+evWho(r)+'</b>':evWho(r)}</span></span>
+</button>`;
+document.getElementById('list').innerHTML=R.map(rowHtml).join('');
+const sheet=document.getElementById('sheet');
+const open=i=>{const r=R[i];sheet.innerHTML=`<button class="x press" aria-label="Close" id="cl">&times;</button>
+ <div class="hd">${av(r)}<div><h2>${r.name}</h2><span class="muted" style="font-size:12.5px">${r.tm} · ${r.gm} · ${r.tip}${r.fl?' · '+r.fl:''}</span></div></div>
+ <div class="betcard"><div class="w"><small>Best bet</small><h3>${betTxt(r)} <span class="muted mono" style="font-weight:500">${priceTxt(r)}</span> ${gate(r)}</h3></div>
+  <div><small>Edge</small><b class="big">${edgeTxt(r)}</b></div><div><small>+EV</small><b class="big">${evTxt(r)}</b></div><div><small>Proj</small><b class="big">${r.mu}</b></div></div>
+ <div class="sec"><h4>Market tells</h4><div class="tellrow">${tellChips(r)||'<span class="muted" style="font-size:12.5px">No market tell on this prop.</span>'}</div></div>
+ <div class="sec"><h4>Line movement</h4>${chart(r,500,170)}</div>
+ <div class="sec"><h4>Model against the market</h4>${meter(r)}<div class="kv" style="margin-top:8px"><span>Model chance over</span><b>${pc(r.pm)}</b></div><div class="kv"><span>Market chance over</span><b>${pc(r.mkt)}</b></div><div class="kv"><span>Fair (blend)</span><b>${pc(r.fair)}</b></div>${r.pf!=null?`<div class="kv"><span>Pinnacle no-vig</span><b>${pc(r.pf)}</b></div>`:''}</div>
+ <div class="sec"><h4>How often it went over ${r.line}</h4>${form(r)}</div>
+ <div class="sec"><h4>Every book at this line</h4>${bookRows(r)}</div>`;
+ document.body.classList.add('show');document.getElementById('cl').focus()};
+const close=()=>document.body.classList.remove('show');
+document.getElementById('list').addEventListener('click',e=>{const b=e.target.closest('.row');if(b)open(+b.dataset.i)});
+document.getElementById('scrim').addEventListener('click',close);document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});sheet.addEventListener('click',e=>{if(e.target.closest('#cl'))close()});
+if(location.hash==='#open')open(0);
+</script></body></html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Props Table v2, option C: Split view</title>
+<style>/*BASE_CSS*/
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.split{display:grid;grid-template-columns:minmax(380px,.9fr) minmax(0,1.5fr);gap:18px;align-items:start;margin-top:4px}
+.lst{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.lh{display:grid;grid-template-columns:minmax(0,1fr) 62px 64px 58px;gap:8px;padding:10px 16px;font:500 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+.lh span:not(:first-child){text-align:center}
+.it{display:grid;grid-template-columns:minmax(0,1fr) 62px 64px 58px;gap:8px;align-items:center;width:100%;text-align:left;padding:11px 16px;border-bottom:1px solid var(--border);position:relative;transition:background .12s}
+.it:last-child{border-bottom:0}
+.it:hover{background:var(--surface2)}
+.it.on{background:var(--surface2)}.it.on:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--fg)}
+.pl{display:flex;gap:10px;align-items:center;min-width:0}
+.pl b{display:block;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl small{display:block;color:var(--fg3);font:500 11px var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .c{text-align:center;font:600 13px var(--font-mono)}.it .c small{display:block;font:500 10px var(--font-mono);color:var(--fg3)}
+.panel{position:sticky;top:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px 24px;max-height:calc(100dvh - 24px);overflow-y:auto}
+.hd{display:flex;gap:14px;align-items:center;margin-bottom:16px}.hd .av{width:56px;height:56px;border-radius:15px}
+.hd h2{margin:0;font-size:21px;letter-spacing:-.02em}
+.hd .big{margin-left:auto;text-align:right}.hd .big b{display:block;font:600 26px var(--font-mono);letter-spacing:-.02em}.hd .big small{color:var(--fg3);font:500 11px var(--font-mono)}
+.stat{display:inline-block;font:600 11px var(--font-mono);color:var(--fg2);background:var(--raised);border-radius:6px;padding:2px 8px}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+.kpi{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.kpi small{display:block;font:500 10px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.kpi b{font:600 18px var(--font-mono)}.kpi i{display:block;font:500 10.5px var(--font-mono);color:var(--fg3);font-style:normal;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g2{display:grid;grid-template-columns:1.4fr 1fr;gap:22px}
+.sec{margin:0 0 18px}.sec h4{margin:0 0 10px;font-size:13px}
+.tellrow{display:flex;gap:6px;flex-wrap:wrap}
+.mm{display:grid;gap:9px}.mm .t{display:grid;grid-template-columns:62px 1fr 44px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}.mm .t b{font:600 12.5px var(--font-mono);color:var(--fg);text-align:right}
+.back{display:none}
+@media (max-width:980px){
+ .wrap{padding:14px 12px 60px}.split{grid-template-columns:1fr}
+ .panel{display:none;position:fixed;inset:0;max-height:none;border-radius:0;z-index:30;border:0}
+ body.pg .panel{display:block}body.pg .split>.lst{display:none}
+ .back{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;background:var(--raised);font-size:13px;margin-bottom:14px}
+ .kpis{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr}.hd .big b{font-size:22px}
+ .lh,.it{grid-template-columns:minmax(0,1fr) 54px 58px}.lh span:nth-child(4),.it .gc{display:none}
+}
+</style></head><body><div class="wrap">
+<div class="top"><div><p class="crumb">Markets / Props Table</p><h1>Props Table</h1><p class="sub">Option C, Split view. A slim list to scan, and one detail panel that stays put while you click down the list. On a phone the panel opens as its own page.</p></div></div>
+<div class="filters"><div class="seg" id="stats"></div><div class="search">Filter players</div><span class="toggle"><i></i>Passing gates only</span><div class="seg" style="margin-left:auto"><button class="on">Best edge</button><button>Best +EV</button><button>Tip time</button></div></div>
+<div class="split"><div class="lst" id="lst"></div><section class="panel" id="panel" aria-live="polite"></section></div>
+<p class="note">Real rows from the live Props Table. The list keeps only what you scan on: who, the line, the edge, +EV and the gate. Min, projection, form, model, market, fair and every book are in the panel, laid out the way you would read them. +EV is a price against Pinnacle's no-vig fair, so it only exists where Pinnacle prices the prop.</p>
+</div>
+<script>window.PROPS=/*DATA*/;</script>
+<script>/*LIB_JS*/
+const stats=['All',...new Set(R.map(r=>r.stat))];
+document.getElementById('stats').innerHTML=stats.map((s,i)=>`<button class="${i?'':'on'}">${s}</button>`).join('');
+const lst=document.getElementById('lst'),panel=document.getElementById('panel');
+lst.innerHTML=`<div class="lh"><span>Player and prop</span><span>Edge</span><span title="Best price against Pinnacle's no-vig fair">+EV</span><span>Gate</span></div>`+R.map((r,i)=>`<button class="it press" type="button" data-i="${i}"><span class="pl">${av(r)}<span style="min-width:0"><b>${r.name}</b><small>${r.stat} ${r.line} · ${betTxt(r)} ${priceTxt(r)}</small></span></span>
+ <span class="c">${edgeTxt(r)}</span><span class="c">${evTxt(r)}<small>${r.ev?r.ev.bk:''}</small></span><span class="c gc">${gate(r)}</span></button>`).join('');
+const show=i=>{const r=R[i];lst.querySelectorAll('.it').forEach((b,k)=>b.classList.toggle('on',k===i));
+ panel.innerHTML=`<button class="back press" id="bk">&lsaquo; Props</button>
+ <div class="hd">${av(r)}<div><h2>${r.name}</h2><span class="muted" style="font-size:12.5px">${r.tm} · ${r.gm} · ${r.tip}${r.fl?' · '+r.fl:''}</span></div><div class="big"><b>${r.stat} ${r.line}</b><small>${r.lf} line · proj ${r.mu}</small></div></div>
+ <div class="kpis"><div class="kpi"><small>Best bet</small><b style="font-size:14px;white-space:normal;line-height:1.25;display:block">${betTxt(r)}</b><i>${priceTxt(r)}</i></div><div class="kpi"><small>Edge</small><b>${edgeTxt(r)}</b><i>${r.best?GATE[r.best[5]]:''}</i></div><div class="kpi"><small>+EV</small><b>${evTxt(r)}</b><i>${evWho(r)}</i></div><div class="kpi"><small>Proj</small><b>${r.mu}</b><i>${r.rg?r.rg[0]+' to '+r.rg[1]:''}</i></div><div class="kpi"><small>Min</small><b>${r.min}</b><i>${r.fl||''}</i></div></div>
+ <div class="g2"><div><div class="sec"><h4>Line movement</h4>${chart(r,520,190)}</div></div>
+ <div><div class="sec"><h4>Market tells</h4><div class="tellrow">${tellChips(r)||'<span class="muted" style="font-size:12.5px">No market tell on this prop.</span>'}</div></div>
+  <div class="sec"><h4>Model against the market</h4><div class="mm">
+   <div class="t"><span>Model</span><div class="bar"><i style="width:${r.pm*100}%;background:var(--blue)"></i></div><b>${pc(r.pm)}</b></div>
+   <div class="t"><span>Market</span><div class="bar"><i style="width:${r.mkt*100}%"></i></div><b>${pc(r.mkt)}</b></div>
+   <div class="t"><span>Fair</span><div class="bar"><i style="width:${r.fair*100}%;background:var(--fg)"></i></div><b>${pc(r.fair)}</b></div>
+   ${r.pf!=null?`<div class="t"><span>Pinnacle</span><div class="bar"><i style="width:${r.pf*100}%;background:#ff5fa2"></i></div><b>${pc(r.pf)}</b></div>`:''}</div></div></div></div>
+ <div class="g2"><div class="sec"><h4>How often it went over ${r.line}</h4>${form(r)}</div><div class="sec"><h4>Every book at this line</h4>${bookRows(r)}</div></div>`;
+ document.body.classList.add('pg');panel.scrollTop=0};
+lst.addEventListener('click',e=>{const b=e.target.closest('.it');if(b)show(+b.dataset.i)});
+panel.addEventListener('click',e=>{if(e.target.closest('#bk'))document.body.classList.remove('pg')});
+show(0);if(innerWidth<=980)document.body.classList.remove('pg');
+</script></body></html>

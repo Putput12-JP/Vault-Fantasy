@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-27T03:00', tag:'New', title:'NBA Props Table: new layout with form, +EV and market tells',
+    items:[
+      'The Props Table is rebuilt so every number sits on one row: minutes, projection, line, how far the line has moved, last 5, last 10 and head to head, model, market and fair chance, the best bet, its price, edge and gate.',
+      'A new +EV column shows the best book price against the sharp book\'s fair price. It only shows where the sharp book prices the prop, and it does not use our model.',
+      'Market tells (the sharp book moved, sharp accounts, heavy Kalshi money, behind the sharp book) show on the row. Click a row for the line movement, how the model compares with the market, and every book. Watching and logging a bet work as before.',
+      'On a phone each prop is a card with the line, the best bet, your form and +EV first.'
+    ]
+  },
+  {
     ts:'2026-10-27T02:00', tag:'Improved', title:'NBA Game Lines: the EV column always shows a number',
     items:[
       'The +EV column is now "Best EV". When a book beats the sharp book\'s fair price it shows the edge in green. When none does, it shows how close the best book is, like -0.7%, in grey.',
