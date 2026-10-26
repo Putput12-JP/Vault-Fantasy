@@ -1566,7 +1566,7 @@ table.nt.sx-tk{min-width:420px}
 .sv-mp{display:flex;gap:4px;justify-content:flex-end}
 /* Game Lines scan list (mocks/lines/lines-c-scan.html): slim rows, open one for the tiles, sharp read and book board */
 .lw-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px}
-.lw-hd,.lw-b{display:grid;grid-template-columns:78px minmax(170px,1.25fr) 150px 112px 150px minmax(210px,1.5fr) 96px 150px 22px;gap:16px;align-items:center}
+.lw-hd,.lw-b{display:grid;grid-template-columns:70px minmax(200px,1.1fr) 124px 96px 130px minmax(170px,1.3fr) 96px 150px 22px;gap:14px;align-items:center}   /* fixed tracks 688px + game 200 + prices 170 + 8 gaps 112 = 1170px + padding 36: the row needs a 1210px card, the stacked layout below that */
 .lw-hd{padding:4px 18px;font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
 .lw{container:lw / inline-size;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .15s}
 .lw:hover{border-color:var(--fg3)}.lw.open{border-color:var(--fg3)}
@@ -1586,8 +1586,9 @@ table.nt.sx-tk{min-width:420px}
 .lw-dt{display:none;padding:6px 18px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.14)}.lw.open .lw-dt{display:block}
 .lw-meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 16px;color:var(--fg3);font-size:12px;min-height:6px;padding-top:4px}
 .lw-meta .lv-vault{padding:0;border:0;background:none;color:var(--fg2)}.lw-meta .lv-vault small{margin-left:0}.lw-asof{margin-left:auto}
-.lw-evc{display:grid;gap:2px;justify-items:start}.lw-evc small{color:var(--fg3);font:500 11px var(--mono,ui-monospace,monospace);white-space:nowrap}.lw-ev{color:var(--up);font:700 15px var(--mono,ui-monospace,monospace)}
+.lw-evc{display:grid;gap:2px;justify-items:start}.lw-evc small{color:var(--fg3);font:500 11px var(--mono,ui-monospace,monospace);white-space:nowrap}.lw-ev{color:var(--up);font:700 15px var(--mono,ui-monospace,monospace)}.lw-ev.sm{color:var(--fg2);font-weight:600}
 .lw .lv-chart{padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.2)}
+.lw .lv-chart .vlm-edge{display:none}   /* the Novig-vs-Pinnacle table under the chart is ~500px tall and sits next to a short sharp read: the Sharp Money page keeps it */
 .lw-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:8px}
 .lw-tile{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:16px;padding:14px 16px;min-width:0}
 .lw-tile h4{margin:0;display:flex;justify-content:space-between;font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
@@ -1604,8 +1605,9 @@ table.nt.sx-tk{min-width:420px}
 .lw-sg{font-size:12.5px}.lw-sg>span:first-child{color:var(--fg2)}.lw-sg>span:last-child{text-align:right;color:var(--fg2);font-size:12px}
 .lw-bar{position:relative;height:12px;border-radius:6px;background:rgba(255,255,255,.06)}.lw-bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:var(--fg3);border-radius:2px}.lw-bar i{position:absolute;top:0;bottom:0;border-radius:6px}
 .lw-vl{display:grid;gap:10px;min-width:0}.lw .lv-board{margin-top:12px}
-@container lw (max-width:1020px){.lw-b{grid-template-columns:62px minmax(0,1fr) 22px;grid-template-areas:"t m c" "t s c" "t w c" "t b c" "t e c" "t k c";gap:8px 12px}.lw-b>*:nth-child(1){grid-area:t}.lw-b>*:nth-child(2){grid-area:m}.lw-b>*:nth-child(3){grid-area:s}.lw-b>*:nth-child(4){display:none}.lw-b>*:nth-child(5){grid-area:w}.lw-b>*:nth-child(6){grid-area:b}.lw-b>*:nth-child(7){grid-area:e}.lw-b>*:nth-child(8){grid-area:k}.lw-b>*:nth-child(9){grid-area:c}.lw-tiles,.lw-two{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:1280px){.lw-hd{display:none}}
+@container lw (max-width:1210px){.lw-b{grid-template-columns:62px minmax(0,1fr) 22px;grid-template-areas:"t m c" "t s c" "t w c" "t b c" "t e c" "t k c";gap:8px 12px}.lw-b>*:nth-child(1){grid-area:t}.lw-b>*:nth-child(2){grid-area:m}.lw-b>*:nth-child(3){grid-area:s}.lw-b>*:nth-child(4){display:none}.lw-b>*:nth-child(5){grid-area:w}.lw-b>*:nth-child(6){grid-area:b}.lw-b>*:nth-child(7){grid-area:e}.lw-b>*:nth-child(8){grid-area:k}.lw-b>*:nth-child(9){grid-area:c}}
+@container lw (max-width:1020px){.lw-tiles,.lw-two{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1540px){.lw-hd{display:none}}   /* below this the card is under 1180px and the rows stack, so the column header would not line up */
 @media (prefers-reduced-motion:reduce){.lw,.lw-b,.lw-chv{transition:none}}
 .mu-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1;min-width:0}
 .mu-ctl .seg button img.lg{vertical-align:-3px;margin:0 3px 0 0}.mu-ctl .seg button img.lg+img.lg{margin-left:0}
@@ -6632,6 +6634,22 @@ function lvBooks(mk){                                                        // 
   return Object.values(by).map(r => ({n: r[0], pin: r[0] === 'Consensus' || r[0] === 'Open', ts: r[10] || 0,
     s: r[1] == null ? null : {l: r[1], h: lvNum(r[2]), a: lvNum(r[3])}, m: {h: lvNum(r[4]), a: lvNum(r[5])}, t: r[6] == null ? null : {l: r[6], o: lvNum(r[7]), u: lvNum(r[8])}}));
 }
+// The biggest price over Pinnacle's no-vig fair on a game, from every book's quote at a number Pinnacle also prices (its stored ladder, the same
+// power de-vig as sharp.py). Any positive edge counts, up to the recorder's 25% cap (past it the quote is more likely stale than real), and a book more than 30 minutes behind the newest quote is skipped. Null with no ladder.
+function lvBestEv(books, lad){
+  if (!lad) return null;
+  const ref = Math.max(0, ...books.map(b => b.ts || 0));   // a book that has not changed in 30 minutes while the market did is stale, not good (the same rule as "behind the market")
+  const pay = a => a < 0 ? 100 / -a : a / 100, ok = a => a != null && a >= -300 && a <= 300 && a !== 0;
+  let best = null;
+  const take = (n, m, side, line, price, f) => { if (!ok(price) || f == null) return; const ev = f * (1 + pay(price)) - 1; if (ev > 0 && ev < .25 && (!best || ev > best.ev)) best = {venue: n, m, side, line, price, ev}; };
+  for (const b of books){
+    if (b.pin || b.n === 'Pinnacle' || (b.ts && ref - b.ts > 1800)) continue;
+    if (b.s){ take(b.n, 'sp', 'home', b.s.l, b.s.h, ladFair(lad, 'sp', 'home', b.s.l)); take(b.n, 'sp', 'away', b.s.l, b.s.a, ladFair(lad, 'sp', 'away', b.s.l)); }
+    if (b.t){ take(b.n, 'tot', 'over', b.t.l, b.t.o, ladFair(lad, 'tot', 'over', b.t.l)); take(b.n, 'tot', 'under', b.t.l, b.t.u, ladFair(lad, 'tot', 'under', b.t.l)); }
+    take(b.n, 'ml', 'home', null, b.m.h, ladFair(lad, 'ml', 'home')); take(b.n, 'ml', 'away', null, b.m.a, ladFair(lad, 'ml', 'away'));
+  }
+  return best;
+}
 function lvScore(b, mkt, side){                                              // higher is a better number for the bettor on that side
   if (mkt === 'm'){ const v = side ? b.m.a : b.m.h; return v == null ? -1e9 : lvPr(v); }
   if (mkt === 's') return b.s ? (side ? -b.s.l * 1000 + lvPr(b.s.a) : b.s.l * 1000 + lvPr(b.s.h)) : -1e9;
@@ -6765,8 +6783,8 @@ function lineCard(g, B, status){
       ${hw != null ? `<div class="lw-split"><i style="width:${(1 - hw) * 100}%;background:${ac}"></i><i style="width:${hw * 100}%;background:${hcl}"></i></div>` : ''}
       ${bMa && bMh ? `<div class="lw-bl">Best price</div>${bp(g.away, lvPx(bMa.m.a), '', bMa.n)}${bp(g.home, lvPx(bMh.m.h), '', bMh.n)}` : ''}
       <div class="lw-ex">${pill('Kalshi', K.win != null ? pc(K.win) : '')}${pill('Novig', nvM ? pc(nvM.win) : '')}${pill('Polymarket', PM.win != null ? pc(PM.win) : '')}</div></div>`;
-    const evTop = (o && o.behind || []).reduce((a, b) => !a || b.ev > a.ev ? b : a, null);   // the biggest price over Pinnacle's fair on this game (sharp.py 'behind', 2% and up)
-    const sumEv = evTop ? `<b class="lw-ev" title="${esc(evTop.venue)} ${esc(xSide(evTop, g))}: ${pc(evTop.ev, 1)} over Pinnacle's no-vig fair. Context, not a bet.">+${(evTop.ev * 100).toFixed(1)}%</b><small>${esc(abbr(evTop.venue))} ${esc(xSide(evTop, g))}</small>` : `<span class="muted">${o ? 'none' : '-'}</span>`;
+    const evTop = [...(o && o.behind || []), lvBestEv(books, o && o.lad)].filter(Boolean).reduce((a, b) => !a || b.ev > a.ev ? b : a, null);   // the recorder's behind list (exchanges too) or any book's price over Pinnacle's fair, whichever is bigger
+    const sumEv = evTop ? `<b class="lw-ev${evTop.ev < .02 ? ' sm' : ''}" title="${esc(evTop.venue)} ${esc(xSide(evTop, g))}: ${pc(evTop.ev, 1)} over Pinnacle's no-vig fair at the same number. Context, not a bet.${evTop.ev < .02 ? ' Under 2%, so too small to alert on.' : ''}">+${(evTop.ev * 100).toFixed(1)}%</b><small>${esc(abbr(evTop.venue))} ${esc(xSide(evTop, g))}</small>` : `<span class="muted">${o ? 'none' : '-'}</span>`;
     const vcls = nA && nH ? 'mix' : nA || nH ? 'lean' : '';
     const bars = SIG.map(x => { const w = Math.min(50, Math.abs(x.v) * 50); return `<div class="lw-sg" title="${esc(x.tip)}"><span>${esc(x.k)}</span><div class="lw-bar"><i style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${w}%;background:${x.v < 0 ? ac : hcl}"></i></div><span class="num">${esc(x.tiny)}</span></div>`; }).join('');
     const sh = SIG.length ? `<section class="lw-sh"><div class="lw-vh"><span class="lw-vd ${vcls}" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span><small>${nA} toward ${esc(g.away)}, ${nH} toward ${esc(g.home)}. Context, not a bet.</small></div>
@@ -6782,7 +6800,7 @@ function lineCard(g, B, status){
       <div class="lw-v">${sumSpread}</div><div class="lw-v">${sumTotal}</div><div class="lw-wn">${sumWin}</div><div class="lw-bs">${sumBest}</div><div class="lw-evc">${sumEv}</div>
       <div class="lw-sk">${SIG.length ? `<span class="lw-vd ${vcls}">${esc(verdict)}</span><span class="lw-pips">${pips}</span>` : '<span class="muted">Early</span>'}</div><span class="lw-chv"></span></button>
       <div class="lw-dt"><div class="lw-meta">${vaultRow}${asof ? `<span class="lw-asof">${asof}</span>` : ''}</div>${M || c ? `<div class="lw-tiles">${tS}${tT}${tW}</div>` : '<p class="muted lv-none">No book has posted yet.</p>'}
-        <div class="lw-two">${sh}<div class="lw-vl">${ro ? lvChartHost(gid) : ''}${vaultMoves}${spot}</div></div>${board}</div></article>`;
+        <div class="lw-two"><div class="lw-vl">${sh}${spot}${vaultMoves}</div><div class="lw-vl">${ro ? lvChartHost(gid) : ''}</div></div>${board}</div></article>`;
   }
   return `<article class="card sl-card lv-card${sv.bk[gid] ? ' bk' : ''}" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
