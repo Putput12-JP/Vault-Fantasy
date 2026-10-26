@@ -1587,7 +1587,7 @@ table.nt.sx-tk{min-width:420px}
 .lw-meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 16px;color:var(--fg3);font-size:12px;min-height:6px;padding-top:4px}
 .lw-meta .lv-vault{padding:0;border:0;background:none;color:var(--fg2)}.lw-meta .lv-vault small{margin-left:0}.lw-asof{margin-left:auto}
 .lw-note{margin:0 2px 10px;font-size:12.5px;line-height:1.45;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
-.lw-evc{display:grid;gap:2px;justify-items:start}.lw-evc small{color:var(--fg3);font:500 11px var(--mono,ui-monospace,monospace);white-space:nowrap}.lw-ev{color:var(--up);font:700 15px var(--mono,ui-monospace,monospace)}.lw-ev.sm{color:var(--fg2);font-weight:600}
+.lw-evc{display:grid;gap:2px;justify-items:start}.lw-evc{min-width:0;width:100%}.lw-evc small{color:var(--fg3);font:500 11px var(--mono,ui-monospace,monospace);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.lw-ev{color:var(--up);font:700 15px var(--mono,ui-monospace,monospace)}.lw-ev.sm{color:var(--fg2);font-weight:600}
 .lw .lv-chart{padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.2)}
 .lw .lv-chart .vlm-edge{display:none}   /* the Novig-vs-Pinnacle table under the chart is ~500px tall and sits next to a short sharp read: the Sharp Money page keeps it */
 .lw-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:8px}
@@ -6635,14 +6635,14 @@ function lvBooks(mk){                                                        // 
   return Object.values(by).map(r => ({n: r[0], pin: r[0] === 'Consensus' || r[0] === 'Open', ts: r[10] || 0,
     s: r[1] == null ? null : {l: r[1], h: lvNum(r[2]), a: lvNum(r[3])}, m: {h: lvNum(r[4]), a: lvNum(r[5])}, t: r[6] == null ? null : {l: r[6], o: lvNum(r[7]), u: lvNum(r[8])}}));
 }
-// The biggest price over Pinnacle's no-vig fair on a game, from every book's quote at a number Pinnacle also prices (its stored ladder, the same
-// power de-vig as sharp.py). Any positive edge counts, up to the recorder's 25% cap (past it the quote is more likely stale than real), and a book more than 30 minutes behind the newest quote is skipped. Null with no ladder.
+// The best price against Pinnacle's no-vig fair on a game, from every book's quote at a number Pinnacle also prices (its stored ladder, the same
+// power de-vig as sharp.py). It can be negative: when no book beats Pinnacle, the closest one is shown so the column says how far off the market is. Up to the recorder's 25% cap (past it the quote is more likely stale than real), down to -15% (past that it is a junk quote), and a book more than 30 minutes behind the newest quote is skipped. Null with no ladder.
 function lvBestEv(books, lad){
   if (!lad) return null;
   const ref = Math.max(0, ...books.map(b => b.ts || 0));   // a book that has not changed in 30 minutes while the market did is stale, not good (the same rule as "behind the market")
   const pay = a => a < 0 ? 100 / -a : a / 100, ok = a => a != null && a >= -300 && a <= 300 && a !== 0;
   let best = null;
-  const take = (n, m, side, line, price, f) => { if (!ok(price) || f == null) return; const ev = f * (1 + pay(price)) - 1; if (ev > 0 && ev < .25 && (!best || ev > best.ev)) best = {venue: n, m, side, line, price, ev}; };
+  const take = (n, m, side, line, price, f) => { if (!ok(price) || f == null) return; const ev = f * (1 + pay(price)) - 1; if (ev > -.15 && ev < .25 && (!best || ev > best.ev)) best = {venue: n, m, side, line, price, ev}; };
   for (const b of books){
     if (b.pin || b.n === 'Pinnacle' || (b.ts && ref - b.ts > 1800)) continue;
     if (b.s){ take(b.n, 'sp', 'home', b.s.l, b.s.h, ladFair(lad, 'sp', 'home', b.s.l)); take(b.n, 'sp', 'away', b.s.l, b.s.a, ladFair(lad, 'sp', 'away', b.s.l)); }
@@ -6785,7 +6785,7 @@ function lineCard(g, B, status){
       ${bMa && bMh ? `<div class="lw-bl">Best price</div>${bp(g.away, lvPx(bMa.m.a), '', bMa.n)}${bp(g.home, lvPx(bMh.m.h), '', bMh.n)}` : ''}
       <div class="lw-ex">${pill('Kalshi', K.win != null ? pc(K.win) : '')}${pill('Novig', nvM ? pc(nvM.win) : '')}${pill('Polymarket', PM.win != null ? pc(PM.win) : '')}</div></div>`;
     const evTop = [...(o && o.behind || []), lvBestEv(books, o && o.lad)].filter(Boolean).reduce((a, b) => !a || b.ev > a.ev ? b : a, null);   // the recorder's behind list (exchanges too) or any book's price over Pinnacle's fair, whichever is bigger
-    const sumEv = evTop ? `<b class="lw-ev${evTop.ev < .02 ? ' sm' : ''}" title="${esc(evTop.venue)} ${esc(xSide(evTop, g))}: ${pc(evTop.ev, 1)} over Pinnacle's no-vig fair at the same number. Context, not a bet.${evTop.ev < .02 ? ' Under 2%, so too small to alert on.' : ''}">+${(evTop.ev * 100).toFixed(1)}%</b><small>${esc(abbr(evTop.venue))} ${esc(xSide(evTop, g))}</small>` : `<span class="muted">${o ? 'none' : '-'}</span>`;
+    const sumEv = evTop ? `<b class="lw-ev${evTop.ev < .02 ? ' sm' : ''}" title="${esc(evTop.venue)} ${esc(xSide(evTop, g))}: ${evTop.ev >= 0 ? pc(evTop.ev, 1) + ' over' : pc(-evTop.ev, 1) + ' under'} Pinnacle's no-vig fair at the same number. Context, not a bet.${evTop.ev < 0 ? ' No book beats Pinnacle right now; this is the closest.' : evTop.ev < .02 ? ' Under 2%, so too small to alert on.' : ''}">${evTop.ev >= 0 ? '+' : ''}${(evTop.ev * 100).toFixed(1)}%</b><small>${esc(abbr(evTop.venue))} ${esc(xSide(evTop, g))}</small>` : `<span class="muted">${o ? 'none' : '-'}</span>`;
     const vcls = nA && nH ? 'mix' : nA || nH ? 'lean' : '';
     const bars = SIG.map(x => { const w = Math.min(50, Math.abs(x.v) * 50); return `<div class="lw-sg" title="${esc(x.tip)}"><span>${esc(x.k)}</span><div class="lw-bar"><i style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${w}%;background:${x.v < 0 ? ac : hcl}"></i></div><span class="num">${esc(x.tiny)}</span></div>`; }).join('');
     const sh = SIG.length ? `<section class="lw-sh"><div class="lw-vh"><span class="lw-vd ${vcls}" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span><small>${nA} toward ${esc(g.away)}, ${nH} toward ${esc(g.home)}. Context, not a bet.</small></div>
@@ -6813,7 +6813,7 @@ function lwMetric(g, B, how){                                   // sort keys for
   const NV = B.novig && B.novig.games && B.novig.games[String(g.id)], nf = NV ? nvFlow(g, B) : null;
   return Math.abs(lvSignals(g, mk, o, nf).reduce((a, x) => a + x.v, 0));
 }
-const lwHead = '<div class="lw-hd"><span>Tip</span><span>Game</span><span>Spread</span><span>Total</span><span>Win chance</span><span>Best spread prices</span><span>+EV</span><span>Sharp read</span><span></span></div>';
+const lwHead = '<div class="lw-hd"><span>Tip</span><span>Game</span><span>Spread</span><span>Total</span><span>Win chance</span><span>Best spread prices</span><span>Best EV</span><span>Sharp read</span><span></span></div>';
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el){ el.outerHTML = lineCard(g, B, statusFromBoard(B)); lvCharts(); } }
 $('sgames').addEventListener('click', e => {
   if (e.target.closest('[data-golines]')){ goView('lines'); return; }

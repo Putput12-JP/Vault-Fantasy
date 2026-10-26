@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-27T02:00', tag:'Improved', title:'NBA Game Lines: the EV column always shows a number',
+    items:[
+      'The +EV column is now "Best EV". When a book beats the sharp book\'s fair price it shows the edge in green. When none does, it shows how close the best book is, like -0.7%, in grey.',
+      'It only compares prices on the same number the sharp book uses, and skips books that have not updated in 30 minutes. Context only, not a bet signal.'
+    ]
+  },
+  {
     ts:'2026-10-27T01:00', tag:'Fixed', title:'Line movement chart: no more wild spikes on totals',
     items:[
       'One sportsbook was sometimes shown with another period\'s total (like 115.5 on a 232 game). That stretched the chart so the real lines were squashed flat. Those readings are now thrown out, and the old ones are cleaned from the history.',
