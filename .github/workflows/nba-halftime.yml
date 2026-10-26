@@ -1,0 +1,41 @@
+# NBA halftime line recorder (nba/scripts/halftime_log.py).
+#
+# Captures ESPN's live spread/total/ML the first time a game shows halftime and
+# appends it to `nba-data/halftime/YYYY-MM.jsonl`, so "pregame dog up 15+ at the
+# half, take the new dog live" can be graded on real prices. snapshot.py skips
+# the live provider on purpose, so nothing else stores it. Separate from
+# nba-snapshots so it never touches that job.
+#
+# Starts every 3h across the NBA window (15:00-06:00 UTC) and polls each minute
+# for just under 3h; the concurrency group keeps one recorder at a time.
+name: NBA halftime
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 15,18,21,0,3 * * *'
+
+concurrency:
+  group: nba-halftime
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 185
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: nba/scripts
+      - uses: actions/checkout@v5
+        with:
+          ref: nba-data
+          path: nba-data
+      - name: Record
+        run: |
+          git -C nba-data config user.name  "vault-bot"
+          git -C nba-data config user.email "vault-bot@users.noreply.github.com"
+          python3 nba/scripts/halftime_log.py --dir=nba-data --loop --commit --max-minutes=175
