@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-27T01:00', tag:'Fixed', title:'Line movement chart: no more wild spikes on totals',
+    items:[
+      'One sportsbook was sometimes shown with another period\'s total (like 115.5 on a 232 game). That stretched the chart so the real lines were squashed flat. Those readings are now thrown out, and the old ones are cleaned from the history.',
+      'The same fix applies to the best price shown for that book on Game Lines.'
+    ]
+  },
+  {
     ts:'2026-10-26T23:30', tag:'Fixed', title:'NBA Game Lines: +EV fills in, rows no longer crowd',
     items:[
       'The +EV column was empty on most games. It now shows the biggest price over the sharp book\'s fair price from any book, even a small one, and says none only when no book beats it. Quotes that are 30 minutes behind the market are skipped.',

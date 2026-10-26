@@ -214,6 +214,14 @@ async function actionGames(sk, cfg) {
       if (to && tu) b.tot = { line: to.value, over: to.odds, under: tu.odds, bi: { over: to.bet_info, under: tu.bet_info } };
       books[bid] = b;
     }
+    // Action Network sometimes hands one book (BetMGM, mostly) a different period's total or spread, e.g. 115.5 for a 232 total. A line that far from
+    // the consensus line is another market, not a price: drop it so it never reaches the tape, the Behind Pinnacle check or the chart.
+    const ref = books[15] || books[30];
+    for (const [bid, b] of Object.entries(books)) {
+      if (bid === '15' || bid === '30' || !ref) continue;
+      if (b.tot && ref.tot && Math.abs(b.tot.line - ref.tot.line) > 0.15 * ref.tot.line) delete b.tot;
+      if (b.sp && ref.sp && Math.abs(b.sp.line - ref.sp.line) > 10) delete b.sp;
+    }
     const pct = bi => bi?.tickets?.percent ? { t: bi.tickets.percent, m: bi.money?.percent ?? null } : null;
     const c = books[15] || {};
     const splits = {
