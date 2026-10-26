@@ -122,14 +122,14 @@ def log(day, board, now):
             S['held'] += 1                            # still logged, into the separate preseason record)
             if k in held_tracked or trigger_gate(c) != 'no-go':       # a hold keeps it from being a bet, but a GO or WATCH candidate it kept out is
                 held_rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),      # recorded apart (source 'heldbets'), never a bet
-                                c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
+                                c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or []), round(c.get('mt') or 0, 3)]
                 P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
                 held_meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0], 'team': P[1], 'stat': c['s'],
                                 'venue': c['venue'], 'book': bk, 'side': c['side'], 'line': c['line'], 'hold': c['hold']['why']}
             continue
         S['logged'] += k not in rows
         rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),
-                   c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
+                   c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or []), round(c.get('mt') or 0, 3)]
         P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
         meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0],
                    'team': P[1], 'stat': c['s'], 'venue': c['venue'], 'book': bk, 'side': c['side'], 'line': c['line']}
@@ -381,11 +381,17 @@ def minutes_log(board, now):
             except Exception as e:
                 PX.row_error(f"minutes {g['id']}|{team}", e)
                 continue
+            try:
+                eb = pr.game_minutes_blend(team, g, gm)      # shadow (early-season blend), never priced
+            except Exception as e:
+                PX.row_error(f"minutes blend {g['id']}|{team}", e)
+                eb = {}
             for pid, G in gm.items():
                 try:
                     k = f"{g['id']}|{pid}"
                     rows[k] = [round(G['min'], 2), round(((pr.state['players'].get(str(pid)) or {}).get('ms') or [0])[0], 2),
-                               round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None]
+                               round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None,
+                               round(eb[pid], 2) if pid in eb else None]
                     meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
                                'player': names.get(pid, str(pid)), 'team': team}
                 except Exception as e:                      # one player's bad field skips that player, not the game
@@ -476,7 +482,8 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
             replayed[tip_day(m['tip'])] += 1
         per_day[tip_day(m['tip'])].append([m['player'], m['team'], m['matchup'], round(pre[-1][0], 1), round(actual, 1), reason,
                                            round(v3, 1) if v3 is not None else None, pre[-1][3] if len(pre[-1]) > 3 else 0,
-                                           round(pre[-1][4], 1) if len(pre[-1]) > 4 and pre[-1][4] is not None else None])
+                                           round(pre[-1][4], 1) if len(pre[-1]) > 4 and pre[-1][4] is not None else None,
+                                           round(pre[-1][5], 1) if len(pre[-1]) > 5 and pre[-1][5] is not None else None])
     for d, rows in per_day.items():
         played = [r for r in rows if r[5] != 'did not play']
         err = [r[3] - r[4] for r in played]
@@ -484,7 +491,11 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
         e2, e3 = [r[3] - r[4] for r in both], [r[6] - r[4] for r in both]
         gbs = [r for r in played if len(r) > 8 and r[8] is not None]       # the GBM shadow, with v2 on the same players
         eg, e2g = [r[8] - r[4] for r in gbs], [r[3] - r[4] for r in gbs]
+        ebs = [r for r in played if len(r) > 9 and r[9] is not None]         # the early-season blend shadow, with v2 on the same players
+        eb_new, eb_old = [r[9] - r[4] for r in ebs], [r[3] - r[4] for r in ebs]
         days[d] = {'n': len(played), 'dnp': len(rows) - len(played),
+                   'blend': {'n': len(ebs), 'mae_v2': round(sum(abs(e) for e in eb_old) / len(eb_old), 3) if eb_old else None,
+                             'mae_blend': round(sum(abs(e) for e in eb_new) / len(eb_new), 3) if eb_new else None},
                    'gbm': {'n': len(gbs), 'mae_v2': round(sum(abs(e) for e in e2g) / len(e2g), 3) if e2g else None,
                            'mae_gbm': round(sum(abs(e) for e in eg) / len(eg), 3) if eg else None,
                            'miss8_v2': sum(abs(e) >= 8 for e in e2g), 'miss8_gbm': sum(abs(e) >= 8 for e in eg)},
@@ -656,7 +667,7 @@ def bet_from(k, m, series):
     return {'k': k, 'game': m['game'], 'tip': m['tip'], 'matchup': m['matchup'], 'pid': m['pid'], 'player': m['player'],
             'team': m['team'], 'stat': m['stat'], 'venue': m['venue'], 'book': m['book'], 'side': m['side'], 'line': m['line'],
             'gate': gate, 'etype': etype, 't': te, 'price': ve[0], 'fair': ve[1], 'edge': max(ve[2], gap_of(ve) or -1) if 'gap' in trig else ve[2],
-            'model_edge': ve[2], 'cons': ve[6] if len(ve) > 6 else None, 'gap_edge': gap_of(ve), 'mu': ve[4], 'min': ve[5],
+            'model_edge': ve[2], 'cons': ve[6] if len(ve) > 6 else None, 'gap_edge': gap_of(ve), 'mu': ve[4], 'min': ve[5], 'mt': ve[10] if len(ve) > 10 else None,
             'types': [x for x in (ve[9] if len(ve) > 9 else '').split(',') if x] or [{'model': 'model', 'gap': 'gap', 'both': 'gap'}[etype]],
             't_close': tc, 'price_close': vc[0], 'fair_close': vc[1], 'edge_close': vc[2],
             'clv': round(cc - ce, 4) if ce is not None and cc is not None else None,

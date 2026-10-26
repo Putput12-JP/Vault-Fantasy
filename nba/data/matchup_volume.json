@@ -1,0 +1,147 @@
+{
+ "coverage": {
+  "3pm": {
+   "fit_scored_of": [
+    15999,
+    27345
+   ],
+   "test_scored_of": [
+    22319,
+    27797
+   ]
+  },
+  "ast": {
+   "fit_scored_of": [
+    14274,
+    27345
+   ],
+   "test_scored_of": [
+    19774,
+    27797
+   ]
+  }
+ },
+ "3pm": {
+  "volume": "volume=3PA",
+  "fit_rows": 15999,
+  "test_rows": 22319,
+  "beta_fit_2024_25": 0.8851,
+  "beta_own_2025_26": 0.1188,
+  "beta_own_t": 3.5,
+  "eval_2025_26": {
+   "matchup": {
+    "vol_mae_gain": -0.0464,
+    "vol_t": -15.42,
+    "stat_mae_gain": -0.0182,
+    "stat_t": -16.97,
+    "games": 1216,
+    "rows": 22319
+   },
+   "control": {
+    "vol_mae_gain": -0.08848,
+    "vol_t": -20.65,
+    "stat_mae_gain": -0.0185,
+    "stat_t": -11.62,
+    "games": 1216,
+    "rows": 22319
+   },
+   "team_only_context": {
+    "vol_mae_gain": -0.04587,
+    "vol_t": -15.41,
+    "stat_mae_gain": -0.01822,
+    "stat_t": -17.29,
+    "games": 1216,
+    "rows": 22319
+   },
+   "halves_vol_gain": [
+    -0.04333,
+    -0.0494
+   ],
+   "quintile_mean_residual_pct": [
+    -4.76,
+    0.91,
+    0.63,
+    4.34,
+    10.43
+   ],
+   "quintile_mean_index": [
+    0.0003,
+    0.0558,
+    0.0938,
+    0.1322,
+    0.2024
+   ]
+  },
+  "conditions": {
+   "beta_fit_positive": true,
+   "volume_gain_t_ge_2_5": false,
+   "control_not_t_ge_2_5": true,
+   "own_slope_2025_26_positive_t_ge_2_5": true,
+   "both_halves_positive": false,
+   "stat_mae_not_worse": false
+  },
+  "verdict": "FAIL"
+ },
+ "ast": {
+  "volume": "volume=assists",
+  "fit_rows": 14274,
+  "test_rows": 19774,
+  "beta_fit_2024_25": 0.7518,
+  "beta_own_2025_26": 0.3644,
+  "beta_own_t": 6.88,
+  "eval_2025_26": {
+   "matchup": {
+    "vol_mae_gain": -0.01391,
+    "vol_t": -7.85,
+    "stat_mae_gain": -0.01391,
+    "stat_t": -7.85,
+    "games": 1216,
+    "rows": 19774
+   },
+   "control": {
+    "vol_mae_gain": -0.02531,
+    "vol_t": -11.93,
+    "stat_mae_gain": -0.02531,
+    "stat_t": -11.93,
+    "games": 1216,
+    "rows": 19774
+   },
+   "team_only_context": {
+    "vol_mae_gain": 0.00048,
+    "vol_t": 0.4,
+    "stat_mae_gain": 0.00048,
+    "stat_t": 0.4,
+    "games": 1216,
+    "rows": 19774
+   },
+   "halves_vol_gain": [
+    -0.0099,
+    -0.01772
+   ],
+   "quintile_mean_residual_pct": [
+    -3.04,
+    0.43,
+    5.9,
+    6.36,
+    12.95
+   ],
+   "quintile_mean_index": [
+    -0.0222,
+    0.0413,
+    0.0795,
+    0.1182,
+    0.1795
+   ]
+  },
+  "conditions": {
+   "beta_fit_positive": true,
+   "volume_gain_t_ge_2_5": false,
+   "control_not_t_ge_2_5": true,
+   "own_slope_2025_26_positive_t_ge_2_5": true,
+   "both_halves_positive": false,
+   "stat_mae_not_worse": false
+  },
+  "verdict": "FAIL"
+ },
+ "generated": "2026-10-25T20:06Z"
+}
