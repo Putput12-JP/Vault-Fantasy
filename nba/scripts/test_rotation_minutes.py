@@ -174,13 +174,27 @@ def gain_stats(items, val):
     return {'gain': round(b['mean'], 4), 't': round(b['t'], 2) if b['t'] is not None else None, 'ci95': [round(x, 4) for x in b['ci']], 'games': b['games'], 'rows': b['rows']}
 
 
-def fit_models(train, plays_train):
-    """The three state model sets and control B (round 1 design, unchanged)."""
+def fit_models(train, plays_train, xc=None, xm=None, with_b=True):
+    """The three state model sets and control B (round 1 design, unchanged by default). xc / xm: the probability and minutes feature functions."""
+    xc, xm = xc or xs_common, xm or xs_min
     sets = []
     for s in range(3):
         rs = [r for r in train if state_of(r['fm']) == s]
-        sets.append(fit_set(rs, [r for r in plays_train if state_of(r['fm']) == s], xs_common, xs_common, xs_min, STATES[s]))
-    return sets, fit_set(train, plays_train, xs_b, xs_b, xs_min, 'single (control B)')
+        sets.append(fit_set(rs, [r for r in plays_train if state_of(r['fm']) == s], xc, xc, xm, STATES[s]))
+    return sets, (fit_set(train, plays_train, xs_b, xs_b, xs_min, 'single (control B)') if with_b else None)
+
+
+def size_feats(r):
+    n = r['size']
+    return [n / 15.0, 1.0 if n >= 15 else 0.0, 1.0 if n <= 12 else 0.0, (n - 13) / 5.0 * r['rank'] / 10.0]
+
+
+def xs_common3(r):
+    return xs_common(r) + size_feats(r)
+
+
+def xs_min3(r):
+    return xs_min(r) + size_feats(r)
 
 
 def team_total(rows):
@@ -190,22 +204,24 @@ def team_total(rows):
     return st.mean(tt.values())
 
 
-def predict_pool(sets, B, rows, T):
+def predict_pool(sets, B, rows, T, xc=None, xm=None, key='C'):
     """Sets r['C'] (state mixture), r['B'], r['S'] (true state known), r['p_rot'], r['p_plays'] for every row, pool by pool."""
+    xc, xm = xc or xs_common, xm or xs_min
     groups = defaultdict(list)
     for r in rows:
         groups[(r['gid'], r['team'])].append(r)
-    for key, rs in groups.items():
-        pr_state = [[predict(sets[s], r, xs_common, xs_common, xs_min) for r in rs] for s in range(3)]
+    for _k, rs in groups.items():
+        pr_state = [[predict(sets[s], r, xc, xc, xm) for r in rs] for s in range(3)]
         pi = [pis(rs[0]['e']) for _ in rs]
         mixp = [sum(pi[i][s] * pr_state[s][i][0] for s in range(3)) for i in range(len(rs))]
         mixr = [sum(pi[i][s] * pr_state[s][i][1] for s in range(3)) for i in range(len(rs))]
         mixm = [sum(pi[i][s] * pr_state[s][i][2] for s in range(3)) for i in range(len(rs))]
         cm = rescale(list(zip(mixp, mixm)), T)
-        bp = [predict(B, r, xs_b, xs_b, xs_min) for r in rs]
-        bm = rescale([(p, m) for p, _, m in bp], T)
+        bm = rescale([(p, m) for p, _, m in [predict(B, r, xs_b, xs_b, xs_min) for r in rs]], T) if B else [None] * len(rs)
         for i, r in enumerate(rs):
-            r['C'], r['B'], r['p_rot'], r['p_plays'] = cm[i], bm[i], mixr[i], mixp[i]
+            r[key], r['B'], r['p_rot_' + key], r['p_plays_' + key] = cm[i], bm[i], mixr[i], mixp[i]
+            if key == 'C':
+                r['p_rot'], r['p_plays'] = mixr[i], mixp[i]
         ts = state_of(rs[0]['fm'])                                           # state-conditional accuracy: the game's true state known (context only)
         sp_all = rescale([(pr_state[ts][j][0], pr_state[ts][j][2]) for j in range(len(rs))], T)
         for i, r in enumerate(rs):
@@ -278,6 +294,87 @@ def main():
         print('The registered result file exists; not overwritten.')
     else:
         json.dump(res, open(OUT, 'w'), indent=1)
+
+
+OUT3 = os.path.join(HERE, '..', 'data', 'rotation_minutes_round3.json')
+
+
+def evaluate(rows, col, recs, first15=False):
+    """The registered metrics for one prediction column (players who played) -> dict."""
+    played = [r for r in rows if r['played'] and r['pm'] > 0 and r.get(col) is not None]
+    top8 = [r for r in played if r['rank'] <= 8]
+    buckets = {'12_or_fewer': lambda r: r['size'] <= 12, '13_to_14': lambda r: 13 <= r['size'] <= 14, '15_or_more': lambda r: r['size'] >= 15}
+    out = {'rows': len(played), 'games': len({r['gid'] for r in played})}
+    out['top8_bias_by_pool_size'] = {k: {'n': len([r for r in top8 if f(r)]), 'A': round(st.mean(r['pm'] - r['min'] for r in top8 if f(r)), 3),
+                                         col: round(st.mean(r[col] - r['min'] for r in top8 if f(r)), 3)} for k, f in buckets.items() if any(f(r) for r in top8)}
+    out['bias_by_rank_group'] = {name: {'n': len(sel), 'A': round(st.mean(r['pm'] - r['min'] for r in sel), 3), col: round(st.mean(r[col] - r['min'] for r in sel), 3)}
+                                 for name, sel in (('rank_1_8', top8), ('rank_9_10', [r for r in played if 9 <= r['rank'] <= 10]), ('rank_11_plus', [r for r in played if r['rank'] >= 11])) if sel}
+    gain = lambda r: abs(r['min'] - r['pm']) - abs(r['min'] - r[col])
+    out['mae'] = {'A': round(st.mean(abs(r['min'] - r['pm']) for r in played), 4), col: round(st.mean(abs(r['min'] - r[col]) for r in played), 4)}
+    out['primary'] = gain_stats(played, gain)
+    cuts = {'fringe_rank_9_to_12': lambda r: 9 <= r['rank'] <= 12, 'a_rotation_player_out': lambda r: r['nout'] >= 1, 'b_lopsided_pregame': lambda r: abs(r['e'] or 0) > 8}
+    if first15:
+        cuts['e_first_15_team_games'] = lambda r: r['k'] <= 15
+    out['cuts'] = {k: gain_stats([r for r in played if f(r)], gain) for k, f in cuts.items()}
+    R = [(r, recs[(r['gid'], r['aid'])]) for r in played if (r['gid'], r['aid']) in recs]
+    mae = {s_: st.mean(abs(x['y'][s_] - x['mu'][s_]) for _, x in R) for s_ in STATS}
+    by, per = defaultdict(list), {}
+    for s_ in STATS:
+        eo, en = [], []
+        for r, x in R:
+            mun = x['mu'][s_] * r[col] / r['pm']
+            eo.append(abs(x['y'][s_] - x['mu'][s_])); en.append(abs(x['y'][s_] - mun))
+            by[r['gid']].append((eo[-1] - en[-1]) / mae[s_])
+        per[s_] = {'mae_old': round(st.mean(eo), 4), 'mae_new': round(st.mean(en), 4), 'better': st.mean(en) <= st.mean(eo)}
+    b = EB.boot(by)
+    out['props'] = {'pooled_gain': round(b['mean'], 5), 't': round(b['t'], 2) if b['t'] is not None else None, 'games': b['games'], 'per_stat': per}
+    return out
+
+
+def round3():
+    """Round 3 (docs/rotation-minutes-round3.md): pool-size features; verdict on the last 40% of 2024-25 games; 2025-26 reported as context only."""
+    data = walk_data()
+    pool = data['pool']
+    add_history(pool)
+    pool = [r for r in pool if 'rank' in r and r['pm'] >= 0]
+    recs = {(x['gid'], x['aid']): x for x in data['recs']}
+    train = [r for r in pool if r['season'] in FIT_SEASONS]
+    g25 = sorted({r['gid'] for r in pool if r['season'] == 2025})
+    cut = set(g25[int(len(g25) * 0.6):])
+    train_cf = [r for r in train if r['season'] != 2025 or r['gid'] not in cut]
+    plays_cf = [r for r in train_cf if r['season'] == 2025]
+    val = [r for r in pool if r['season'] == 2025 and r['gid'] in cut]
+    print(f'fit {len(train_cf)} rows (plays {len(plays_cf)}), validation {len(val)} rows', flush=True)
+    T = team_total(train_cf)
+    sets3, _ = fit_models(train_cf, plays_cf, xs_common3, xs_min3, with_b=False)
+    predict_pool(sets3, None, val, T, xs_common3, xs_min3, key='C3')
+    sets1, _ = fit_models(train_cf, plays_cf, with_b=False)
+    predict_pool(sets1, None, val, T, key='C')
+    res = {'T': round(T, 2), 'validation': evaluate(val, 'C3', recs), 'context': {'C_round1_features_on_validation': evaluate(val, 'C', recs)}}
+    v = res['validation']
+    tb = v['top8_bias_by_pool_size']
+    conds = {'pool_size_bias_within_0_5_all_buckets_n_ge_1000': len(tb) == 3 and all(x['n'] >= 1000 and abs(x['C3']) <= 0.5 for x in tb.values()),
+             'overall_mae_t_ge_2_5': bool(v['primary'] and v['primary']['t'] is not None and v['primary']['t'] >= 2.5),
+             'fringe_gain_ge_0': bool(v['cuts']['fringe_rank_9_to_12'] and v['cuts']['fringe_rank_9_to_12']['gain'] >= 0),
+             'rotation_player_out_t_ge_2_5': bool(v['cuts']['a_rotation_player_out'] and (v['cuts']['a_rotation_player_out']['t'] or 0) >= 2.5),
+             'props_t_ge_2_5_no_stat_worse': bool((v['props']['t'] or 0) >= 2.5 and all(x['better'] for x in v['props']['per_stat'].values())),
+             'top8_bias_within_0_3_and_9_10_within_0_5': abs(v['bias_by_rank_group']['rank_1_8']['C3']) <= 0.3 and abs(v['bias_by_rank_group']['rank_9_10']['C3']) <= 0.5}
+    res['conditions'] = conds
+    res['verdict'] = 'PASS' if all(conds.values()) else 'FAIL'
+    print(json.dumps(res, indent=1), flush=True)
+    if os.path.exists(OUT3):
+        print('The round 3 result file exists; not overwritten.')
+    else:
+        json.dump(res, open(OUT3, 'w'), indent=1)
+    # context, no verdict: C3 fitted on all fit seasons, scored on 2025-26
+    plays_train = [r for r in train if r['season'] in PLAYS_SEASONS]
+    test = [r for r in pool if r['season'] == TEST]
+    sets_all, _ = fit_models(train, plays_train, xs_common3, xs_min3, with_b=False)
+    predict_pool(sets_all, None, test, team_total(train), xs_common3, xs_min3, key='C3')
+    ctx = evaluate(test, 'C3', recs, first15=True)
+    print('CONTEXT 2025-26 (no verdict):', json.dumps(ctx, indent=1), flush=True)
+    res['context']['C3_fit_on_all_scored_on_2025_26'] = ctx
+    json.dump(res, open(OUT3, 'w'), indent=1)
 
 
 OUT2 = os.path.join(HERE, '..', 'data', 'rotation_minutes_round2.json')
@@ -378,4 +475,4 @@ def round2():
 
 
 if __name__ == '__main__':
-    round2() if '--round2' in sys.argv else main()
+    round3() if '--round3' in sys.argv else (round2() if '--round2' in sys.argv else main())
