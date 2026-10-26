@@ -929,11 +929,11 @@ def prop_signals(by_id, pkeys, pin_props, polls, tape, W, day, now, kal_vol):
 
 def _bpay(a):
     """Profit per unit staked on a p_behind / p_behind_x alert: Novig's price is the cost of a $1 contract (a probability), the books' is American."""
-    return 1 / a['price'] - 1 if a.get('venue') == 'Novig' else payout(a['price'])
+    return 1 / a['price'] - 1 if a.get('venue') in ('Novig', 'Kalshi') else payout(a['price'])
 
 
 def prop_behind(board, by_id, pin_props, now):
-    """-> p_behind alerts (DraftKings, frozen in docs/prop-behind-pinnacle.md) and p_behind_x alerts (Polymarket and Novig, the same rule
+    """-> p_behind alerts (DraftKings, frozen in docs/prop-behind-pinnacle.md) and p_behind_x alerts (Polymarket, Novig and Kalshi, the same rule
     in docs/prop-behind-pinnacle-venues.md, graded apart so the frozen test's pool is untouched). A venue at Pinnacle's own line for a
     player prop, priced PB_MIN or more better than Pinnacle's no-vig fair, with Pinnacle unchanged for PB_SETTLE_S. Each venue needs its
     own source to have answered within PB_FRESH_S; Pinnacle must have too."""
@@ -941,7 +941,7 @@ def prop_behind(board, by_id, pin_props, now):
     fresh = lambda s_: bool((src.get(s_) or {}).get('ok')) and now - src[s_]['ok'] <= PB_FRESH_S
     if not fresh('pinnacle'):
         return []
-    use = {PB_BOOK: fresh('espn'), 'Polymarket': fresh('polymarket'), 'Novig': fresh('novig')}
+    use = {PB_BOOK: fresh('espn'), 'Polymarket': fresh('polymarket'), 'Novig': fresh('novig'), 'Kalshi': fresh('kalshi')}
     nov = (board.get('novig') or {}).get('props') or {}    # only props read in the latest poll are in here: a ladder present is fresh
     out = []
     for e in board.get('props') or []:
@@ -967,11 +967,14 @@ def prop_behind(board, by_id, pin_props, now):
         x = next((l for l in lad if l.get('k') == pin[1]), None)
         if use['Novig'] and x:
             quotes += [('Novig', 'over', None, (x['ask'] or [None, None])[0], fo), ('Novig', 'under', None, (x['ask'] or [None, None])[1], 1 - fo)]
+        kx = next((k for k in e.get('kal') or [] if k[0] == pin[1] and k[1] is not None and k[2] is not None and now - (k[6] if len(k) > 6 else 0) <= PB_FRESH_S), None)
+        if use['Kalshi'] and kx:                        # YES on a rung = over its strike; buy YES at the ask, or NO at 1 - bid, each plus Kalshi's fee
+            quotes += [('Kalshi', 'over', None, kx[2] + kal_fee(kx[2]), fo), ('Kalshi', 'under', None, 1 - kx[1] + kal_fee(1 - kx[1]), 1 - fo)]
         for venue, side, price, cost, f in quotes:
             if cost is not None:                        # an exchange ask: pays 1 for the cost, so EV = fair / cost - 1; same -300..+300 range as the books
                 if not 0.25 <= cost <= 0.75:
                     continue
-                ev, shown = f / cost - 1, round(cost, 3)
+                ev, shown = f / cost - 1, round(cost, 3)       # Kalshi's cost already has its fee in
             else:
                 a = am(price)
                 if a is None or not -300 <= a <= 300:

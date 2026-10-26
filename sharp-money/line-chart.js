@@ -43,11 +43,12 @@
     return tapeP[sport];
   }
 
-  function ab(x) { x = String(x || '').toUpperCase(); return ALIAS[x] || x; }
+  var NBA_ALIAS = { SA: 'SAS', NY: 'NYK', GS: 'GSW', NO: 'NOP', UTAH: 'UTA', WSH: 'WAS', PHO: 'PHX', BRK: 'BKN' };   // the NBA page's codes -> the tape's; not shared with the NFL table (NO is the Saints there)
+  function ab(x, sport) { x = String(x || '').toUpperCase(); return (sport === 'nba' ? NBA_ALIAS[x] : ALIAS[x]) || x; }
   function gameRows(g) {
     var t = tapes[g.sport] || [];
-    if (g.sport !== 'nfl') return t.filter(function (r) { return r.gk === g.key; });   // college and NBA rows carry the feed's game key
-    var a = ab(g.away && g.away.abbr), h = ab(g.home && g.home.abbr);
+    if (g.sport !== 'nfl' && !g.byTeams) return t.filter(function (r) { return r.gk === g.key; });   // college and NBA rows carry the feed's game key; a page without that key (the NBA app) sets byTeams and matches teams plus start like the NFL
+    var a = ab(g.away && g.away.abbr, g.sport), h = ab(g.home && g.home.abbr, g.sport);
     return t.filter(function (r) { return r.away === a && r.home === h && Math.abs(r.start - g.start) < 6 * 3600; });
   }
   function dv(a, b) { // de-vigged home win probability from the two stored moneylines (away, home), power method

@@ -1690,6 +1690,7 @@ table.nt.sx-tk{min-width:420px}
 .lv-sp{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 8px;border-radius:8px;background:var(--raised);font-size:12px;color:var(--fg2);white-space:nowrap}.lv-sp b{color:var(--fg);font-weight:600}
 .lv-mini{position:relative;display:inline-block;width:30px;height:6px;border-radius:3px;background:var(--border2);flex:none}.lv-mini::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--fg3)}.lv-mini u{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--warn)}.lv-mini u.h{background:var(--c-blue)}
 .lv-tog{margin-left:auto}.lv-tog svg{vertical-align:-1px;margin-left:4px;transition:transform .2s ease-out}.lv-tog[aria-expanded="true"] svg{transform:rotate(180deg)}
+.lv-chart{padding:10px 16px;border-bottom:1px solid var(--border);min-width:0}.lv-chart .vlm{max-width:100%}
 .lv-sd{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));border-bottom:1px solid var(--border)}.lv-sd>div{padding:10px 16px;border-left:1px solid var(--border);min-width:0}.lv-sd>div:first-child{border-left:0}
 .lv-lab{margin:0 0 6px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.lv-sd>div>.lv-lab:not(:first-child){margin-top:14px}.lv-fine{margin:8px 0 0;font-size:11.5px;color:var(--fg3)}
 .lv-sd .sx-spark{width:100%;height:auto;max-height:70px}
@@ -2689,6 +2690,7 @@ th{font-weight:500}
   </div>
 </div>
 
+<script src="../sharp-money/line-chart.js?v=2" defer></script>
 <script>/*HALASKA*/</script>
 <script>
 const D = /*DATA*/null;
@@ -6658,6 +6660,13 @@ function lvSignals(g, mk, o, nf){                                               
   const sp = mk.splits && mk.splits.spread; if (sp && (sp[0] || sp[1])) out.push({k: 'Money', v: Math.max(-1, Math.min(1, (sp[1] - sp[0]) / 12)), tiny: `${sp[1] - sp[0] >= 0 ? '+' : ''}${sp[1] - sp[0]} pts ${sp[1] >= sp[0] ? g.home : g.away}`, tip: `${g.home} spread: ${sp[0]}% of bets and ${sp[1]}% of the money`});
   return out;
 }
+// The shared line-movement chart (sharp-money/line-chart.js): every book's spread, total and moneyline from the book tape, matched to this game by teams and tip.
+const lvChartHost = gid => `<div class="lv-chart"><p class="lv-lab">Line movement, every book</p><div data-vlm-key="${gid}"></div></div>`;
+function lvCharts(){
+  if (!window.VaultLineChart) return;
+  const B = (slateBoard() || {}).board || {}, games = [...(B.games || []), ...(B.opening || [])];
+  window.VaultLineChart.scan(document, id => { const g = games.find(x => String(x.id) === id); return g && {sport: 'nba', key: 'nba:' + id, byTeams: 1, start: g.tip, away: {abbr: g.away}, home: {abbr: g.home}}; });
+}
 function lineCard(g, B, status){
   const slate = view !== 'lines', SP = slate ? slateGame(g, B, status, false, true) : null;
   const gid = String(g.id), mk = g.mk || {}, V = vaultLine(g, B, status), M = marketLine(g.mk), K = mk.kalshi || {}, PM = mk.poly || {}, o = B.sharp && B.sharp.games && B.sharp.games[gid];
@@ -6692,7 +6701,7 @@ function lineCard(g, B, status){
       <div><p class="lv-lab">Novig tickets of $25 and up</p>${tk || '<p class="muted">None yet.</p>'}<p class="lv-fine">Anonymous, like Kalshi. A ticket shows size and side, not who. Context, not a bet.</p></div></div>`;
   };
   const sharpRow = SIG.length ? `<div class="lv-sr"><span class="lv-vd" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span>${SIG.map(x => `<span class="lv-sp" title="${esc(x.tip)}"><b>${x.k}</b>${lvMini(x.v)}<span>${esc(x.tiny)}</span></span>`).join('')}
-      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</div>${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}` : '';
+      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</div>${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}${sdOpen ? lvChartHost(gid) : ''}` : '';
   // tiles
   const spVal = c ? `${g.home} ${lvF1(c[1])}` : M && M.spread != null ? spTxt(g, M.spread) : 'n/a', toVal = c && c[3] != null ? c[3].toFixed(1) : M && M.total != null ? fmt(M.total) : 'n/a', wnVal = c && c[5] != null ? pc(c[5], 1) : M && M.win != null ? pc(M.win, 1) : 'n/a';
   const from = c ? 'Pinnacle' : M && M.spFrom || '';
@@ -6756,7 +6765,7 @@ function lineCard(g, B, status){
     const bars = SIG.map(x => { const w = Math.min(50, Math.abs(x.v) * 50); return `<div class="lw-sg" title="${esc(x.tip)}"><span>${esc(x.k)}</span><div class="lw-bar"><i style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${w}%;background:${x.v < 0 ? ac : hcl}"></i></div><span class="num">${esc(x.tiny)}</span></div>`; }).join('');
     const sh = SIG.length ? `<section class="lw-sh"><div class="lw-vh"><span class="lw-vd ${vcls}" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span><small>${nA} toward ${esc(g.away)}, ${nH} toward ${esc(g.home)}. Context, not a bet.</small></div>
       <div class="lw-dvh"><span></span><span><span style="color:${ac}">← ${esc(g.away)}</span><span style="color:${hcl}">${esc(g.home)} →</span></span><span></span></div>${bars}
-      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}</section>` : '';
+      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}${sdOpen ? lvChartHost(gid) : ''}</section>` : '';
     const sumSpread = hs != null ? `${esc(spTxt(g, hs))}<small>${op.spread != null ? (mvS ? `<b>${Math.abs(mvS).toFixed(1)} to ${esc(mvS > 0 ? g.away : g.home)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
     const sumTotal = tt != null ? `${fmt(tt)}<small>${op.total != null ? (mvT ? `<b>${mvT > 0 ? 'up' : 'down'} ${Math.abs(mvT).toFixed(1)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
     const sumWin = hw != null ? `<div class="lw-split"><i style="width:${(1 - hw) * 100}%;background:${ac}"></i><i style="width:${hw * 100}%;background:${hcl}"></i></div><div class="lw-wl"><span>${esc(g.away)} ${Math.round((1 - hw) * 100)}</span><span>${Math.round(hw * 100)} ${esc(g.home)}</span></div>` : '<span class="muted">n/a</span>';
@@ -6780,7 +6789,7 @@ function lwMetric(g, B, how){                                   // sort keys for
   return Math.abs(lvSignals(g, mk, o, nf).reduce((a, x) => a + x.v, 0));
 }
 const lwHead = '<div class="lw-hd"><span>Tip</span><span>Game</span><span>Spread</span><span>Total</span><span>Win chance</span><span>Best spread prices</span><span>Sharp read</span><span></span></div>';
-function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
+function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el){ el.outerHTML = lineCard(g, B, statusFromBoard(B)); lvCharts(); } }
 $('sgames').addEventListener('click', e => {
   if (e.target.closest('[data-golines]')){ goView('lines'); return; }
   const rw = e.target.closest('[data-lrow]'); if (rw){ sv.ro[rw.dataset.lrow] = !sv.ro[rw.dataset.lrow]; lvRefresh(rw.dataset.lrow); return; }
@@ -7213,6 +7222,7 @@ function renderSlate(){
   if (lines && !sv.roInit && G.length){ sv.roInit = true; if (innerWidth >= 1000) sv.ro[G[0].id] = true; }   // the first game opens on a wide screen; the rest stay slim
   const GL = lines && sv.sort !== 'time' ? [...G].sort((a, b) => lwMetric(b, B, sv.sort) - lwMetric(a, B, sv.sort)) : G;
   $('sgames').innerHTML = (lines ? lwHead : '') + GL.map(g => lines ? lineCard(g, B, status) : slateCard(g, B, status)).join('');
+  if (lines) lvCharts();
   renderSlateRatings();
   if (!lines){
     const per = MU && MU.persistence || {};
@@ -7592,8 +7602,8 @@ function ladFair(lad, m, side, line){
 // Null when the stored series had no earlier row for that number, so nothing is shown rather than guessed. Context only.
 const pinMv = (mv, line) => { if (!mv || mv.p0 == null || mv.p1 == null) return ''; const m = Math.max(1, Math.round((Date.now() / 1000 - mv.t) / 60)), w = m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d';
   return ` Pinnacle ${mv.line0 != null && line != null && mv.line0 !== line ? 'moved the number, now ' + pc(mv.p1) : pc(mv.p0) + ' to ' + pc(mv.p1)}, ${w} ago.`; };
-// A p_behind price: American odds for a book, cents for the Novig exchange (its price is the cost of a $1 contract).
-const pbPx = x => x.venue === 'Novig' ? Math.round(x.price * 100) + '¢' : (x.price > 0 ? '+' : '') + x.price;
+// A p_behind price: American odds for a book, cents for the Novig and Kalshi exchanges (the cost of a $1 contract).
+const pbPx = x => x.venue === 'Novig' || x.venue === 'Kalshi' ? Math.round(x.price * 100) + '¢' : (x.price > 0 ? '+' : '') + x.price;
 const pAm = p => p == null || !(p > 0 && p < 1) ? '' : (p >= .5 ? '-' + Math.round(100 * p / (1 - p)) : '+' + Math.round(100 * (1 - p) / p));
 const usdK = x => Math.abs(x) >= 1000 ? '$' + (Math.abs(x) / 1000).toFixed(Math.abs(x) >= 1e4 ? 0 : 1) + 'k' : '$' + Math.abs(Math.round(x));
 function xSide(a, g){
@@ -7665,7 +7675,7 @@ function xRecord(){
     r.forEach((v, i) => x[i] += v);
   }
   const PREREG = {novig: ['docs/novig-money.md'], p_behind: ['docs/prop-behind-pinnacle.md'], p_behind_x: ['docs/prop-behind-pinnacle-venues.md'], steam: ['docs/steam-continuation.md', 'games'], behind: ['docs/behind-pinnacle.md', 'games']};   // types with their own pre-registered first look (100 graded): the page never calls them from a generic t-test
-  const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money', p_behind: 'Prop: DraftKings behind Pinnacle', p_behind_x: 'Prop: Polymarket / Novig behind Pinnacle'};
+  const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money', p_behind: 'Prop: DraftKings behind Pinnacle', p_behind_x: 'Prop: Polymarket / Novig / Kalshi behind Pinnacle'};
   const rows = Object.keys(XREC).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null, pg = r[9] || 0, pm = pg ? r[10] / pg : null;
     const se = g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, dec = r[5] + r[6] + r[7];
     const st = PREREG[t] ? `<span class="muted">${PREREG[t][1] === 'games' ? `Pre-registered · first look at 100 games (${PREREG[t][0]})` : g < 100 ? `Tracking · ${g} of 100` : `First look due (${PREREG[t][0]})`}</span>` : '<span class="muted">Context only · no pass rule yet</span>';
@@ -7849,8 +7859,8 @@ function renderWallets(){
 // DraftKings are anonymous; Polymarket prop money is thin), so this follows the tell and grades each type on its own closing-line value.
 // Tells are never summed into a lean or an agree count: sharp money is context. p_behind has a pre-registered pass rule (docs/prop-behind-pinnacle.md).
 let tlType = 'all';
-const TL_TYPES = {p_behind: 'DraftKings behind Pinnacle', p_behind_x: 'Polymarket / Novig behind Pinnacle', p_pin: 'Pinnacle move', p_kal: 'Heavy Kalshi money', p_acct: 'Sharp accounts'};
-const TL_WHAT = {p_behind: 'DraftKings at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes', p_behind_x: 'Polymarket or Novig at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes (Novig fee not modeled)', p_pin: 'Pinnacle moved the line a point or its chance 5 points within an hour', p_kal: '$2,000+ traded on one Kalshi rung between polls with the price moving 3¢', p_acct: 'Sharp Polymarket accounts put $500+ on a prop in 30 minutes'};
+const TL_TYPES = {p_behind: 'DraftKings behind Pinnacle', p_behind_x: 'Polymarket / Novig / Kalshi behind Pinnacle', p_pin: 'Pinnacle move', p_kal: 'Heavy Kalshi money', p_acct: 'Sharp accounts'};
+const TL_WHAT = {p_behind: 'DraftKings at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes', p_behind_x: 'Polymarket, Novig or Kalshi at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes (Novig fee not modeled)', p_pin: 'Pinnacle moved the line a point or its chance 5 points within an hour', p_kal: '$2,000+ traded on one Kalshi rung between polls with the price moving 3¢', p_acct: 'Sharp Polymarket accounts put $500+ on a prop in 30 minutes'};
 const TL_PRE = {p_behind: 'docs/prop-behind-pinnacle.md', p_behind_x: 'docs/prop-behind-pinnacle-venues.md'};
 const TL_STAT = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks', tov: 'Turnovers', sb: 'Steals + Blocks', fgm: 'Field goals made', fga: 'Field goals attempted', ftm: 'Free throws made', fta: 'Free throws attempted', tpa: '3-pointers attempted', oreb: 'Off. rebounds', dreb: 'Def. rebounds'};
 function tlAgg(){

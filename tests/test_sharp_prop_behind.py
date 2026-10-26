@@ -10,9 +10,10 @@ PIN = {(7, 'pts', 'g1'): [[NOW - 3600, 20.5, 0.50, 5], [NOW - 3000, 20.5, 0.50, 
 
 
 def board(**kw):
-    b = {'src_ok': {s: {'ok': NOW - 60} for s in ('pinnacle', 'espn', 'polymarket', 'novig')},
+    b = {'src_ok': {s: {'ok': NOW - 60} for s in ('pinnacle', 'espn', 'polymarket', 'novig', 'kalshi')},
          'props': [{'p': 7, 's': 'pts', 'g': 'g1', 'books': [['Pinnacle', 20.5, '-110', '-110'], ['DraftKings', 20.5, '+110', '-140'],
-                                                              ['Polymarket', 20.5, '+108', '-130']]}],
+                                                              ['Polymarket', 20.5, '+108', '-130']],
+                    'kal': [[20.5, 0.44, 0.46, 0.45, 10, 10, NOW - 30], [21.5, 0.20, 0.25, 0.22, 10, 10, NOW - 30]]}],
          'novig': {'props': {'7|pts': {'lad': [{'k': 20.5, 'ask': [0.46, 0.60]}, {'k': 21.5, 'ask': [0.30, 0.80]}]}}}}
     b.update(kw)
     return b
@@ -25,7 +26,7 @@ def by_venue(alerts):
 class PropBehind(unittest.TestCase):
     def test_each_venue_and_type(self):
         o = by_venue(sharp.prop_behind(board(), BY_ID, PIN, NOW))
-        self.assertEqual(set(o), {'DraftKings', 'Polymarket', 'Novig'})
+        self.assertEqual(set(o), {'DraftKings', 'Polymarket', 'Novig', 'Kalshi'})
         self.assertEqual(o['DraftKings']['type'], 'p_behind')
         self.assertEqual(o['DraftKings']['id'], 'g1:p_behind:7:pts:over:20.5')   # the frozen test's id is unchanged
         self.assertEqual(o['Polymarket']['type'], 'p_behind_x')
@@ -38,10 +39,15 @@ class PropBehind(unittest.TestCase):
         self.assertAlmostEqual(a['ev'], round(0.5 / 0.46 - 1, 3), places=3)
         self.assertEqual(a['line'], 20.5)                                     # never the 21.5 strike
 
+    def test_kalshi_cost_has_its_fee(self):
+        a = by_venue(sharp.prop_behind(board(), BY_ID, PIN, NOW))['Kalshi']
+        self.assertAlmostEqual(a['price'], 0.46 + sharp.kal_fee(0.46), places=3)
+        self.assertEqual(a['line'], 20.5)
+
     def test_a_stale_source_blocks_only_its_own_venue(self):
         b = board()
         b['src_ok']['novig']['ok'] = NOW - 3600
-        self.assertEqual(set(by_venue(sharp.prop_behind(b, BY_ID, PIN, NOW))), {'DraftKings', 'Polymarket'})
+        self.assertEqual(set(by_venue(sharp.prop_behind(b, BY_ID, PIN, NOW))), {'DraftKings', 'Polymarket', 'Kalshi'})
         b['src_ok']['pinnacle']['ok'] = NOW - 3600
         self.assertEqual(sharp.prop_behind(b, BY_ID, PIN, NOW), [])
 
