@@ -99,3 +99,17 @@ game's shown players whether or not the guard holds the team, so the record now 
 - Same rules otherwise: no stake or payout, no ROI, a call only at 100 settled picks, never a bet signal. A held pick is where-to-look, nothing more.
 - **No history to fix:** no regular-season Biggest gap pick had been recorded, and the opening-night games already past (BOS @ DET) have no pre-tip rows
   to rebuild from; none were invented. The record starts with the first game polled after this ships.
+
+## Biggest gap: main line and lock (changed 2026-10-26)
+
+Two fixes to how the pick is chosen and scored. Both change the record, so the stored history was rebuilt (`scripts/repair_main_line.py`).
+
+- **Main line is a sportsbook line.** Polymarket posts a ladder of thresholds (9.5, 14.5, 19.5 points), not one line. The old rule counted its rungs as
+  sportsbook rows and broke ties to the lowest line, so a prop one book posted at 10.5 points was recorded at 4.5 (priced at Polymarket's junk -3233 / -3233,
+  a 50% chance), and a rung sharing a real line was averaged into its price. Now Polymarket never sets the line or the price; a tie goes to Pinnacle's line,
+  then to a line with a two-sided price, then to the lower line. A prop only Polymarket priced has no row. The page (`psMarket`) uses the same rule.
+- **The pick is locked 90 minutes before tip** (`prop_sim_record.LOCK_MIN`), chosen from each prop's last row recorded by then, and never chosen again.
+  Before the lock the page shows a preview that can change and says so; after it, the locked pick (track.json `gap_locks`). Settling uses the locked pick,
+  not the last look before tip. A player ruled out after the lock is a void (did not play). The minutes-model comparison still scores each prop's last pre-tip row.
+- **History:** every stored psim row was rebuilt from stored prices at its own poll. Wrong price only: the recorder's model numbers kept, price replaced. Wrong
+  line: chances recomputed at the right line from the mean the recorder had. Only Polymarket priced: row cleared. Old and new records are in the pull request.
