@@ -13,9 +13,14 @@ DD = {"players": {"7": {"fga": 300, "ast": 100, "zone": {"c3": 0.2, "ab3": 0.3, 
 MT = {"enabled": True, "clip": [0.7, 1.3], "stats": {"3pm": {"beta": 0.12}, "ast": {"beta": 0.36}}}
 
 
-def pricer(enabled=True, example=False):
+TA = {"teams": {"OPP": {"P_vol": 0.05, "P_eff": -0.02, "R_miss": 0.03}}}
+MT["stats"]["pts"] = {"team_terms": [{"index": "P_vol", "beta": 0.7}, {"index": "P_eff", "beta": 0.5}]}
+MT["stats"]["reb"] = {"team_terms": [{"index": "R_miss", "beta": 0.26}]}
+
+
+def pricer(enabled=True, example=False, ta=TA):
     p = PX.Pricer.__new__(PX.Pricer)
-    p.DDF, p.MT, p.example = DD, dict(copy.deepcopy(MT), enabled=enabled), example
+    p.DDF, p.MT, p.TA, p.example = DD, dict(copy.deepcopy(MT), enabled=enabled), ta, example
     return p
 
 
@@ -35,13 +40,26 @@ class MatchupTerm(unittest.TestCase):
         p = pricer(); p.MT["stats"]["3pm"]["beta"] = 100.0
         self.assertAlmostEqual(p.matchup_term(7, "OPP", "3pm", 1.0), 0.3)
 
+    def test_points_use_both_team_indices_and_rebounds_one(self):
+        self.assertAlmostEqual(pricer().matchup_x(7, "OPP", "pts"), 0.7 * 0.05 + 0.5 * -0.02)
+        self.assertAlmostEqual(pricer().matchup_term(7, "OPP", "pts", 20.0), 20.0 * (0.7 * 0.05 + 0.5 * -0.02))
+        self.assertAlmostEqual(pricer().matchup_term(None, "OPP", "reb", 8.0), 8.0 * 0.26 * 0.03)      # the player does not matter at team level
+
+    def test_team_level_term_needs_the_file_a_known_opponent_and_the_switch(self):
+        self.assertEqual(pricer(ta=None).matchup_term(7, "OPP", "pts", 20.0), 0.0)
+        self.assertEqual(pricer().matchup_term(7, "NOPE", "pts", 20.0), 0.0)
+        self.assertEqual(pricer(enabled=False).matchup_term(7, "OPP", "reb", 8.0), 0.0)
+        self.assertEqual(pricer(example=True).matchup_term(7, "OPP", "pts", 20.0), 0.0)
+        p = pricer(); p.MT["stats"]["pts"]["team_terms"][0]["beta"] = 100.0
+        self.assertAlmostEqual(p.matchup_term(7, "OPP", "pts", 10.0), 3.0)                                # clipped at 1.3
+
     def test_nothing_when_thin_off_unknown_or_example(self):
         self.assertIsNone(pricer().matchup_idx(8, "OPP", "3pm"))              # under 50 shots
         self.assertIsNone(pricer().matchup_idx(9, "OPP", "3pm"))              # under 5% of his shots are threes
         self.assertIsNone(pricer().matchup_idx(8, "OPP", "ast"))              # no assist shares
         self.assertIsNone(pricer(enabled=False).matchup_idx(7, "OPP", "3pm"))
         self.assertIsNone(pricer().matchup_idx(7, "NOPE", "3pm"))
-        self.assertIsNone(pricer().matchup_idx(7, "OPP", "pts"))              # not a matchup stat yet
+        self.assertIsNone(pricer().matchup_idx(7, "OPP", "pts"))              # points use the team-level path, not the player-mix index
         self.assertEqual(pricer(example=True).matchup_term(7, "OPP", "3pm", 2.0), 0.0)
 
 

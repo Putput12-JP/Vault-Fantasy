@@ -22,6 +22,11 @@ class Scorer(unittest.TestCase):
         self.assertFalse(S.ready({"rows": 900, "nights": 24}))
         self.assertTrue(S.ready({"rows": 500, "nights": 25}))
 
+    def test_points_and_rebounds_start_a_day_later(self):
+        self.assertEqual(S.FROM["pts"], "2026-10-27")
+        self.assertEqual(S.FROM["reb"], "2026-10-27")
+        self.assertEqual(set(S.STATS), {"3pm", "ast", "pts", "reb"})
+
     def test_too_few_games_gives_no_statistic(self):
         self.assertIsNone(S.per_stat([row("1", "3pm", 1.0, 0.1, 1.0)])["3pm"]["stats"])
 

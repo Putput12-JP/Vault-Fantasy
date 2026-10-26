@@ -3769,9 +3769,10 @@ const PART_LABEL = {base: 'Minutes × rate', opp: 'Opponent defense', pace: 'Pac
                     season: 'Season form', home: 'Home / road', b2b: 'Back-to-back', matchup: 'Shot matchup', bias: 'Calibration'};
 // Shot-diet matchup term (docs/matchup-live.md; scripts/pricing.py matchup_idx / matchup_term are the same arithmetic, check_matchup_js_parity.py proves it).
 const MT = /*MATCHUP*/null;
+const TA = /*TEAMALLOW*/null;                           // team allowance for points and rebounds (build_team_allowance.py)
 // MATCHUP-IDX-START
 function matchupIdx(dd, mt, pid, opp, s){
-  if (!dd || !mt || !mt.enabled || !mt.stats || !mt.stats[s] || !opp) return null;
+  if (!dd || !mt || !mt.enabled || !mt.stats || !mt.stats[s] || !opp || (s !== '3pm' && s !== 'ast')) return null;
   const P = dd.players[String(pid)], tm = dd.teams[opp];
   if (!P || !tm) return null;
   if (s === '3pm'){
@@ -3783,11 +3784,21 @@ function matchupIdx(dd, mt, pid, opp, s){
   if (!sh || P.ast < 30) return null;
   return ['rim', 'smid', 'lmid', 'c3', 'arc3'].reduce((a, k) => a + sh[k] * tm.ast[k][2], 0) / 100;
 }
+function matchupX(dd, ta, mt, pid, opp, s){
+  if (!mt || !mt.enabled || !mt.stats || !mt.stats[s] || !opp) return null;
+  const cfg = mt.stats[s];
+  if (cfg.team_terms){
+    const row = ta && ta.teams && ta.teams[opp];
+    return row ? cfg.team_terms.reduce((a, t) => a + t.beta * row[t.index], 0) : null;
+  }
+  const idx = matchupIdx(dd, mt, pid, opp, s);
+  return idx == null ? null : cfg.beta * idx;
+}
 function matchupTerm(pid, opp, s, mu){
-  const idx = matchupIdx(DD, MT, pid, opp, s);
-  if (idx == null) return 0;
+  const x = matchupX(DD, TA, MT, pid, opp, s);
+  if (x == null) return 0;
   const c = MT.clip || [0.7, 1.3];
-  return mu * (Math.min(c[1], Math.max(c[0], 1 + MT.stats[s].beta * idx)) - 1);
+  return mu * (Math.min(c[1], Math.max(c[0], 1 + x)) - 1);
 }
 // MATCHUP-IDX-END
 function v2Terms(pl, s, mu, min, g, state){

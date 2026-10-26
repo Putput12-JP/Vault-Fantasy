@@ -6,7 +6,7 @@ Forward read of the live shot-matchup term (docs/matchup-live.md, "Forward read"
   python3 nba/scripts/score_matchup_forward.py monthly       the early-stop check only: a stat whose gain is negative at t <= -2.5 is to be demoted
   python3 nba/scripts/score_matchup_forward.py read          the registered read; a stat is read ONCE, when it has 500 rows from 25 nights
 
-Population: settled single-stat 3PM and AST prop bets in bets/<day>.json on origin/nba-data, games on or after 2026-10-26, carrying `mt` (the matchup term inside `mu`),
+Population: settled single-stat 3PM, AST (games on or after 2026-10-26) and PTS, REB (on or after 2026-10-27) prop bets in bets/<day>.json on origin/nba-data, carrying `mt` (the matchup term inside `mu`),
 win or loss, with a stored `actual`. gain = |actual - (mu - mt)| - |actual - mu|, game as the unit, bootstrap 2,000 draws, seed 7, t = mean / sd of the bootstrap means.
 KEEP: gain > 0 with t >= 1.65. DEMOTE: otherwise. Results are written to data/matchup_forward.json (a stat already read is never overwritten).
 """
@@ -17,8 +17,9 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(HERE, '..', 'data', 'matchup_forward.json')
-FROM_DAY, MIN_ROWS, MIN_NIGHTS = '2026-10-26', 500, 25
-STATS = ('3pm', 'ast')
+FROM = {'3pm': '2026-10-26', 'ast': '2026-10-26', 'pts': '2026-10-27', 'reb': '2026-10-27'}      # first game day each stat's term was live (points and rebounds need the daily team-allowance file)
+MIN_ROWS, MIN_NIGHTS = 500, 25
+STATS = tuple(FROM)
 
 
 def git(*a):
@@ -30,10 +31,10 @@ def load_rows(ref='origin/nba-data'):
     rows = []
     for n in sorted(names):
         day = n.split('/')[-1][:-5]
-        if day < FROM_DAY:
+        if day < min(FROM.values()):
             continue
         for b in json.loads(git('show', f'{ref}:{n}')):
-            if b.get('stat') in STATS and b.get('mt') is not None and b.get('result') in ('win', 'loss') and b.get('actual') is not None and b.get('mu') is not None and not b.get('pre'):
+            if b.get('stat') in STATS and day >= FROM[b['stat']] and b.get('mt') is not None and b.get('result') in ('win', 'loss') and b.get('actual') is not None and b.get('mu') is not None and not b.get('pre'):
                 rows.append({'day': day, 'game': str(b['game']), 'stat': b['stat'], 'mu': b['mu'], 'mt': b['mt'], 'actual': b['actual']})
     return rows
 
