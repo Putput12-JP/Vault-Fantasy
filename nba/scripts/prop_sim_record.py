@@ -46,21 +46,37 @@ SHOWN = 5                             # the page lists each team's five highest-
 NCOL = 12                             # per game per stat: n, ll x3, brier x3, then the priced subset: n, market ll, ll x3
 
 
+NOT_A_LINE = {'Polymarket'}           # Polymarket lists a ladder of thresholds (every 5 points, every 2 rebounds), not one line; its rungs are never the main line
+LINE_FIRST = 'Pinnacle'               # when sportsbooks disagree on the line, the sharpest book's line wins the tie
+
+
+def modal_line(rows):
+    """The line most rows agree on. A tie goes to the line Pinnacle posts, then to a line that carries a two-sided price, then to the lower line.
+    (Before 2026-10-26 a tie went to the lowest line alone, which let a Polymarket rung win whenever one sportsbook posted a prop: 4.5 points for a
+    player the books had at 10.5, 1.5 rebounds for one at 6.5.)"""
+    cnt, first, priced = {}, set(), set()
+    for r in rows:
+        cnt[r['line']] = cnt.get(r['line'], 0) + 1
+        if r['n'] == LINE_FIRST:
+            first.add(r['line'])
+        if r['p'] is not None:
+            priced.add(r['line'])
+    return sorted(cnt, key=lambda k: (-cnt[k], k not in first, k not in priced, k))[0]
+
+
 def main_line(e):
-    """(line, p_over from the price or None, source) for one board prop: sportsbooks first, then the pick'em apps."""
+    """(line, p_over from the price or None, source) for one board prop: sportsbooks first, then the pick'em apps.
+    Polymarket's threshold ladder is not a sportsbook line and is left out (NOT_A_LINE)."""
     import pricing as PX
-    def modal(rows):
-        cnt = {}
-        for r in rows:
-            cnt[r['line']] = cnt.get(r['line'], 0) + 1
-        return sorted(cnt, key=lambda k: (-cnt[k], k))[0]
     bk = []
     for r in e.get('books', []):
+        if r[0] in NOT_A_LINE:
+            continue
         po, pu = PX.am_p(r[2]), PX.am_p(r[3])
         if r[1] is not None and po is not None and pu is not None:
             bk.append({'n': r[0], 'line': r[1], 'p': po / (po + pu)})
     if bk:
-        line = modal(bk); at = [x for x in bk if x['line'] == line]
+        line = modal_line(bk); at = [x for x in bk if x['line'] == line]
         return line, sum(x['p'] for x in at) / len(at), 'books'
     pk = []
     for r in e.get('pk', []):
@@ -69,7 +85,7 @@ def main_line(e):
         po, pu = (PX.am_p(r[2]) if r[2] is not None else None), (PX.am_p(r[3]) if r[3] is not None else None)
         pk.append({'n': r[0], 'line': r[1], 'p': po / (po + pu) if po is not None and pu is not None else None})
     if pk:
-        line = modal(pk); at = [x for x in pk if x['line'] == line]
+        line = modal_line(pk); at = [x for x in pk if x['line'] == line]
         pr = next((x['p'] for x in at if x['p'] is not None), None)
         return line, pr, 'pickem'
     return None
@@ -88,8 +104,9 @@ def draws_over(rng, stat, mu, var, line, n):
     return float((x > line).mean())
 
 
-def log(board, now):
-    """Rows and meta for every priced prop whose game tips within WINDOW_H."""
+def log(board, now, mu_of=None):
+    """Rows and meta for every priced prop whose game tips within WINDOW_H. mu_of(key), when given, may return a mean to use in place of the model's
+    (repair_main_line.py rebuilds a row at the right line with the mean the recorder had)."""
     rows, meta = {}, {}
     if not board or not board.get('games') or not board.get('props'):
         return rows, meta
@@ -114,6 +131,9 @@ def log(board, now):
                 continue
             hold = pr.roster_hold(m['team'], g, status, cache, m.get('src')) or pr.returning_hold(int(e['p']), m['team'], g)
             mu, ex = m['mu'], m['extra']
+            kk = f"{e['g']}|{e['p']}|{s}"
+            if mu_of and mu_of(kk) is not None:
+                mu = mu_of(kk)
             v0, v1, v2, v3 = pr.PR['variance'][s]
             var = max(.25, v0 + v1 * mu + v2 * mu * mu + (v3 * ex if v3 else 0))
             seed = zlib.crc32(f"{e['g']}|{e['p']}|{s}".encode())            # fixed per prop, so an unchanged input records an unchanged row
@@ -195,31 +215,69 @@ def settle_gap(pick, bx):
     return ('W' if (y > pick['line']) == (pick['side'] == 'over') else 'L'), y
 
 
-def record_all(root, now, prev, prev_gap, rescan_days, games, L):
-    """Per tip day: (psim_days, gap_days). psim_days is each final game's last pre-tip prop probabilities scored against the box score
-    (see the module doc). gap_days is the Biggest gap pick of each final game from the same last pre-tip rows, settled from the same box score.
-    L is the ledger module, passed in because ledger imports this module. Days outside the rescan window are kept."""
-    days, gap_days = dict(prev or {}), dict(prev_gap or {})
-    since = L.tip_day(now - rescan_days * 86400)
+LOCK_MIN = 90                         # the Biggest gap pick of a game is fixed this many minutes before tip, from the rows recorded up to then
+PICK_KEYS = ('pid', 'player', 'team', 'stat', 'side', 'line', 'mu', 'p', 'pm', 'held', 'lock', 'late')
+
+
+def lock_t(tip):
+    return tip - LOCK_MIN * 60
+
+
+def _games(root, now, since, L, games):
+    """game -> {'meta', 'last': rows as last recorded before tip, 'lock': rows as of the lock time, 'first': each prop's first row}, every row
+    {(pid, stat): (row, meta)}. Props whose series has no value before tip are left out. No settle wait here: callers decide."""
     G = {}
     for k, x in L.load_src(root, 'psim', since).items():
         m = x['meta']
-        pre = [v for t, v in sorted(x['series']) if v is not None and m and t < m['tip']]
-        if not m or not pre or now < m['tip'] + L.SETTLE_AFTER_S or (games and not games(str(m['game']))):
+        if not m or (games and not games(str(m['game']))):
             continue
-        e = G.setdefault(m['game'], {'meta': m, 'rows': {}})
-        e['rows'][(m['pid'], m['stat'])] = (pre[-1], m)
+        ser = [(t, v) for t, v in sorted(x['series']) if v is not None and t < m['tip']]
+        if not ser:
+            continue
+        e = G.setdefault(m['game'], {'meta': m, 'last': {}, 'lock': {}, 'first': {}})
+        key = (m['pid'], m['stat'])
+        e['last'][key] = (ser[-1][1], m)
+        e['first'][key] = (ser[0][1], m)
+        at = [v for t, v in ser if t <= lock_t(m['tip'])]
+        if at:
+            e['lock'][key] = (at[-1], m)
+    return G
+
+
+def locked_pick(e):
+    """The game's Biggest gap, fixed at lock_t(tip): chosen from each prop's last row recorded by then. When no prop had a row by then (the recorder or the
+    prices came late) it is chosen from each prop's first row instead and carries late=1, so the page can say it locked late. None when nothing qualifies."""
+    tip = e['meta']['tip']
+    pick = gap_pick(e['lock'] or e['first'])
+    if not pick:
+        return None
+    return {**pick, 'lock': lock_t(tip), **({} if e['lock'] else {'late': 1})}
+
+
+def record_all(root, now, prev, prev_gap, rescan_days, games, L, locks=None):
+    """Per tip day: (psim_days, gap_days). psim_days is each final game's last pre-tip prop probabilities scored against the box score
+    (see the module doc). gap_days is the Biggest gap pick of each final game, locked LOCK_MIN minutes before tip (locked_pick) and settled from the same
+    box score. A pick already in prev_gap with a lock is never chosen again, only re-settled (a box score can be corrected). `locks`, when passed a dict,
+    is filled with {game: pick} for every game in the window whose lock time has passed, settled or not, so the page can show the pick before the game.
+    L is the ledger module, passed in because ledger imports this module. Days outside the rescan window are kept."""
+    days, gap_days = dict(prev or {}), dict(prev_gap or {})
+    since = L.tip_day(now - rescan_days * 86400)
+    frozen = {g['game']: g for gs in (prev_gap or {}).values() for g in gs if g.get('lock')}
     per_day, gap_per_day = {}, {}
-    for gid, e in G.items():
+    for gid, e in _games(root, now, since, L, games).items():
+        m = e['meta']
+        pick = {k: frozen[gid][k] for k in PICK_KEYS if k in frozen[gid]} if gid in frozen else locked_pick(e) if now >= lock_t(m['tip']) else None
+        if locks is not None and pick:
+            locks[gid] = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick}
+        if now < m['tip'] + L.SETTLE_AFTER_S:
+            continue
         bx = L.box(root, gid)
         if bx is None:
             continue
-        m = e['meta']
-        pick = gap_pick(e['rows'])
         if pick:
             res, y = settle_gap(pick, bx)
             gap_per_day.setdefault(L.tip_day(m['tip']), []).append({'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick, 'y': y, 'r': res, **({'replay': 1} if m.get('replay') else {})})
-        per = score({k: v for k, v in e['rows'].items() if not v[1].get('held')}, bx)      # the minutes-model comparison keeps to props the roster guard trusts
+        per = score({k: v for k, v in e['last'].items() if not v[1].get('held')}, bx)      # the minutes-model comparison keeps to props the roster guard trusts
         if not any(v[0] for v in per.values()):
             continue
         entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]}, **({'replay': 1} if m.get('replay') else {})}   # replay: filled in after the fact (replay_polls.py)
