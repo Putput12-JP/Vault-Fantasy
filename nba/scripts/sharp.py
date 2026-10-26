@@ -927,23 +927,30 @@ def prop_signals(by_id, pkeys, pin_props, polls, tape, W, day, now, kal_vol):
     return out
 
 
+def _bpay(a):
+    """Profit per unit staked on a p_behind / p_behind_x alert: Novig's price is the cost of a $1 contract (a probability), the books' is American."""
+    return 1 / a['price'] - 1 if a.get('venue') == 'Novig' else payout(a['price'])
+
+
 def prop_behind(board, by_id, pin_props, now):
-    """-> p_behind alerts: DraftKings at Pinnacle's own line for a player prop, priced PB_MIN or more better than Pinnacle's
-    no-vig fair, with Pinnacle unchanged for PB_SETTLE_S. Rules and thresholds are frozen in docs/prop-behind-pinnacle.md."""
+    """-> p_behind alerts (DraftKings, frozen in docs/prop-behind-pinnacle.md) and p_behind_x alerts (Polymarket and Novig, the same rule
+    in docs/prop-behind-pinnacle-venues.md, graded apart so the frozen test's pool is untouched). A venue at Pinnacle's own line for a
+    player prop, priced PB_MIN or more better than Pinnacle's no-vig fair, with Pinnacle unchanged for PB_SETTLE_S. Each venue needs its
+    own source to have answered within PB_FRESH_S; Pinnacle must have too."""
     src = board.get('src_ok') or {}
-    for s_ in ('pinnacle', 'espn'):
-        ok = (src.get(s_) or {}).get('ok')
-        if not ok or now - ok > PB_FRESH_S:
-            return []
+    fresh = lambda s_: bool((src.get(s_) or {}).get('ok')) and now - src[s_]['ok'] <= PB_FRESH_S
+    if not fresh('pinnacle'):
+        return []
+    use = {PB_BOOK: fresh('espn'), 'Polymarket': fresh('polymarket'), 'Novig': fresh('novig')}
+    nov = (board.get('novig') or {}).get('props') or {}    # only props read in the latest poll are in here: a ladder present is fresh
     out = []
     for e in board.get('props') or []:
         gid, g = str(e['g']), by_id.get(str(e['g']))
         if not g or now >= g['tip']:
             continue
         pin = next((b for b in e.get('books') or [] if b[0] == 'Pinnacle'), None)
-        soft = next((b for b in e.get('books') or [] if b[0] == PB_BOOK), None)
         S = pin_props.get((e['p'], e['s'], gid))
-        if not pin or not soft or not S or pin[1] is None or soft[1] != pin[1]:
+        if not pin or not S or pin[1] is None:
             continue
         last = S[-1]                                    # the settle test: Pinnacle's newest change is the one still showing, and it is old
         if last[1] != pin[1] or last[2] is None or now - last[0] < PB_SETTLE_S:
@@ -951,17 +958,32 @@ def prop_behind(board, by_id, pin_props, now):
         fo = devig(pin[2], pin[3])
         if fo is None:
             continue
-        for side, price, f in (('over', soft[2], fo), ('under', soft[3], 1 - fo)):
-            a = am(price)
-            if a is None or not -300 <= a <= 300:
-                continue
-            ev = f * (1 + payout(a)) - 1
+        quotes = []                                     # (venue, side, American price or None, cost as a chance or None, fair)
+        for venue in (PB_BOOK, 'Polymarket'):
+            soft = next((b for b in e.get('books') or [] if b[0] == venue), None)
+            if use[venue] and soft and soft[1] == pin[1]:
+                quotes += [(venue, 'over', soft[2], None, fo), (venue, 'under', soft[3], None, 1 - fo)]
+        lad = (nov.get(f"{e['p']}|{e['s']}") or {}).get('lad') or []
+        x = next((l for l in lad if l.get('k') == pin[1]), None)
+        if use['Novig'] and x:
+            quotes += [('Novig', 'over', None, (x['ask'] or [None, None])[0], fo), ('Novig', 'under', None, (x['ask'] or [None, None])[1], 1 - fo)]
+        for venue, side, price, cost, f in quotes:
+            if cost is not None:                        # an exchange ask: pays 1 for the cost, so EV = fair / cost - 1; same -300..+300 range as the books
+                if not 0.25 <= cost <= 0.75:
+                    continue
+                ev, shown = f / cost - 1, round(cost, 3)
+            else:
+                a = am(price)
+                if a is None or not -300 <= a <= 300:
+                    continue
+                ev, shown = f * (1 + payout(a)) - 1, int(a)
             if PB_MIN <= ev < PB_MAX:
-                out.append({'g': gid, 'pid': e['p'], 'stat': e['s'], 'type': 'p_behind', 't': now, 'side': side, 'line': pin[1],
-                            'venue': PB_BOOK, 'price': int(a), 'fair': r3(f), 'ev': r3(ev), 'lim': last[3],
+                main = venue == PB_BOOK
+                out.append({'g': gid, 'pid': e['p'], 'stat': e['s'], 'type': 'p_behind' if main else 'p_behind_x', 't': now, 'side': side, 'line': pin[1],
+                            'venue': venue, 'price': shown, 'fair': r3(f), 'ev': r3(ev), 'lim': last[3],
                             'hrs': round((g['tip'] - now) / 3600, 2), 'settled': round((now - last[0]) / 60),
                             'move': pin_move(S, None, side, pin[1], prop=True),
-                            'id': f"{gid}:p_behind:{e['p']}:{e['s']}:{side}:{pin[1]}"})
+                            'id': f"{gid}:p_behind:{e['p']}:{e['s']}:{side}:{pin[1]}" if main else f"{gid}:p_behind_x:{venue}:{e['p']}:{e['s']}:{side}:{pin[1]}"})
     return out
 
 
@@ -978,18 +1000,18 @@ def grade_prop(a, close_props, actual):
     c = (close_props or {}).get(f"{a['pid']}|{a['stat']}")
     if c and a.get('close') is None and c[0] == a.get('line') and c[1] is not None:
         a['close'] = r3(c[1] if a['side'] == 'over' else 1 - c[1])
-        if a['type'] == 'p_behind':                       # the price's EV at Pinnacle's close, and how far its fair moved (docs/prop-behind-pinnacle.md)
-            a['clv'] = r3(a['close'] * (1 + payout(a['price'])) - 1)
+        if a['type'] in ('p_behind', 'p_behind_x'):       # the price's EV at Pinnacle's close, and how far its fair moved (docs/prop-behind-pinnacle.md)
+            a['clv'] = r3(a['close'] * (1 + _bpay(a)) - 1)
             a['drift'] = r3(a['close'] - a['fair'])
         elif a.get('fair') is not None:
             a['clv'] = r3(a['close'] - a['fair'])
-    elif c and a['type'] == 'p_behind' and a.get('moved') is None and a.get('close') is None and c[0] != a.get('line') and a.get('line') is not None:
+    elif c and a['type'] in ('p_behind', 'p_behind_x') and a.get('moved') is None and a.get('close') is None and c[0] != a.get('line') and a.get('line') is not None:
         a['moved'] = 'toward' if (c[0] > a['line']) == (a['side'] == 'over') else 'against'   # no like-for-like close: only the direction is graded
     if actual is not None and a.get('result') is None and a.get('line') is not None:
         d = (actual - a['line']) * (1 if a['side'] == 'over' else -1)
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
-        if a['type'] == 'p_behind' and a.get('price') is not None:
-            a['units'] = r3(payout(a['price']) if d > 0 else -1 if d < 0 else 0)
+        if a['type'] in ('p_behind', 'p_behind_x') and a.get('price') is not None:
+            a['units'] = r3(_bpay(a) if d > 0 else -1 if d < 0 else 0)
 
 
 def pm_close_for(a):

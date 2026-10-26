@@ -745,7 +745,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pv-sg p{margin:0;font-size:13px}
 .pv-sg small{font-size:11.5px;color:var(--fg3)}
 .pv-sk{display:inline-flex;justify-content:center;height:22px;align-items:center;padding:0 8px;border-radius:var(--r-pill);font-size:11px;font-weight:500;border:1px solid var(--border2);color:var(--fg2);white-space:nowrap}
-.pv-sk.p_pin{color:var(--c-blue);border-color:rgba(147,197,253,.4)} .pv-sk.p_acct{color:var(--up);border-color:rgba(74,222,128,.35)} .pv-sk.p_kal{color:var(--warn);border-color:rgba(251,191,36,.4)} .pv-sk.p_behind{color:var(--fg);border-color:var(--border2);border-style:dashed}
+.pv-sk.p_pin{color:var(--c-blue);border-color:rgba(147,197,253,.4)} .pv-sk.p_acct{color:var(--up);border-color:rgba(74,222,128,.35)} .pv-sk.p_kal{color:var(--warn);border-color:rgba(251,191,36,.4)} .pv-sk.p_behind,.pv-sk.p_behind_x{color:var(--fg);border-color:var(--border2);border-style:dashed}
 .pv-note,.pv-none{margin:0;font-size:12px;color:var(--fg3)}
 .pv-wf{display:grid;gap:5px}
 .pv-wf .wr{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
@@ -1411,7 +1411,7 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 .tl-p b{display:block;font-weight:600;font-size:14px}.tl-p small{color:var(--fg3);font-size:11.5px}
 .tl-t{display:grid;gap:8px}.tl-t>div{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:baseline}.tl-t p{margin:0;color:var(--fg2);line-height:1.45}.tl-t small{grid-column:2;color:var(--fg3);font-size:11.5px}
 .tl-k{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--r-pill);border:1px solid var(--border2);font:500 10.5px var(--font-mono);color:var(--fg2);white-space:nowrap}
-.tl-k.p_pin{color:#7ab4ff;border-color:rgba(122,180,255,.4)}.tl-k.p_acct{color:var(--up);border-color:rgba(95,207,140,.35)}.tl-k.p_kal{color:var(--warn);border-color:rgba(229,185,85,.4)}.tl-k.p_behind{color:var(--fg);border-color:var(--fg3)}
+.tl-k.p_pin{color:#7ab4ff;border-color:rgba(122,180,255,.4)}.tl-k.p_acct{color:var(--up);border-color:rgba(95,207,140,.35)}.tl-k.p_kal{color:var(--warn);border-color:rgba(229,185,85,.4)}.tl-k.p_behind,.tl-k.p_behind_x{color:var(--fg);border-color:var(--fg3)}
 .tl-s b{display:block;font-weight:600}.tl-s small{display:block;color:var(--fg3);font-size:11.5px}
 @media(max-width:820px){.tl-r,.tl-r.h{grid-template-columns:1fr;gap:6px}.tl-r.h{display:none}.tl-t>div{grid-template-columns:1fr;gap:3px;justify-items:start}.tl-t small{grid-column:1}}
 /* Sharp Price */
@@ -7592,6 +7592,8 @@ function ladFair(lad, m, side, line){
 // Null when the stored series had no earlier row for that number, so nothing is shown rather than guessed. Context only.
 const pinMv = (mv, line) => { if (!mv || mv.p0 == null || mv.p1 == null) return ''; const m = Math.max(1, Math.round((Date.now() / 1000 - mv.t) / 60)), w = m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d';
   return ` Pinnacle ${mv.line0 != null && line != null && mv.line0 !== line ? 'moved the number, now ' + pc(mv.p1) : pc(mv.p0) + ' to ' + pc(mv.p1)}, ${w} ago.`; };
+// A p_behind price: American odds for a book, cents for the Novig exchange (its price is the cost of a $1 contract).
+const pbPx = x => x.venue === 'Novig' ? Math.round(x.price * 100) + '¢' : (x.price > 0 ? '+' : '') + x.price;
 const pAm = p => p == null || !(p > 0 && p < 1) ? '' : (p >= .5 ? '-' + Math.round(100 * p / (1 - p)) : '+' + Math.round(100 * (1 - p) / p));
 const usdK = x => Math.abs(x) >= 1000 ? '$' + (Math.abs(x) / 1000).toFixed(Math.abs(x) >= 1e4 ? 0 : 1) + 'k' : '$' + Math.abs(Math.round(x));
 function xSide(a, g){
@@ -7662,8 +7664,8 @@ function xRecord(){
     const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     r.forEach((v, i) => x[i] += v);
   }
-  const PREREG = {novig: ['docs/novig-money.md'], p_behind: ['docs/prop-behind-pinnacle.md'], steam: ['docs/steam-continuation.md', 'games'], behind: ['docs/behind-pinnacle.md', 'games']};   // types with their own pre-registered first look (100 graded): the page never calls them from a generic t-test
-  const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money', p_behind: 'Prop: DraftKings behind Pinnacle'};
+  const PREREG = {novig: ['docs/novig-money.md'], p_behind: ['docs/prop-behind-pinnacle.md'], p_behind_x: ['docs/prop-behind-pinnacle-venues.md'], steam: ['docs/steam-continuation.md', 'games'], behind: ['docs/behind-pinnacle.md', 'games']};   // types with their own pre-registered first look (100 graded): the page never calls them from a generic t-test
+  const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money', p_behind: 'Prop: DraftKings behind Pinnacle', p_behind_x: 'Prop: Polymarket / Novig behind Pinnacle'};
   const rows = Object.keys(XREC).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null, pg = r[9] || 0, pm = pg ? r[10] / pg : null;
     const se = g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, dec = r[5] + r[6] + r[7];
     const st = PREREG[t] ? `<span class="muted">${PREREG[t][1] === 'games' ? `Pre-registered · first look at 100 games (${PREREG[t][0]})` : g < 100 ? `Tracking · ${g} of 100` : `First look due (${PREREG[t][0]})`}</span>` : '<span class="muted">Context only · no pass rule yet</span>';
@@ -7847,9 +7849,9 @@ function renderWallets(){
 // DraftKings are anonymous; Polymarket prop money is thin), so this follows the tell and grades each type on its own closing-line value.
 // Tells are never summed into a lean or an agree count: sharp money is context. p_behind has a pre-registered pass rule (docs/prop-behind-pinnacle.md).
 let tlType = 'all';
-const TL_TYPES = {p_behind: 'DraftKings behind Pinnacle', p_pin: 'Pinnacle move', p_kal: 'Heavy Kalshi money', p_acct: 'Sharp accounts'};
-const TL_WHAT = {p_behind: 'DraftKings at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes', p_pin: 'Pinnacle moved the line a point or its chance 5 points within an hour', p_kal: '$2,000+ traded on one Kalshi rung between polls with the price moving 3¢', p_acct: 'Sharp Polymarket accounts put $500+ on a prop in 30 minutes'};
-const TL_PRE = {p_behind: 'docs/prop-behind-pinnacle.md'};
+const TL_TYPES = {p_behind: 'DraftKings behind Pinnacle', p_behind_x: 'Polymarket / Novig behind Pinnacle', p_pin: 'Pinnacle move', p_kal: 'Heavy Kalshi money', p_acct: 'Sharp accounts'};
+const TL_WHAT = {p_behind: 'DraftKings at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes', p_behind_x: 'Polymarket or Novig at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes (Novig fee not modeled)', p_pin: 'Pinnacle moved the line a point or its chance 5 points within an hour', p_kal: '$2,000+ traded on one Kalshi rung between polls with the price moving 3¢', p_acct: 'Sharp Polymarket accounts put $500+ on a prop in 30 minutes'};
+const TL_PRE = {p_behind: 'docs/prop-behind-pinnacle.md', p_behind_x: 'docs/prop-behind-pinnacle-venues.md'};
 const TL_STAT = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks', tov: 'Turnovers', sb: 'Steals + Blocks', fgm: 'Field goals made', fga: 'Field goals attempted', ftm: 'Free throws made', fta: 'Free throws attempted', tpa: '3-pointers attempted', oreb: 'Off. rebounds', dreb: 'Def. rebounds'};
 function tlAgg(){
   const S = TR && TR.data && TR.data.signals, T = {};
@@ -7862,7 +7864,7 @@ function tlAgg(){
 function tlText(x, stat){
   const side = x.side === 'over' ? 'Over' : 'Under';
   if (x.type === 'p_pin') return x.from[0] !== x.to[0] ? `Pinnacle moved the line ${x.from[0]} to ${x.to[0]}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}` : `Pinnacle moved toward the ${side.toLowerCase()} at ${x.line}: over ${pc(x.from[1])} to ${pc(x.to[1])}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`;
-  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side.toLowerCase()} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}. Pinnacle's fair is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, Pinnacle unchanged for ${x.settled} min.${pinMv(x.move, x.line)}`;
+  if (x.type === 'p_behind' || x.type === 'p_behind_x') return `${esc(x.venue)} has the ${side.toLowerCase()} ${x.line} at ${esc(pbPx(x))}. Pinnacle's fair is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, Pinnacle unchanged for ${x.settled} min.${pinMv(x.move, x.line)}`;
   if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on one Kalshi rung in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
   if (x.type === 'p_acct') return `${x.accts > 1 ? x.accts + ' sharp Polymarket accounts' : 'Sharp Polymarket account ' + esc(x.who || '')} bought ${side} ${x.line}: $${x.usd.toLocaleString()} at ${Math.round(x.px * 100)}¢`;
   return '';
@@ -8486,7 +8488,7 @@ function pvRows(){
 // sharp money on one prop: the recorder's signals plus 2+ venues moving the same way since open (one book alone is not)
 function pvSharp(r){
   const all = [...(((PS.board.sharp || {}).props || {})[`${r.e.p}|${r.e.s}`] || [])];
-  const sig = all.filter(x => x.type !== 'p_behind'), pb = all.filter(x => x.type === 'p_behind');   // p_behind is a price check, tracked apart: never part of lean, with/against or any agree count
+  const isPb = x => x.type === 'p_behind' || x.type === 'p_behind_x', sig = all.filter(x => !isPb(x)), pb = all.filter(isPb);   // p_behind is a price check, tracked apart: never part of lean, with/against or any agree count
   let o = 0, u = 0; const mt = [];
   for (const b of r.books || []){
     if (b.l0 == null || b.line == null) continue;
@@ -8576,13 +8578,13 @@ function pvWays(r){
   return `${ref && ref !== top && pvRowV(top) !== 'pass' ? `<div class="pv-shop"><b>Shopping matters here.</b> The recommended bet is worth <b class="pos">${pvUsd(pvEV(top))}</b> per $100; the main line at ${esc(ref.bk)} (${esc(pvBetName(ref))}) is worth <b class="${pvEV(ref) >= 0 ? 'pos' : 'neg'}">${pvUsd(pvEV(ref))}</b>.</div>` : ''}
     <div class="pv-ways">${rows.map(tr).join('')}</div>${!open ? `<button class="pv-more" type="button" data-allways="1">Show all ${all.length} ways</button>` : ''}`;
 }
-const PV_SK = {p_pin: 'Pinnacle move', p_acct: 'Sharp accounts', p_kal: 'Heavy money', p_mkt: 'Market move', p_behind: 'Behind Pinnacle'};
+const PV_SK = {p_pin: 'Pinnacle move', p_acct: 'Sharp accounts', p_kal: 'Heavy money', p_mkt: 'Market move', p_behind: 'Behind Pinnacle', p_behind_x: 'Behind Pinnacle'};
 function pvSharpText(x, r){
   const s = r.e.s, side = x.side === 'over' ? 'over' : 'under';
   if (x.type === 'p_pin') return x.from[0] !== x.to[0] ? `Pinnacle moved the line ${x.from[0]} to ${x.to[0]}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`
     : `Pinnacle moved toward the ${side} at ${x.line}: over ${pc(x.from[1])} to ${pc(x.to[1])}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`;
   if (x.type === 'p_acct') return `${x.accts > 1 ? x.accts + ' sharp Polymarket accounts' : 'Sharp Polymarket account ' + esc(x.who || '')} bought ${side === 'over' ? 'Over' : 'Under'} ${x.line}: $${x.usd.toLocaleString()} at ${Math.round(x.px * 100)}¢${x.rec ? ` (${x.rec[3].toUpperCase()} record: ${x.rec[0]} trades, ${x.rec[1] >= 0 ? '+' : ''}${(x.rec[1] * 100).toFixed(1)}% vs the close)` : ''}`;
-  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}; Pinnacle's fair price for it is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, with Pinnacle unchanged for ${x.settled} min.${pinMv(x.move, x.line)}`;
+  if (x.type === 'p_behind' || x.type === 'p_behind_x') return `${esc(x.venue)} has the ${side} ${x.line} at ${esc(pbPx(x))}; Pinnacle's fair price for it is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, with Pinnacle unchanged for ${x.settled} min.${pinMv(x.move, x.line)}`;
   if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on Kalshi ${pvK(x.line)} in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
   return `Venues moving the same way: ${esc(x.txt)}`;
 }
