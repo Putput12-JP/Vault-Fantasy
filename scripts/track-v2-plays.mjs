@@ -22,7 +22,7 @@
      ledger reads; a game that is not final, or whose box has under 300 player minutes, is not settled yet; a player with no minutes is void) and
      their CLV is the exchange read at the exact line from the last run before tip, kept on the row as `lastRead` and frozen as the close when the
      game starts. A read older than 3 hours, or at another line, is not a close.
-   Strict gates (gates.js MIN_PRICE and EARLY_H): a play at a price under 50%, or first seen 48h or more before the game, is a Pass and is logged to
+   Strict gates (gates.js MIN_PRICE and EARLY_H): a play at a price under 55%, or first seen 48h or more before the game, is a Pass and is logged to
      v2_passed.json, not here. Rows already in v2_plays.json that fail them are NOT moved or edited (the first-sight record is frozen and the
      snapshot guard refuses a vanished id); gates.heldBack(row) re-scores them from the stored price and first-sight time, and every record reads it.
    Sharp-account money is context only. It is not read here, does not rank a play and does not count toward an agree total.
@@ -249,7 +249,7 @@ export function summary(L) {
   const xs = Object.values(L.plays), done = xs.filter(x => x.status === 'won' || x.status === 'lost'), cl = xs.filter(x => x.clv != null);
   return { n: xs.length, open: xs.filter(x => x.status === 'open').length, w: done.filter(x => x.status === 'won').length, l: done.filter(x => x.status === 'lost').length,
     push: xs.filter(x => x.status === 'push').length, void: xs.filter(x => x.status === 'void').length, units: r3(done.reduce((s, x) => s + x.units, 0)), clvN: cl.length, clv: cl.length ? r4(mean(cl.map(x => x.clv))) : null,
-    held: xs.filter(x => gates.heldBack(x).length).length };      // rows the strict gates (price under 50%, 48h+ out) would not log today; they stay in the file and are re-scored out of the Play record on read
+    held: xs.filter(x => gates.heldBack(x).length).length };      // rows the strict gates (price under 55%, 48h+ out) would not log today; they stay in the file and are re-scored out of the Play record on read
 }
 
 /* ---- run ---- */

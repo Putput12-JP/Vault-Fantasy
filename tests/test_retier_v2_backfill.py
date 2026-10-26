@@ -12,7 +12,7 @@ def play(pid, p, hours, status='won', units=1.0):
 
 class Retier(unittest.TestCase):
     def test_moves_only_failing_plays(self):
-        B = dict(plays={'bfp|play|a': play('bfp|play|a', 0.45, 10), 'bfp|play|b': play('bfp|play|b', 0.55, 60), 'bfp|play|c': play('bfp|play|c', 0.55, 47.9), 'bfp|play|d': play('bfp|play|d', 0.5, 5)}, passed={})
+        B = dict(plays={'bfp|play|a': play('bfp|play|a', 0.45, 10), 'bfp|play|b': play('bfp|play|b', 0.6, 60), 'bfp|play|c': play('bfp|play|c', 0.6, 47.9), 'bfp|play|d': play('bfp|play|d', 0.55, 5)}, passed={})
         moved = R.retier(B)
         self.assertEqual(sorted(B['plays']), ['bfp|play|c', 'bfp|play|d'])
         self.assertEqual(sorted(B['passed']), ['bfp|pass|a', 'bfp|pass|b'])
@@ -29,8 +29,8 @@ class Retier(unittest.TestCase):
     def test_stored_file_has_no_failing_play_left(self):
         B = json.load(open(os.path.join(ROOT, 'data', 'v2_backfill.json')))
         self.assertEqual([k for k, p in B['plays'].items() if R.fails(p)], [])
-        self.assertEqual(len(B['plays']), 6)
-        self.assertEqual(len(B['retiered']), 11)
+        self.assertEqual(len(B['plays']), 1)
+        self.assertEqual(len(B['retiered']), 16)
 
 
 if __name__ == '__main__':

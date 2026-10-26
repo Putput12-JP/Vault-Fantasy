@@ -25,18 +25,18 @@ function board(over = {}) {
     outs: [[4, 'BOS', 'Out']],
     novig: { asof: NOW - 30, props: {} },
     props: [
-      /* 1: Kalshi says over 24.5 is 55%, Pinnacle devigs to 54.3%, DraftKings hangs -108 (51.9%): a play on the over, 5.9% over the exchange */
-      { p: 1, s: 'pts', g: 'g1', kal: [[24.5, 0.54, 0.56, 0.55, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-108', '-112', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-130', '+110', 24.5, '-110', NOW - 900]] },
+      /* 1: Kalshi says over 24.5 is 60%, Pinnacle devigs to 58%, DraftKings hangs -125 (55.6%): a play on the over, 7.9% over the exchange */
+      { p: 1, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-150', '+130', 24.5, '-110', NOW - 900]] },
       /* 2: the exchange likes the over (55%), Pinnacle prices it the other way (44%) */
-      { p: 2, s: 'reb', g: 'g1', kal: [[8.5, 0.54, 0.56, 0.55, 10, 10, NOW - 100]], books: [['DraftKings', 8.5, '-108', '-112', 8.5, '+100', NOW - 900], ['Pinnacle', 8.5, '+120', '-140', 8.5, '+120', NOW - 900]] },
+      { p: 2, s: 'reb', g: 'g1', kal: [[8.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 8.5, '-125', '-105', 8.5, '+100', NOW - 900], ['Pinnacle', 8.5, '+120', '-140', 8.5, '+120', NOW - 900]] },
       /* 3: a 20-point-wide Kalshi quote is not a price: only Pinnacle is left, so one reference */
-      { p: 3, s: 'ast', g: 'g1', kal: [[5.5, 0.40, 0.60, 0.5, 10, 10, NOW - 100]], books: [['DraftKings', 5.5, '-108', '-112', 5.5, '+100', NOW - 900], ['Pinnacle', 5.5, '-130', '+110', 5.5, '-110', NOW - 900]] },
+      { p: 3, s: 'ast', g: 'g1', kal: [[5.5, 0.40, 0.60, 0.5, 10, 10, NOW - 100]], books: [['DraftKings', 5.5, '-125', '-105', 5.5, '+100', NOW - 900], ['Pinnacle', 5.5, '-150', '+130', 5.5, '-110', NOW - 900]] },
       /* 4: the same price as 1, on a player who is out */
-      { p: 4, s: 'pts', g: 'g1', kal: [[24.5, 0.54, 0.56, 0.55, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-108', '-112', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-130', '+110', 24.5, '-110', NOW - 900]] },
+      { p: 4, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-150', '+130', 24.5, '-110', NOW - 900]] },
       /* 5: DraftKings is on 25.5, Pinnacle on 24.5: the exchange has no rung at 25.5, so nothing at this line has a price to beat */
-      { p: 5, s: 'pts', g: 'g1', kal: [[24.5, 0.54, 0.56, 0.55, 10, 10, NOW - 100]], books: [['DraftKings', 25.5, '-108', '-112', 25.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-130', '+110', 24.5, '-110', NOW - 900]] },
+      { p: 5, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 25.5, '-125', '-105', 25.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-150', '+130', 24.5, '-110', NOW - 900]] },
       /* 6: a play that is also listed Questionable */
-      { p: 6, s: '3pm', g: 'g1', kal: [[2.5, 0.54, 0.56, 0.55, 10, 10, NOW - 100]], books: [['DraftKings', 2.5, '-108', '-112', 2.5, '+100', NOW - 900], ['Pinnacle', 2.5, '-130', '+110', 2.5, '-110', NOW - 900]] },
+      { p: 6, s: '3pm', g: 'g1', kal: [[2.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 2.5, '-125', '-105', 2.5, '+100', NOW - 900], ['Pinnacle', 2.5, '-150', '+130', 2.5, '-110', NOW - 900]] },
     ],
   };
   return Object.assign(b, over);
@@ -48,9 +48,9 @@ test('a DraftKings price that beats the exchange, with Pinnacle agreeing, is an 
   const c = pick(cands(board()), 'Play Er Over 24.5 Points');
   assert.equal(c.tier, 'play');
   assert.equal(c.kind, 'prop'); assert.equal(c.sport, 'nba'); assert.equal(c.start, TIP);
-  assert.equal(c.price.book, 'DraftKings'); assert.equal(c.price.am, -108);
+  assert.equal(c.price.book, 'DraftKings'); assert.equal(c.price.am, -125);
   const ex = c.refs.find(r => r.n === 'Exchange'), pn = c.refs.find(r => r.n === 'Pinnacle');
-  assert.ok(Math.abs(ex.p - 0.55) < 1e-9, 'the exchange fair is the Kalshi mid at the exact line');
+  assert.ok(Math.abs(ex.p - 0.6) < 1e-9, 'the exchange fair is the Kalshi mid at the exact line');
   assert.ok(ex.edge >= GATES.MIN_EDGE && ex.edge <= GATES.BIG_EDGE && pn.edge >= 0);
   assert.equal(c.worst, ex.edge, 'a prop play is ranked by its edge against the exchange, the anchor');
   assert.ok(c.cautions.some(x => /no settled Plays record/.test(x)), 'every NBA prop says its gates are untested here');
@@ -80,9 +80,9 @@ test('a source that has gone quiet is not a price, and a game that has tipped is
 });
 
 test('Novig at the exact line is a second exchange read, and the two are averaged', () => {
-  const b = board(); b.novig.props['1|pts'] = { p: 1, s: 'pts', g: 'g1', lad: [{ k: 24.5, bid: [0.56, 0.42], ask: [0.58, 0.44], o: ['Over 24.5', 'Under 24.5'] }, { k: 25.5, bid: [0.4, 0.58], ask: [0.42, 0.6] }] };
+  const b = board(); b.novig.props['1|pts'] = { p: 1, s: 'pts', g: 'g1', lad: [{ k: 24.5, bid: [0.61, 0.37], ask: [0.63, 0.39], o: ['Over 24.5', 'Under 24.5'] }, { k: 25.5, bid: [0.4, 0.58], ask: [0.42, 0.6] }] };
   const c = pick(cands(b), 'Play Er Over 24.5 Points'), ex = c.refs.find(r => r.n === 'Exchange');
-  assert.ok(Math.abs(ex.p - (0.55 + 0.57) / 2) < 1e-9);
+  assert.ok(Math.abs(ex.p - (0.6 + 0.62) / 2) < 1e-9);
   const r = gates.nbaExchangeNow({ N: b, now: NOW }, 1, 'pts', 24.5); assert.equal(r.n, 2); assert.equal(r.src, 'Kalshi+Novig');
   assert.equal(gates.nbaExchangeNow({ N: b, now: NOW }, 1, 'pts', 23.5), null);
 });
@@ -124,13 +124,13 @@ test('the last exchange read before tip becomes the close, and a stale or moved 
   const L = { v: 1, plays: {} }; logPlays(L, playsOf(board()), NOW, opts);
   const P = Object.values(L.plays).find(x => x.prop.pid === 'nba:1');
   assert.ok(noteNbaReads(L, board(), NOW + 600) >= 1);
-  assert.equal(P.lastRead.p, 0.55); assert.equal(P.lastRead.src, 'Kalshi'); assert.equal(P.lastRead.t, NOW + 600);
+  assert.equal(P.lastRead.p, 0.6); assert.equal(P.lastRead.src, 'Kalshi'); assert.equal(P.lastRead.t, NOW + 600);
   const moved = board(); moved.props[0].kal = [[25.5, 0.4, 0.42, 0.41, 1, 1, NOW]];
   noteNbaReads(L, moved, NOW + 1200); assert.equal(P.lastRead.t, NOW + 600, 'no rung at the play\'s line: the earlier read stands');
-  assert.deepEqual(nbaClose(P), { p: 0.55, src: 'Kalshi', n: 1, t: NOW + 600 });
+  assert.deepEqual(nbaClose(P), { p: 0.6, src: 'Kalshi', n: 1, t: NOW + 600 });
   P.lastRead.t = TIP - 4 * 3600; assert.equal(nbaClose(P), null, 'a read 4 hours before tip is not a close');
   const U = { ...P, prop: { ...P.prop, side: 'under' }, lastRead: undefined }; noteNbaReads({ plays: { u: U } }, board(), NOW);
-  assert.equal(U.lastRead.p, 0.45, 'the under is the other side of the over read');
+  assert.equal(U.lastRead.p, 0.4, 'the under is the other side of the over read');
   const before = P.lastRead.t; noteNbaReads(L, board(), TIP + 5); assert.equal(P.lastRead.t, before, 'nothing is read after tip');
 });
 
@@ -142,7 +142,7 @@ test('NBA props settle from the box score: win pays 1/price - 1, loss -1, push 0
     return { P, out };
   };
   let { P } = run({ 1: { pts: 30, min: 36 }, 2: { pts: 9, min: 300 } }); assert.equal(P.status, 'won'); assert.equal(P.actual, 30); assert.equal(P.units, +payout(P.first.price.p).toFixed(3));
-  assert.equal(P.close.p, 0.55); assert.ok(Math.abs(P.clv - (0.55 / P.first.price.p - 1)) < 1e-3);
+  assert.equal(P.close.p, 0.6); assert.ok(Math.abs(P.clv - (0.6 / P.first.price.p - 1)) < 1e-3);
   ({ P } = run({ 1: { pts: 20, min: 30 }, 2: { min: 300 } })); assert.equal(P.status, 'lost'); assert.equal(P.units, -1);
   ({ P } = run({ 1: { pts: 24.5, min: 30 }, 2: { min: 300 } })); assert.equal(P.status, 'push'); assert.equal(P.units, 0);
   ({ P } = run({ 1: null, 2: { min: 300 } })); assert.equal(P.status, 'void'); assert.equal(P.units, 0);

@@ -18,7 +18,7 @@
     MAX_AGE: 45 * 60,    // a reference read older than this is not a price
     MAX_EXCH_SPREAD: 0.06, // an exchange quote wider than 6 points says where it is for sale, not where the market is (the same cut the ledger uses for a close)
     EARLY_H: 48,         // calls 48h+ out: 110-159, ROI -16.3% on 269 settled. Since the strict gates a play must also be inside this window (18-27, ROI -21.7% on 45 settled live plays)
-    MIN_PRICE: 0.50,     // strict gate: a price under 50% (plus money) is a long shot. 24-41, ROI -16.5% on 65 settled live plays; 70-42 (62.5%) once this and the 48h gate are applied (docs/retro/sharp-v2-strict-gates.md)
+    MIN_PRICE: 0.55,     // strict gate: ROI rises with price (-26% under 50%, +2% at 50-55%, +16% at 55-60%, +24% at 60-65%) and it repeats in the Watch and Passed ledgers. 33-11 (75%) once this and the 48h gate are applied (docs/retro/sharp-v2-strict-gates.md)
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
   const EXCH = ['Kalshi', 'Novig'];
@@ -53,7 +53,7 @@
   }
   /* The two strict gates, from stored fields only so the same test re-scores a ledger row (heldBack) and judges a live candidate (held). */
   const EARLY_WHY = 'Called ' + GATES.EARLY_H + ' hours or more before the game. Early calls decay: 18-27 (ROI -22%) on 45 settled live plays, 110-159 (ROI -16%) on 269 before that.';
-  const PRICE_WHY = 'The price is under ' + (GATES.MIN_PRICE * 100) + '% (plus money). Long-shot prices went 24-41 (ROI -17%) on 65 settled live plays.';
+  const PRICE_WHY = 'The price is under ' + Math.round(GATES.MIN_PRICE * 100) + '%. Plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(GATES.MIN_PRICE * 100) + '% and up inside ' + GATES.EARLY_H + ' hours they went 33-11 (ROI +26%).';
   const hoursOut = x => x == null ? null : x.hoursOut != null ? x.hoursOut : x.start != null && x.firstSeen != null ? (x.start - x.firstSeen) / 3600 : x.hoursEarly != null ? x.hoursEarly : null;
   function held(c) {
     const out = [];
