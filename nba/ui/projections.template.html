@@ -3843,7 +3843,7 @@ function gameMinutes(team, g, cache){
   const state = MS && (PS.mode === 'example' ? MS.example : MS.live), M = MS && MS.minutes;
   if (!state || !M || !Object.values(state.players).some(v => v && v.ms)){ cache[key] = {}; return cache[key]; }
   const P = state.players, S = a => P[String(a)] || {}, tip = g.tip;
-  if (!cache.__status) cache.__status = statusFromBoard(PS.board);
+  if (!cache.__status) cache.__status = statusFromBoard(PS.board || slateBoard().board);
   const out = {};
   for (const [a, s] of Object.entries(cache.__status)) if (s === 'Out' || s === 'Doubtful' || s === 'Inactive') out[+a] = 1;
   const rot = {};
@@ -3939,7 +3939,7 @@ function gameMinutesV3(team, g, cache){
   const state = MS && (PS.mode === 'example' ? MS.example : MS.live), M3 = MS && MS.minutes_v3, tg = state && state.m3_games;
   if (!state || !M3 || !tg){ cache[key] = {}; return cache[key]; }
   const P = state.players, S = a => P[String(a)] || {}, tip = g.tip;
-  if (!cache.__status) cache.__status = statusFromBoard(PS.board);
+  if (!cache.__status) cache.__status = statusFromBoard(PS.board || slateBoard().board);
   const five = (PS.board && PS.board.starters && PS.board.starters[team]) || null, starters = five ? new Set(five.map(Number)) : null;
   const out = {};
   for (const [a, s] of Object.entries(cache.__status)) if (s === 'Out' || s === 'Doubtful' || s === 'Inactive') out[+a] = 1;
@@ -3981,7 +3981,7 @@ function gameMinutesGbm(team, g, cache){
   if (cache[key]) return cache[key];
   const state = MS && (PS.mode === 'example' ? MS.example : MS.live);
   if (!state || !state.gbm || !GBM_MODEL){ cache[key] = {}; return cache[key]; }
-  if (!cache.__status) cache.__status = statusFromBoard(PS.board);
+  if (!cache.__status) cache.__status = statusFromBoard(PS.board || slateBoard().board);
   cache[key] = gbmMinutes(GBM_MODEL, state.gbm, team, g, cache.__status, (D.teams[team] ? D.teams[team].players : []).map(p => p.id));
   return cache[key];
 }
