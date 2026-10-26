@@ -152,12 +152,29 @@ class Pricer:
         lo, hi = self.MT.get('clip', [0.7, 1.3])
         return mu * (min(hi, max(lo, 1 + x)) - 1)
 
+    def mu_extra(self, pid, stat, g, cache, outs, team, status):
+        """The extra-stat projection the xstat record logs (steals, turnovers): minutes tonight x the player's Minutes Lab rate for the stat, and the matchup term on it.
+        Returns {'min', 'mu0', 'mt'} or None. The page projects the extras through its own path; this is the number the forward read scores the term on."""
+        if stat not in ('stl', 'tov') or not team or not g:
+            return None
+        gm = self.game_minutes(team, g, status or {}, cache) if self.MM else {}
+        G = gm.get(pid)
+        pl = self.pidx.get(pid)
+        rate = ((pl[1] or {}).get('rate') or {}).get(stat) if pl else None
+        if not G or rate is None or not (G['min'] > 0):
+            return None
+        mu0 = G['min'] * rate
+        opp = g['away'] if team == g['home'] else g['home'] if team == g['away'] else None
+        return {'min': G['min'], 'mu0': mu0, 'mt': self.matchup_term(pid, opp, stat, mu0)}
+
     def v2_terms(self, team, p, s, mu, mn, g):
         zero = {'opp': 0, 'pace': 0, 'market': 0, 'shooting': 0, 'season': 0, 'home': 0, 'b2b': 0, 'bias': 0, 'matchup': 0}
         st = self.state
-        if not self.PR.get('stacker') or s not in self.PR['stacker'] or not st or not g or not (mn > 0):
+        if not self.PR.get('stacker') or not st or not g or not (mn > 0):
             return zero
         opp = g['away'] if team == g['home'] else g['home'] if team == g['away'] else None
+        if s not in self.PR['stacker']:                       # stats with no stacker (the extra markets): only the matchup term, where a registered test passed (docs/matchup-extras-wiring.md)
+            return dict(zero, matchup=self.matchup_term(p['id'], opp, s, mu))
         T, O, P = st['teams'].get(team), opp and st['teams'].get(opp), st['players'].get(str(p['id'])) or {}
         home = 1 if team == g['home'] else 0
         b2b = 1 if T and T.get('last') and g['tip'] - T['last'] < 30 * 3600 else 0

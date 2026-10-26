@@ -45,3 +45,12 @@ Blocks; pace as a term for blocks and for steals on its own (Stage 1 found pace 
 2. Python: `xstat` projection and the term; recorder source; settle; tests (settle end to end on a fake `nba-data` folder, as the game-pick tests do).
 3. Page: the term for stacker-less stats; parity check; browser check.
 4. One pull request with a before-and-after (steals and turnovers props change; every other stat identical), a kill switch note, and the scheduled read.
+
+## As built (2026-10-26)
+
+- `team_allowance.json` now also carries `S_tov`, `T_forced` and `Pace` per team, computed by the registered test's own functions (`build_team_allowance.py` imports `test_matchup_stl_blk_tov`); all three are zero-mean over the 30 teams.
+- `matchup_terms.json`: steals `-0.0515 x Pace + 0.6818 x S_tov`, turnovers `-0.4652 x Pace + 0.7917 x T_forced`, clip 0.7 to 1.3, from 2026-10-27. Blocks are not wired.
+- **Page and Python:** `v2Terms` / `v2_terms` return only the matchup term for a stat with no stacker (the extras). `check_matchup_js_parity.py` agrees on 29,040 checks, 0 mismatches. While wiring this I found the page's term was not zero on the sample board as `pricing.py` is (`self.example`); the page now returns 0 in example mode too.
+- **Forward record:** `xstat_record.py` (new source `xstat`, `xstats/<day>.json`, `track.json` `xstat_days`), scorer `score_xstat_forward.py` with the rules above. Rows start with games on or after 2026-10-27.
+- **Known difference, stated plainly:** `mu0` in the record is minutes (the minutes model) x the player's Minutes Lab rate for the stat, computed in Python. The page's extras projection takes its own path and was not proven equal to it (Python never projected extras before this); the matchup term is the same multiplier on either, and the forward read scores the term on the Python number. Treat the page's extras as display; the record is the evidence.
+- Every other stat's pricing is unchanged (`check_pricing_regression` IDENTICAL on all four sections).

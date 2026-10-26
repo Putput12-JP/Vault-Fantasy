@@ -18,7 +18,7 @@ pr = PX.Pricer.__new__(PX.Pricer)
 pr.DDF, pr.MT, pr.TA, pr.example = dd, mt, ta, False
 pairs = [(pid, t, s) for pid in dd['players'] for t in dd['teams'] for s in ('3pm', 'ast')]
 if ta:
-    pairs += [('0', t, s) for t in ta['teams'] for s in ('pts', 'reb')]       # team-level stats do not depend on the player
+    pairs += [('0', t, s) for t in ta['teams'] for s in ('pts', 'reb', 'stl', 'tov')]       # team-level stats do not depend on the player
 py = [(pr.matchup_idx(pid, t, s), pr.matchup_term(pid, t, s, 2.5)) for pid, t, s in pairs]
 prog = f"""const DD = {json.dumps(dd)}; const MT = {json.dumps(mt)}; const TA = {json.dumps(ta)};
 {js}

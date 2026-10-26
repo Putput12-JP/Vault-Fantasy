@@ -35,9 +35,36 @@
         }
       ],
       "index": "misses per 48 in the opponent's games against the league (data/team_allowance.json)"
+    },
+    "stl": {
+      "team_terms": [
+        {
+          "index": "Pace",
+          "beta": -0.0515
+        },
+        {
+          "index": "S_tov",
+          "beta": 0.6818
+        }
+      ],
+      "index": "pace and the opponent's turnovers committed per 48 (data/team_allowance.json); extras are display-only"
+    },
+    "tov": {
+      "team_terms": [
+        {
+          "index": "Pace",
+          "beta": -0.4652
+        },
+        {
+          "index": "T_forced",
+          "beta": 0.7917
+        }
+      ],
+      "index": "pace and the turnovers the opponent's defense forces per 48 (data/team_allowance.json); extras are display-only"
     }
   },
-  "source": "nba/docs/matchup-volume-corrected-results.md: slopes fitted on 2024-25 and frozen (3PM 0.881, AST 0.778); on 2025-26 they cut volume error (3PM t 3.59, AST t 3.88) while a random-defense control did not. Confirmation is the 2026-27 forward read in nba/docs/matchup-live.md. Points and rebounds: nba/docs/matchup-points-rebounds-results.md (slopes fitted on 2024-25 and frozen; points use the registered joint pair 0.6845 and 0.700).",
+  "source": "nba/docs/matchup-volume-corrected-results.md: slopes fitted on 2024-25 and frozen (3PM 0.881, AST 0.778); on 2025-26 they cut volume error (3PM t 3.59, AST t 3.88) while a random-defense control did not. Confirmation is the 2026-27 forward read in nba/docs/matchup-live.md. Points and rebounds: nba/docs/matchup-points-rebounds-results.md (slopes fitted on 2024-25 and frozen; points use the registered joint pair 0.6845 and 0.700). Steals and turnovers: nba/docs/matchup-stl-blk-tov-results.md, wiring in nba/docs/matchup-extras-wiring.md (joint pace + matchup slopes fitted on 2024-25, frozen).",
   "kill_switch": "set enabled to false (the nba-daily job re-renders the page and the recorder reads this file on its next poll)",
-  "since_pts_reb": "2026-10-27"
+  "since_pts_reb": "2026-10-27",
+  "since_extras": "2026-10-27"
 }
