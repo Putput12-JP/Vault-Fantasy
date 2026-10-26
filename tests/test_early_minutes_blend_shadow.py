@@ -79,5 +79,16 @@ class ForwardScorer(unittest.TestCase):
 
 
 
+class BlendIsPriced(unittest.TestCase):
+    def test_blend_minutes_reads_the_models_minutes(self):
+        p = pricer()
+        self.assertAlmostEqual(p.blend_minutes("BOS", {"season_type": 2}, {7: 26.0})[7], 26.0 + 0.4 * (32.0 - 26.0))
+
+    def test_shadow_column_starts_from_min_v2_not_the_priced_minutes(self):
+        p = pricer()
+        gm = {7: {"min": 28.4, "min_v2": 26.0}}
+        self.assertAlmostEqual(p.game_minutes_blend("BOS", {"season_type": 2}, gm)[7], 28.4)
+
+
 if __name__ == "__main__":
     unittest.main()

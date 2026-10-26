@@ -260,6 +260,9 @@ class Pricer:
                 info[x['id']] = (x['min0'], 1.0 if x['name'].lower() in start else 0.0, x['grp'], (S(x['id']).get('r') or x['rate']))
                 labs.add(x['id'])
             pm, _ = rescale(project(list(info)))
+        v2min = dict(pm)                                  # the model's own minutes, kept for the Minutes record and the shadow's v2 column
+        for a, nm in self.blend_minutes(team, g, pm).items():       # early-season blend (docs/early-minutes-blend-test.md): priced from 2026-10-26; a stat's projection is proportional to the minutes
+            pm[a] = min(48.0, max(0.0, nm))
         present = [info[a][3] for a in info]
         res = {}
         for a in info:
@@ -275,7 +278,7 @@ class Pricer:
                     mu[st_] = max(0.0, pm[a] * rate + pm[a] / 48.0 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel))
                 else:
                     mu[st_] = max(0.0, pm[a] * rate)
-            res[a] = {'min': pm[a], 'rate': rates, 'pos': pos, 'mu': mu, 'lab': a in labs, 'base': info[a][0], 'stt': info[a][1]}
+            res[a] = {'min': pm[a], 'min_v2': v2min[a], 'rate': rates, 'pos': pos, 'mu': mu, 'lab': a in labs, 'base': info[a][0], 'stt': info[a][1]}
         cache[key] = res
         return res
 
@@ -426,11 +429,12 @@ class Pricer:
         cache[key] = {a: {'min': s_['min'], 'p_rot': s_['p_rot'], 'p_plays': s_['p_plays'], 'size': len(cand), 'rank': rank[a], 'tgn': tgn + 1} for a, s_ in zip(cand, res)}
         return cache[key]
 
-    # ── shadow: early-season blend (docs/early-minutes-blend-test.md), logged next to v2, never priced ─────
-    def game_minutes_blend(self, team, g, gm):
-        """{pid: minutes} for team games 4 to 10 of the season: v2's minutes moved toward the player's average over his team's
-        first three games, w x (that average - v2's), w fitted once on 2024-25 and frozen (data/early_minutes_blend.json, carried in the
-        state's minutes block). Needs 2 of the 3 games with this team. Empty outside the window, in the preseason, or with no state."""
+    # ── early-season blend (docs/early-minutes-blend-test.md): priced from team game 4 to 10 ─────
+    def blend_minutes(self, team, g, mins):
+        """{pid: minutes} for team games 4 to 10 of the season: the model's minutes moved toward the player's average over his team's
+        first three games, w x (that average - the model's), w fitted once on 2024-25 and frozen (data/early_minutes_blend.json, carried in the
+        state's minutes block). Needs 2 of the 3 games with this team. Empty outside the window, in the preseason, or with no state.
+        mins: {pid: the model's minutes}."""
         eb = (self.MM or {}).get('early_blend')
         first3, gn = (self.state or {}).get('first3'), (self.state or {}).get('team_gn')
         if not eb or not first3 or gn is None or (g or {}).get('season_type') == 1:
@@ -439,11 +443,15 @@ class Pricer:
         if not (eb['lo'] <= k <= eb['hi']):
             return {}
         out = {}
-        for pid, G in gm.items():
+        for pid, m in mins.items():
             v = first3.get(str(pid))
             if v and v[0] == team and len(v) - 1 >= eb['min_games']:
-                out[pid] = G['min'] + eb['w'] * (sum(v[1:]) / (len(v) - 1) - G['min'])
+                out[pid] = m + eb['w'] * (sum(v[1:]) / (len(v) - 1) - m)
         return out
+
+    def game_minutes_blend(self, team, g, gm):
+        """The blend applied to the model's own minutes (min_v2), for the Minutes record's blend column."""
+        return self.blend_minutes(team, g, {pid: G.get('min_v2', G['min']) for pid, G in gm.items()})
 
     # ── shadow: minutes GBM (docs/reverse-engineering-targets.md items 8-10), logged next to v2 and v3, never priced ───
     def game_minutes_gbm(self, team, g, status, cache):

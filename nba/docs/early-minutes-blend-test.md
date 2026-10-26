@@ -67,3 +67,7 @@ The shadow starts at the first daily state job after this merges, so it covers e
 
 Nothing under 100 rows is quoted as a rate. Any improving cell is flagged for close monitoring with its sample size. Sharp money is not an input. This question has not been run before; the 2025-26 walk has been used many times for other questions
 (`docs/experiment-log.md` section 1), so a row is added there for this look.
+
+## Promoted to priced minutes (2026-10-26)
+
+At the user's request the blend moves from shadow to priced, using the pre-registered test as it stands (PASS, w 0.3939 frozen, team games 4 to 10, 2 of his first 3 games with the team). `pricing.blend_minutes` applies it after the roster guard and the 240 rescale; a player's stat projections scale with his minutes. The Minutes record's v2 column keeps the model's own minutes (`min_v2`) so the blend is still scored against them. The forward read on or after 2026-11-18 still applies and can take it back out. Earlier prices and records are what was priced and are not restated.
