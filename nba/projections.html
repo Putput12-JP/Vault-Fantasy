@@ -766,6 +766,59 @@ table.pb td.l,table.pb th.l{text-align:left}
 table.pb tbody tr.prow{cursor:pointer}
 table.pb tbody tr.prow:hover td{background:rgb(var(--ink) / .025)}
 table.pb tr.open td{background:rgb(var(--ink) / .02);border-bottom-color:transparent}
+/* ── Props Table v2: the scanner. Fixed columns inside a container-width switch: wide = one row of columns, narrow = a card per prop. */
+.sc-wrap{container:sc / inline-size;overflow-x:auto;margin:0 calc(-1 * var(--pad));padding:0 var(--pad)}
+.sc{min-width:1196px}
+.sc-gh,.sc-h,.sc-rb{display:grid;grid-template-columns:minmax(170px,1.3fr) 40px 40px 52px 64px 74px 44px 44px 44px 44px 44px 44px minmax(120px,1fr) 52px 52px 68px 54px 14px;gap:0 6px;align-items:center}
+.sc-gh,.sc-h{font:500 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding:0 14px}
+.sc-gh{padding-top:4px}.sc-gh span{border-bottom:1px solid var(--border2);padding-bottom:5px}.sc-h{padding-bottom:8px;padding-top:6px}
+.sc .c{text-align:center}
+.sc-list{display:grid;gap:6px}
+.sc-row{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .15s}
+.sc-row:hover{border-color:var(--border2)}
+.sc-rb{width:100%;text-align:left;padding:10px 14px;background:none;border:0;color:inherit;cursor:pointer}
+.sc-pl{display:flex;gap:10px;align-items:center;min-width:0}
+.sc-who{min-width:0}.sc-who b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-who small{display:block;color:var(--fg3);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-stat{display:block;font:600 11px var(--font-mono);color:var(--fg2);background:var(--raised);border-radius:6px;padding:3px 0}
+.sc .num{font-family:var(--font-mono);font-size:13px}
+.sc-two b{display:block;font:600 14px var(--font-mono)}.sc-two small{font:500 10.5px var(--font-mono);color:var(--fg3)}
+.sc-hit{display:inline-flex;flex-direction:column;align-items:center;gap:2px;min-width:40px}.sc-hit b{font-weight:600;font-size:13px}.sc-hit small{font:500 10px var(--font-mono);color:var(--fg3)}
+.sc-bet b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.sc .chip{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:7px;background:var(--raised);font:500 10.5px var(--font-mono);color:var(--fg2);white-space:nowrap}
+.sc .chip i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+.sc .chip.up{background:rgba(95,207,140,.12);color:var(--up)}.sc .chip.warn{background:rgba(229,185,85,.12);color:var(--warn)}.sc .chip.blue{background:rgba(122,180,255,.12);color:var(--c-blue,#7ab4ff)}
+.sc-ev{font-family:var(--font-mono);font-size:13px}.sc-ev small{display:block;font:500 10px var(--font-mono);color:var(--fg3);white-space:nowrap}
+.sc-chev{width:10px;height:10px;border-right:2px solid var(--fg3);border-bottom:2px solid var(--fg3);transform:rotate(-45deg);transition:transform .2s cubic-bezier(.23,1,.32,1);justify-self:center}
+.sc-row.open .sc-chev{transform:rotate(45deg)}
+.sc-card{display:none}
+.sc-dt{border-top:1px solid var(--border);background:rgb(var(--ink) / .02);padding:16px 16px 6px;animation:scin .22s cubic-bezier(.23,1,.32,1)}
+@keyframes scin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.sc-top{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:22px;padding:0 4px 16px}
+.sc-top h4{margin:0 0 10px;font-size:13px;font-weight:600}
+.sc-mm{display:grid;gap:10px}.sc-mm .t{display:grid;grid-template-columns:62px 1fr 44px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}.sc-mm .t b{font:600 12.5px var(--font-mono);color:var(--fg);text-align:right}
+.sc-bar{height:3px;border-radius:2px;background:var(--raised);position:relative;overflow:hidden}.sc-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.sc-top .lab{font:500 10.5px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3);margin:16px 0 6px}
+.sc-top .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--border);font-size:13px}.sc-top .kv span{color:var(--fg2)}.sc-top .kv b{font:600 12.5px var(--font-mono)}
+.sc-chart{width:100%;height:auto;display:block}.sc-chart .g{stroke:rgba(127,127,127,.2);stroke-width:1}.sc-chart text{font:500 10.5px var(--font-mono);fill:var(--fg3)}
+.sc-leg{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.sc-leg span{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--c);border-radius:999px;padding:3px 10px;font:600 11.5px var(--font-sans)}
+@container sc (max-width:760px){
+  .sc{min-width:0}
+  .sc-gh,.sc-h,.sc-rb{display:none}
+  .sc-card{display:grid;gap:10px;width:100%;text-align:left;padding:13px 14px;background:none;border:0;color:inherit;cursor:pointer}
+  .sc-card .l1{display:flex;gap:10px;align-items:center;justify-content:space-between}.sc-card .r{text-align:right;font-family:var(--font-mono)}
+  .sc-big{display:flex;align-items:baseline;gap:8px}.sc-big b{font:600 20px var(--font-mono)}.sc-big span{color:var(--fg3);font-size:12px}
+  .sc-cbet{font-size:13px}.sc-cbet b{font-family:var(--font-mono);font-weight:600}
+  .sc-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 0 2px;border-top:1px solid var(--border)}
+  .sc-nums div{display:flex;flex-direction:column;gap:2px;align-items:flex-start}.sc-nums small{font:500 10px var(--font-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--fg3)}.sc-nums b{font:600 14px var(--font-mono)}
+  .sc-nums .sc-hit{align-items:flex-start}
+  .sc-top{grid-template-columns:1fr}
+}
+/* phone: the props come first. The record tiles move below the list and the long caption goes (the list is the page). */
+@media (max-width:760px){#pv-full{display:flex;flex-direction:column}#pv-full>#pkpis{order:3;margin-top:16px}#psub{display:none}}
+@media (prefers-reduced-motion:reduce){.sc-dt{animation:none}.sc-chev{transition:none}}
+
 .pwho b{font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .pwho small{display:block;color:var(--fg3);font-size:12px}
 .stat{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--fg2)}
@@ -2411,10 +2464,11 @@ th{font-weight:500}
           </div>
         </div>
         <div class="card-b">
-          <div class="tablewrap"><table class="pb">
-            <thead><tr><th class="l" scope="col">Player</th><th scope="col">Stat</th><th scope="col" title="Minutes the projection uses. Change them in the Minutes Lab.">Min</th><th scope="col">Proj</th><th scope="col" title="Main line: Pinnacle, then DraftKings, then the Kalshi rung nearest even">Line</th><th scope="col" id="phit" title="Share of games over the line in the selected window. Pick the window in any row's game log.">L10</th><th scope="col" title="Model chance of going over that line">Model</th><th scope="col" title="Market chance of over, vig removed">Market</th><th scope="col" title="Market and model blended with the weights fit on held-out games">Fair</th><th class="l" scope="col">Best bet</th><th scope="col">Price</th><th scope="col" title="Fair chance minus the break-even chance of the price, after fees">Edge</th><th scope="col">Gate</th><th scope="col" aria-label="Details"></th></tr></thead>
-            <tbody id="prows"></tbody>
-          </table></div>
+          <div class="sc-wrap"><div class="sc" id="pscan">
+            <div class="sc-gh" aria-hidden="true"><span style="grid-column:1/3">Prop</span><span style="grid-column:3/7">Setup</span><span style="grid-column:7/10" class="c">Over rate</span><span style="grid-column:10/13" class="c">Model vs market</span><span style="grid-column:13/19">Best bet</span></div>
+            <div class="sc-h" role="row"><span>Player</span><span class="c">Stat</span><span class="c" title="Minutes the projection uses. Change them in the Minutes Lab.">Min</span><span class="c">Proj</span><span class="c" title="Main line: Pinnacle, then DraftKings, then the Kalshi rung nearest even">Line</span><span class="c" title="How far the line has moved since it first posted: Pinnacle's, else the first book's. The small number is where it opened.">Move</span><span class="c" title="Share of the last 5 games over the line">L5</span><span class="c" title="Share of the last 10 games over the line">L10</span><span class="c" title="Share of games over the line against tonight's opponent, last two seasons">H2H</span><span class="c" title="Model chance of going over that line">Model</span><span class="c" title="Market chance of over, vig removed">Market</span><span class="c" title="Market and model blended with the weights fit on held-out games">Fair</span><span>Bet</span><span class="c">Price</span><span class="c" title="Fair chance minus the break-even chance of the price, after fees">Edge</span><span class="c" title="The best book price against Pinnacle's no-vig fair at Pinnacle's own number. Only props Pinnacle prices have one. It does not use the model.">+EV</span><span class="c">Gate</span><span></span></div>
+            <div class="sc-list" id="prows"></div>
+          </div></div>
           <div class="more" id="pmore" hidden></div>
         </div>
       </section>
@@ -4746,7 +4800,6 @@ function renderProps(){
   pf.rows = P;
   const cellPct = x => `<td class="pct">${x == null ? '<span class="muted">none</span>' : pc(x)}</td>`;
   const chev = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>`;
-  $('phit').textContent = WLABEL[pwin];
   $('prows').innerHTML = P.length ? P.map(r => {
     const key = `${r.e.p}|${r.e.s}`, open = pf.open.has(key), g = games.find(x => String(x.id) === String(r.e.g));
     const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
@@ -4756,27 +4809,35 @@ function renderProps(){
       edited ? '<span class="warnt" title="You changed this team\'s minutes in the Minutes Lab">minutes edited</span>'
         : moved && r.min > 0 ? `<span class="muted" title="Minutes rebalanced for teammates listed Out or Inactive">${sign(r.min - r.min0)} min, teammates out</span>`
         : r.src === 'yours' ? '<span class="warnt" title="You set his minutes on the Tonight page">your minutes</span>' : ''].filter(Boolean).join(' · ');
-    const hr = r.line != null ? hitRate(windowGames(r, pwin).gl, r.e.s, r.line) : null;
-    const b = r.best;
-    const betCells = b ? `<td class="l"><span class="betname">${b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`}</span></td>
-      <td class="num">${b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price}</td>
-      <td class="num"><span class="edge ${b.edge > 0 ? 'pos' : 'neg'}">${ec(b.edge)}</span></td>
-      <td><span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span></td>`
-      : r.pkBest ? `<td class="l"><span class="betname">${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line}</span></td>
-      <td class="num">${r.pkBest.price != null ? r.pkBest.price : '<span class="muted">flat</span>'}</td>
-      <td class="num"><span class="edge ${r.pkBest.edge > 0 ? 'pos' : 'neg'}" title="Model chance minus ${r.pkBest.price != null ? 'the break-even of this price' : 'the flex-entry break-even (' + (PK_BE * 100).toFixed(1) + '%)'}. Pick\'em lines have no market price to blend with, so this is the model alone: treat it as a lean.">${ec(r.pkBest.edge)}</span></td>
-      <td><span class="gate" title="Pick'em lines are shown, never a gated best bet">PICK'EM</span></td>`
-      : `<td class="l"><span class="muted">no price</span></td><td></td><td></td><td></td>`;
-    return `<tr class="prow${open ? ' open' : ''}" data-k="${key}" tabindex="0" aria-expanded="${open}">
-      <td class="l cutc"><div class="pl">${cutImg(r.e.p, r.name, 52)}<div class="pwho"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}${flags ? ' · ' + flags : ''}</small></div></div></td>
-      <td><span class="stat">${SLABEL[r.e.s]}</span></td>
-      <td class="num">${r.min == null ? '<span class="muted">none</span>' : fmt(r.min)}</td>
-      <td class="pct">${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}<small>${rg ? `${fmt(rg[0],0)} to ${fmt(rg[1],0)}` : '&nbsp;'}</small></td>
-      <td class="pct">${r.line ?? '<span class="muted">none</span>'}<small>${r.lineFrom ? esc(r.lineFrom) : '&nbsp;'}</small></td>
-      <td class="pct">${hr && hr.n ? `<span class="${hr.pct >= .6 ? 'pos' : hr.pct <= .4 ? 'neg' : ''}">${pc(hr.pct)}</span>` : '<span class="muted">none</span>'}<small>${hr && hr.n ? `${hr.over} of ${hr.n}` : '&nbsp;'}</small></td>
-      ${cellPct(r.pm)}${cellPct(r.mkt)}${cellPct(r.fair)}
-      ${betCells}<td>${chev}</td></tr>${open ? detailRow(r) : ''}`;
-  }).join('') : `<tr><td class="l" colspan="14"><p class="empty">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p></td></tr>`;
+    const sc = scFacts(r), b = r.best;
+    const bet = b ? {name: b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`, price: b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price, edge: b.edge, gate: `<span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span>`}
+      : r.pkBest ? {name: `${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line}`, price: r.pkBest.price != null ? r.pkBest.price : 'flat', edge: r.pkBest.edge, gate: `<span class="gate" title="Pick'em lines are shown, never a gated best bet">PICK'EM</span>`} : null;
+    const edgeC = bet ? `<span class="edge ${bet.edge > 0 ? 'pos' : 'neg'}">${ec(bet.edge)}</span>` : '';
+    const evC = sc.ev && sc.ev.v != null ? `<b class="${sc.ev.v >= .02 ? 'pos' : sc.ev.v >= 0 ? '' : 'muted'}" title="${esc(sc.ev.bk)} ${sc.ev.side} ${sc.ev.px > 0 ? '+' : ''}${sc.ev.px} against Pinnacle's no-vig fair of ${pc(sc.ev.side === 'Over' ? sc.ev.pf : 1 - sc.ev.pf)}">${ec(sc.ev.v)}</b><small>${esc(sc.ev.bk)}</small>` : `<span class="muted">${sc.ev ? 'none' : '-'}</span>`;
+    const nm = x => x == null ? '<span class="muted">none</span>' : pc(x);
+    const who = `${g ? `${gname(g)} · ${clock(g.tip)}` : esc(r.team)}${flags ? ' · ' + flags : ''}`;   // the game names both teams: no team prefix, the column is narrow
+    const tchips = sc.tells.map(t => `<span class="chip ${SC_TELL[t][1]}"><i></i>${SC_TELL[t][0]}</span>`).join('');
+    return `<article class="sc-row${open ? ' open' : ''}" data-k="${key}">
+ <button class="sc-rb press" type="button" aria-expanded="${open}">
+  <span class="sc-pl">${cutImg(r.e.p, r.name, 40)}<span class="sc-who"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}</b><small title="${esc(r.team)}">${who}</small></span></span>
+  <span class="c"><span class="sc-stat">${SLABEL[r.e.s]}</span></span>
+  <span class="c num">${r.min == null ? '<span class="muted">none</span>' : fmt(r.min)}</span>
+  <span class="c sc-two"><b>${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}</b><small>${rg ? `${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : '&nbsp;'}</small></span>
+  <span class="c sc-two"><b>${r.line ?? '<span class="muted">none</span>'}</b><small>${r.lineFrom ? esc(r.lineFrom) : '&nbsp;'}</small></span>
+  <span class="c">${sc.move}</span>
+  <span class="c">${scHit(sc.l5)}</span><span class="c">${scHit(sc.l10)}</span><span class="c">${scHit(sc.h2h)}</span>
+  <span class="c num">${nm(r.pm)}</span><span class="c num">${nm(r.mkt)}</span><span class="c num">${nm(r.fair)}</span>
+  <span class="sc-bet">${bet ? `<b>${bet.name}</b>` : '<span class="muted">no price</span>'}<span class="sc-chips">${tchips || (r.passing ? '<span class="chip up"><i></i>Passes its gate</span>' : '')}</span></span>
+  <span class="c num">${bet ? bet.price : ''}</span><span class="c num">${edgeC}</span><span class="c sc-ev">${evC}</span><span class="c">${bet ? bet.gate : ''}</span>
+  <span class="sc-chev"></span></button>
+ <button class="sc-card press" type="button" aria-expanded="${open}">
+  <span class="l1"><span class="sc-pl">${cutImg(r.e.p, r.name, 40)}<span class="sc-who"><b>${esc(r.name)}</b><small>${g ? `${gname(g)} · ${clock(g.tip)}` : esc(r.team)}</small></span></span><span class="r">${edgeC}${bet ? '<br>' + bet.gate : ''}</span></span>
+  <span class="sc-big"><b>${SLABEL[r.e.s]} ${r.line ?? ''}</b><span>proj ${r.mu == null ? 'none' : fmt(r.mu)} · ${r.min == null ? 'none' : fmt(r.min)} min</span></span>
+  <span class="sc-cbet">${bet ? `<b>${bet.name}</b> <span class="muted">${bet.price}</span>` : '<span class="muted">no price</span>'}</span>
+  <span class="sc-nums"><div><small>L5</small>${scHit(sc.l5)}</div><div><small>L10</small>${scHit(sc.l10)}</div><div><small>+EV</small>${sc.ev && sc.ev.v != null ? `<b class="${sc.ev.v >= .02 ? 'pos' : ''}">${ec(sc.ev.v)}</b>` : '<b class="muted">none</b>'}</div></span>
+  ${tchips ? `<span class="sc-chips">${tchips}</span>` : ''}</button>
+ ${open ? `<div class="sc-dt">${scDetail(r, sc)}</div>` : ''}</article>`;
+  }).join('') : `<p class="empty" style="padding:16px">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p>`;
   $('pmore').hidden = shown.length <= pf.limit;
   $('pmore').innerHTML = `<button class="btn" type="button" id="pmorebtn">Show all ${shown.length.toLocaleString()}</button>`;
   $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props${tippedN ? ` (${tippedN.toLocaleString()} hidden: the game has tipped)` : ''}. Click a row for the Kalshi ladder and each book.`;
@@ -4861,7 +4922,69 @@ function niceTicks(max){
   const out = []; for (let v = 0; v <= max; v += st) out.push(+v.toFixed(2)); return out;
 }
 
-function detailRow(r, parts = false){
+// ── Props Table v2 (the scanner): the facts a row adds to priceRow()
+const SC_TELL = {p_pin: ['Pinnacle moved', 'blue'], p_acct: ['Sharp accts', 'up'], p_kal: ['Kalshi money', 'warn'], p_behind: ['Behind Pinnacle', 'up'], p_behind_x: ['Behind Pinnacle', 'up']};
+const scHit = h => !h || !h.n ? '<span class="sc-hit"><b class="muted">none</b><small>&nbsp;</small></span>'
+  : `<span class="sc-hit"><b class="${h.pct >= .6 ? 'pos' : h.pct <= .4 ? 'neg' : ''}">${pc(h.pct)}</b><small>${h.over} of ${h.n}</small></span>`;
+// +EV: the best other book's price at Pinnacle's own number against Pinnacle's no-vig fair. Null when Pinnacle does not price the prop; v is
+// null when no other book is on that number. Past 25% a quote is more likely stale than real (the same cap as the Behind Pinnacle alerts).
+function scEv(r){
+  const pin = (r.e.books || []).find(b => b[0] === 'Pinnacle'); if (!pin || pin[1] == null || pin[1] !== r.line) return null;
+  const f = pDevig(pin[2], pin[3]); if (f == null) return null;
+  let best = null;
+  for (const b of r.e.books){
+    if (b[0] === 'Pinnacle' || b[1] !== pin[1]) continue;
+    for (const [side, px, fair] of [['Over', b[2], f], ['Under', b[3], 1 - f]]){
+      const a = +px; if (!isFinite(a) || a === 0 || a < -300 || a > 300) continue;
+      const v = fair * (1 + (a < 0 ? 100 / -a : a / 100)) - 1;
+      if (v < .25 && (!best || v > best.v)) best = {v, bk: b[0], side, px: a};
+    }
+  }
+  return best ? {...best, pf: f} : {v: null, pf: f};
+}
+function scFacts(r){
+  const hr = w => r.line == null ? null : hitRate(windowGames(r, w).gl, r.e.s, r.line);
+  const mb = r.books.find(b => b.bk === 'Pinnacle' && b.l0 != null) || r.books.find(b => b.l0 != null);
+  const dm = mb ? +(mb.line - mb.l0).toFixed(2) : 0;
+  const move = !mb ? '<span class="muted">none</span>' : !dm ? `<span class="sc-two"><b class="muted">flat</b><small>${mb.line}</small></span>` : `<span class="sc-two"><b>${dm > 0 ? '+' : ''}${dm}</b><small>from ${mb.l0}</small></span>`;
+  const ev = scEv(r), sh = ((((PS.board || {}).sharp || {}).props) || {})[`${r.e.p}|${r.e.s}`] || [];
+  const t = new Set(sh.map(x => x.type).filter(k => SC_TELL[k]));
+  if (t.has('p_behind_x')) t.add('p_behind');
+  t.delete('p_behind_x');
+  if (ev && ev.v != null && ev.v >= .03) t.add('p_behind');
+  return {l5: hr('L5'), l10: hr('L10'), h2h: hr('H2H'), ev, move, tells: [...t]};
+}
+const SC_COL = {Pinnacle: '#ff5fa2', DraftKings: '#5ec269', Polymarket: '#7ab4ff', FanDuel: '#4aa3ff', BetMGM: '#d9a93f'};
+// Opening line to the line now for each book, on the line it posts nearest the main line. All the board stores until the prop tape ships.
+function scChart(r, w = 520, h = 170){
+  const by = {};
+  for (const b of r.books){ if (b.l0 == null || b.line == null) continue; const k = b.bk; if (!by[k] || Math.abs(b.line - (r.line ?? b.line)) < Math.abs(by[k].line - (r.line ?? b.line))) by[k] = b; }
+  const pts = Object.values(by); if (!pts.length) return '<p class="empty">No book has posted this line yet.</p>';
+  const ys = pts.flatMap(b => [b.line, b.l0]); let lo = Math.min(...ys), hi = Math.max(...ys); if (hi - lo < 2){ lo -= 1; hi += 1; }
+  const L = 34, Rt = 18, T = 14, Bt = 26, X = v => L + v * (w - L - Rt), Y = v => T + (hi - v) / (hi - lo) * (h - T - Bt);
+  const grid = []; for (let v = Math.ceil(lo); v <= hi; v += Math.max(1, Math.ceil((hi - lo) / 4))) grid.push(v);
+  return `<svg class="sc-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Opening line and current line for ${esc(r.name)}">
+    ${grid.map(v => `<line class="g" x1="${L}" x2="${w - Rt}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+    <text x="${L}" y="${h - 6}">open</text><text x="${w - Rt}" y="${h - 6}" text-anchor="end">now</text>
+    ${pts.map(b => { const c = SC_COL[b.bk] || '#a2a7b1'; return `<path d="M${X(0)} ${Y(b.l0)} H${X(.55)} V${Y(b.line)} H${X(1)}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/><circle cx="${X(1)}" cy="${Y(b.line)}" r="3.5" fill="${c}"/>`; }).join('')}
+  </svg><div class="sc-leg">${pts.map(b => `<span style="--c:${SC_COL[b.bk] || '#a2a7b1'}">${esc(b.bk)} <b>${b.line}</b></span>`).join('')}</div>
+  <p class="hint">Opening line to the line now. Hour by hour history comes with the prop tape.</p>`;
+}
+function scDetail(r, sc){
+  const bar = (l, v, c) => v == null ? '' : `<div class="t"><span>${l}</span><div class="sc-bar"><i style="width:${v * 100}%;background:${c}"></i></div><b>${pc(v)}</b></div>`;
+  const opp = ((r.game && [r.game.away, r.game.home].find(t => t !== r.team)) || 'opponent');
+  const hl = (l, h) => `<div class="kv"><span>${l}</span><b>${h && h.n ? `${h.over} of ${h.n} over` : 'none'}</b></div>`;
+  const tch = sc.tells.map(t => `<span class="chip ${SC_TELL[t][1]}"><i></i>${SC_TELL[t][0]}</span>`).join('');
+  const ev = sc.ev;
+  return `<div class="sc-top">
+    <div><h4>Line movement</h4>${scChart(r)}</div>
+    <div><h4>Model against the market</h4><div class="sc-mm">${bar('Model', r.pm, 'var(--c-blue,#7ab4ff)')}${bar('Market', r.mkt, 'var(--fg3)')}${bar('Fair', r.fair, 'var(--fg)')}${ev ? bar('Pinnacle', ev.pf, '#ff5fa2') : ''}</div>
+      <p class="lab">How often it went over ${r.line ?? ''}</p>${hl('Last 5', sc.l5)}${hl('Last 10', sc.l10)}${hl('Vs ' + esc(opp), sc.h2h)}</div>
+    <div><h4>Market tells</h4><div class="sc-chips" style="margin-bottom:10px">${tch || '<span class="muted">No market tell on this prop.</span>'}</div>
+      ${ev && ev.v != null ? `<p class="hint">Best price against Pinnacle's fair: <b>${esc(ev.bk)} ${ev.side} ${ev.px > 0 ? '+' : ''}${ev.px}</b> is ${ec(ev.v)}.${ev.v > .1 ? ' Edges this big are often a stale quote. Check before you act.' : ''}</p>` : ev ? '<p class="hint">Pinnacle prices this prop, and no other book is on its number.</p>' : '<p class="hint">Pinnacle does not price this prop, so there is no market fair to measure a price against.</p>'}</div>
+  </div>${detailRow(r, false, true)}`;
+}
+function detailRow(r, parts = false, asDiv = false){
   const near = r.kal.length ? r.kal.reduce((a, k) => Math.abs(k.line - (r.mu ?? 0)) < Math.abs(a.line - (r.mu ?? 0)) ? k : a) : null;
   const cents = x => x == null ? '' : Math.round(x * 100) + '¢';
   const ed = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : 'neg'}">${ec(x)}</span>`;
@@ -4893,7 +5016,7 @@ function detailRow(r, parts = false){
         return `<div class="bstep${k === 'base' ? ' base' : ''}"><span class="bl">${PART_LABEL[k]}</span><span class="bv ${k === 'base' ? '' : v > 0 ? 'pos' : 'neg'}">${k === 'base' ? fmt(v, 2) : (v > 0 ? '+' : '') + fmt(v, 2)}</span></div>`;
       }).join('')}<div class="bstep tot"><span class="bl">Projection</span><span class="bv">${fmt(r.mu, 2)}</span></div></div></div>` : '';
   if (parts) return {bar, kal, books, pk, build};          // the Player profile lays these panels out itself
-  return `<tr class="detail"><td colspan="14">${bar}${build}
+  const inner = `${bar}${build}
     <div class="dpanel glpanel"><h4>Game log<small>${SLABEL[r.e.s]} against the ${r.lineFrom || ''} line of ${r.line ?? 'none'} · pick a window</small></h4>${logChart(r)}</div>
     <div class="dgrid">
     <div class="dpanel"><h4>Kalshi ladder<small>YES pays if he reaches the rung; edge after fees</small></h4>${kal}</div>
@@ -4901,7 +5024,8 @@ function detailRow(r, parts = false){
       ${PS.mode === 'example' ? `<p class="empty" style="margin-top:10px">Example: ${fmt(r.min ?? 0)} minutes, his average going into that game.</p>`
         : team ? `<p class="empty" style="margin-top:10px">Projection uses ${fmt(r.min ?? 0)} minutes. <button class="linkbtn" type="button" data-lab="${team}">Change minutes in the Minutes Lab</button></p>` : ''}</div>
     ${pk}
-  </div></td></tr>`;
+  </div>`;
+  return asDiv ? inner : `<tr class="detail"><td colspan="14">${inner}</td></tr>`;
 }
 
 // events
@@ -4946,10 +5070,9 @@ $('prows').addEventListener('click', e => {
   if (wc){ pwin = wc.dataset.w; renderProps(); return; }
   const lab = e.target.closest('[data-lab]');
   if (lab){ history.replaceState(null, '', '#' + lab.dataset.lab.toLowerCase()); goTeam(lab.dataset.lab); return; }
-  const tr = e.target.closest('tr.prow'); if (tr) toggleRow(tr);
+  const tr = e.target.closest('.sc-rb, .sc-card'); if (tr) toggleRow(tr.closest('.sc-row'));
 });
 $('prows').addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, renderProps); });
-$('prows').addEventListener('keydown', e => { const tr = e.target.closest('tr.prow'); if (tr && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); toggleRow(tr); } });
 
 // ── Track Record ──────────────────────────────────────────────────────────
 // The shadow ledger (scripts/ledger.py): every 3%+ edge the Props page priced (Kalshi, sportsbooks, Polymarket and

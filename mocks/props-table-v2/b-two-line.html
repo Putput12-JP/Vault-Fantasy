@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Props Table v2, option B: Two-line rows</title>
+<style>:root{
+  --bg:#0b0c0e; --surface:#131418; --surface2:#191b20; --raised:#22252b;
+  --border:#22252b; --border2:#343841;
+  --fg:#f3f4f6; --fg2:#a2a7b1; --fg3:#6e7380;
+  --up:#5fcf8c; --down:#ec7f7f; --warn:#e5b955; --blue:#7ab4ff;
+  --up-bg:rgba(95,207,140,.12); --down-bg:rgba(236,127,127,.12); --warn-bg:rgba(229,185,85,.12);
+  --font-sans:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'Geist Mono','SFMono-Regular',Menlo,monospace;
+  --ease-out:cubic-bezier(.23,1,.32,1); --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--font-sans);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.mono{font-family:var(--font-mono)}
+.muted{color:var(--fg3)}
+.pos{color:var(--up)} .neg{color:var(--down)} .warn{color:var(--warn)}
+.press{transition:transform 500ms var(--ease-spring)} .press:active{transform:scale(.985);transition:transform 80ms ease-out}
+.wrap{max-width:1440px;margin:0 auto;padding:20px 24px 80px}
+.crumb{font:500 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin:0 0 4px}
+h1{font-size:22px;font-weight:600;letter-spacing:-.02em;margin:0}
+.sub{color:var(--fg2);font-size:13px;margin:4px 0 0}
+.note{font-size:12px;color:var(--fg3);margin:10px 0 0;max-width:80ch}
+.av{width:36px;height:36px;border-radius:10px;background:var(--raised);overflow:hidden;flex:none;display:grid;place-items:center;font:600 12px var(--font-mono);color:var(--fg2);position:relative}
+.av img{width:100%;height:100%;object-fit:cover;object-position:top center;position:absolute;inset:0}
+.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:7px;background:var(--raised);font:500 11px var(--font-mono);color:var(--fg2);white-space:nowrap}
+.chip i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+.chip.up{background:var(--up-bg);color:var(--up)} .chip.warn{background:var(--warn-bg);color:var(--warn)} .chip.blue{background:rgba(122,180,255,.12);color:var(--blue)}
+.gate{display:inline-block;font:600 10.5px var(--font-mono);letter-spacing:.05em;padding:2px 7px;border-radius:6px;background:var(--raised);color:var(--fg3)}
+.gate.go{background:var(--up-bg);color:var(--up)} .gate.watch{background:var(--warn-bg);color:var(--warn)}
+.hit{display:inline-flex;flex-direction:column;align-items:center;gap:2px;min-width:44px}
+.hit b{font-weight:600;font-size:13px}
+.hit small{font:500 10.5px var(--font-mono);color:var(--fg3)}
+.bar{height:3px;border-radius:2px;background:var(--raised);position:relative;width:100%;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--fg3)}
+.bar.pos i{background:var(--up)} .bar.neg i{background:var(--down)}
+.meter{display:block;position:relative;height:18px;width:100%;min-width:96px}
+.meter:before{content:"";position:absolute;left:0;right:0;top:8px;height:2px;background:var(--raised);border-radius:2px}
+.meter .mid{position:absolute;left:50%;top:3px;width:1px;height:12px;background:var(--border2)}
+.meter u{position:absolute;top:4px;width:10px;height:10px;margin-left:-5px;border-radius:50%;text-decoration:none;border:2px solid var(--bg)}
+.meter .m-model{background:var(--blue)} .meter .m-mkt{background:var(--fg3)} .meter .m-fair{background:var(--fg);}
+.key{display:flex;gap:14px;flex-wrap:wrap;font:500 11px var(--font-mono);color:var(--fg3)}
+.key span{display:inline-flex;align-items:center;gap:6px}.key u{width:9px;height:9px;border-radius:50%;display:inline-block}
+.chart{width:100%;height:auto;display:block}
+.chart .g{stroke:rgba(127,127,127,.2);stroke-width:1}.chart text{font:500 10.5px var(--font-mono);fill:var(--fg3)}
+.legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--c);border-radius:999px;padding:3px 10px;font:600 11.5px var(--font-sans)}
+.lab{font:500 10.5px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3);margin:0 0 8px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--border);font-size:13px}
+.kv:first-of-type{border-top:0}.kv span{color:var(--fg2)}.kv b{font-weight:600;font-family:var(--font-mono);font-size:12.5px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 12px;align-items:center}
+.seg{display:inline-flex;padding:2px;border-radius:9px;background:var(--surface2)}
+.seg button{height:30px;padding:0 11px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--fg3)}
+.seg button.on{background:var(--raised);color:var(--fg)}
+.search{height:34px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 12px;min-width:200px;color:var(--fg2);display:flex;align-items:center;font-size:13px}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fg2)}
+.toggle i{width:30px;height:18px;border-radius:9px;background:var(--raised);position:relative}.toggle i:after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--fg3)}
+.label-tag{display:inline-block;font:600 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;border:1px solid var(--border2);color:var(--fg2)}
+@media (prefers-reduced-motion:reduce){.press,.press:active{transition:none}}
+/* phone: the real rows are the first thing on screen (one caption line, one filter row), the rest of the chrome moves out of the way */
+@media (max-width:760px){
+  .crumb,.sub,.key{display:none}
+  h1{font-size:19px}
+  .filters{margin:10px 0 10px;flex-wrap:nowrap;overflow-x:auto;gap:8px;scrollbar-width:none}
+  .filters::-webkit-scrollbar{display:none}
+  .filters .search,.filters .toggle,.filters .seg:last-child{display:none}
+  .seg{flex:none}
+}
+
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.list{display:grid;gap:8px;margin-top:6px}
+.row{display:grid;grid-template-columns:minmax(200px,1.25fr) minmax(170px,1fr) 150px minmax(190px,1.1fr) minmax(230px,1.15fr);gap:6px 24px;align-items:center;width:100%;text-align:left;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;transition:border-color .15s,background .15s}
+.row:hover{border-color:var(--border2);background:var(--surface2)}
+.pl{display:flex;gap:11px;align-items:center;min-width:0}
+.pl .av{width:42px;height:42px;border-radius:12px}
+.pl b{display:block;font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl small{display:block;color:var(--fg3);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prop .big{display:flex;align-items:baseline;gap:8px}
+.prop .big b{font:600 22px var(--font-mono);letter-spacing:-.02em}
+.prop .big span{font:600 11px var(--font-mono);color:var(--fg2);background:var(--raised);padding:2px 7px;border-radius:6px}
+.prop small{display:block;color:var(--fg3);font:500 11px var(--font-mono);margin-top:3px}
+.rng{position:relative;height:6px;border-radius:3px;background:var(--raised);margin:9px 0 3px}
+.rng i{position:absolute;top:0;bottom:0;border-radius:3px;background:rgba(122,180,255,.35)}
+.rng u{position:absolute;top:-3px;width:2px;height:12px;background:var(--fg);text-decoration:none;border-radius:1px}
+.rng em{position:absolute;top:-3px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)}
+.formg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center}
+.formg small{display:block;font:500 10px var(--font-mono);letter-spacing:.06em;color:var(--fg3);text-transform:uppercase}
+.mrow{display:grid;gap:5px}
+.mrow .n{display:flex;justify-content:space-between;font:500 11px var(--font-mono);color:var(--fg3)}
+.mrow .n b{color:var(--fg);font-weight:600}
+.bet{display:grid;grid-template-columns:1fr auto;gap:2px 14px;align-items:center}
+.bet .b1{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bet .b1 small{display:block;font:500 11px var(--font-mono);color:var(--fg3)}
+.nums{display:flex;gap:16px;align-items:flex-end}
+.nums div{text-align:right}.nums small{display:block;font:500 9.5px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.nums b{font:600 15px var(--font-mono)}
+.l2{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:10px;margin-top:4px;border-top:1px solid var(--border)}
+.l2 .mv{margin-left:auto;font:500 11.5px var(--font-mono);color:var(--fg3)}
+.l2 .mv b{color:var(--fg);font-weight:600}
+.ghost{color:var(--fg3);font-size:12px}
+/* slide-over */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--surface);border-left:1px solid var(--border2);transform:translateX(104%);transition:transform .32s var(--ease-out);z-index:21;overflow-y:auto;padding:22px 22px 40px}
+body.show .scrim{opacity:1;pointer-events:auto}body.show .sheet{transform:none}
+.sheet .x{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:10px;background:var(--raised);font-size:18px;color:var(--fg2)}
+.sheet h2{margin:0;font-size:20px;letter-spacing:-.02em}
+.hd{display:flex;gap:14px;align-items:center;margin-bottom:16px;padding-right:40px}.hd .av{width:52px;height:52px;border-radius:14px}
+.betcard{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:1fr repeat(3,auto);gap:12px 18px;align-items:end;margin-bottom:18px}
+.betcard .w{grid-column:1/-1}.betcard h3{margin:0;font-size:15px}.betcard small{display:block;font:500 10px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.betcard b.big{font:600 20px var(--font-mono)}
+.sec{margin:0 0 20px}.sec h4{margin:0 0 10px;font-size:13px}
+.tellrow{display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:1180px){.row{grid-template-columns:minmax(0,1fr) auto;gap:10px 14px}.row .prop,.row .formz,.row .mz{grid-column:1/-1}.row .prop .big{justify-content:flex-start}.l2 .mv{margin-left:0;width:100%}}
+@media (max-width:760px){.wrap{padding:14px 12px 60px}.sheet{top:auto;left:0;width:100%;max-height:88dvh;border-left:0;border-top:1px solid var(--border2);border-radius:20px 20px 0 0;transform:translateY(104%)}.betcard{grid-template-columns:1fr 1fr 1fr}.betcard .w{grid-column:1/-1}.row{padding:13px 14px}.search{min-width:0!important;flex:1}}
+</style></head><body><div class="wrap">
+<div class="top"><div><p class="crumb">Markets / Props Table</p><h1>Props Table</h1><p class="sub">Option B, Two-line rows. Each prop reads like a card on two lines. Click a row and the full detail slides in from the right (a bottom sheet on a phone).</p></div>
+<div class="key"><span><u style="background:var(--blue)"></u>Model</span><span><u style="background:var(--fg3)"></u>Market</span><span><u style="background:var(--fg)"></u>Fair</span></div></div>
+<div class="filters"><div class="seg" id="stats"></div><div class="search">Filter players</div><span class="toggle"><i></i>Passing gates only</span><div class="seg" style="margin-left:auto"><button class="on">Best edge</button><button>Best +EV</button><button>Tip time</button></div></div>
+<div class="list" id="list"></div>
+<p class="note">Real rows from the live Props Table. The blue bar on each row is the model's likely range for the stat, the white tick is the line, the dot is the projection: the line sitting outside the bar is the whole story at a glance. +EV is a price against Pinnacle's no-vig fair, so it only exists where Pinnacle prices the prop.</p>
+</div><div class="scrim" id="scrim"></div><aside class="sheet" id="sheet" aria-label="Prop detail"></aside>
+<script>window.PROPS=[{"p":5203685,"name":"Khaman Maluach","tm":"PHX","gm":"PHX @ OKC","tip":"7:00 PM","fl":"Expected to start","stat":"REB","min":15.3,"mu":4.6,"rg":[2,8],"line":7.5,"lf":"Pinnacle","l5":[1,5],"l10":[3,10],"h2h":[1,7],"pm":0.266,"mkt":0.572,"fair":0.418,"best":["Pinnacle","Under",7.5,"+118",0.123,"no-go"],"pass":0,"pf":0.58,"ev":{"v":0.1164,"bk":"Polymarket","side":"Over","px":-108},"tells":[],"books":[["DraftKings",7.5,-136,103,8.5,106],["Pinnacle",7.5,-158,118,7.5,-142],["Polymarket",7.5,-108,null,7.5,-150]]},
+{"p":4396909,"name":"Aaron Nesmith","tm":"IND","gm":"IND @ MIL","tip":"7:00 PM","fl":"Expected to start","stat":"REB","min":19.4,"mu":2.3,"rg":[0,4],"line":3.5,"lf":"DraftKings","l5":[2,5],"l10":[2,10],"h2h":[1,3],"pm":0.292,"mkt":0.571,"fair":0.431,"best":["DraftKings","Under",3.5,"+118",0.11,"no-go"],"pass":0,"pf":null,"ev":null,"tells":[],"books":[["DraftKings",3.5,-156,118,3.5,-150],["Polymarket",3.5,127,null,3.5,-150]]},
+{"p":4396993,"name":"Tyrese Haliburton","tm":"IND","gm":"IND @ MIL","tip":"7:00 PM","fl":"Expected to start","stat":"AST","min":26.1,"mu":6.8,"rg":[3,10],"line":9.5,"lf":"DraftKings","l5":[2,3],"l10":[2,3],"h2h":null,"pm":0.269,"mkt":0.531,"fair":0.404,"best":["DraftKings","Under",9.5,"+100",0.096,"no-go"],"pass":0,"pf":null,"ev":null,"tells":[],"books":[["DraftKings",9.5,-131,100,9.5,-126],["Polymarket",9.5,-108,-163,9.5,-127]]},
+{"p":5041939,"name":"Cooper Flagg","tm":"DAL","gm":"DAL @ MIA","tip":"6:30 PM","fl":"Expected to start, Probable","stat":"AST","min":26.8,"mu":4.2,"rg":[1,7],"line":5.5,"lf":"Pinnacle","l5":[2,5],"l10":[3,10],"h2h":[0,2],"pm":0.334,"mkt":0.512,"fair":0.418,"best":["DraftKings","Under",5.5,"+118",0.078,"no-go"],"pass":0,"pf":0.513,"ev":{"v":0.0607,"bk":"DraftKings","side":"Under","px":118},"tells":[],"books":[["DraftKings",5.5,-156,118,5.5,-147],["Pinnacle",5.5,-121,-109,5.5,-148],["Polymarket",5.5,-113,null,5.5,-117]]},
+{"p":3032977,"name":"Giannis Antetokounmpo","tm":"MIA","gm":"DAL @ MIA","tip":"6:30 PM","fl":"Expected to start","stat":"REB","min":28.1,"mu":8.8,"rg":[5,13],"line":11.5,"lf":"Pinnacle","l5":[2,5],"l10":[3,10],"h2h":[0,1],"pm":0.291,"mkt":0.468,"fair":0.361,"best":["DraftKings","Under",11.5,"-122",0.078,"no-go"],"pass":0,"pf":0.464,"ev":{"v":0.054,"bk":"Polymarket","side":"Over","px":127},"tells":[],"books":[["DraftKings",11.5,-108,-122,11.5,-125],["Pinnacle",11.5,-100,-132,11.5,-112],["Polymarket",11.5,127,-163,11.5,-108]]},
+{"p":4395626,"name":"Tre Jones","tm":"CHI","gm":"CHI @ BOS","tip":"6:30 PM","fl":"","stat":"AST","min":18.7,"mu":3,"rg":[1,5],"line":4.5,"lf":"Pinnacle","l5":[1,5],"l10":[4,10],"h2h":[0,1],"pm":0.277,"mkt":0.452,"fair":0.35,"best":["DraftKings","Under",4.5,"-126",0.074,"no-go"],"pass":0,"pf":0.447,"ev":{"v":-0.0086,"bk":"DraftKings","side":"Under","px":-126},"tells":[],"books":[["DraftKings",4.5,-105,-126,4.5,101],["Pinnacle",4.5,107,-141,4.5,107]]},
+{"p":4066757,"name":"Sam Merrill","tm":"CLE","gm":"MIN @ CLE","tip":"6:00 PM","fl":"","stat":"3PM","min":21.1,"mu":1.5,"rg":[0,3],"line":1.5,"lf":"Pinnacle","l5":[1,5],"l10":[6,10],"h2h":[2,2],"pm":0.449,"mkt":0.599,"fair":0.535,"best":["Kalshi","NO",1.5,"0.4",0.073,"go"],"pass":1,"pf":0.609,"ev":{"v":-0.0001,"bk":"Polymarket","side":"Over","px":-156},"tells":[],"books":[["DraftKings",1.5,-174,132,1.5,-171],["Pinnacle",1.5,-178,133,1.5,-182],["Polymarket",1.5,-156,null,1.5,null]]},
+{"p":4432816,"name":"LaMelo Ball","tm":"MIN","gm":"MIN @ CLE","tip":"6:00 PM","fl":"Expected to start","stat":"AST","min":24.1,"mu":5.7,"rg":[2,9],"line":7.5,"lf":"Pinnacle","l5":[2,5],"l10":[5,10],"h2h":[1,3],"pm":0.303,"mkt":0.5,"fair":0.396,"best":["Pinnacle","Under",7.5,"-115",0.07,"no-go"],"pass":0,"pf":0.5,"ev":{"v":0.04,"bk":"Polymarket","side":"Over","px":108},"tells":["p_pin"],"books":[["DraftKings",7.5,-102,-130,7.5,106],["Pinnacle",7.5,-115,-115,7.5,104],["Polymarket",7.5,108,-194,7.5,-100]]},
+{"p":5041935,"name":"Cameron Boozer","tm":"MEM","gm":"MEM @ UTAH","tip":"8:00 PM","fl":"Expected to start","stat":"REB","min":28.5,"mu":7.6,"rg":[4,12],"line":8.5,"lf":"Pinnacle","l5":[3,3],"l10":[3,3],"h2h":[1,1],"pm":0.4,"mkt":0.563,"fair":0.481,"best":["Pinnacle","Under",8.5,"+114",0.052,"no-go"],"pass":0,"pf":0.57,"ev":{"v":0.0195,"bk":"Polymarket","side":"Over","px":-127},"tells":[],"books":[["Pinnacle",8.5,-152,114,8.5,-140],["Polymarket",8.5,-127,null,8.5,-113]]},
+{"p":5041935,"name":"Cameron Boozer","tm":"MEM","gm":"MEM @ UTAH","tip":"8:00 PM","fl":"Expected to start","stat":"AST","min":28.5,"mu":3.3,"rg":[1,6],"line":4.5,"lf":"Pinnacle","l5":[2,3],"l10":[2,3],"h2h":[1,1],"pm":0.313,"mkt":0.428,"fair":0.348,"best":["DraftKings","Under",3.5,"+126",0.041,"no-go"],"pass":0,"pf":0.42,"ev":{"v":-0.0206,"bk":"Polymarket","side":"Over","px":133},"tells":[],"books":[["Pinnacle",4.5,118,-158,4.5,118],["Polymarket",4.5,133,null,4.5,113]]},
+{"p":5041935,"name":"Cameron Boozer","tm":"MEM","gm":"MEM @ UTAH","tip":"8:00 PM","fl":"Expected to start","stat":"3PM","min":28.5,"mu":1.7,"rg":[0,4],"line":1.5,"lf":"Pinnacle","l5":[2,3],"l10":[2,3],"h2h":[0,1],"pm":0.491,"mkt":0.506,"fair":0.474,"best":["Kalshi","NO",1.5,"0.48",0.02,"go"],"pass":0,"pf":0.507,"ev":{"v":-0.0449,"bk":"Polymarket","side":"Over","px":-113},"tells":[],"books":[["DraftKings",1.5,-115,-114,1.5,-108],["Pinnacle",1.5,-118,-112,1.5,-118],["Polymarket",1.5,-113,null,1.5,null]]},
+{"p":5041955,"name":"Darryn Peterson","tm":"UTAH","gm":"MEM @ UTAH","tip":"8:00 PM","fl":"Expected to start","stat":"PTS","min":26.7,"mu":11.7,"rg":[4,19],"line":11.5,"lf":"Pinnacle","l5":[1,3],"l10":[1,3],"h2h":[0,1],"pm":0.491,"mkt":0.537,"fair":0.523,"best":["Kalshi","NO",19.5,"0.87",0.01,"no-go"],"pass":0,"pf":0.541,"ev":null,"tells":[],"books":[["Pinnacle",11.5,-135,102,11.5,-130]]},
+{"p":5112087,"name":"Jaylen Wells","tm":"MEM","gm":"MEM @ UTAH","tip":"8:00 PM","fl":"Expected to start","stat":"PRA","min":23.3,"mu":17.1,"rg":[8,26],"line":16.5,"lf":"DraftKings","l5":[3,5],"l10":[5,10],"h2h":[4,4],"pm":0.502,"mkt":0.524,"fair":0.509,"best":["DraftKings","Under",16.5,"-103",-0.016,"no-go"],"pass":0,"pf":null,"ev":null,"tells":[],"books":[["DraftKings",16.5,-127,-103,16.5,-118]]},
+{"p":4903027,"name":"Cedric Coward","tm":"MEM","gm":"MEM @ UTAH","tip":"8:00 PM","fl":"Expected to start","stat":"PRA","min":23.7,"mu":21.9,"rg":[12,32],"line":22.5,"lf":"DraftKings","l5":[2,5],"l10":[3,10],"h2h":[1,2],"pm":0.473,"mkt":0.477,"fair":0.458,"best":["DraftKings","Under",22.5,"-127",-0.017,"no-go"],"pass":0,"pf":null,"ev":null,"tells":[],"books":[["DraftKings",22.5,-104,-127,21.5,-116]]}];</script>
+<script>/* shared helpers for the three Props Table v2 mocks. Data: real rows from the live board (nba/projections.html Props Table), see src/props.json.
+   Nothing here is invented: the movement chart draws only the opening line and the current line each book reports. */
+const R = window.PROPS;
+const pc = (x, d = 0) => x == null ? '' : (x * 100).toFixed(d) + '%';
+const sgn = (x, d = 1) => x == null ? '' : (x >= 0 ? '+' : '') + (x * 100).toFixed(d) + '%';
+const am = a => a == null ? '' : (a > 0 ? '+' : '') + a;
+const initials = n => n.split(' ').map(w => w[0]).slice(0, 2).join('');
+const av = r => `<span class="av"><span>${initials(r.name)}</span><img src="https://a.espncdn.com/i/headshots/nba/players/full/${r.p}.png" alt="" loading="lazy" onerror="this.remove()"></span>`;
+const hit = h => !h ? `<span class="hit"><b class="muted">none</b><small>&nbsp;</small></span>`
+  : `<span class="hit"><b class="${h[0] / h[1] >= .6 ? 'pos' : h[0] / h[1] <= .4 ? 'neg' : ''}">${Math.round(h[0] / h[1] * 100)}%</b><small>${h[0]} of ${h[1]}</small></span>`;
+const GATE = {go: 'GO', watch: 'WATCH', 'no-go': 'NO-GO'};
+const gate = r => r.best ? `<span class="gate ${r.best[5] === 'go' ? 'go' : r.best[5] === 'watch' ? 'watch' : ''}">${GATE[r.best[5]]}</span>` : '';
+const betTxt = r => !r.best ? '' : r.best[0] === 'Kalshi' ? `Kalshi ${r.best[1]} ${r.best[2] + .5}+` : `${r.best[0]} ${r.best[1]} ${r.best[2]}`;
+const priceTxt = r => !r.best ? '' : r.best[0] === 'Kalshi' ? Math.round(+r.best[3] * 100) + '¢' : r.best[3];
+const edgeTxt = r => !r.best ? '' : `<b class="${r.best[4] > 0 ? 'pos' : 'neg'}">${sgn(r.best[4])}</b>`;
+// +EV: the best price at Pinnacle's own number against Pinnacle's no-vig fair. Only props Pinnacle prices have one.
+const evTxt = r => !r.ev ? `<span class="muted">none</span>` : `<b class="${r.ev.v >= .02 ? 'pos' : r.ev.v >= 0 ? '' : 'muted'}">${sgn(r.ev.v)}</b>`;
+const evWho = r => r.ev ? `${r.ev.bk} ${r.ev.side} ${am(r.ev.px)}` : r.pf == null ? 'no Pinnacle price' : '';
+const TELL = {p_pin: ['Pinnacle moved', 'blue'], p_acct: ['Sharp accts', 'up'], p_kal: ['Kalshi money', 'warn'], p_behind: ['Behind Pinnacle', 'up']};
+const tellsOf = r => { const t = [...r.tells]; if (r.ev && r.ev.v >= .03) t.push('p_behind'); return [...new Set(t)]; };
+const tellChips = r => tellsOf(r).map(t => `<span class="chip ${TELL[t][1]}"><i></i>${TELL[t][0]}</span>`).join('');
+const pinBook = r => r.books.find(b => b[0] === 'Pinnacle') || r.books[0];
+const moveOf = r => { const b = pinBook(r); return b ? {from: b[4], to: b[1], book: b[0]} : null; };
+const moveTxt = r => { const m = moveOf(r); if (!m || m.from == null) return '<span class="muted">none</span>'; const d = m.to - m.from; return d === 0 ? `<span class="muted">${m.to} flat</span>` : `<span>${m.from} <span class="muted">to</span> ${m.to}</span>`; };
+const meter = r => `<span class="meter" title="Model ${pc(r.pm)}, market ${pc(r.mkt)}, fair ${pc(r.fair)}"><span class="mid"></span>${[['m-model', r.pm], ['m-mkt', r.mkt], ['m-fair', r.fair]].map(([c, v]) => `<u class="${c}" style="left:${Math.max(3, Math.min(97, v * 100))}%"></u>`).join('')}</span>`;
+const COL = {DraftKings: '#5ec269', Pinnacle: '#ff5fa2', Polymarket: '#7ab4ff'};
+// movement chart: each book's opening line and its line now. That is all the board stores until the prop tape ships.
+const chart = (r, w = 560, h = 170) => {
+  const pts = r.books.filter(b => b[4] != null && b[1] != null);
+  const ys = pts.flatMap(b => [b[1], b[4]]); if (!ys.length) return '<p class="muted">No book has posted this line yet.</p>';
+  let lo = Math.min(...ys), hi = Math.max(...ys); if (hi - lo < 2) { lo -= 1; hi += 1; }
+  const L = 34, Rt = 18, T = 14, B = 26, X = (v) => L + v * (w - L - Rt), Y = (v) => T + (hi - v) / (hi - lo) * (h - T - B);
+  const steps = Math.round(hi - lo), grid = []; for (let v = Math.ceil(lo); v <= hi; v += Math.max(1, Math.ceil(steps / 4))) grid.push(v);
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Opening line and current line for ${r.name} ${r.stat}">
+    ${grid.map(v => `<line class="g" x1="${L}" x2="${w - Rt}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`).join('')}
+    <text x="${L}" y="${h - 6}">open</text><text x="${w - Rt}" y="${h - 6}" text-anchor="end">now</text>
+    ${pts.map(b => { const c = COL[b[0]] || '#a2a7b1', y0 = Y(b[4]), y1 = Y(b[1]); return `<path d="M${X(0)} ${y0} H${X(.55)} V${y1} H${X(1)}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/><circle cx="${X(1)}" cy="${y1}" r="3.5" fill="${c}"/>`; }).join('')}
+  </svg><div class="legend">${pts.map(b => `<span style="--c:${COL[b[0]] || '#a2a7b1'}">${b[0]} <b class="mono">${b[1]}</b></span>`).join('')}</div>
+  <p class="note" style="margin-top:8px">Opening line to the line now. Hour by hour history starts when the prop tape ships.</p>`;
+};
+const bookRows = r => `<div>${r.books.map(b => `<div class="kv"><span>${b[0]} ${b[1]}</span><b>${b[2] == null ? 'no price' : 'O ' + am(b[2])}${b[3] == null ? '' : '  U ' + am(b[3])}</b></div>`).join('')}</div>`;
+const form = r => `<div class="kv"><span>Last 5</span><b>${r.l5 ? r.l5[0] + ' of ' + r.l5[1] + ' over' : 'none'}</b></div><div class="kv"><span>Last 10</span><b>${r.l10 ? r.l10[0] + ' of ' + r.l10[1] + ' over' : 'none'}</b></div><div class="kv"><span>Vs ${r.gm.split(' @ ').find(t => t !== r.tm)}</span><b>${r.h2h ? r.h2h[0] + ' of ' + r.h2h[1] + ' over' : 'none'}</b></div>`;
+const toggleOn = (el, cls = 'open') => el.classList.toggle(cls);
+
+const stats=['All',...new Set(R.map(r=>r.stat))];
+document.getElementById('stats').innerHTML=stats.map((s,i)=>`<button class="${i?'':'on'}">${s}</button>`).join('');
+const rng=r=>{const hi=Math.max(r.line*1.6,r.rg?r.rg[1]:0,1),pctx=v=>Math.max(0,Math.min(100,v/hi*100));return r.rg?`<div class="rng" title="Likely range ${r.rg[0]} to ${r.rg[1]}, projection ${r.mu}, line ${r.line}"><i style="left:${pctx(r.rg[0])}%;width:${pctx(r.rg[1])-pctx(r.rg[0])}%"></i><em style="left:${pctx(r.mu)}%"></em><u style="left:${pctx(r.line)}%"></u></div>`:''};
+const rowHtml=(r,i)=>`<button class="row press" type="button" data-i="${i}">
+ <span class="pl">${av(r)}<span style="min-width:0"><b>${r.name}</b><small>${r.tm} · ${r.gm} · ${r.tip}${r.fl?' · '+r.fl:''}</small></span></span>
+ <span class="prop"><span class="big"><b>${r.line}</b><span>${r.stat}</span></span>${rng(r)}<small>proj ${r.mu} (${r.rg?r.rg[0]+' to '+r.rg[1]:''}) · ${r.min} min</small></span>
+ <span class="formz"><span class="formg"><span><small>L5</small>${hit(r.l5)}</span><span><small>L10</small>${hit(r.l10)}</span><span><small>H2H</small>${hit(r.h2h)}</span></span></span>
+ <span class="mz mrow">${meter(r)}<span class="n"><span>Model <b>${pc(r.pm)}</b></span><span>Mkt <b>${pc(r.mkt)}</b></span><span>Fair <b>${pc(r.fair)}</b></span></span></span>
+ <span class="bet"><span class="b1">${betTxt(r)}<small>${priceTxt(r)} · ${r.best?GATE[r.best[5]]:''}</small></span><span class="nums"><div><small>Edge</small>${edgeTxt(r)}</div><div><small>+EV</small>${evTxt(r)}</div></span></span>
+ <span class="l2">${tellChips(r)||'<span class="ghost">No market tell</span>'}${r.pass?'<span class="chip up"><i></i>Passes its gate</span>':''}<span class="mv">Line <b>${moveTxt(r)}</b> since open · ${r.ev?'<b>'+evWho(r)+'</b>':evWho(r)}</span></span>
+</button>`;
+document.getElementById('list').innerHTML=R.map(rowHtml).join('');
+const sheet=document.getElementById('sheet');
+const open=i=>{const r=R[i];sheet.innerHTML=`<button class="x press" aria-label="Close" id="cl">&times;</button>
+ <div class="hd">${av(r)}<div><h2>${r.name}</h2><span class="muted" style="font-size:12.5px">${r.tm} · ${r.gm} · ${r.tip}${r.fl?' · '+r.fl:''}</span></div></div>
+ <div class="betcard"><div class="w"><small>Best bet</small><h3>${betTxt(r)} <span class="muted mono" style="font-weight:500">${priceTxt(r)}</span> ${gate(r)}</h3></div>
+  <div><small>Edge</small><b class="big">${edgeTxt(r)}</b></div><div><small>+EV</small><b class="big">${evTxt(r)}</b></div><div><small>Proj</small><b class="big">${r.mu}</b></div></div>
+ <div class="sec"><h4>Market tells</h4><div class="tellrow">${tellChips(r)||'<span class="muted" style="font-size:12.5px">No market tell on this prop.</span>'}</div></div>
+ <div class="sec"><h4>Line movement</h4>${chart(r,500,170)}</div>
+ <div class="sec"><h4>Model against the market</h4>${meter(r)}<div class="kv" style="margin-top:8px"><span>Model chance over</span><b>${pc(r.pm)}</b></div><div class="kv"><span>Market chance over</span><b>${pc(r.mkt)}</b></div><div class="kv"><span>Fair (blend)</span><b>${pc(r.fair)}</b></div>${r.pf!=null?`<div class="kv"><span>Pinnacle no-vig</span><b>${pc(r.pf)}</b></div>`:''}</div>
+ <div class="sec"><h4>How often it went over ${r.line}</h4>${form(r)}</div>
+ <div class="sec"><h4>Every book at this line</h4>${bookRows(r)}</div>`;
+ document.body.classList.add('show');document.getElementById('cl').focus()};
+const close=()=>document.body.classList.remove('show');
+document.getElementById('list').addEventListener('click',e=>{const b=e.target.closest('.row');if(b)open(+b.dataset.i)});
+document.getElementById('scrim').addEventListener('click',close);document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});sheet.addEventListener('click',e=>{if(e.target.closest('#cl'))close()});
+if(location.hash==='#open')open(0);
+</script></body></html>
