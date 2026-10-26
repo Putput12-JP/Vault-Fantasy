@@ -1,0 +1,200 @@
+{
+ "league_mean_teams": 30,
+ "tables": {
+  "2025": 214,
+  "2026": 212
+ },
+ "stl": {
+  "index": "tov_comm",
+  "fit_rows": 27819,
+  "test_rows": 28252,
+  "b_pace_joint": -0.0515,
+  "b_matchup_joint": 0.6818,
+  "b_pace_only": 1.1992,
+  "b_matchup_own_2025_26": 0.7834,
+  "b_matchup_own_t": 7.91,
+  "incremental_over_pace": {
+   "gain": 0.00107,
+   "t": 3.74,
+   "games": 1322,
+   "rows": 28252
+  },
+  "control_over_pace": {
+   "gain": -0.00137,
+   "t": -4.47,
+   "games": 1322,
+   "rows": 28252
+  },
+  "halves_incremental_gain": [
+   0.00071,
+   0.00143
+  ],
+  "context": {
+   "pace_alone_vs_bare": {
+    "gain": 0.00045,
+    "t": 3.43,
+    "games": 1322,
+    "rows": 28252
+   },
+   "matchup_alone_vs_bare": {
+    "gain": 0.00153,
+    "t": 5.02,
+    "games": 1322,
+    "rows": 28252
+   },
+   "corr_matchup_pace": 0.323,
+   "quintile_residual_pct": [
+    -8.07,
+    1.23,
+    4.88,
+    6.03,
+    11.37
+   ],
+   "quintile_index": [
+    -0.1169,
+    -0.0378,
+    -0.0021,
+    0.0394,
+    0.1019
+   ]
+  },
+  "conditions": {
+   "bm_fit_positive": true,
+   "incremental_gain_t_ge_2_5": true,
+   "control_not_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "own_bm_2025_26_positive_t_ge_2_5": true,
+   "league_mean_over_30_teams": true
+  },
+  "verdict": "PASS"
+ },
+ "blk": {
+  "index": "twopa",
+  "fit_rows": 27819,
+  "test_rows": 28252,
+  "b_pace_joint": 0.6754,
+  "b_matchup_joint": 0.7844,
+  "b_pace_only": 1.9282,
+  "b_matchup_own_2025_26": 0.3721,
+  "b_matchup_own_t": 2.08,
+  "incremental_over_pace": {
+   "gain": 0.00015,
+   "t": 0.62,
+   "games": 1322,
+   "rows": 28252
+  },
+  "control_over_pace": {
+   "gain": -0.0006,
+   "t": -2.56,
+   "games": 1322,
+   "rows": 28252
+  },
+  "halves_incremental_gain": [
+   0.0002,
+   0.0001
+  ],
+  "context": {
+   "pace_alone_vs_bare": {
+    "gain": 0.00069,
+    "t": 4.36,
+    "games": 1322,
+    "rows": 28252
+   },
+   "matchup_alone_vs_bare": {
+    "gain": 0.00063,
+    "t": 2.21,
+    "games": 1322,
+    "rows": 28252
+   },
+   "corr_matchup_pace": 0.322,
+   "quintile_residual_pct": [
+    -3.34,
+    -6.1,
+    5.45,
+    7.31,
+    10.05
+   ],
+   "quintile_index": [
+    -0.1008,
+    -0.0374,
+    -0.0061,
+    0.0345,
+    0.109
+   ]
+  },
+  "conditions": {
+   "bm_fit_positive": true,
+   "incremental_gain_t_ge_2_5": false,
+   "control_not_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "own_bm_2025_26_positive_t_ge_2_5": false,
+   "league_mean_over_30_teams": true
+  },
+  "verdict": "FAIL"
+ },
+ "tov": {
+  "index": "tov_forced",
+  "fit_rows": 27819,
+  "test_rows": 28252,
+  "b_pace_joint": -0.4652,
+  "b_matchup_joint": 0.7917,
+  "b_pace_only": -0.0452,
+  "b_matchup_own_2025_26": 0.7515,
+  "b_matchup_own_t": 10.77,
+  "incremental_over_pace": {
+   "gain": 0.0032,
+   "t": 4.61,
+   "games": 1322,
+   "rows": 28252
+  },
+  "control_over_pace": {
+   "gain": -0.0039,
+   "t": -6.12,
+   "games": 1322,
+   "rows": 28252
+  },
+  "halves_incremental_gain": [
+   0.00292,
+   0.00347
+  ],
+  "context": {
+   "pace_alone_vs_bare": {
+    "gain": -3e-05,
+    "t": -3.5,
+    "games": 1322,
+    "rows": 28252
+   },
+   "matchup_alone_vs_bare": {
+    "gain": 0.00329,
+    "t": 4.75,
+    "games": 1322,
+    "rows": 28252
+   },
+   "corr_matchup_pace": 0.184,
+   "quintile_residual_pct": [
+    -9.88,
+    -3.06,
+    4.44,
+    6.78,
+    12.28
+   ],
+   "quintile_index": [
+    -0.1248,
+    -0.0581,
+    0.0006,
+    0.0565,
+    0.1323
+   ]
+  },
+  "conditions": {
+   "bm_fit_positive": true,
+   "incremental_gain_t_ge_2_5": true,
+   "control_not_t_ge_2_5": true,
+   "both_halves_positive": true,
+   "own_bm_2025_26_positive_t_ge_2_5": true,
+   "league_mean_over_30_teams": true
+  },
+  "verdict": "PASS"
+ },
+ "generated": "2026-10-26T11:53Z"
+}
