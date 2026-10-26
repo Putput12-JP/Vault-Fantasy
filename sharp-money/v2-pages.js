@@ -172,6 +172,8 @@
         h(k.T, { key: 3, size: 'sm' }, '3. Props are anchored on the exchange: the price must beat the exchange by ' + pct(gates.MIN_EDGE, 0) + ' or more, Pinnacle must sit within ' + gates.AGREE * 100 + ' points and must not price it the other way. Games must beat both by ' + pct(gates.MIN_EDGE, 0) + '.'),
         h(k.T, { key: 4, size: 'sm' }, '4. The edge is not over ' + pct(gates.BIG_EDGE, 0) + ': calls that big have lost money (21-32, ROI -15%).'),
         h(k.T, { key: 5, size: 'sm' }, '5. Both sides of the same market are not flagged at once.'),
+        h(k.T, { key: 'g1', size: 'sm' }, '6. The price is ' + Math.round(gates.MIN_PRICE * 100) + '% or better: plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(gates.MIN_PRICE * 100) + '% and up they went 33-11 (ROI +26%).'),
+        h(k.T, { key: 'g2', size: 'sm' }, '7. The game is under ' + gates.EARLY_H + ' hours away: calls made ' + gates.EARLY_H + 'h or more out went 18-27 (ROI -22%) on 45 settled live plays.'),
         h(k.T, { key: 7, size: 'sm' }, 'NBA props use the same gates and the same references (DraftKings as the book price, Kalshi and Novig, Pinnacle). They have no settled record yet, so the gates are not tuned to NBA and each NBA prop says so. Pick the NBA filter to see its record on its own.'),
         h(k.T, { key: 6, size: 'sm' }, 'A play is a better price than the market, not a prediction. Sharp-account money is context only and never ranks a play.')]),
       h(k.je, { hint: 'Every prop on the board against both references' }, 'Prop prices'), table);
@@ -213,11 +215,22 @@
   function v2Rows(PL) { return Object.values((PL && PL.plays) || {}).map(rowOf); }
   /* The official record: the live log plus the settled plays backfilled from a finished slate (data/v2_backfill.json). Backfilled rows carry p.backfill. */
   var TIERKEY = { play: ['plays', 'plays'], watch: ['watchLive', 'watch'], pass: ['passedLive', 'passed'] };
-  function rowsAll(F, tier) {
+  function rowsRaw(F, tier) {
     var k = TIERKEY[tier || 'play'], rows = v2Rows(F[k[0]]), B = F.backfill;
     if (B && B[k[1]]) Object.keys(B[k[1]]).forEach(function (id) { var p = B[k[1]][id]; if (p.status === 'won' || p.status === 'lost' || p.status === 'push') rows.push(rowOf(p)); });
     return rows;
   }
+  /* The strict gates (a price under 55%, a call 48h or more out) re-score the stored record from each play's first-sight fields. A stored play that fails one is
+     held back: out of the Play record, in the Passed record, with its row in the log untouched. */
+  function held(r) { return !!(G() && G().heldBack(r.p).length); }
+  function rowsAll(F, tier) {
+    tier = tier || 'play';
+    var rows = rowsRaw(F, tier);
+    if (tier === 'play') return rows.filter(function (r) { return !held(r); });
+    if (tier === 'pass') { var seen = {}; rows.forEach(function (r) { seen[r.p.id] = 1; }); return rows.concat(rowsRaw(F, 'play').filter(function (r) { return held(r) && !seen[r.p.id]; })); }
+    return rows;
+  }
+  function heldRows(F) { return rowsRaw(F, 'play').filter(held); }
   function LedgerCard(u, name, desc, rows) {
     var k = u.k, h = u.h, s = stat(rows), cnt = function (x) { return rows.filter(function (r) { return r.p.status === x; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), wsum = wins.reduce(function (a, b) { return a + b; }, 0);
@@ -443,7 +456,7 @@
   /* The V2 record: count and units of every logged play, then the latest results. */
   function recordHtml(F, pal, tier, sport) { return recordCore(F, pal, tier || 'play', sport); }
   var TIERNAME = { play: 'V2 play record', watch: 'Watch record', pass: 'Passed record' };
-  var TIERNOTE = { play: '', watch: 'Prices that beat one fair price but had no second price to confirm them. Not plays.', pass: 'Prices that looked good against one price and failed a gate, or were at an exchange or pick\u2019em app. If this record is losing, the gates are doing their job.' };
+  var TIERNOTE = { play: '', watch: 'Prices that beat one fair price but had no second price to confirm them. Not plays.', pass: 'Prices that looked good against one price and failed a gate, or were at an exchange or pick\u2019em app. If this record is losing, the gates are doing their job. It includes the earlier plays the strict gates now hold back (a price under 55%, or a call 48h or more out).' };
   function recordCore(F, pal, tier, sport) {
     var PL = F[TIERKEY[tier][0]], rows = rowsAll(F, tier).filter(function (r) { return !sport || sport === 'all' || r.p.sport === sport; }), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
@@ -464,8 +477,14 @@
     var noun = tier === 'play' ? 'play' : tier === 'watch' ? 'watch item' : 'passed item', live1 = live.length;
     var note = !PL || !PL.plays ? (tier === 'play' ? 'Not started: the log has not been published yet.' : 'Live logging of this list starts with the next data update.') : !live1 ? 'The log is running. ' + (tier === 'play' ? 'A play is written the first time one clears every gate.' : 'An item is written the first time it lands in this list.') : live1 + ' live ' + noun + (live1 === 1 ? '' : 's') + ' logged since ' + started + '. Each is saved once at first sight, then graded. ' + (s.n < 100 ? s.n + ' of 100 settled before it means much.' : '');
     note = (TIERNOTE[tier] ? TIERNOTE[tier] + ' ' : '') + note;
+    var hbNote = '';
+    if (tier === 'play') {
+      var hb = heldRows(F).filter(function (r) { return !sport || sport === 'all' || r.p.sport === sport; }), hs = stat(hb), hsu = hs.units == null ? '+0.0u' : su(hs.units);
+      if (hb.length) hbNote = ' Held back by the strict gates (a price under ' + Math.round(G().GATES.MIN_PRICE * 100) + '% or a call ' + G().GATES.EARLY_H + 'h+ out): ' + hb.length + ' earlier play' + (hb.length === 1 ? '' : 's') + (hs.n ? ', ' + hs.w + '-' + hs.l + ' ' + hsu : '') + '. They now sit in Passed.';
+    }
     var lsu = ls.units == null ? '+0.0u' : su(ls.units);
     if (bfn) note = (TIERNOTE[tier] ? TIERNOTE[tier] + ' ' : '') + (live.length ? live.length + ' live ' + noun + (live.length === 1 ? '' : 's') + ' since ' + started + ' (' + (ls.n ? ls.w + '-' + ls.l + ', ' + lsu : '0 settled') + '), plus ' : 'No live ' + noun + 's settled yet, only ') + bfn + ' settled ' + noun + 's backfilled from the ' + ESC((F.backfill || {}).date || '') + ' slate. ' + (tier === 'play' ? 'The backfilled props were chosen with hindsight on the exchange close, so the totals read better than live play will.' : 'Rebuilt after the fact from stored prices.');
+    note += hbNote;
     return '<div style="border:1px solid ' + pal.line + ';border-radius:22px;padding:14px;color:' + pal.text + '"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:' + pal.mut + '">' + TIERNAME[tier] + '</span><span style="font-size:11.5px;color:' + pal.mut + '">' + ESC(note) + '</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px">' + tiles.join('') + '</div>' + list + '</div>';
   }
 

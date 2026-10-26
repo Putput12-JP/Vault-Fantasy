@@ -17,7 +17,8 @@
     BIG_EDGE: 0.10,      // 10%+ calls: 21-32, ROI -15.0% on 53 settled (evidence PR). Usually a stale or moved line
     MAX_AGE: 45 * 60,    // a reference read older than this is not a price
     MAX_EXCH_SPREAD: 0.06, // an exchange quote wider than 6 points says where it is for sale, not where the market is (the same cut the ledger uses for a close)
-    EARLY_H: 48,         // calls 48h+ out: 110-159, ROI -16.3% on 269 settled
+    EARLY_H: 48,         // calls 48h+ out: 110-159, ROI -16.3% on 269 settled. Since the strict gates a play must also be inside this window (18-27, ROI -21.7% on 45 settled live plays)
+    MIN_PRICE: 0.55,     // strict gate: ROI rises with price (-26% under 50%, +2% at 50-55%, +16% at 55-60%, +24% at 60-65%) and it repeats in the Watch and Passed ledgers. 33-11 (75%) once this and the 48h gate are applied (docs/retro/sharp-v2-strict-gates.md)
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
   const EXCH = ['Kalshi', 'Novig'];
@@ -50,6 +51,23 @@
     const us = [...US].filter(b => p[b] != null).map(b => p[b]); if (us.length) r.books = mean(us);
     return r;
   }
+  /* The two strict gates, from stored fields only so the same test re-scores a ledger row (heldBack) and judges a live candidate (held). */
+  const EARLY_WHY = 'Called ' + GATES.EARLY_H + ' hours or more before the game. Early calls decay: 18-27 (ROI -22%) on 45 settled live plays, 110-159 (ROI -16%) on 269 before that.';
+  const PRICE_WHY = 'The price is under ' + Math.round(GATES.MIN_PRICE * 100) + '%. Plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(GATES.MIN_PRICE * 100) + '% and up inside ' + GATES.EARLY_H + ' hours they went 33-11 (ROI +26%).';
+  const hoursOut = x => x == null ? null : x.hoursOut != null ? x.hoursOut : x.start != null && x.firstSeen != null ? (x.start - x.firstSeen) / 3600 : x.hoursEarly != null ? x.hoursEarly : null;
+  function held(c) {
+    const out = [];
+    if (c.price && c.price.p != null && c.price.p < GATES.MIN_PRICE) out.push(PRICE_WHY);
+    if (c.hoursOut != null && c.hoursOut >= GATES.EARLY_H) out.push(EARLY_WHY);
+    return out;
+  }
+  /* A stored ledger row (live or backfilled) judged by the strict gates at its first sight: [] if it still qualifies, else the gates it fails ('price', 'early'). */
+  function heldBack(p) {
+    const px = (p && p.first && p.first.price) || {}, h = hoursOut(p), out = [];
+    if (px.p != null && px.p < GATES.MIN_PRICE) out.push('price');
+    if (h != null && h >= GATES.EARLY_H) out.push('early');
+    return out;
+  }
   function judge(c) {
     /* c.refs: [{n,p}] fair chance of THIS side from each independent reference. Returns tier + reasons. */
     const rs = c.refs; c.refs.forEach(r => r.edge = r.p / c.price.p - 1);
@@ -69,11 +87,13 @@
       if (ex.edge < GATES.MIN_EDGE) { c.tier = c.best >= GATES.MIN_EDGE ? 'pass' : 'none'; c.reasons = ['Does not beat the exchange, the anchor, by ' + pct(GATES.MIN_EDGE, 0) + ' (Exchange ' + spct(ex.edge) + ', Pinnacle ' + spct(pn.edge) + ').']; return c }
       if (pn.edge < 0) { c.tier = 'pass'; c.reasons = ['The exchange likes it (' + spct(ex.edge) + ') but Pinnacle prices it the other way (' + spct(pn.edge) + ').']; return c }
       if (ex.edge > GATES.BIG_EDGE) { c.tier = 'pass'; c.reasons = ['An edge over ' + pct(GATES.BIG_EDGE, 0) + ' is usually a stale or moved line. Calls this size went 21-32 (ROI -15%) on 53 settled.']; return c }
+      const hb = held(c); if (hb.length) { c.tier = 'pass'; c.reasons = hb; return c }
       c.tier = 'play'; c.reasons = ['The price beats the exchange, the anchor, by ' + spct(ex.edge) + '. Pinnacle agrees within ' + (GATES.AGREE * 100) + ' points and does not price it the other way.']; return c;
     }
     if (gap > GATES.AGREE) { c.tier = 'pass'; c.reasons = ['Pinnacle and the exchange disagree by ' + (gap * 100).toFixed(1) + ' points, so neither is trusted.']; return c }
     if (c.worst < GATES.MIN_EDGE) { c.tier = c.best >= GATES.MIN_EDGE ? 'pass' : 'none'; c.reasons = ['Does not beat both references by ' + pct(GATES.MIN_EDGE, 0) + ' (' + rs.map(r => r.n + ' ' + spct(r.edge)).join(', ') + ').']; return c }
     if (c.worst > GATES.BIG_EDGE) { c.tier = 'pass'; c.reasons = ['An edge over ' + pct(GATES.BIG_EDGE, 0) + ' is usually a stale or moved line. Calls this size went 21-32 (ROI -15%) on 53 settled.']; return c }
+    const hb = held(c); if (hb.length) { c.tier = 'pass'; c.reasons = hb; return c }
     c.tier = 'play'; c.reasons = ['The price beats both references by ' + pct(GATES.MIN_EDGE, 0) + ' or more and they agree within ' + (GATES.AGREE * 100) + ' points.']; return c;
   }
   function propCands(X) {
@@ -208,7 +228,7 @@
     /* contradictions: both sides of one market clearing any reference at once */
     const seen = {};
     all.forEach(c => { if (c.refs.some(r => r.p / c.price.p - 1 >= GATES.MIN_EDGE)) { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; (seen[k] || (seen[k] = new Set())).add(c.side) } });
-    all.forEach(c => { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; c.contradicted = (seen[k] && seen[k].size > 1) || false; judge(c) });
+    all.forEach(c => { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; c.contradicted = (seen[k] && seen[k].size > 1) || false; c.hoursOut = c.start ? (c.start - X.now) / 3600 : null; judge(c) });
     const cand = all.filter(c => c.tier !== 'none').sort((a, b) => (b.worst == null ? -9 : b.worst) - (a.worst == null ? -9 : a.worst));
     cand.noneCount = all.length - cand.length;
     return { all, cand };
@@ -224,5 +244,5 @@
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
+  return { GATES, US, EXCH, MKT, held, heldBack, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });

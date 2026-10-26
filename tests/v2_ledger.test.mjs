@@ -20,7 +20,7 @@ test('logs each play once, with the price, both references, edges and time', () 
   const L = fresh(), added = logPlays(L, build(), TS, opts);
   const plays = build().filter(c => c.tier === 'play');
   assert.equal(added.length, plays.length);
-  assert.ok(plays.length >= 4);
+  assert.ok(plays.length >= 1);      // the strict gates (price 55%+, under 48h) leave one prop in the stored snapshot; the 'near' scenario in v2_gates.test.mjs covers a game play
   for (const c of plays) {
     const r = L.plays[ledgerKey(c)];
     assert.equal(r.firstSeen, TS);
@@ -41,7 +41,7 @@ test('logs each play once, with the price, both references, edges and time', () 
 test('a logged play is frozen: a later price, a better book, or the play dropping out of the gates changes nothing', () => {
   const L = fresh(); logPlays(L, build(), TS, opts);
   const snap = JSON.stringify(L.plays);
-  for (const seed of [11, 22, 33]) logPlays(L, build(jitter(fx, seed, 0.1), TS + 300), TS + 300, opts);
+  for (const seed of [11, 22, 33, 44, 55, 66]) logPlays(L, build(jitter(fx, seed, 0.1), TS + 300), TS + 300, opts);
   const after = Object.fromEntries(Object.entries(L.plays).filter(([k]) => JSON.parse(snap)[k]));
   for (const [k, v] of Object.entries(JSON.parse(snap))) assert.deepEqual(after[k], v, k);
   assert.ok(Object.keys(L.plays).length > Object.keys(JSON.parse(snap)).length, 'the jittered data produced new plays that were appended');
@@ -50,7 +50,7 @@ test('a logged play is frozen: a later price, a better book, or the play droppin
 });
 
 test('a play is one row per pick, not one per book', () => {
-  const c = build().find(x => x.tier === 'play' && x.kind === 'book');
+  const c = build().find(x => x.kind === 'book');          // any US-book game pick: the key ignores the tier and the book
   const other = { ...c, price: { ...c.price, book: 'DraftKings', am: c.price.am + 5 }, id: c.id + 'x' };
   assert.equal(ledgerKey(c), ledgerKey(other));
 });

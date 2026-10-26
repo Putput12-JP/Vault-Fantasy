@@ -18,6 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DFS = {'Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'}
 US = {'Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET'}
 MIN_EDGE, AGREE, BIG_EDGE = 0.02, 0.04, 0.10
+MIN_PRICE, EARLY_H = 0.55, 48        # the strict gates in sharp-money/v2/gates.js: a price under 55% or a call 48h or more out is a Pass
 CT = dt.timezone(dt.timedelta(hours=-5))
 r4 = lambda x: None if x is None else round(x, 4)
 
@@ -76,6 +77,10 @@ def main():
             tier, why = 'pass', 'Pinnacle prices it the other way'
         elif c['e2'] > BIG_EDGE:
             tier, why = 'pass', 'edge over 10%'
+        elif p['called']['p'] < MIN_PRICE:
+            tier, why = 'pass', 'price under 55%'
+        elif (p['start'] - p['firstSeen']) / 3600 >= EARLY_H:
+            tier, why = 'pass', 'called 48h or more out'
         else:
             tier, why = 'play', 'clears every gate (anchored on the exchange)'
         cc = p['called']
