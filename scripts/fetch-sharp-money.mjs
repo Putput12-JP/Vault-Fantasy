@@ -682,6 +682,22 @@ function pushAlert(S, a) {
   S.alerts.push(a); S._new.push(a); return true;
 }
 // Pinnacle fair price for an alert's side, at the alert's number, right now.
+// Pinnacle's last move on the number a soft book is behind on (same rule as nba/scripts/sharp.py pin_move): t = the poll that
+// first saw the current row, line0 / p0 = the line and no-vig chance for `side` before it, p1 = now. Only the main number is
+// in G.pin, so an alternate number or a market with no earlier row is null, never a guess.
+function pinMove(hist, m, side, line, upTo = Infinity) {
+  const H = (hist || []).filter(s => s.ts <= upTo);
+  const cur = H[H.length - 1]; if (!cur) return null;
+  const key = s => m === 'ml' ? [s.ml] : m === 'sp' ? [s.sp, s.spP] : [s.tot, s.oP];
+  const lineOf = s => m === 'ml' ? null : m === 'sp' ? s.sp : s.tot;
+  const pOf = s => { const p = m === 'ml' ? s.ml : m === 'sp' ? s.spP : s.oP; return p == null ? null : (side === 'home' || side === 'over') ? p : 1 - p; };
+  if (line != null && lineOf(cur) !== line) return null;
+  const same = (a, b) => JSON.stringify(key(a)) === JSON.stringify(key(b));
+  let i = H.length - 1; while (i > 0 && same(H[i - 1], cur)) i--;
+  const prev = H[i - 1]; if (!prev || pOf(cur) == null || pOf(prev) == null) return null;
+  return { t: H[i].ts, line0: lineOf(prev), p0: r3(pOf(prev)), p1: r3(pOf(cur)) };
+}
+
 function fairNow(P, a) {
   if (a.m === 'ml') return pinFair(P, 'ml', a.side);
   const hl = a.m === 'sp' ? a.hline : a.line;
@@ -801,13 +817,13 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
       if (c.price == null || c.price < -300 || c.price > 300) continue;   // long-shot fairs are too soft to call
       const f = fairNow(P, c); if (f == null) continue;
       const ev = f * (1 + payout(c.price)) - 1;
-      if (ev >= 0.02 && ev < 0.25) behind.push({ book, ...c, fair: r3(f), ev: r3(ev) });
+      if (ev >= 0.02 && ev < 0.25) behind.push({ book, ...c, fair: r3(f), ev: r3(ev), move: pinMove(G.pin, c.m, c.side, c.m === 'sp' ? c.hline : c.line) });
     }
   }
   behind.sort((a, b) => b.ev - a.ev);
   G.behind = behind.slice(0, 6);
   for (const x of behind.filter(x => x.ev >= 0.03)) {
-    pushAlert(S, { ...base, ts: t, type: 'behind', m: x.m, side: x.side, book: x.book, price: x.price, hline: x.hline, line: x.line, fair: x.fair, ev: x.ev,
+    pushAlert(S, { ...base, ts: t, type: 'behind', m: x.m, side: x.side, book: x.book, price: x.price, hline: x.hline, line: x.line, fair: x.fair, ev: x.ev, move: x.move,
       id: `${g.key}:behind:${x.book}:${x.m}:${x.side}:${x.line}:${x.price}`,
       text: `${x.book} still has ${fmtLine(g, x.m, x.side, x.hline ?? x.line)} ${x.price > 0 ? '+' : ''}${x.price}; Pinnacle's fair price is ${am(x.fair) > 0 ? '+' : ''}${am(x.fair)} (${(x.ev * 100).toFixed(1)}% EV)` });
   }
@@ -1399,6 +1415,13 @@ async function pollOnce() {
   const t = now();
   for (const [k, G] of Object.entries(S.games)) if (G.meta && G.meta.start < t - 7 * DAY) delete S.games[k];
   S.alerts = S.alerts.filter(a => a.ts > t - 60 * DAY);
+  // Backfill: a 'behind' alert logged before the move record existed gets it from its game's stored Pinnacle history, cut at the
+  // alert's own time. One consistency check (the rebuilt chance must match the alert's stored fair to 2 points) so a row that is
+  // not the price the alert used stays null. Idempotent: once an alert has the key it is never touched again.
+  for (const a of S.alerts) if (a.type === 'behind' && !('move' in a)) {
+    const mv = pinMove(S.games[a.game]?.pin, a.m, a.side, a.m === 'sp' ? a.hline : a.line, a.ts);
+    a.move = mv && a.fair != null && Math.abs(mv.p1 - a.fair) <= 0.02 ? mv : null;
+  }
   const fresh = S._new; delete S._new;
   const P = payload(S, all, { ...walletInfo }, status);
   migrateLedger(S);
