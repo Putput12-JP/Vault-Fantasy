@@ -6246,7 +6246,7 @@ function simCount(R, mu, v){ if (mu <= 0) return 0; if (v <= mu * 1.001) return 
 const dressP = m => { const T = MS && MS.minutes && MS.minutes.dress; if (!T || !T.length) return 1; for (const [hi, p] of T) if (m < hi) return p; return T[T.length - 1][1]; };
 // who plays and what the prop model says about each: the same minutes and stats Tonight shows, with your what-ifs
 function simInputs(g, B, pick){
-  const cache = {}, status = statusFromBoard(B), pOut = (MS && MS.game && MS.game.p_out) || {};
+  const cache = {__tonight: 1}, status = statusFromBoard(B), pOut = (MS && MS.game && MS.game.p_out) || {};
   return [g.away, g.home].map(team => {
     const model = gameMinutes(team, g, cache), rows = [], seen = new Set();
     const add = (pid, name, src) => {
@@ -6357,7 +6357,7 @@ function renderSim(){
   const mean = sim.env === 'market' ? {m: -M.spread, t: M.total} : sim.env === 'vault' ? {m: -V.spread, t: V.total} : {m: eH - eA, t: eH + eA};
   $('gsenv').innerHTML = SIM_ENV.map(([k, l, tip]) => `<button type="button" data-e="${k}" aria-pressed="${sim.env === k}" ${avail[k] ? '' : 'disabled'} title="${avail[k] ? esc(tip) : k === 'vault' ? 'The Vault line starts with the regular season' : 'No spread and total from the books yet'}">${l}</button>`).join('');
 
-  const key = [gid, sim.env, sim.seed, JSON.stringify(tonightEdits[gid] || {}), JSON.stringify(edits), T.map(t => t.rows.map(r => r.pid + ':' + r.min.toFixed(1) + ':' + r.pPlay).join(',')).join('|'), fmt(mean.m, 2), fmt(mean.t, 2)].join('#');
+  const key = [gid, sim.env, sim.seed, JSON.stringify(tonightEdits[gid] || {}), T.map(t => t.rows.map(r => r.pid + ':' + r.min.toFixed(1) + ':' + r.pPlay).join(',')).join('|'), fmt(mean.m, 2), fmt(mean.t, 2)].join('#');
   if (sim.key !== key){ sim.res = simRun(T, mean, sim.seed * 7919 + (+gid % 100003)); sim.key = key; }
   const res = sim.res, N = res.N, ms = simSort(res.margin), ts = simSort(res.total), sa = simSort(res.score[0]), sh = simSort(res.score[1]);
   const homeWin = res.margin.reduce((a, v) => a + (v > 0 ? 1 : 0), 0) / N, hold = T.find(t => t.hold);
