@@ -3789,7 +3789,8 @@ function matchupX(dd, ta, mt, pid, opp, s){
   const cfg = mt.stats[s];
   if (cfg.team_terms){
     const row = ta && ta.teams && ta.teams[opp];
-    return row ? cfg.team_terms.reduce((a, t) => a + t.beta * row[t.index], 0) : null;
+    if (!row || cfg.team_terms.some(t => row[t.index] == null)) return null;                // a file from before an index existed: no term, never NaN
+    return cfg.team_terms.reduce((a, t) => a + t.beta * row[t.index], 0);
   }
   const idx = matchupIdx(dd, mt, pid, opp, s);
   return idx == null ? null : cfg.beta * idx;

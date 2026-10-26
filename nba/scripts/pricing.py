@@ -138,7 +138,9 @@ class Pricer:
             return None
         if 'team_terms' in cfg:
             row = ((self.TA or {}).get('teams') or {}).get(opp)
-            return None if not row else sum(t['beta'] * row[t['index']] for t in cfg['team_terms'])
+            if not row or any(row.get(t['index']) is None for t in cfg['team_terms']):       # a file from before an index existed: no term, never a KeyError
+                return None
+            return sum(t['beta'] * row[t['index']] for t in cfg['team_terms'])
         idx = self.matchup_idx(pid, opp, s)
         return None if idx is None else cfg['beta'] * idx
 
