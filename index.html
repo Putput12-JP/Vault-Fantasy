@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-26T20:30', tag:'Improved', title:'NBA: more books behind the sharp book, and a line movement chart',
+    items:[
+      'The "behind Pinnacle" flag on NBA player props used to cover DraftKings only. It now also flags Polymarket, Novig and Kalshi when they show a better price than the sharp book\'s fair price on the same line.',
+      'They are tracked on their own record, apart from DraftKings. Context only, not a bet signal. Novig prices are shown as shown, with no fee taken off. Kalshi prices include its fee.',
+      'Each NBA game on the Lines page now has a line movement chart for every book (open Details). Spread, total and moneyline, with a time window you can change.'
+    ]
+  },
+  {
     ts:'2026-10-26T16:00', tag:'New', title:'Sharp Money and NBA: see when the sharp book moved',
     items:[
       'When a sportsbook is still showing a price that beats the sharp book\'s fair price, the alert now also shows what the sharp book did: where its chance was, where it is now, and how long ago it moved.',
