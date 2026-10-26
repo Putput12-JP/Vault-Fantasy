@@ -121,7 +121,7 @@
   }
 
   /* ---------- Plays ---------- */
-  var TIER = { play: ['Plays', 'success'], watch: ['Watch', 'warning'], pass: ['Passed', 'default'] };
+  var TIER = { play: ['Plays', 'success'], watch: ['Watch', 'warning'], pass: ['Passed', 'default'], open: ['Open', 'accent'] };
   function palOf(n) { return { text: n.text, mut: n.textSecondary, dim: n.textTertiary, line: n.border, bg: n.bg, tile: n.bgSubtle, acc: n.accent, good: n.success, bad: n.danger, warn: n.warning }; }
   function PlayCard(u, c, openGame, F, D) {
     var k = u.k, h = u.h, go = c.gk && openGame ? function () { openGame(c.gk); } : undefined;
@@ -134,6 +134,14 @@
       h('div', { key: 'b', style: { textAlign: 'right' } }, h(k.T, { size: 'xs', mono: true }, SPORT[c.sport] + ' · ' + (c.start ? when(c.start).split(' ').slice(0, 3).join(' ') : '')))
     ], c.id, c.gk && openGame ? function () { openGame(c.gk); } : undefined);
   }
+  function OpenRow(u, r, openGame) {
+    var h = u.h, k = u.k, p = r.p, f = p.first || {}, px = f.price || {}, gk = p.game && p.game.gk;
+    return u.row('minmax(0,1fr) auto', [
+      h('div', { key: 'a', style: { minWidth: 0 } }, h(k.M, { size: 'base', weight: 'semibold' }, f.title), h(k.T, { size: 'sm' }, '  at ' + px.book + ' ' + am(px.am)),
+        h('div', null, h(k.T, { size: 'xs' }, (f.sub || '') + ' · first seen ' + when(p.firstSeen) + ' · ' + (f.refs || []).map(function (x) { return x.n + ' ' + spct(x.edge); }).join(', ')))),
+      h('div', { key: 'b', style: { textAlign: 'right' } }, h(k.T, { size: 'xs', mono: true }, SPORT[p.sport] + ' · ' + (p.start ? when(p.start).split(' ').slice(0, 3).join(' ') : '')))
+    ], p.id, gk && openGame ? function () { openGame(gk); } : undefined);
+  }
   function Plays(props) {
     var k = kit(), U = k.U, h = U.createElement, F = useFiles(), built = useBuilt(props.D, F), u = ui(), n = u.n;
     var s = U.useState('play'), tier = s[0], setTier = s[1], s2 = U.useState(12), nProps = s2[0], setNProps = s2[1];
@@ -143,10 +151,12 @@
     var inSport = function (c) { return sport === 'all' || c.sport === sport; };
     var list = function (t) { return built.cand.filter(function (c) { return c.tier === t && inSport(c); }); };
     var nP = list('play').length, nW = list('watch').length, nX = list('pass').length;
-    var opts = ['Plays ' + nP, 'Watch ' + nW, 'Passed ' + nX], cur = tier === 'play' ? opts[0] : tier === 'watch' ? opts[1] : opts[2];
+    var openR = openRows(F, sport), nO = openR.length;
+    var opts = ['Plays ' + nP, 'Open ' + nO, 'Watch ' + nW, 'Passed ' + nX], cur = tier === 'play' ? opts[0] : tier === 'open' ? opts[1] : tier === 'watch' ? opts[2] : opts[3];
     var items = list(tier);
     var body;
-    if (tier === 'pass') body = items.length ? h(k.K, { padding: 0 }, items.map(function (c) { return PassRow(u, c, props.openGame); })) : h(k.K, { padding: 20 }, h(k.M, { size: 'md', weight: 'medium' }, 'Nothing passed over'));
+    if (tier === 'open') body = openR.length ? h(k.K, { padding: 0 }, openR.map(function (r) { return OpenRow(u, r, props.openGame); })) : h(k.K, { padding: 20 }, h(k.M, { size: 'md', weight: 'medium' }, 'No open plays'), h('div', { style: { marginTop: 4 } }, h(k.T, { size: 'base' }, 'Plays that were logged and are still waiting on the game. Settled plays are in the record above.')));
+    else if (tier === 'pass') body = items.length ? h(k.K, { padding: 0 }, items.map(function (c) { return PassRow(u, c, props.openGame); })) : h(k.K, { padding: 20 }, h(k.M, { size: 'md', weight: 'medium' }, 'Nothing passed over'));
     else if (!items.length) body = h(k.K, { padding: 20 }, h(k.M, { size: 'md', weight: 'medium' }, tier === 'play' ? 'Nothing clears every gate right now' : 'Nothing on watch'),
       h('div', { style: { marginTop: 4 } }, h(k.T, { size: 'base' }, tier === 'play' ? 'That is the honest answer.' + (nW ? ' ' + nW + ' price' + (nW === 1 ? ' has' : 's have') + ' one reference only (Watch).' : '') + (nX ? ' ' + nX + ' looked good against one price but failed a gate (Passed).' : '') : 'Prices that beat one reference but have no second price to confirm them.')));
     else body = u.grid(420, items.map(function (c) { return PlayCard(u, c, props.openGame, F, props.D); }));
@@ -162,8 +172,8 @@
     })).concat(propRows.length > nProps ? [h('div', { key: 'more', style: { padding: 12, borderTop: '1px solid ' + n.borderSubtle } }, h(k.co, { variant: 'secondary', size: 'sm', onClick: function () { setNProps(nProps + 20); } }, 'Show more (' + (propRows.length - nProps) + ' left)'))] : [])) : h(k.K, { padding: 20 }, h(k.T, { size: 'base' }, 'No prop with a usable price right now. The board lists only players whose game has not started.'));
     var gates = G().GATES;
     return h('div', { style: { display: 'grid', gap: 14, marginTop: 20 } },
-      h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n), tier, sport) } }),
-      h('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } }, h(k.ve, { options: opts, value: cur, onChange: function (o) { setTier(o === opts[0] ? 'play' : o === opts[1] ? 'watch' : 'pass'); } }),
+      h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n), tier === 'open' ? 'play' : tier, sport) } }),
+      h('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } }, h(k.ve, { options: opts, value: cur, onChange: function (o) { setTier(o === opts[0] ? 'play' : o === opts[1] ? 'open' : o === opts[2] ? 'watch' : 'pass'); } }),
         h(k.T, { size: 'sm' }, 'Props are ranked by the edge against the exchange (the anchor, with Pinnacle as the check); games by the worst case of both fair prices. Sport filter: top bar.')),
       body,
       Details(u, 'How a play qualifies', [
@@ -231,6 +241,8 @@
     return rows;
   }
   function heldRows(F) { return rowsRaw(F, 'play').filter(held); }
+  /* Logged plays still waiting to settle. They leave the live Plays list once a gate stops clearing, but stay in the record, so this is the only list of them. */
+  function openRows(F, sport) { return rowsAll(F, 'play').filter(function (r) { return r.p.status === 'open' && (!sport || sport === 'all' || r.p.sport === sport); }).sort(function (a, b) { return a.p.start - b.p.start; }); }
   function LedgerCard(u, name, desc, rows) {
     var k = u.k, h = u.h, s = stat(rows), cnt = function (x) { return rows.filter(function (r) { return r.p.status === x; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), wsum = wins.reduce(function (a, b) { return a + b; }, 0);
@@ -490,7 +502,7 @@
 
   /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */
   var core = {
-    STORE: STORE, rowsAll: rowsAll, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
+    STORE: STORE, rowsAll: rowsAll, openRows: openRows, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
     ensure: function () { loadAssets(); if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
     subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
   };
