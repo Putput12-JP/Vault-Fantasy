@@ -13,7 +13,7 @@ with only what was known that morning.
 Writes data/model_state.json. Needs raw/hoopr for the seasons walked (fetch_hoopr.py).
 """
 import copy, datetime as dt, json, os, sys
-from collections import defaultdict
+from collections import defaultdict, deque
 sys.path.insert(0, os.path.dirname(__file__))
 import nba_common as C
 import build_minutes_model as MM
@@ -131,6 +131,7 @@ def main():
     gbw = MG.Walk()
     prior = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
     example, last_day, n = None, None, 0
+    last3, last_idx = defaultdict(lambda: deque(maxlen=3)), {}      # rotation-minutes shadow (docs/rotation-minutes-shadow.md): last three games' minutes, team game index of the last appearance
     fg, f3 = defaultdict(int), defaultdict(list)     # the current season's team game count and each player's minutes in his team's first three games (early-season blend shadow)
     for g in C.games(seasons):
         rows = box.get(g['game_id'], [])
@@ -141,9 +142,15 @@ def main():
             example['asof'] = g['tip_et'].strftime('%Y-%m-%d')
         V2.update_after(g, rows, rt, prior, ms, ctx)
         m3.update(g, rows)
+        for r in rows:
+            if r['played']:
+                last3[r['athlete_id']].append(round(r['minutes'], 1))
         if g['season'] == cur:
             for t in {r['team'] for r in rows}:
                 fg[t] += 1
+                for r in rows:
+                    if r['team'] == t and r['played']:
+                        last_idx[r['athlete_id']] = (t, fg[t])
                 if fg[t] <= 3:
                     for r in rows:
                         if r['team'] == t and r['played']:
@@ -156,6 +163,8 @@ def main():
     # early-season blend shadow (docs/early-minutes-blend-test.md): [team, minutes in his team's games 1 to 3 that he played] per player, games played per team
     live['first3'] = {str(a): [t, *v] for (a, t), v in f3.items()}
     live['team_gn'] = dict(fg)
+    live['last3'] = {str(a): list(d) for a, d in last3.items() if d}
+    live['last_idx'] = {str(a): [t, i] for a, (t, i) in last_idx.items()}
     # minutes GBM shadow (scripts/minutes_gbm.py): per-player and per-team state its features read; the trees are data/minutes_gbm.json
     live['gbm'] = gbw.export(max(ms.team_last.values()).timestamp(), keep=keep) if ms.team_last else None
     game = game_state(box, seasons, cur, roster={x['id']: t for t, T in proj['teams'].items() for x in T['players']}, names=names)

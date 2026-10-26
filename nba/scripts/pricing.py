@@ -38,6 +38,10 @@ class Pricer:
         except (OSError, ValueError):
             self.DDF = self.MT = None
         try:
+            self.ROTM = json.load(open(os.path.join(DATA, 'rotation_minutes_model.json')))     # rotation-minutes shadow (docs/rotation-minutes-shadow.md), never priced
+        except (OSError, ValueError):
+            self.ROTM = None
+        try:
             self.TA = json.load(open(os.path.join(DATA, 'team_allowance.json')))      # team-level indices for points and rebounds (build_team_allowance.py)
         except (OSError, ValueError):
             self.TA = None
@@ -380,6 +384,47 @@ class Pricer:
             pm = {a: min(48.0, v * f) for a, v in pm.items()}
         cache[key] = pm
         return pm
+
+    # ── shadow: rotation-aware minutes C3 (docs/rotation-minutes-shadow.md), logged next to v2, never priced ─────
+    def game_minutes_rot(self, team, g, status, cache):
+        """{pid: {'min', 'p_rot', 'p_plays', 'size', 'rank', 'tgn'}} from the frozen C3 model (data/rotation_minutes_model.json) on the same pool game_minutes uses:
+        everyone with minutes state on the team in the last 30 days who is not Out. Empty without the model file, without state, or in the preseason."""
+        import rotation_minutes as RM
+        key = ('gmr', team, str(g['id']))
+        if key in cache:
+            return cache[key]
+        cache[key] = {}
+        if not self.ROTM or not self.MM or not self.state or (g or {}).get('season_type') == 1 or 'last_idx' not in self.state or 'last3' not in self.state:
+            return {}                                   # a state built before the two fields existed would read every player as long absent: log nothing until the daily job rebuilds it
+        M, P, tip = self.MM, self.state['players'], g['tip']
+        S = lambda a: P.get(str(a)) or {}
+        out = {a: 1.0 for a, stt in (status or {}).items() if stt in ('Out', 'Doubtful', 'Inactive')}
+        rot = {int(a): v['ms'] for a, v in P.items() if v.get('ms') and v['ms'][3] == team and v['ms'][0] >= M['rot_min'] and v['ms'][4] >= tip - M['rot_days'] * 86400}
+        roster = {x['id'] for x in self.D['teams'].get(team, {}).get('players', [])}
+        roster |= {int(a) for a, v in P.items() if v.get('ms') and v['ms'][3] == team and v['ms'][4] >= tip - 30 * 86400}
+        cand = [a for a in sorted(roster) if S(a).get('ms') and S(a)['ms'][3] == team and S(a).get('r') and a not in out]
+        if not cand:
+            return {}
+        tl = (self.state.get('team_last') or {}).get(team)
+        b2b = 1.0 if tl and tip - tl < 30 * 3600 else 0.0
+        tgn = (self.state.get('team_gn') or {}).get(team, 0)               # this team's games so far this season
+        L3, LI = self.state.get('last3') or {}, self.state.get('last_idx') or {}
+        nout = sum(1 for a in rot if out.get(a))
+        order = sorted(cand, key=lambda a: -S(a)['ms'][0])
+        rank = {a: i + 1 for i, a in enumerate(order)}
+        rows = []
+        for a in cand:
+            ms = S(a)['ms']
+            h = L3.get(str(a))
+            li = LI.get(str(a))
+            rows.append({'m': ms[0], 'st': ms[1], 'n': ms[5], 'rank': rank[a], 'd3': (sum(h) / len(h) - ms[0]) if h else 0.0,
+                         'gap': min(10, tgn - li[1]) if li and li[0] == team else (0 if tgn < 3 else 10), 'last_days': (tip - ms[4]) / 86400.0,
+                         'vs': sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] == ms[2]),
+                         'vo': sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] != ms[2]),
+                         'nout': nout, 'b2b': b2b, 'home': 1.0 if team == g['home'] else 0.0, 'size': len(cand), 'e': g.get('spread')})
+        res = RM.score_pool(self.ROTM, rows)
+        cache[key] = {a: {'min': s_['min'], 'p_rot': s_['p_rot'], 'p_plays': s_['p_plays'], 'size': len(cand), 'rank': rank[a], 'tgn': tgn + 1} for a, s_ in zip(cand, res)}
+        return cache[key]
 
     # ── shadow: early-season blend (docs/early-minutes-blend-test.md), logged next to v2, never priced ─────
     def game_minutes_blend(self, team, g, gm):
