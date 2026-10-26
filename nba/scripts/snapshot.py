@@ -846,6 +846,7 @@ def write_board(root, day, slate):
             board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event, kal_vol=KAL_VOL)
         except Exception:
             traceback.print_exc(limit=2)
+            board['sharp_err'] = traceback.format_exc(limit=3)[-700:]   # on the board itself, so a missing Sharp block can be diagnosed without the run's log
         try:                                            # shadow ledger of hypothetical copies of sharp accounts (docs/sharp-follow-prereg.md); logs only
             import follow_ledger
             follow_ledger.run(root, slate.now)
