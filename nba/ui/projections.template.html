@@ -3789,12 +3789,14 @@ function matchupX(dd, ta, mt, pid, opp, s){
   const cfg = mt.stats[s];
   if (cfg.team_terms){
     const row = ta && ta.teams && ta.teams[opp];
-    return row ? cfg.team_terms.reduce((a, t) => a + t.beta * row[t.index], 0) : null;
+    if (!row || cfg.team_terms.some(t => row[t.index] == null)) return null;                // a file from before an index existed: no term, never NaN
+    return cfg.team_terms.reduce((a, t) => a + t.beta * row[t.index], 0);
   }
   const idx = matchupIdx(dd, mt, pid, opp, s);
   return idx == null ? null : cfg.beta * idx;
 }
 function matchupTerm(pid, opp, s, mu){
+  if (typeof PS !== 'undefined' && PS.mode === 'example') return 0;      // the sample board never gets the term (pricing.py matchup_term: self.example)
   const x = matchupX(DD, TA, MT, pid, opp, s);
   if (x == null) return 0;
   const c = MT.clip || [0.7, 1.3];
@@ -3803,8 +3805,9 @@ function matchupTerm(pid, opp, s, mu){
 // MATCHUP-IDX-END
 function v2Terms(pl, s, mu, min, g, state){
   const zero = {opp: 0, pace: 0, market: 0, shooting: 0, season: 0, home: 0, b2b: 0, bias: 0, matchup: 0};
-  if (!PR.stacker || !PR.stacker[s] || !state || !g || !(min > 0)) return zero;
+  if (!PR.stacker || !state || !g || !(min > 0)) return zero;
   const team = pl.t, opp = team === g.home ? g.away : team === g.away ? g.home : null;
+  if (!PR.stacker[s]) return {...zero, matchup: matchupTerm(pl.p.id, opp, s, mu)};     // stats with no stacker (the extra markets): only the matchup term (scripts/pricing.py v2_terms)
   const T = state.teams[team], O = opp && state.teams[opp], P = state.players[pl.p.id] || {};
   const home = team === g.home ? 1 : 0;
   const b2b = T && T.last && g.tip - T.last < 30 * 3600 ? 1 : 0;

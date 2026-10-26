@@ -55,3 +55,9 @@ Team-level, no player mix: the opponent's allowance against the league, from `da
 - Until the first daily run after this change builds the file, the points and rebounds terms are 0 (no file, no term). A failed daily run keeps the last file.
 - Parity: `check_matchup_js_parity.py` now also checks both team-level stats against the page's JS (28,980 checks, 0 mismatches).
 - **Forward read, same rules and kill switch**, separately per stat, for games on or after 2026-10-27: 500 settled single-stat bets from 25 nights, KEEP if the stat-error gain is above 0 with t >= 1.65, else DEMOTE; early stop at t <= -2.5. `score_matchup_forward.py` covers all four stats with those start dates.
+
+
+## Steals and turnovers (added 2026-10-26; evidence: [matchup-stl-blk-tov-results.md](matchup-stl-blk-tov-results.md), wiring: [matchup-extras-wiring.md](matchup-extras-wiring.md))
+
+Display-only markets, so no bets and no simulation use. The term is the joint pace + matchup form that passed, frozen slopes, from 2026-10-27, with the same kill switch (`matchup_terms.json`). Confirmation is a **new record**, not the bet ledger:
+`xstat` rows (minutes, projection without the term, the term) graded against the box score, read per stat at 500 rows from 25 nights (`score_xstat_forward.py`): KEEP if gain > 0 with t >= 1.65, else DEMOTE; early stop at t <= -2.5 at a monthly look. Blocks are not wired (failed Stage 1).

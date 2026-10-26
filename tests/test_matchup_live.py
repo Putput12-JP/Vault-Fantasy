@@ -53,6 +53,14 @@ class MatchupTerm(unittest.TestCase):
         p = pricer(); p.MT["stats"]["pts"]["team_terms"][0]["beta"] = 100.0
         self.assertAlmostEqual(p.matchup_term(7, "OPP", "pts", 10.0), 3.0)                                # clipped at 1.3
 
+    def test_a_team_file_missing_an_index_gives_no_term_not_an_error(self):
+        old = {"teams": {"OPP": {"P_vol": 0.05, "P_eff": -0.02, "R_miss": 0.03}}}                 # built before S_tov / T_forced / Pace existed
+        p = pricer(ta=old)
+        p.MT["stats"]["stl"] = {"team_terms": [{"index": "Pace", "beta": -0.05}, {"index": "S_tov", "beta": 0.68}]}
+        self.assertIsNone(p.matchup_x(7, "OPP", "stl"))
+        self.assertEqual(p.matchup_term(7, "OPP", "stl", 1.0), 0.0)
+        self.assertIsNotNone(p.matchup_x(7, "OPP", "pts"))                                         # the indices it does have still work
+
     def test_nothing_when_thin_off_unknown_or_example(self):
         self.assertIsNone(pricer().matchup_idx(8, "OPP", "3pm"))              # under 50 shots
         self.assertIsNone(pricer().matchup_idx(9, "OPP", "3pm"))              # under 5% of his shots are threes

@@ -988,6 +988,14 @@ def shadow(root, day, board, now, polls):
         except Exception as e:
             rec['gpick_err'] = str(e)[:120]
             traceback.print_exc(limit=2)
+        try:                                                    # steals and turnovers: the projection and the matchup term on it, for the forward read (xstat_record.py, docs/matchup-extras-wiring.md); never stops the ledger
+            import xstat_record
+            xrows, xmeta = xstat_record.log(board, now)
+            rec['xstat'] = len(xrows)
+            day.record('xstat', now, xrows, xmeta)
+        except Exception as e:
+            rec['xstat_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
         try:                                                    # Pick'em of the Night: the legs the page would slip, locked at the first tip (pickem_record.py); never stops the ledger
             import pickem_record
             krows, kmeta = pickem_record.log(board, now)
@@ -1115,7 +1123,7 @@ def push_board(root):
 def commit(root):
     push_board(root)
     git = ['git', '-C', root]
-    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('novig', 'track.json', 'results', 'bets', 'leans', 'gpicks', 'season_types.json') if os.path.exists(os.path.join(root, p))], check=True)
+    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('novig', 'track.json', 'results', 'bets', 'leans', 'gpicks', 'xstats', 'season_types.json') if os.path.exists(os.path.join(root, p))], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:
         return
     stamp = dt.datetime.now(ET).strftime('%Y-%m-%d %H:%M ET')
