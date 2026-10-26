@@ -3200,6 +3200,8 @@ function labLineup(team){
   return {ids: five.map(p => p.id), confirmed: conf.length >= 5, listed: have, label: `${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}`};
 }
 function labProps(name){ const ev = PV_PRESETS.find(p => /every/i.test(p[1])) || PV_PRESETS[PV_PRESETS.length - 1]; pv.q = name; pv.preset = ev[0]; pv.game = 'all'; pv.stat = 'all'; goView('props'); }   // same hop the Profile's Props button makes
+function labEdited(team){ return !!(edits[team] && Object.keys(edits[team]).length); }
+function labResetTeam(team){ delete edits[team]; delete logs[team]; store.set('nml-edits', edits); store.set('nml-log', logs); render(); }
 function labReset(){ delete edits[cur]; delete logs[cur]; store.set('nml-edits', edits); store.set('nml-log', logs); render(); }
 function labFit(){
   const T = D.teams[cur], m = labM(cur);
@@ -4001,7 +4003,7 @@ function gameMinutesGbm(team, g, cache){
 function muFor(pid, stat, cache, g, bteam){
   const state0 = MS && (PS.mode === 'example' ? MS.example : MS.live);
   const team0 = bteam || (PIDX[pid] && PIDX[pid].t);
-  const edited = team0 && edits[team0] && Object.keys(edits[team0]).length;
+  const edited = team0 && edits[team0] && Object.keys(edits[team0]).length && !(cache && cache.__tonight);   // Tonight prices from the game model, the same minutes its Minutes column shows
   if (g && team0 && !edited){
     const G = gameMinutes(team0, g, cache)[pid];
     if (G){
@@ -4525,6 +4527,7 @@ function detailRow(r, parts = false){
 }
 
 // events
+document.addEventListener('click', e => { const b = e.target.closest('[data-lab-reset]'); if (b) labResetTeam(b.dataset.labReset); });
 $('pv-since').addEventListener('click', e => { if (e.target.closest('[data-since-x]')){ sinceHtml = ''; $('pv-since').innerHTML = ''; } });
 $('pv-games').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pv.game = b.dataset.g; renderPropsV2(); } });
 $('pgames').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pf.game = b.dataset.g; renderProps(); } });
@@ -5738,7 +5741,7 @@ function renderTonight(){
   const g = games.find(x => String(x.id) === nt.game), gid = String(g.id);
   gameStripMount($('ngames'), gameStrip(games, nt.game, {mark: x => !!(tonightEdits[String(x.id)] && Object.keys(tonightEdits[String(x.id)]).length)}));
 
-  const cache = {}, status = statusFromBoard(B), P = B.players || {};
+  const cache = {__tonight: 1}, status = statusFromBoard(B), P = B.players || {};
   const edits = tonightEdits[gid] || {};
   const teams = [g.away, g.home].map(team => {
     const model = gameMinutes(team, g, cache), v3m = gameMinutesV3(team, g, cache), gbm = gameMinutesGbm(team, g, cache), rows = [];
@@ -5787,7 +5790,7 @@ function renderTonight(){
   const chip = (v, lab) => Math.abs(v) >= .3 ? `<span class="nt-p ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${fmt(v)} ${lab}</span>` : '';
   const stTxt = r => [LINEUP[r.lu] || '', r.ret ? `<span class="warnt" title="Missed about a season (${r.ret.gap} days of his team's schedule). The model's minutes are a guess; type his minutes to price his props.">Returning: set his minutes</span>` : '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
-      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2>${T.rows.some(r => r.ret) ? `<p class="nt-rw"><b>Returning after a long layoff</b> ${T.rows.filter(r => r.ret).map(r => esc(last(r.name))).join(', ')}: the model's minutes for them are a guess (players back from a missed season averaged 22 in the first game, 30 when starting). Type their minutes below; their props stay on hold until they play or you do.</p>` : ''}${pick.mode === 'example' ? '' : reportChip(T.team, g, MS && MS.live, B, T.rows.filter(r => !r.off && r.st === 'Questionable').length)}<p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
+      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2>${T.rows.some(r => r.ret) ? `<p class="nt-rw"><b>Returning after a long layoff</b> ${T.rows.filter(r => r.ret).map(r => esc(last(r.name))).join(', ')}: the model's minutes for them are a guess (players back from a missed season averaged 22 in the first game, 30 when starting). Type their minutes below; their props stay on hold until they play or you do.</p>` : ''}${labEdited(T.team) ? `<p class="nt-rw"><b>Lab edits saved for ${T.team}.</b> Tonight ignores them; the minutes and stats here are the model's. The Minutes Lab and Props still use them. <button type="button" class="linkbtn" data-lab-reset="${T.team}">Reset Lab edits</button></p>` : ''}${pick.mode === 'example' ? '' : reportChip(T.team, g, MS && MS.live, B, T.rows.filter(r => !r.off && r.st === 'Questionable').length)}<p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Shadow: gradient-boosted minutes model. Logged next to v2 and v3, never priced. Uses the same injury statuses; the market spread stands in for the game model's margin.">GBM</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
       ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
