@@ -43,3 +43,10 @@ Steals, blocks, turnovers (registered separately once the events they need are e
 ## If one passes
 
 Same route as 3PM and assists: a frozen slope in `data/matchup_terms.json`, the same Python and page arithmetic with a parity check, a kill switch, the term logged on bet rows, and a forward read registered before any game. The Game Simulation and Props Simulation take it through `mu_for` automatically. Points feed PRA, PR and PA; rebounds feed PR and RA.
+
+## Clarification made before any index was built (2026-10-25): data source
+
+The three indices are **computed from the team box scores** (`raw/hoopr/player_box_<season>.csv`, summed per team per game: field-goal attempts and makes, points minus free throws made, minutes), not from a new play-by-play reader. Same quantities, exact, and no coordinates are needed.
+Consequences, fixed now: (1) the All-Star game is not in the box-score game list, so the invented-team problem cannot occur, and the runner still asserts the league mean is over exactly 30 teams; (2) **2024-25 now has a full prior season (2023-24)**, so the fit season uses the same blend rule as 2025-26 (w = games / 15, last season's rate before that), instead of counting defenses only from game 15; (3) the "`read_events`" extraction named above is not built.
+Per-48 rates use team minutes (the sum of player minutes over five), so overtime is handled. P_eff = blended field-goal points allowed divided by blended field-goal attempts allowed. R_miss = (the defense's own misses + the misses it forces on its opponent) per 48.
+Steals, blocks and turnovers are also in the box score, so their registration (still separate, still later) will not need the play-by-play either.
