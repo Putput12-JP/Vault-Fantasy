@@ -303,3 +303,17 @@ backtest is in-sample. Only picks logged live from now on are evidence.**
 - **Backtest** (`--backtest`): the stored tape replayed poll by poll through the same code, with each poll's board rebuilt from the recorder's snapshots
   (nba-data branch) and the model files as they stood in git at that moment. Limits: the prop model's fitted parameters are the ones on hand, last refit 2026-10-09, before any
   regular-season game; poll cadence is the tape's (5 to 30 minutes, with gaps). Replayed picks are labelled and never merged into the live record.
+
+## 13. Bankroll Builder combos, shadow record (rules v1, fixed 2026-10-27, before any live combo had settled)
+
+The Combo Check page is folded into Bankroll Builder. The old alt-line price tool is a collapsed section at the bottom of the page and `#combo` links open it. New: two-leg slips built ONLY from
+Bankroll Builder picks, `scripts/bankroll_combos.py` (local: SmartStake prices), run in the 5-minute publish job after the picks are settled. **A shadow: never in the Bankroll Builder record, never a bet.**
+- **Legs:** two open picks (not settled, game not tipped) at the SAME sportsbook, each leg's fair chance = the one logged on its pick. Price = the product of the two legs' prices at that book (legs not quoted there cannot be priced, so none are).
+- **mates:** same game, same team, same side, and the pair is assists with 3-pointers or points with assists (the two passed pairings, `nba/docs/pickem-correlation-results.md`). Chance = legs multiplied plus the measured lift (`combo_calls.joint`).
+- **cross:** two different games, chance = legs multiplied, no lift. Opponents in one game and teammate pairings with no measured lift are not combos.
+- **Gate / caps:** edge = chance x decimal odds - 1 >= 0%. At most 6 mates and 6 cross per slate (ET day of the earlier tip), first come, ranked by edge within a pass.
+- **Entry / close / grade:** logged at the first pass it qualifies; close = last price seen for both legs at that book before tip; graded flat 1 unit at entry from the picks' own results (a lost leg loses it, a void leg voids it).
+- **Reading it:** monitoring only. Nothing is called good or bad before **100 settled combos** and CLV positive by 2 SE. Changing a rule starts a new record.
+- **Backfill (`--backfill`):** rebuilt from the picks on file for games already played, same rules. Entry = product of the legs' own logged entry prices, close = product of their logged closes (the other leg's price at the later pick's moment was not stored, so nothing is invented). Tagged `source: replay`; the page splits live from replayed. In-sample: the picks themselves were chosen after seeing those nights. Refuses to run when live combos are on file unless `--force`.
+- **Backfilled result (2026-10-27):** 50 combos, 49 settled, +3.59u, ROI +7.3% (z 0.33), CLV +12.2% (n 50). mates 8 settled, +4.74u (**n=8**); cross 41 settled, -1.15u. All improvements are small, in-sample and correlated within a night.
+

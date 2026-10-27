@@ -1367,7 +1367,7 @@ button.ps-ar{cursor:pointer;border:1px solid transparent}button.ps-ar:hover{back
 .pv-read p b{color:var(--fg);font-weight:600}
 .pv-read .big{font-size:16px;color:var(--fg)}
 .pv-read .fine{font-size:12px;color:var(--fg3)}
-.pv-bets{display:block;position:relative;overflow-y:auto;overscroll-behavior:contain;max-height:470px}
+.pv-bets{display:block;position:relative;border-radius:inherit;overflow-y:auto;overscroll-behavior:contain;max-height:470px}
 .pv-bets .pv-bt.h{position:sticky;top:0;z-index:3;background:var(--surface);border-bottom:1px solid var(--border)}
 .pv-day{display:flex;align-items:baseline;gap:10px;padding:8px 18px;background:var(--bg);border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
 .pv-day b{color:var(--fg);font-weight:600}
@@ -2912,9 +2912,9 @@ th{font-weight:500}
     <footer id="btfoot" hidden></footer>
     <main id="v-pairs" hidden><div class="pp-wrap" id="pp-root"></div></main>
     <footer id="ppfoot" hidden></footer>
-    <main id="v-combo" hidden><div class="pp-wrap" id="cc-root"></div></main>
-    <footer id="ccfoot" hidden></footer>
-    <main id="v-bankroll" hidden><div class="pp-wrap" id="bk-root"></div></main>
+    <main id="v-bankroll" hidden><div class="pp-wrap" id="bk-root"></div>
+      <div class="pp-wrap"><details class="card tfold" id="cc-fold"><summary><span class="tf-t"><b>Price any combo you build</b><small>Alt-line legs from any players, the fair odds, and the price to take. This is the old Combo Check, with its own call record inside.</small></span></summary>
+        <div class="pp-wrap" id="cc-root"></div><footer id="ccfoot"></footer></details></div></main>
     <footer id="bkfoot" hidden></footer>
     <main id="v-player" hidden><div class="pl-wrap" id="pl-root"></div></main>
     <footer id="plfoot" hidden></footer>
@@ -3159,7 +3159,7 @@ const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
 const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
-const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
+const viewOf = h => h === 'WORKS' ? 'backtests' : h === 'COMBO' ? 'bankroll' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
@@ -3393,8 +3393,7 @@ const PAGES = [
     ['Edge Finder', SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'), "Slice last season's tests by venue, stat and side and see what held up out of sample.", 'finder'],
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
     ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
-    ['Combo Check', SVG('<rect x="3" y="6" width="8" height="12" rx="2"/><rect x="13" y="6" width="8" height="12" rx="2"/><path d="m5.5 12 1.8 1.8 3-3.6"/>'), 'Alt-line combos priced fairly: legs between -140 and +200 from any players, the fair odds, and the price to take. Type your book\'s price to see what it is worth.', 'combo'],
-    ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced unders (-110 to -220) at a price as good as or better than the market\'s fair price, tracked flat 1 unit on a $1,000 paper bankroll.', 'bankroll'],
+    ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced unders (-110 to -220) at a price as good as or better than the market\'s fair price, tracked flat 1 unit on a $1,000 paper bankroll, plus two-leg combos built only from those picks (a shadow record).', 'bankroll'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
@@ -3686,7 +3685,6 @@ function show(v){
   $('v-tells').hidden = $('tlfoot').hidden = v !== 'tells';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-player').hidden = $('plfoot').hidden = v !== 'player';
-  $('v-combo').hidden = $('ccfoot').hidden = v !== 'combo';
   $('v-bankroll').hidden = $('bkfoot').hidden = v !== 'bankroll';
   $('v-backtests').hidden = $('btfoot').hidden = !['backtests', 'finder', 'btlab'].includes(v);
   $('slicer').hidden = !lab;
@@ -3713,13 +3711,7 @@ function show(v){
     $('tname').textContent = 'Bankroll Builder';
     $('tsub').textContent = 'SHORT PRICES · AT OR BETTER THAN THE MARKET · TRACKED FLAT 1 UNIT';
     renderBankroll();
-    if (!boardTried) loadBoard();
-    return;
-  }
-  if (v === 'combo'){
-    $('tname').textContent = 'Combo Check';
-    $('tsub').textContent = 'ALT-LINE COMBOS · FAIR ODDS · THE PRICE TO TAKE';
-    renderCombo();
+    if (hashT === 'COMBO' && !$('cc-fold').open) $('cc-fold').open = true;     // the old #combo link lands on the fold
     if (!boardTried) loadBoard();
     return;
   }
@@ -4659,7 +4651,8 @@ async function ssPublished(){
   try {
     const snap = await firebase.firestore().collection('nbaAlts').get(), props = []; let asof = 0;
     snap.forEach(d => { const x = d.data(); if (d.id === '_record'){ try { window.__comboRecord = JSON.parse(x.json); } catch (e) {} return; }
-      if (d.id === '_bankroll'){ try { window.__bankrollRecord = JSON.parse(x.json); } catch (e) {} return; } asof = Math.max(asof, +x.asof || 0); try { props.push(...JSON.parse(x.json)); } catch (e) {} });
+      if (d.id === '_bankroll'){ try { window.__bankrollRecord = JSON.parse(x.json); } catch (e) {} return; }
+      if (d.id === '_bkcombo'){ try { window.__bkComboRecord = JSON.parse(x.json); } catch (e) {} return; } asof = Math.max(asof, +x.asof || 0); try { props.push(...JSON.parse(x.json)); } catch (e) {} });
     window.__altsState = 'ok'; return {props, asof};
   } catch (e) {
     window.__altsState = /permission|insufficient/i.test(String((e && (e.code || e.message)) || '')) ? 'denied' : 'none'; return null;
@@ -4688,9 +4681,9 @@ async function ssMerge(b){
   if (SS_ON){
     const get = f => fetch('/data/smartstake/' + f + '?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
     const [j, ja] = [await get('props_nba.json'), await get('props_nba_alts.json')];
-    window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); window.__comboRecord = await get('combo_record.json'); window.__bankrollRecord = await get('bankroll_record.json'); return;
+    window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); window.__comboRecord = await get('combo_record.json'); window.__bankrollRecord = await get('bankroll_record.json'); window.__bkComboRecord = await get('bankroll_combo_record.json'); return;
   }
-  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'combo') renderCombo(); if (view === 'bankroll') renderBankroll(); });
+  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); } });
 }
 async function ssSignIn(){
   try { await window.VaultAuth.signInWithGoogle(); } catch (e) { window.__altsState = 'signin'; }
@@ -4723,8 +4716,7 @@ async function loadBoard(){
     if (view === 'tells') renderTells();
     if (view === 'pairs') renderPairs();
     if (view === 'player') renderPlayer();
-    if (view === 'combo') renderCombo();
-    if (view === 'bankroll') renderBankroll();
+    if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); }
     pvBackground(); pvSettle();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 60 : 5 * 60) * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -10531,6 +10523,35 @@ function bkTonight(R){
       : `<p class="pp-empty">Nothing qualifies right now. ${esc(fun)}</p>`}
     <p class="muted" style="padding:6px 14px 12px;font-size:12px"><b>Pick</b> and <b>Core</b>: unders priced -110 to -220 at or better than the market's fair price; they are the record below. <b>Chalk</b>: unders priced -300 or heavier. They win more often, but the price already charges for it (a -300 play must win 75% to break even), most cannot be checked against the market, and they are <b>not bets and not in the record</b>. Chalk so far: ${bit('chalk_300', '-300 to -400')}; ${bit('chalk_400', '-400 or heavier')}. ${esc(fun)}</p></section>`;
 }
+// ── Bankroll Builder combos (shadow) ──
+// Two-leg slips built ONLY from the picks above, at one sportsbook (scripts/bankroll_combos.py, rules in docs/experiment-log.md section 13). A shadow: tracked and graded flat 1 unit,
+// never in the Bankroll Builder record and never a bet. The history before the first live night is rebuilt from the stored picks, so it is tagged replayed and is in-sample.
+let bkc = {f: null, n: 25};
+const bkcLegs = c => c.legs.map(l => `${esc(l.name)} ${l.side === 'over' ? 'o' : 'u'}${l.line} ${PP_SHORT[l.stat] || l.stat}${l.y != null ? ` <span class="muted">(${l.y})</span>` : ''}`).join(' + ');
+function bkCombos(){
+  const R = window.__bkComboRecord, head = `<div class="pp-tools"><h2>Combos from these picks</h2><span class="muted" style="font-size:12.5px">Two picks at one book, priced as a parlay. A shadow record: not a bet, not in the record above.</span></div>`;
+  if (!R || !R.all) return `<section class="card">${head}<p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The combo record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The combo record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>`;
+  const now = Date.now() / 1000, liveOnly = bk.src === 'live', base = (R.list || []).filter(c => !liveOnly || c.source !== 'replay');
+  const a = liveOnly ? (R.live || R.all) : R.all, rp = R.replay && R.replay.calls ? R.replay.calls : 0, nLive = R.live ? R.live.calls : 0;
+  const open = base.filter(c => !c.res && c.tip > now).sort((x, y) => x.tip - y.tip || y.ev0 - x.ev0);
+  const kpi = (k, v, h) => `<div class="pl-c"><small>${k}</small><b>${v}</b><span>${h}</span></div>`;
+  const strip = `<div class="pl-strip bk-strip">${kpi('Combos', a.calls, `${a.settled} settled`)}${kpi('Record', `${a.won}-${a.settled - a.won}${a.void ? `-${a.void}` : ''}`, 'won-lost-void')}${kpi('Units', `<span class="${a.units >= 0 ? 'pos' : 'neg'}">${bkU(a.units)}</span>`, '1 unit flat')}${kpi('ROI', bkP(a.roi), a.z != null ? `z ${a.z}` : 'too few settled')}${kpi('Closing-line value', bkP(a.clv), `${a.clv_n} combos`)}</div>`;
+  const grp = t => { const cs = base.filter(c => c.type === t && (c.res === 'won' || c.res === 'lost')), u = cs.reduce((x, c) => x + c.units, 0), w = cs.filter(c => c.res === 'won').length;
+    return `<tr><td class="l">${t === 'mates' ? 'Teammates (same game, measured lift)' : 'Different games (no lift)'}</td><td>${base.filter(c => c.type === t).length}</td><td>${cs.length}</td><td>${w}-${cs.length - w}</td><td class="${u >= 0 ? 'pos' : 'neg'}">${bkU(u)}</td><td>${cs.length ? bkP(u / cs.length) : '<span class="muted">none</span>'}</td></tr>`; };
+  const F = {settled: c => c.res === 'won' || c.res === 'lost', won: c => c.res === 'won', lost: c => c.res === 'lost', open: c => !c.res, all: () => true};
+  const f = bkc.f || (a.settled ? 'settled' : 'all'), nF = k => base.filter(F[k]).length, shown = base.filter(F[f]).sort((x, y) => (y.tip || 0) - (x.tip || 0) || y.first - x.first);
+  const tr = c => `<tr><td class="l bk-x">${etFmt(c.first, {month: 'short', day: 'numeric'})}</td><td class="l"><b>${c.type === 'mates' ? 'Teammates' : 'Cross-game'}</b><small>${bkcLegs(c)}${c.source === 'replay' ? ' · replayed' : ''}</small></td><td class="l">${esc(c.book)} <b>${bkAm(1 / c.dec0)}</b>${!c.res && c.decN && Math.abs(c.decN - c.dec0) > .0005 ? `<small>now ${bkAm(1 / c.decN)}</small>` : ''}</td><td>${bkP(c.ev0)}${c.pj0 != null ? `<small>${pc(c.pj0, 0)} to hit</small>` : ''}</td><td class="${c.res === 'won' ? 'pos' : c.res === 'lost' ? 'neg' : ''}">${c.res ? (c.res === 'void' ? 'void' : `${c.res} ${bkU(c.units)}`) : `<span class="muted">open</span><small>${etFmt(c.tip, {weekday: 'short'})} ${clock(c.tip)} ${TZL}</small>`}${c.clv != null ? `<small>CLV ${bkP(c.clv)}</small>` : ''}</td></tr>`;
+  const empty = k => `<tr><td class="l" colspan="5"><p class="empty">${k}</p></td></tr>`;
+  return `<section class="card">${head}
+    <div class="nt-tw"><table class="nt cc-st"><thead><tr><th class="l bk-x">Seen</th><th class="l">Open now</th><th class="l">Book, price</th><th>Edge</th><th>Starts</th></tr></thead><tbody>${open.map(tr).join('') || empty('No open combos right now: they need two open picks at the same book that pair under the rules.')}</tbody></table></div>
+    <div class="pp-tools" style="padding:10px 14px 0"><h2 style="font-size:15px">Shadow record</h2><span class="muted" style="font-size:12.5px">${nLive} live and ${rp} replayed from the picks already on file. The replayed ones use each leg's own logged entry price and close (the other leg's price at the later pick's moment was not stored), and the picks they come from were chosen after seeing those nights: in-sample, read as context. Nothing is called good or bad before 100 settled combos and a closing-line value that is positive by 2 SE.</span></div>
+    ${strip}
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Kind</th><th>Combos</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th></tr></thead><tbody>${grp('mates')}${grp('cross')}</tbody></table></div>
+    <div class="pp-tools" style="padding:10px 14px 0"><div class="seg" data-bkcf role="group" aria-label="Show combos">${[['settled', 'Settled'], ['won', 'Won'], ['lost', 'Lost'], ['open', 'Open'], ['all', 'All']].map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${f === k}">${l} ${nF(k)}</button>`).join('')}</div><span class="muted" style="font-size:12.5px">${shown.length ? `${shown.length} combos, ${bkU(shown.reduce((x, c) => x + (c.units || 0), 0))} flat. Newest game first.` : ''}</span></div>
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">Seen</th><th class="l">Combo</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${shown.slice(0, bkc.n).map(tr).join('') || empty('No combos match this filter.')}</tbody></table></div>
+    ${shown.length > bkc.n ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkcmore="1">Show ${Math.min(25, shown.length - bkc.n)} more</button></div>` : ''}
+    <p class="muted" style="padding:6px 14px 12px;font-size:12px"><b>The rules.</b> Two open picks at the same sportsbook. Teammates: same game, same team, same side, assists with 3-pointers or points with assists (the two measured pairings; the chance gets the measured lift). Different games: the chance is the legs multiplied. Each leg's fair chance is the one logged on its pick. Edge = chance x the parlay's decimal odds - 1, at least 0%. At most 6 of each kind per slate. Opponents in one game and unmeasured teammate pairings are not combos. Logged at the first price it qualifies, followed to tip, graded flat 1 unit; a leg that does not play voids it.</p></section>`;
+}
 function renderBankroll(){
   const R = window.__bankrollRecord;
   const gate = window.__altsState === 'signin' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>`
@@ -10544,7 +10565,7 @@ function renderBankroll(){
     const V = bk.src === 'live' && R.live ? {...R, ...R.live} : R, rp = R.replay, nLive = R.live ? R.live.all.picks : R.all.picks;
     const seg = rp && rp.picks ? `<div class="seg" data-bksrc role="group" aria-label="Which picks the record counts">${[['all', 'Live + replayed first nights'], ['live', 'Live only']].map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${bk.src === k}">${l}</button>`).join('')}</div>` : '';
     const note = rp && rp.picks ? `${nLive} live and ${rp.picks} replayed from the first nights. The replayed picks come from the recorded tape run through these same rules, which were chosen after seeing those nights: they are tagged and can be switched off, and only live picks count as evidence.` : 'Live picks only.';
-    $('bk-root').innerHTML = intro + bkTonight(R) + `<section class="card"><div class="pp-tools"><h2>Record</h2><span class="muted" style="font-size:12.5px">${note} Flat 1 unit at the entry price; the quarter-Kelly line is a shadow, never the headline.</span><span class="pv-grow"></span>${seg}</div>${bkKpis(V)}${bkCurve(V.curve) ? `<div class="bk-cv">${bkCurve(V.curve)}<span class="muted"><i class="bk-sw f"></i>flat $10 <i class="bk-sw k"></i>quarter-Kelly shadow</span></div>` : ''}${bkSlices(V, 'live')}${bkList(V, 'live')}</section>`;
+    $('bk-root').innerHTML = intro + bkTonight(R) + bkCombos() + `<section class="card"><div class="pp-tools"><h2>Record</h2><span class="muted" style="font-size:12.5px">${note} Flat 1 unit at the entry price; the quarter-Kelly line is a shadow, never the headline.</span><span class="pv-grow"></span>${seg}</div>${bkKpis(V)}${bkCurve(V.curve) ? `<div class="bk-cv">${bkCurve(V.curve)}<span class="muted"><i class="bk-sw f"></i>flat $10 <i class="bk-sw k"></i>quarter-Kelly shadow</span></div>` : ''}${bkSlices(V, 'live')}${bkList(V, 'live')}</section>`;
   }
   $('bkfoot').innerHTML = `<div><b>Sources.</b> Sportsbook prices: <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Other venues used only for the fair price: their two-way lines with the margin removed (books up to 16% overround, exchanges up to 8%). Model chance: the same projection, distribution and calibration as Player Props.</div>
     <div><b>The rules, in order.</b> Price -110 to -220 at a sportsbook. Fair chance from 3+ other venues; the price must be at or better than it (market edge 0% or more). Recent minutes 20+, not a preseason game, not Out, Doubtful or Questionable. One pick per player per game, at most 2 per team-game and 20 per slate. Unders only. Core = edge 4%+. These rules were chosen after looking at the first nights' closing prices and results, so the replayed first-night picks are in-sample; only live picks count as evidence.</div>
@@ -10563,6 +10584,11 @@ $('bk-root').addEventListener('click', e => {
   const fl = t.closest('[data-bkf] button[data-v]'); if (fl){ const st = bk[fl.closest('[data-bkf]').dataset.bkf]; st.f = fl.dataset.v; st.n = 25; renderBankroll(); return; }
   const m = t.closest('[data-bkmore]'); if (m){ bk[m.dataset.bkmore].n += 25; renderBankroll(); }
 });
+$('bk-root').addEventListener('click', e => {
+  const fl = e.target.closest('[data-bkcf] button[data-v]'); if (fl){ bkc.f = fl.dataset.v; bkc.n = 25; renderBankroll(); return; }
+  if (e.target.closest('[data-bkcmore]')){ bkc.n += 25; renderBankroll(); }
+});
+$('cc-fold').addEventListener('toggle', () => { if ($('cc-fold').open){ renderCombo(); if (!boardTried) loadBoard(); } });
 $('bk-root').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('tr[data-bksl]')){ e.preventDefault(); e.target.click(); } });
 
 function pvShow(){

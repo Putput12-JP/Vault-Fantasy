@@ -390,7 +390,7 @@ def summarize(calls):
     ebin = lambda c: "3-5%" if c["ev0"] < .05 else "5-8%" if c["ev0"] < .08 else "8%+"
     recent = sorted(calls, key=lambda c: -c["first"])[:80]
     # "list": every call (newest tip first, capped), legs trimmed, so the page can filter to settled / won / lost / open. "recent" stays for older pages.
-    keep = ("type", "book", "first", "tip", "ev0", "dec0", "decN", "res", "units", "clv")
+    keep = ("type", "book", "first", "tip", "ev0", "dec0", "decN", "res", "units", "clv", "pj0", "source")
     leg = lambda l: {k: l.get(k) for k in ("name", "stat", "side", "line", "odds", "y")}
     full = sorted(calls, key=lambda c: (-c["tip"], -c["first"]))[:LIST_MAX]
     return {"all": agg(calls), "type": by(lambda c: c["type"]), "book": by(lambda c: c["book"]), "edge": by(ebin),
