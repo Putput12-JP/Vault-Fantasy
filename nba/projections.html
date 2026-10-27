@@ -9757,7 +9757,7 @@ function ppBuild(legs, n, pay){
   for (const l of pool){ if (used.has(l.team)) continue; used.add(l.team); pick.push(l); if (pick.length === n) break; }
   if (pick.length < n) return null;
   const joint = pick.reduce((a, l) => a * l.p, 1), ev = pay * joint - 1;
-  return {legs: pick, n, pay, joint, ev, v: ev >= EDGE_MIN ? 'lean' : 'pass', app: pick[0].app,
+  return {legs: pick, n, pay, joint, ev, v: 'pass', lean0: ev >= EDGE_MIN, app: pick[0].app,   // V2 (docs/pickem-v2.md): no tested method beats the pay table, so no slip is a Lean until one does
           k: pick.map(l => `${pvKey(l.r)}|${l.line}|${l.side}`).join('+') + '|' + pick[0].app};
 }
 function ppSlip(x){
@@ -9795,6 +9795,11 @@ function renderPairs(){
   const seg = (key, opts, cur) => `<div class="seg" data-pk="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
   const others = Object.entries(S.by).filter(([a, s]) => s && S.shown && a !== S.shown.app).map(([a, s]) => `${a} ${s.ev >= 0 ? '+' : '-'}$${Math.abs(10 * s.ev).toFixed(2)}`).join(' · ');
   $('pp-root').innerHTML = `
+    <section class="card pp-read pp-v2">
+      <p class="big">V2 verdict: no profitable slip found yet</p>
+      <p>We tested every way of choosing picks on <b>1,695 PrizePicks and Underdog lines</b> from the first week of the season, scored from box scores. The pay tables need <b>54.2% to 59.1%</b> per pick (54.2% on a 5 or 6-pick Flex, the lowest). The best rule we picked on the first four nights hit <b>56.1%</b> there and <b>53.8%</b> on the last three (95% range 50.4% to 57.1%), a loss after payouts. The old slip chances below ran 20 points too high: the picks it rated 60%+ hit <b>43%</b>.</p>
+      <p>So every slip here is a Pass. "Claimed chance" is the old moved-consensus number, kept so you can see it, not a forecast. We are tracking the one rule that came closest forward, from Oct 27, and will not call it a Lean before it clears the holdout test. Method: nba/docs/pickem-v2.md.</p>
+    </section>
     <section class="card pp-read">
       <p class="big">Pick'em of the night</p>
       <p class="pp-rule"><b>${PP_RULE}</b> A slip can have any number of games but never two players from one team.</p>
@@ -9810,7 +9815,7 @@ function renderPairs(){
     </section>
     <section class="card">
       <div class="pp-tools"><h2>Best single picks tonight</h2><span class="pv-grow"></span><span class="muted" style="font-size:12.5px">The market's chance on the likelier side, at the app's own line. A ${pp.n}-pick at ${pay}x needs ${pc(need, 1)} each.</span></div>
-      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Pick</th><th class="l">App</th><th>Line</th><th>Side</th><th>Market chance</th><th>Model</th><th>vs ${pc(need, 1)} needed</th><th class="l">Notes</th></tr></thead><tbody>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Pick</th><th class="l">App</th><th>Line</th><th>Side</th><th>Claimed chance</th><th>Model</th><th>vs ${pc(need, 1)} needed</th><th class="l">Notes</th></tr></thead><tbody>
       ${singles.length ? singles.map(l => { const g = l.r.game, d = l.p - need; return `<tr><td class="l"><b>${esc(l.r.name)}</b><small>${esc(l.team)} vs ${esc(l.team === g.home ? g.away : g.home)} · ${PP_SHORT[l.r.e.s]}</small></td><td class="l">${esc(l.app)}</td><td>${l.line}</td><td>${l.side === 'over' ? '▲ More' : '▼ Less'}</td><td>${pc(l.p, 1)}</td><td>${pc(l.pm, 1)}</td><td class="${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)} pts</td><td class="l"><small>${[l.q ? `<span class="warnt">${esc(l.inj)}: wait for the report</span>` : '', l.far ? 'check news: model and market far apart' : ''].filter(Boolean).join(' · ') || '&nbsp;'}</small></td></tr>`; }).join('')
         : `<tr><td class="l" colspan="8"><p class="empty">${rows.length ? 'No pick\'em lines with a market to price against yet.' : 'No player props listed yet.'}</p></td></tr>`}
       </tbody></table></div>
