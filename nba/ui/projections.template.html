@@ -1667,6 +1667,14 @@ table.nt.sx-tk{min-width:420px}
 .lw-dvh,.lw-sg{display:grid;grid-template-columns:92px minmax(0,1fr) 112px;gap:12px;align-items:center}.lw-dvh{font:700 11px var(--mono,ui-monospace,monospace)}.lw-dvh>span:nth-child(2){display:flex;justify-content:space-between}
 .lw-sg{font-size:12.5px}.lw-sg>span:first-child{color:var(--fg2)}.lw-sg>span:last-child{text-align:right;color:var(--fg2);font-size:12px}
 .lw-bar{position:relative;height:12px;border-radius:6px;background:rgba(255,255,255,.06)}.lw-bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:var(--fg3);border-radius:2px}.lw-bar i{position:absolute;top:0;bottom:0;border-radius:6px}
+.lw-key{padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:grid;gap:2px}
+.lw-kh{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}.lw-kh span{font-family:var(--mono,ui-monospace,monospace);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg)}.lw-kh small{font-size:12px;color:var(--muted)}
+.lw-kr{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+.lw-tag{justify-self:start;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em;background:var(--raised);color:var(--fg)}
+.lw-tag.t-watch{background:rgba(95,207,140,.16);color:var(--up)}.lw-tag.t-shop{background:rgba(127,180,236,.16);color:#7fb4ec}.lw-tag.t-avoid{background:rgba(236,127,127,.16);color:var(--down)}.lw-tag.t-wait{background:rgba(251,191,36,.16);color:var(--warn)}.lw-tag.t-lean{background:rgba(255,255,255,.12)}.lw-tag.t-quiet{color:var(--muted)}
+.lw-kb{min-width:0}.lw-kb b{display:block;font-size:13px;font-weight:600}.lw-kb small{display:block;font-size:12px;color:var(--muted);line-height:1.35}
+.lw-kd{display:inline-flex;gap:3px}.lw-kd i{width:7px;height:7px;border-radius:50%;background:var(--raised);border:1px solid var(--border)}.lw-kd i.on{background:var(--up);border-color:var(--up)}
+.lw-kf{margin:6px 0 0;padding-top:8px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted)}
 .lw-vl{display:grid;gap:10px;min-width:0}.lw .lv-board{margin-top:12px}
 @container lw (max-width:1210px){.lw-b{grid-template-columns:62px minmax(0,1fr) 22px;grid-template-areas:"t m c" "t s c" "t w c" "t b c" "t e c" "t k c";gap:8px 12px}.lw-b>*:nth-child(1){grid-area:t}.lw-b>*:nth-child(2){grid-area:m}.lw-b>*:nth-child(3){grid-area:s}.lw-b>*:nth-child(4){display:none}.lw-b>*:nth-child(5){grid-area:w}.lw-b>*:nth-child(6){grid-area:b}.lw-b>*:nth-child(7){grid-area:e}.lw-b>*:nth-child(8){grid-area:k}.lw-b>*:nth-child(9){grid-area:c}}
 @container lw (max-width:1020px){.lw-tiles,.lw-two{grid-template-columns:minmax(0,1fr)}}
@@ -6961,6 +6969,21 @@ function lineCard(g, B, status){
     const sh = SIG.length ? `<section class="lw-sh"><div class="lw-vh"><span class="lw-vd ${vcls}" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span><small>${nA} toward ${esc(g.away)}, ${nH} toward ${esc(g.home)}. Context, not a bet.</small></div>
       <div class="lw-dvh"><span></span><span><span style="color:${ac}">← ${esc(g.away)}</span><span style="color:${hcl}">${esc(g.home)} →</span></span><span></span></div>${bars}
       ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}</section>` : '';
+    // signal board: the chart read as a ranked list of tags (WATCH / SHOP / AVOID / WAIT). Every row comes from a stored number and an existing threshold; none is a bet signal.
+    const kr = (cls, tag, title, sub, dots) => `<div class="lw-kr"><span class="lw-tag ${cls}">${tag}</span><div class="lw-kb"><b>${title}</b><small>${sub}</small></div>${dots || ''}</div>`;
+    const maj = nA > nH ? -1 : nH > nA ? 1 : 0, agreeN = maj ? Math.max(nA, nH) : 0, majTm = maj < 0 ? g.away : g.home;
+    const kdots = SIG.length ? `<span class="lw-kd" title="${agreeN} of ${SIG.length} signals point the same way">${L.map(x => `<i class="${maj && x === maj ? 'on' : ''}"></i>`).join('')}</span>` : '';
+    const keyRows = [];
+    if (SIG.length < 2) keyRows.push(kr('t-wait', 'EARLY', 'Too soon to read', 'Fewer than two signals have posted.'));
+    else if (nA && nH) keyRows.push(kr('t-wait', 'WAIT', 'Signals disagree', `${nA} toward ${esc(g.away)}, ${nH} toward ${esc(g.home)}. A split is no read.`, kdots));
+    else if (maj) keyRows.push(kr(agreeN >= 3 ? 't-watch' : 't-lean', agreeN >= 3 ? 'WATCH' : 'LEAN', `${agreeN} of ${SIG.length} signals point to ${esc(majTm)}`, 'Pinnacle, sharp accounts, big tickets and money, read together. Context only.', kdots));
+    else keyRows.push(kr('t-quiet', 'QUIET', 'Nothing is moving', 'No signal has left the middle.'));
+    if (Math.abs(mvS) >= 1) keyRows.push(kr('t-watch', 'MOVED', `Spread moved ${Math.abs(mvS).toFixed(1)} to ${esc(mvS > 0 ? g.away : g.home)}`, `${esc(spTxt(g, op.spread))} at the open, ${esc(spTxt(g, hs))} now. Steps on the chart are books catching up.`));
+    if (evTop && evTop.ev >= .02) keyRows.push(kr('t-shop', 'SHOP', `${esc(abbr(evTop.venue))} beats Pinnacle by ${pc(evTop.ev, 1)}`, `${esc(xSide(evTop, g))} against Pinnacle's no-vig fair. A price gap, not a pick.`));
+    if (behind.length) keyRows.push(kr('t-avoid', 'AVOID', `${behind.map(b => esc(abbr(b.n))).join(', ')} ${behind.length === 1 ? 'is' : 'are'} stale`, 'Not updated while the market moved. Dashed lines on the chart. Not a good price.'));
+    const spS = mk.splits && mk.splits.spread;
+    if (spS && Math.abs(spS[1] - spS[0]) >= 6) keyRows.push(kr('t-lean', 'MONEY', `${Math.abs(spS[1] - spS[0])} pts ${spS[1] > spS[0] ? 'more money' : 'fewer dollars'} than bets on ${esc(g.home)}`, spS[1] > spS[0] ? 'Bigger bets are on this side than the ticket count shows.' : 'The crowd is on this side; the big money is not.'));
+    const keyBox = `<section class="lw-key"><div class="lw-kh"><span>Signal board</span><small>how to read the chart</small></div>${keyRows.join('')}<p class="lw-kf">Context, not a bet. Copying sharp money after the fact lost money in our tests.</p></section>`;
     const sumSpread = hs != null ? `${esc(spTxt(g, hs))}<small>${op.spread != null ? (mvS ? `<b>${Math.abs(mvS).toFixed(1)} to ${esc(mvS > 0 ? g.away : g.home)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
     const sumTotal = tt != null ? `${fmt(tt)}<small>${op.total != null ? (mvT ? `<b>${mvT > 0 ? 'up' : 'down'} ${Math.abs(mvT).toFixed(1)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
     const sumWin = hw != null ? `<div class="lw-split"><i style="width:${(1 - hw) * 100}%;background:${ac}"></i><i style="width:${hw * 100}%;background:${hcl}"></i></div><div class="lw-wl"><span>${esc(g.away)} ${Math.round((1 - hw) * 100)}</span><span>${Math.round(hw * 100)} ${esc(g.home)}</span></div>` : '<span class="muted">n/a</span>';
@@ -6971,7 +6994,7 @@ function lineCard(g, B, status){
       <div class="lw-v">${sumSpread}</div><div class="lw-v">${sumTotal}</div><div class="lw-wn">${sumWin}</div><div class="lw-bs">${sumBest}</div><div class="lw-evc">${sumEv}</div>
       <div class="lw-sk">${SIG.length ? `<span class="lw-vd ${vcls}">${esc(verdict)}</span><span class="lw-pips">${pips}</span>` : '<span class="muted">Early</span>'}</div><span class="lw-chv"></span></button>
       <div class="lw-dt"><div class="lw-meta">${vaultRow}${asof ? `<span class="lw-asof">${asof}</span>` : ''}</div>${M || c ? `<div class="lw-tiles">${tS}${tT}${tW}</div>` : '<p class="muted lv-none">No book has posted yet.</p>'}
-        <div class="lw-two"><div class="lw-vl">${sh}${spot}${vaultMoves}</div><div class="lw-vl">${ro ? lvChartHost(gid) : ''}</div></div>${board}</div></article>`;
+        <div class="lw-two"><div class="lw-vl">${sh}${keyBox}${spot}${vaultMoves}</div><div class="lw-vl">${ro ? lvChartHost(gid) : ''}</div></div>${board}</div></article>`;
   }
   return `<article class="card sl-card lv-card${sv.bk[gid] ? ' bk' : ''}" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
