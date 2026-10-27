@@ -12,7 +12,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONF="$HOME/.config/smartstake"
 BIN="$CONF/bin"
-FILES="combo_calls.py smartstake_publish_alts.py bankroll_builder.py smartstake_alts.py smartstake_props.py smartstake_to_book_tape.py"
+FILES="combo_calls.py smartstake_publish_alts.py bankroll_builder.py bankroll_combos.py smartstake_alts.py smartstake_props.py smartstake_to_book_tape.py"
 if [ "$(git -C "$ROOT" branch --show-current)" != "main" ] && [ -z "$SYNC_ALLOW_BRANCH" ]; then
   echo "Not on main: the job would run unmerged code. Check out main and pull first." >&2
   exit 1

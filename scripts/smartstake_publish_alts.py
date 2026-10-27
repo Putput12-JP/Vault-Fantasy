@@ -128,6 +128,13 @@ def main(argv):
             rest(token, "PATCH", f"{COLL}/_bankroll", {"fields": {"asof": {"integerValue": str(rec["asof"])}, "json": {"stringValue": json.dumps(rec, separators=(",", ":"))}}})
     except Exception as e:
         print("bankroll record failed:", repr(e))
+    try:                                                           # Bankroll Builder combos (shadow): two-leg slips from the open picks, after the picks are settled
+        import bankroll_combos
+        rec = bankroll_combos.run()
+        if rec:
+            rest(token, "PATCH", f"{COLL}/_bkcombo", {"fields": {"asof": {"integerValue": str(rec["asof"])}, "json": {"stringValue": json.dumps(rec, separators=(",", ":"))}}})
+    except Exception as e:
+        print("bankroll combo record failed:", repr(e))
 
 
 if __name__ == "__main__":

@@ -56,6 +56,7 @@ python3 nba/scripts/build_gamelogs.py                           # per-player gam
 #   also writes data/season_totals.json (totals by season for the Player profile's season table; the page fetches it on that view only)
 python3 scripts/smartstake_alts.py                              # LOCAL ONLY: alternate-line prices per book from the SmartStake tape -> data/smartstake/props_nba_alts.json (Combo Check, ?ss)
 python3 scripts/smartstake_publish_alts.py                      # writes those prices to the owner's Firestore (nbaAlts), readable only by the owner's Google login (Combo Check on the site); needs ~/.config/smartstake/firebase-sa.json
+python3 scripts/bankroll_combos.py                                # LOCAL ONLY: shadow two-leg combos built from Bankroll Builder picks -> data/smartstake/bankroll_combo_record.json (published to Firestore as _bkcombo)
 python3 nba/scripts/fetch_hoopr.py --only-pbp 2026 2027            # ESPN play-by-play, ~290 MB a season (the daily job does this)
 python3 nba/scripts/build_diet_defense.py                        # shot diet by zone vs zone defense for the Slate page (daily; blends last season early in a new one); docs/courtai-teardown.md
 python3 nba/scripts/build_diet_test.py [--no-prior]                  # pre-registered: does the shot diet score beat v2 against the market? (NO; needs pbp 2024 to 2026 in raw/hoopr) docs/diet-test.md
