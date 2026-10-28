@@ -110,6 +110,7 @@ main{display:flex;flex-direction:column;gap:24px;padding:24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:0 1px 0 rgb(var(--ink) / .03) inset,0 12px 32px -14px rgb(var(--shc) / calc(.6 * var(--shk)));min-width:0}
 .card-h{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;padding:var(--pad) var(--pad) 0}
 .card-h h2{margin:0;font-size:15px;font-weight:600}
+.pupd{margin-left:8px;font:500 11.5px var(--font-mono);color:var(--fg3);letter-spacing:0;white-space:nowrap}.pupd.old{color:var(--down)}
 .card-h p{margin:2px 0 0;color:var(--fg2);font-size:13px}
 .card-b{padding:16px var(--pad) var(--pad)}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
@@ -2305,7 +2306,7 @@ th{font-weight:500}
       <section class="card pv-games" id="pgames" hidden></section>
       <section class="card">
         <div class="card-h">
-          <div><h2>Props board</h2><p id="psub">Every listed prop next to our projection. Click a row for the Kalshi ladder and each book.</p></div>
+          <div><h2>Props board <span class="pupd" id="pupd" hidden></span></h2><p id="psub">Every listed prop next to our projection. Click a row for the Kalshi ladder and each book.</p></div>
           <div class="filters">
             <div class="seg" id="pstat" role="group" aria-label="Stat"></div>
             <select class="sel" id="psort" aria-label="Sort"></select>
@@ -4357,7 +4358,7 @@ async function loadBoard(){
     if (view === 'propsim') renderPropSim();
     if (view === 'control') renderControl();
     if (view === 'profile') renderProfile();
-    renderChip();
+    renderChip(); propsStamp();
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
     if (view === 'games') renderGamePicks();
@@ -4496,6 +4497,7 @@ function renderProps(){
   { const nw = rows.filter(r => pvW[pvKey(r)]).length; $('pwatchl').textContent = nw ? `Watching only (${nw})` : 'Watching only'; $('pwatch').checked = pf.watch; }
   $('pmore').hidden = shown.length <= pf.limit;
   $('pmore').innerHTML = `<button class="btn" type="button" id="pmorebtn">Show all ${shown.length.toLocaleString()}</button>`;
+  propsStamp();
   $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props${tippedN ? ` (${tippedN.toLocaleString()} hidden: the game has tipped)` : ''}. Click a row for the Kalshi ladder and each book.`;
 
   const vs = PR.verdict;
@@ -6537,6 +6539,16 @@ function renderProfile(){
   $('profoot').innerHTML = '<div><b>Where this lives.</b> Your profile is saved in this browser only (nothing is sent anywhere), so it will not follow you to another device.</div>';
 }
 // Header chip: your favorite team's next game, one click to Tonight with that game selected.
+// "Updated 3:42 PM CT · 2 min ago" on the Props board: when the live prices on screen were polled (the recorder stamps board.t). Turns red past 15 min.
+function propsStamp(){
+  const el = $('pupd'); if (!el) return;
+  const t = PS.live && PS.live.t; if (!t){ el.hidden = true; return; }
+  const age = Date.now() / 1000 - t;
+  el.hidden = false; el.classList.toggle('old', age > 900);
+  el.textContent = `Updated ${clock(t)} ${TZL} · ${agoFrom(t, Date.now() / 1000)}`;
+  el.title = 'When these prices were last polled from the books and exchanges';
+}
+setInterval(propsStamp, 15000);
 function renderChip(){
   const el = $('favchip'); if (!el) return;
   const T = PRO.team; if (!T){ el.hidden = true; return; }
