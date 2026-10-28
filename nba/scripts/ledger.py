@@ -398,7 +398,8 @@ def minutes_log(board, now):
                                round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None,
                                round(eb[pid], 2) if pid in eb else None,
                                round(rt[pid]['min'], 2) if pid in rt else None, rt[pid]['size'] if pid in rt else None, rt[pid]['tgn'] if pid in rt else None,
-                               rt[pid]['rank'] if pid in rt else None]
+                               rt[pid]['rank'] if pid in rt else None,
+                               round(G['min'], 2) if G.get('p_plays') is not None else None, round(G['p_plays'], 3) if G.get('p_plays') is not None else None]       # GP: the priced minutes from 2026-10-29 (docs/minutes-bakeoff-results.md)
                     meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
                                'player': names.get(pid, str(pid)), 'team': team}
                 except Exception as e:                      # one player's bad field skips that player, not the game
@@ -492,7 +493,8 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
                                            round(pre[-1][4], 1) if len(pre[-1]) > 4 and pre[-1][4] is not None else None,
                                            round(pre[-1][5], 1) if len(pre[-1]) > 5 and pre[-1][5] is not None else None,
                                            round(pre[-1][6], 1) if len(pre[-1]) > 9 and pre[-1][6] is not None else None, pre[-1][7] if len(pre[-1]) > 9 else None,
-                                           pre[-1][8] if len(pre[-1]) > 9 else None, pre[-1][9] if len(pre[-1]) > 9 else None])
+                                           pre[-1][8] if len(pre[-1]) > 9 else None, pre[-1][9] if len(pre[-1]) > 9 else None,
+                                           round(pre[-1][10], 1) if len(pre[-1]) > 11 and pre[-1][10] is not None else None, pre[-1][11] if len(pre[-1]) > 11 else None])
     for d, rows in per_day.items():
         played = [r for r in rows if r[5] != 'did not play']
         err = [r[3] - r[4] for r in played]
@@ -503,6 +505,8 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
         ebs = [r for r in played if len(r) > 9 and r[9] is not None]         # the early-season blend shadow, with v2 on the same players
         eb_new, eb_old = [r[9] - r[4] for r in ebs], [r[3] - r[4] for r in ebs]
         rts = [r for r in played if len(r) > 13 and r[10] is not None]          # the rotation-minutes shadow (C3), with v2 on the same players
+        gps = [r for r in played if len(r) > 15 and r[14] is not None]          # GP, the priced minutes from 2026-10-29, with v2 on the same players
+        gp_dnp = [r for r in rows if len(r) > 15 and r[14] is not None and r[5] == 'did not play']
         top8 = {}
         for bname, f in (('size_le_12', lambda z: z <= 12), ('size_13_14', lambda z: 13 <= z <= 14), ('size_ge_15', lambda z: z >= 15)):
             sel = [r for r in rts if r[13] is not None and r[13] <= 8 and r[11] is not None and f(r[11])]
@@ -510,6 +514,12 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
         days[d] = {'n': len(played), 'dnp': len(rows) - len(played),
                    'rot': {'n': len(rts), 'mae_v2': round(sum(abs(r[3] - r[4]) for r in rts) / len(rts), 3) if rts else None,
                            'mae_rot': round(sum(abs(r[10] - r[4]) for r in rts) / len(rts), 3) if rts else None, 'top8': top8},
+                   'gp': {'n': len(gps), 'mae_v2': round(sum(abs(r[3] - r[4]) for r in gps) / len(gps), 3) if gps else None,
+                          'mae_gp': round(sum(abs(r[14] - r[4]) for r in gps) / len(gps), 3) if gps else None,
+                          'bias_gp': round(sum(r[14] - r[4] for r in gps) / len(gps), 3) if gps else None,
+                          'miss8_v2': sum(abs(r[3] - r[4]) >= 8 for r in gps), 'miss8_gp': sum(abs(r[14] - r[4]) >= 8 for r in gps),
+                          'dnp': len(gp_dnp), 'dnp_min_v2': round(sum(r[3] for r in gp_dnp), 1), 'dnp_min_gp': round(sum(r[14] for r in gp_dnp), 1),
+                          'exp_mae_gp': round(sum(abs(r[15] * r[14] - r[4]) for r in gps + gp_dnp) / (len(gps) + len(gp_dnp)), 3) if gps else None},
                    'blend': {'n': len(ebs), 'mae_v2': round(sum(abs(e) for e in eb_old) / len(eb_old), 3) if eb_old else None,
                              'mae_blend': round(sum(abs(e) for e in eb_new) / len(eb_new), 3) if eb_new else None},
                    'gbm': {'n': len(gbs), 'mae_v2': round(sum(abs(e) for e in e2g) / len(e2g), 3) if e2g else None,

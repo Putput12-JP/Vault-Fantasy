@@ -154,8 +154,10 @@ def render():
     # Halaska UI bundle (ui/halaska/dist.js, built by `node build.mjs` there); the page degrades to no kit if it is absent
     tpl = tpl.replace('<script>/*HALASKA*/</script>', '<script>' + (open(hk).read() if os.path.exists(hk) else 'window.HK = null;') + '</script>')
     gj = os.path.join(HERE, '..', 'ui', 'minutes_gbm.js')
+    rj = os.path.join(HERE, '..', 'ui', 'rotation_minutes.js')
     tpl = tpl.replace('/*VAULT_APPEARANCE*/', open(os.path.join(HERE, '..', '..', 'src', 'vault-appearance.js')).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*MINUTES_GBM_JS*/', open(gj).read().replace('</script', '<\\/script'))
+    tpl = tpl.replace('/*ROTATION_MINUTES_JS*/', open(rj).read().replace('</script', '<\\/script'))
     html = (tpl.replace('/*DATA*/null', json.dumps(projections(), separators=(',', ':')))
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))
@@ -165,6 +167,7 @@ def render():
                .replace('/*GPICKS*/null', json.dumps(load('game_picks.json'), separators=(',', ':')))
                .replace('/*LIVESEASON*/null', json.dumps(load('live_season.json'), separators=(',', ':')))
                .replace('/*GBMMODEL*/null', json.dumps(load('minutes_gbm.json'), separators=(',', ':')))
+               .replace('/*ROTMODEL*/null', json.dumps(load('rotation_minutes_model.json'), separators=(',', ':')))
                .replace('/*STATE*/null', json.dumps(model_state(), separators=(',', ':')))
                .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
                .replace('/*PICKEM*/null', json.dumps(pickem(), separators=(',', ':')))
