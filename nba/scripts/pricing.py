@@ -13,6 +13,7 @@ minutes, same-position players NB times more). The page does this for any team t
 import json, math, os, re, sys
 import consensus as CE
 import minutes_gbm as MG
+import rotation_minutes as RM
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
@@ -260,8 +261,12 @@ class Pricer:
                 info[x['id']] = (x['min0'], 1.0 if x['name'].lower() in start else 0.0, x['grp'], (S(x['id']).get('r') or x['rate']))
                 labs.add(x['id'])
             pm, _ = rescale(project(list(info)))
-        v2min = dict(pm)                                  # the model's own minutes, kept for the Minutes record and the shadow's v2 column
-        for a, nm in self.blend_minutes(team, g, pm).items():       # early-season blend (docs/early-minutes-blend-test.md): priced from 2026-10-26; a stat's projection is proportional to the minutes
+        v2min = dict(pm)                                  # v2's own minutes, kept for the Minutes record's v2 column
+        gp = self.gp_minutes(team, g, status, cache, v2min)         # docs/minutes-bakeoff-results.md: priced from 2026-10-29, replaces v2's minutes for the players it covers
+        for a, v in gp.items():
+            if a in pm:
+                pm[a] = v['min']
+        for a, nm in self.blend_minutes(team, g, {a: v for a, v in pm.items() if a not in gp}).items():       # early-season blend (docs/early-minutes-blend-test.md): v2's correction, so only for players GP does not cover
             pm[a] = min(48.0, max(0.0, nm))
         present = [info[a][3] for a in info]
         res = {}
@@ -278,9 +283,30 @@ class Pricer:
                     mu[st_] = max(0.0, pm[a] * rate + pm[a] / 48.0 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel))
                 else:
                     mu[st_] = max(0.0, pm[a] * rate)
-            res[a] = {'min': pm[a], 'min_v2': v2min[a], 'rate': rates, 'pos': pos, 'mu': mu, 'lab': a in labs, 'base': info[a][0], 'stt': info[a][1]}
+            res[a] = {'min': pm[a], 'min_v2': v2min[a], 'rate': rates, 'pos': pos, 'mu': mu, 'lab': a in labs, 'base': info[a][0], 'stt': info[a][1],
+                      'p_plays': gp[a]['p_plays'] if a in gp else None, 'p_rot': gp[a]['p_rot'] if a in gp else None}
         cache[key] = res
         return res
+
+    def gp_minutes(self, team, g, status, cache, v2):
+        """{pid: {'min', 'p_plays', 'p_rot'}}: the bake-off's GP (docs/minutes-bakeoff-results.md). Conditional minutes from the GBM (v2's number for a
+        player the GBM does not score), P(plays) from the rotation model, and the pool rescaled so its EXPECTED minutes (P x minutes) sum to the
+        rotation model's T (239.67). Minutes are still 'if he plays', which is what a prop needs; the rescale only stops the pool from spreading
+        minutes over players who do not dress. Empty (v2 stays) in the preseason, in the example, without either shadow's state, or with fewer
+        than 7 players scored."""
+        key = ('gp', team, str(g['id']))
+        if key in cache:
+            return cache[key]
+        cache[key] = {}
+        if self.example or not self.ROTM or (g or {}).get('season_type') == 1:
+            return {}
+        rt, gb = self.game_minutes_rot(team, g, status, cache), self.game_minutes_gbm(team, g, status, cache)
+        if not rt or not gb or len(rt) < 7:
+            return {}
+        ids = sorted(rt)
+        cm = RM.rescale([(rt[a]['p_plays'], gb[a] if a in gb else v2.get(a, rt[a]['min'])) for a in ids], self.ROTM['T'])
+        cache[key] = {a: {'min': v, 'p_plays': rt[a]['p_plays'], 'p_rot': rt[a]['p_rot']} for a, v in zip(ids, cm)}
+        return cache[key]
 
     # ── roster guard (docs/moved-players-results.md) ───────────────────────────────────────────────────────
     HOLD_MIN_PLAYERS, HOLD_MAX_MIN, HOLD_MAX_STRETCH = 8, 44.0, 1.10

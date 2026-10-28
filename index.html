@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-28T20:00', tag:'Improved', title:'NBA minutes: sharper projections, and who actually plays',
+    items:[
+      'Minutes projections are about 5% more accurate on last season, and the props that depend on them move with them. We tested the new model against last season\'s games before switching it on.',
+      'Tonight now shows each player\'s chance of playing next to his minutes. Minutes still mean "if he plays", which is what a prop is priced on.',
+      'Each team\'s expected minutes now add up to 240. Players who are unlikely to dress (under 25%) are tucked into a line under the table instead of taking minutes from the rotation.',
+      'Our old over/under lean record for last season goes from 53.0% to 51.5% on the same lines. The old number was helped by the model projecting minutes too low. Treat that record as about even.'
+    ]
+  },
+  {
     ts:'2026-10-27T05:00', tag:'Improved', title:'Props Table: shows when the best bet and +EV are on opposite sides',
     items:[
       'The +EV column now says which side it is (like "Over Poly"). When the best bet is one side and the +EV is the other, the row tags it "+EV: over" and the open row explains why: the best bet comes from our model-blended price, and +EV only compares a book with Pinnacle. When they disagree, the model and the market disagree on that prop.'
