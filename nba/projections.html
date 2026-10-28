@@ -619,6 +619,8 @@ table.nt-days .l{text-align:left}
 .ev-colh .r,.ev-row .r{text-align:right}
 .ev-edge{border-bottom:1px solid var(--border);container-type:inline-size}
 .ev-edge:last-child{border-bottom:0}
+/* 600+ rows on Edges: rows below the fold skip layout and paint (about a third off a relayout); the size is only the first guess, the browser remembers each row's real height */
+.ev-edge{content-visibility:auto;contain-intrinsic-size:auto 79px}
 .ev-row{cursor:pointer}
 .ev-row:hover{background:rgb(var(--ink) / .025)}
 .ev-edge.open .ev-row{background:rgb(var(--ink) / .035)}
@@ -682,6 +684,7 @@ table.nt-days .l{text-align:left}
 @media (max-width:760px){
   .ev-strip > div + div{border-left:0;border-top:1px solid var(--border)}
   .ev-colh{display:none}
+  .ev-edge{contain-intrinsic-size:auto 188px}
   .ev-row{grid-template-columns:minmax(0,1fr) auto 20px;grid-template-areas:"who ev chev" "ven conf conf" "gauge gauge gauge" "why why why";row-gap:8px}
   .ev-row .ev-who{grid-area:who} .ev-row .ev-ev{grid-area:ev} .ev-row .ev-chevc{grid-area:chev} .ev-row .ev-ven{grid-area:ven}
   .ev-row .ev-conf{grid-area:conf;text-align:right} .ev-row .ev-gauge{grid-area:gauge} .ev-row .ev-why{grid-area:why} .ev-row .ev-stk{display:none}
