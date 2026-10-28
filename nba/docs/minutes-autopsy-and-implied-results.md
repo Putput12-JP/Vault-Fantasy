@@ -18,10 +18,12 @@ Registered rule result: only **rotation change** qualifies (31% of misses, 6.0x 
 **Read it with care.** That category is defined partly by the miss itself (a top-8 player 8+ below GP, or an outsider 8+ above), so its lift is built in. I am not treating it as a finding on its own. Context added after seeing the result (not part of the rule):
 
 - **Early exits are one-sided and large**: 721 misses, GP too high every time, average +12.9 minutes. Foul trouble and injury are not separated in this data, so the next step is a left-tail model (quantile minutes), not a better mean.
-- **Teammate-out games are the opposite**: 953 misses, GP too low in 890 of them (93%), average -9.8 minutes. When a teammate is out, the players who stay get more than GP gives them. This is a real, directional bias and the best-supported build target.
+- **(Withdrawn, see correction below.) Teammate-out games are the opposite**: 953 misses, GP too low in 890 of them (93%), average -9.8 minutes. When a teammate is out, the players who stay get more than GP gives them. This is a real, directional bias and the best-supported build target.
 - Blowouts: GP too high 785 times, too low 461. Blowout misses are 27% of misses but 25% of all games, so blowouts are not the problem.
 - Top-8 players: GP too high 1806, too low 1357. Outside the top 8: too high 681, too low 767.
 - Rest / back-to-back: 29 misses, not a driver.
+
+> **Correction (added after the absorption test, see [minutes-absorb-results.md](minutes-absorb-results.md)).** The direction counts above are an artifact of the order causes are assigned: too-high misses by top-8 players were sorted into other buckets, so "teammate out" looks one-sided (890 of 953 too low). Overall bias in games with a player out is +0.26 minutes, not -9.8. The "teammate-out lift" build target below is withdrawn. The early-exit finding stands (it is defined by the actual and always one-directional).
 
 ## B. Market-implied minutes (live 2026-10-20 to 2026-10-28)
 
@@ -45,6 +47,6 @@ Registered rule: **passes** (n over 300, slope positive with t over 2, deciles o
 
 ## What I would build, ranked by support
 
-1. **Teammate-out lift** (A): fix the one-sided under-projection when a teammate is out, with the replacement-graph idea (who actually absorbs the minutes). Best-supported, directional, large.
+1. ~~Teammate-out lift~~ (withdrawn, see correction): fix the one-sided under-projection when a teammate is out, with the replacement-graph idea (who actually absorbs the minutes). Best-supported, directional, large.
 2. **Left-tail minutes** (A): early exits are 16% of misses and always high. Price a distribution, not a point.
 3. **Market-implied gap as a guard** (B): after GP has live days, test whether the gap adds on top of GP. If yes, use it to hold or reweight props near tip.
