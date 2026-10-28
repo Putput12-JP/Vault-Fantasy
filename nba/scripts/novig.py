@@ -290,9 +290,14 @@ def poll(games, root, now, roster_find=None):
                 bad.remove((mk, kind))
                 got.append((mk, kind, r, book))
         tc, usd = 0, 0.0
+        # Trades are read for the moneyline and the main spread / total only. The API allows ~3 requests/s, so every trades call on an
+        # alternate strike (about 40 a game) was a price book not read: a game cost ~87 requests and each poll reached 4 or 5 of 14 games.
+        # The alternate strikes' prices are still read every time; only their executions are no longer fetched.
+        main_r = {id(m) for m in (main_line([y[2] for y in got if y[1] == k]) for k in ('SPREAD', 'TOTAL')) if m}
+        mains = {x[0]['marketId'] for x in got if x[1] == 'MONEY' or id(x[2]) in main_r}
         for mk, kind, r, book in got:
             mid_ = mk['marketId']
-            changed = st.seq.get(mid_) != book.get('seq')  # an unchanged book has no new executions: skip the trades call
+            changed = st.seq.get(mid_) != book.get('seq') and mid_ in mains   # an unchanged book has no new executions: skip the trades call
             tr = None
             if changed and used[0] < BUDGET:
                 tr = get(f"/catalog/markets/{mid_}/trades?limit=100")
@@ -324,7 +329,9 @@ def poll(games, root, now, roster_find=None):
     # lines: whole games, the one read longest ago first (never read first, then by tip). A game starts only if the budget
     # covers its books plus the trades calls it needed last time; the first game of a poll always starts.
     gmap = {str(g['id']): g for g in soon}
-    order = sorted(lines, key=lambda gid: ((st.games.get(gid) or {}).get('asof') or 0, gmap[gid]['tip']))
+    # Games tipping within 3 hours come first (their lines are the ones that can still be taken), the one read longest ago first
+    # within each group; a game not yet within 3 hours waits for budget the near ones leave.
+    order = sorted(lines, key=lambda gid: (gmap[gid]['tip'] > now + 3 * 3600, (st.games.get(gid) or {}).get('asof') or 0, gmap[gid]['tip']))
     fresh_gids, short = [], {}
     for gid in order:
         nl = len(lines[gid])
