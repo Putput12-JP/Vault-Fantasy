@@ -4828,11 +4828,16 @@ async function loadTrack(){
 }
 
 // cube helpers
+// The cube is decoded once per file (about 23,000 rows: it cost 4 ms a call, and Edges asked once per play). Callers only read the rows.
+let cubeMemo = null;
 function cubeRows(){
   const d = TR && TR.data;
   if (!d || !d.cube) return [];
+  if (cubeMemo && cubeMemo.src === d.cube) return cubeMemo.rows;
   const C = Object.fromEntries(d.cube_cols.map((c, i) => [c, i]));
-  return d.cube.map(r => { const o = Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])); o.etype = o.etype || 'model'; return o; });
+  const rows = d.cube.map(r => { const o = Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])); o.etype = o.etype || 'model'; return o; });
+  cubeMemo = {src: d.cube, rows, agg: new Map()};
+  return rows;
 }
 function trMatch(r, skip = []){
   for (const k of ['venue', 'stat', 'side', 'gate', 'ebin', 'etype', 'book', 'day']){
@@ -4871,7 +4876,13 @@ function liveVerdict(sm, bt){
   return pill('bad', bt ? 'Not matching backtest' : 'Losing');
 }
 // a signal's all-time live record (Edges status and the gated table)
-function signalAgg(stat, venue, side){ return trAgg(cubeRows().filter(r => r.stat === stat && r.venue === venue && r.side === side)); }
+function signalAgg(stat, venue, side){
+  const rows = cubeRows(), k = stat + '|' + venue + '|' + side;      // a signal's record is the same for every play of that stat, venue and side
+  if (!cubeMemo || cubeMemo.rows !== rows) return trAgg(rows.filter(r => r.stat === stat && r.venue === venue && r.side === side));
+  let a = cubeMemo.agg.get(k);
+  if (!a){ a = trAgg(rows.filter(r => r.stat === stat && r.venue === venue && r.side === side)); cubeMemo.agg.set(k, a); }
+  return a;
+}
 
 // ── Track Record top of page: season record, plays, NO-GO list, glossary ─────────────────────────────────────────
 // A PICK is one player, one stat, one side (Over or Under; Kalshi YES is Over, NO is Under). The same pick is priced at several books, apps and
@@ -5636,13 +5647,18 @@ const tAt = t => t ? clock(t) : '';
 const betLabel = p => `${SLABEL[p.r.e.s]} ${p.venue === 'kalshi' ? `${p.side} ${p.line + .5}+` : `${p.side} ${p.line}`}`;
 const priceLabel = p => p.venue === 'kalshi' ? Math.round(p.price * 100) + '¢' : p.price == null ? 'flat' : esc(p.price);
 
+const epMemo = new Map();
 function edgePlays(B, noEdits){
   const games = Object.fromEntries((B.games || []).map(g => [String(g.id), g]));
   const news = {};
   for (const n of B.news || []) if (n[0]) (news[n[3]] = news[n[3]] || []).push(n[0]);
   const cache = noEdits ? {__noEdits: true} : {}, groups = {};
+  // Priced rows are reused while nothing they depend on has changed (same rule as pvRows); the plays built from them are new each call, since stakes are set on them.
+  const sig = pvSig(B) + (noEdits ? '|n' : ''), memo = epMemo.get(!!noEdits);
+  const rowsOf = memo && memo.sig === sig ? memo.map : new Map();
+  if (!memo || memo.sig !== sig) epMemo.set(!!noEdits, {sig, map: rowsOf});
   for (const e of (B.props || []).filter(e => PR.variance[e.s])){
-    const r = priceRow(e, cache);
+    let r = rowsOf.get(e); if (!r){ r = priceRow(e, cache); rowsOf.set(e, r); }
     if (!r.all || !r.all.length || r.hold) continue;          // roster guard: no edges until the model can see the team
     const times = [...(e.books || []).filter(x => x[6]).map(x => [x[0], x[6]]), ...(e.kal || []).filter(x => x[6]).map(x => ['Kalshi', x[6]]), ...(e.pk || []).filter(x => x[5]).map(x => [x[0], x[5]])];
     for (const c of r.all){
@@ -8729,9 +8745,10 @@ const PV_TIER = {go: ['passed', 'Passed the backtest'], watch: ['tracking', 'Tra
 let priceVer = 0, pvMemo = null;
 const pvIds = new WeakMap();
 const pvId = o => { if (!pvIds.has(o)) pvIds.set(o, pvIds.size + 1); return pvIds.get(o); };
+const pvSig = B => [pvId(B), B.t, (B.props || []).length, PS.mode, priceVer, PRE_ON, Math.floor(Date.now() / 60000), JSON.stringify(edits), JSON.stringify(tonightEdits)].join('|');
 function pvRows(){
   const B = PS.board;
-  const sig = [pvId(B), B.t, (B.props || []).length, PS.mode, priceVer, PRE_ON, Math.floor(Date.now() / 60000), JSON.stringify(edits), JSON.stringify(tonightEdits)].join('|');
+  const sig = pvSig(B);
   if (pvMemo && pvMemo.sig === sig) return pvMemo.out;
   const out = pvRowsBuild();
   pvMemo = {sig, out};
