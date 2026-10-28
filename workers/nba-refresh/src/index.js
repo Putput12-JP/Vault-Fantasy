@@ -3,7 +3,7 @@
 //   cron 23 11     -> daily job
 //   cron */10, at 15:xx and 19:xx UTC -> the daily job again if it has not succeeded since 10:30 UTC today (GitHub sometimes
 //                     never starts a runner: the Oct 5 run died with 'job not acquired')
-//   GET /board     -> the live board from the nba-live branch, with raw.githubusercontent's 5 minute CDN cache bypassed (30 s here)
+//   GET /board     -> the live board from the nba-live branch, with raw.githubusercontent's 5 minute CDN cache bypassed (15 s here)
 //   POST {what}    -> a person asked: 'prices' (recorder) or 'daily'; a cooldown keeps it from being spammed
 
 const ORIGINS = ['https://vaultfantasy.com', 'https://www.vaultfantasy.com', 'http://localhost:4173', 'http://localhost:8000'];
@@ -39,7 +39,7 @@ const cors = origin => ({
 
 export default {
   async scheduled(event, env) {
-    const what = event.cron === '23 11 * * *' ? 'daily' : 'prices';
+    const what = ['23 11 * * *', '23 14 * * *', '23 17 * * *', '23 21 * * *', '23 3 * * *'].includes(event.cron) ? 'daily' : 'prices';
     const r = await dispatch(env, what, false);
     console.log('cron', event.cron, what, JSON.stringify(r));
     if (!r.ok) console.error('dispatch failed', what, r.status);
@@ -60,8 +60,8 @@ export default {
     const out = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: h });
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
     if (req.method === 'GET' && new URL(req.url).pathname === '/board') {
-      const r = await fetch(`https://raw.githubusercontent.com/${env.REPO}/nba-live/board.json?r=${Math.floor(Date.now() / 30000)}`, { cf: { cacheTtl: 30, cacheEverything: true } });
-      return new Response(r.body, { status: r.status, headers: { ...h, 'Cache-Control': 'public, max-age=30' } });
+      const r = await fetch(`https://raw.githubusercontent.com/${env.REPO}/nba-live/board.json?r=${Math.floor(Date.now() / 15000)}`, { cf: { cacheTtl: 15, cacheEverything: true } });
+      return new Response(r.body, { status: r.status, headers: { ...h, 'Cache-Control': 'public, max-age=15' } });
     }
     if (req.method !== 'POST') return out({ ok: true, service: 'nba-refresh' });
     if (!ORIGINS.includes(origin)) return out({ ok: false, error: 'origin' }, 403);
