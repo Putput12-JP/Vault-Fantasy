@@ -4313,6 +4313,7 @@ async function ssPublished(){
 }
 const ssNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
 function ssApply(b, j, ja){
+  priceVer++;
   if (ja && ja.props) window.__ssAsof = ja.asof;
   if (!j && !ja) return;
   const idx = new Map(((j && j.props) || []).map(p => [ssNorm(p.n) + '|' + p.s, p])), aidx = new Map(((ja && ja.props) || []).map(p => [ssNorm(p.n) + '|' + p.s, p]));
@@ -4348,8 +4349,16 @@ async function loadBoard(){
   if (!PB || !/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
   try {
     const b = await fetch(NBA_WORKER ? `${NBA_WORKER}/board` : `https://raw.githubusercontent.com/${PB.repo}/${PB.branch}/board.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    // Same board as the last poll (the worker only moves `t` when a source changes): keep the screen as it is. Re-drawing an
+    // unchanged board every 30 s costs a second and resets scroll, open rows and focus. A game tipping since the last poll still redraws.
+    const nowS = Date.now() / 1000, sig = b.t + '|' + (b.props || []).length;   // before the merge: it adds alt lines, so the merged board's own length differs
+    if (PS.live && PS.liveFetched && PS.liveSig === sig && !(b.games || []).some(g => g.tip <= nowS && g.tip > PS.liveAt)){
+      renderChip();
+      clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 30 : 5 * 60) * 1000);
+      return;
+    }
     await ssMerge(b);
-    PS.live = b; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
+    PS.live = b; PS.liveSig = sig; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
     if (view === 'props' || view === 'mybets' || view === 'propboard') renderProps();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
@@ -4383,6 +4392,16 @@ function pickBoard(){
   return {board: live || {props: [], players: {}, games: []}, mode: 'empty', live};
 }
 
+function propsFoot(){
+  const vs = PR.verdict;
+  const gos = Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`);
+  const watch = Object.entries(PR.verdict).filter(([, v]) => /^WATCH/.test(v)).map(([k, v]) => `${SLABEL[k]} ${v.replace(/^WATCH \(|\)$/g, '')}`);
+  $('pfoot').innerHTML = `
+    <div><b>Projection</b> is prop model ${PR.model}: tonight's minutes from the minutes model (recent minutes, teammates out, blowout risk from the spread, back-to-backs, the team total), exactly as the backtest ran it, × the model's per-minute rates, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread. A team you edit in the Minutes Lab uses your minutes instead, and a player with no games yet for his current team (a trade, a rookie) uses the Lab's estimate. <b>On hold</b>: that player, and every player on a team the minutes model projects with fewer than ${HOLD_MIN_PLAYERS} players or with anyone at ${HOLD_MAX_MIN}+ minutes or a rescale of ${Math.round((HOLD_MAX_STRETCH - 1) * 100)}%+ (in the backtest those teams ran 2 to 4 minutes too high), is priced and shown but never a Bet or Lean, an edge, a pick'em leg or a Track Record bet, until the new players have a game with the team.</div>
+    <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
+    <div><b>The extra markets</b> (steals, blocks, turnovers, steals + blocks, field goals and free throws made and attempted, 3-pointers attempted, offensive and defensive rebounds, personal fouls) are priced by the same projection (minutes × per-minute rate, no usage cascade) with a count distribution fit on 2023-25. They are <b>not backtested like the rest</b>: ESPN's steals and blocks main lines only start in 2025-26, nothing else has book history, and Kalshi lists none. On 2025-26 closing lines the model matched the book on steals (Brier ${PR.extra ? PR.extra.espn_2026.stl.brier_model : ''} vs ${PR.extra ? PR.extra.espn_2026.stl.brier_market : ''}) and trailed it on blocks (${PR.extra ? PR.extra.espn_2026.blk.brier_model : ''} vs ${PR.extra ? PR.extra.espn_2026.blk.brier_market : ''}). So Fair leans on the book's price (70%) and these are always NO-GO: shown for the lines and the lean, never a gated bet.</div>
+    <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Players listed Out on the injury report or Inactive on NBA.com get 0 minutes and their teammates are repriced automatically, unless you have edited that team in the Minutes Lab. Questionable and Doubtful players keep their minutes.</div>`;
+}
 function renderProps(){
   if (!PR){ $('pbanner').hidden = false; $('pbanner').textContent = 'The prop model is missing from this build.'; return; }
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
@@ -4407,6 +4426,7 @@ function renderProps(){
     $('pbanner').hidden = true;
   }
   $('pex')?.addEventListener('click', () => { showExample = !showExample; pf.open.clear(); renderProps(); });
+  if (pv.tab !== 'full'){ propsFoot(); pvShow(); return; }   // the table below is only on the Props Table tab: on the other tabs it is hidden, so pricing and drawing it was wasted work
 
   // filters
   const games = B.games || [];
@@ -4500,14 +4520,7 @@ function renderProps(){
   propsStamp();
   $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props${tippedN ? ` (${tippedN.toLocaleString()} hidden: the game has tipped)` : ''}. Click a row for the Kalshi ladder and each book.`;
 
-  const vs = PR.verdict;
-  const gos = Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`);
-  const watch = Object.entries(PR.verdict).filter(([, v]) => /^WATCH/.test(v)).map(([k, v]) => `${SLABEL[k]} ${v.replace(/^WATCH \(|\)$/g, '')}`);
-  $('pfoot').innerHTML = `
-    <div><b>Projection</b> is prop model ${PR.model}: tonight's minutes from the minutes model (recent minutes, teammates out, blowout risk from the spread, back-to-backs, the team total), exactly as the backtest ran it, × the model's per-minute rates, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread. A team you edit in the Minutes Lab uses your minutes instead, and a player with no games yet for his current team (a trade, a rookie) uses the Lab's estimate. <b>On hold</b>: that player, and every player on a team the minutes model projects with fewer than ${HOLD_MIN_PLAYERS} players or with anyone at ${HOLD_MAX_MIN}+ minutes or a rescale of ${Math.round((HOLD_MAX_STRETCH - 1) * 100)}%+ (in the backtest those teams ran 2 to 4 minutes too high), is priced and shown but never a Bet or Lean, an edge, a pick'em leg or a Track Record bet, until the new players have a game with the team.</div>
-    <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
-    <div><b>The extra markets</b> (steals, blocks, turnovers, steals + blocks, field goals and free throws made and attempted, 3-pointers attempted, offensive and defensive rebounds, personal fouls) are priced by the same projection (minutes × per-minute rate, no usage cascade) with a count distribution fit on 2023-25. They are <b>not backtested like the rest</b>: ESPN's steals and blocks main lines only start in 2025-26, nothing else has book history, and Kalshi lists none. On 2025-26 closing lines the model matched the book on steals (Brier ${PR.extra ? PR.extra.espn_2026.stl.brier_model : ''} vs ${PR.extra ? PR.extra.espn_2026.stl.brier_market : ''}) and trailed it on blocks (${PR.extra ? PR.extra.espn_2026.blk.brier_model : ''} vs ${PR.extra ? PR.extra.espn_2026.blk.brier_market : ''}). So Fair leans on the book's price (70%) and these are always NO-GO: shown for the lines and the lean, never a gated bet.</div>
-    <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Players listed Out on the injury report or Inactive on NBA.com get 0 minutes and their teammates are repriced automatically, unless you have edited that team in the Minutes Lab. Questionable and Doubtful players keep their minutes.</div>`;
+  propsFoot();
   pvShow();
 }
 function range2(stat, mu){ const v = PR.variance[stat]; if (!v || mu <= 0) return null; const sd = Math.sqrt(Math.max(.25, v[0] + v[1]*mu + v[2]*mu*mu)); return [Math.max(0, mu - Z*sd), mu + Z*sd]; }
@@ -4736,7 +4749,8 @@ $('pgames').addEventListener('click', e => { const b = e.target.closest('.gtile[
 $('psort').addEventListener('change', e => { pf.sort = e.target.value; pf.dir = null; renderProps(); });
 $('pscan').querySelector('.sc-h').addEventListener('click', e => { const b = e.target.closest('.sc-sh'); if (!b) return; const k = b.dataset.sort; if (pf.sort === k) pf.dir = -(pf.dir ?? SC_SORT[k].d); else { pf.sort = k; pf.dir = null; } renderProps(); });
 $('pstat').addEventListener('click', e => { const s = e.target.closest('button')?.dataset.s; if (s){ pf.stat = s; renderProps(); } });
-$('pq').addEventListener('input', e => { pf.q = e.target.value; renderProps(); });
+let pqT = null;
+$('pq').addEventListener('input', e => { pf.q = e.target.value; clearTimeout(pqT); pqT = setTimeout(renderProps, 120); });
 $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; renderProps(); });
 $('pwatch').addEventListener('change', e => { pf.watch = e.target.checked; renderProps(); });
 $('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
@@ -8722,7 +8736,20 @@ const pvRowV = c => c.edge >= EDGE_MIN ? (c.g === 'go' ? 'bet' : 'lean') : 'pass
 const PV_VR = {bet: 0, lean: 1, pass: 2};
 const PV_TIER = {go: ['passed', 'Passed the backtest'], watch: ['tracking', 'Tracking'], 'no-go': ['', 'Untested']};
 
+// Pricing every prop is the slow part (about 0.4 ms a row). The rows only change with the board, the minutes edits, the mode or a
+// late merge (priceVer), so a filter, sort or search reuses them; they are rebuilt at most a minute stale.
+let priceVer = 0, pvMemo = null;
+const pvIds = new WeakMap();
+const pvId = o => { if (!pvIds.has(o)) pvIds.set(o, pvIds.size + 1); return pvIds.get(o); };
 function pvRows(){
+  const B = PS.board;
+  const sig = [pvId(B), B.t, (B.props || []).length, PS.mode, priceVer, PRE_ON, Math.floor(Date.now() / 60000), JSON.stringify(edits), JSON.stringify(tonightEdits)].join('|');
+  if (pvMemo && pvMemo.sig === sig) return pvMemo.out;
+  const out = pvRowsBuild();
+  pvMemo = {sig, out};
+  return out;
+}
+function pvRowsBuild(){
   const B = PS.board, cache = {}, rows = [];
   for (const e of B.props || []){
     const r = priceRow(e, cache);
@@ -8767,6 +8794,7 @@ const PV_PRESETS = [
   ['sharp', 'Sharp money', r => r.sharp.sig.length > 0],
   ['all', 'Everything', () => true],
 ];
+let pvQT = null;
 function renderPropsV2(){
   pv.cache = {};
   const {rows} = pvRows(), B = PS.board;
@@ -8787,7 +8815,7 @@ function renderPropsV2(){
     stats: stats.map(x => ({s: x, l: x === 'all' ? 'All' : PV_SS[x] || x})), stat: pv.stat,
     games: games.length > 1 ? games.map(g => ({id: String(g.id), label: `${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}`})) : [], game: pv.game, sort: pv.sort, q: pv.q,
     onPreset: k => { pv.preset = k; renderPropsV2(); }, onStat: x => { pv.stat = x; renderPropsV2(); },
-    onGame: v => { pv.game = v; renderPropsV2(); }, onSort: v => { pv.sort = v; renderPropsV2(); }, onQ: v => { pv.q = v.trim(); renderPropsV2(); },
+    onGame: v => { pv.game = v; renderPropsV2(); }, onSort: v => { pv.sort = v; renderPropsV2(); }, onQ: v => { pv.q = v.trim(); clearTimeout(pvQT); pvQT = setTimeout(renderPropsV2, 120); },
     onBell: () => { pvToggleAlerts(); pvMountTools(); }};
   pvMountTools();
   if (innerWidth <= 820){ const on = document.querySelector('#pv-tools button[aria-pressed="true"]'); if (on && on.parentElement) on.parentElement.scrollLeft = Math.max(0, on.offsetLeft - 16); }   // phone: keep the active preset chip in view
