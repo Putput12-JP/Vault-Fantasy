@@ -4819,7 +4819,7 @@ async function loadBoard(){
     if (view === 'player') renderPlayer();
     if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); }
     pvBackground(); pvSettle();
-    clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 60 : 5 * 60) * 1000);
+    clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 30 : 5 * 60) * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
 

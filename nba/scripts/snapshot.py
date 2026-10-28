@@ -34,7 +34,8 @@ snapshot, so no state lives outside the day folder.
 Game window: 9am ET until the last tip of the day. Every 5 min inside 3h of a tip, else every 15.
 Injury parsing needs pdfplumber (pip install pdfplumber); without it that source is skipped.
 """
-import datetime as dt, json, os, re, subprocess, sys, time, traceback
+import datetime as dt, json, os, re, subprocess, sys, threading, time, traceback
+from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
@@ -65,7 +66,7 @@ OPENER_PASS_END = '2026-10-20'      # one-time pass: until opening night the boa
                                     # the 3-day window with lines posted, for the Slate / Game Lines page only (no props,
                                     # ledger or alerts). Off once this ET date has passed.
 OPEN_CACHE = {}                     # ET day -> (fetched at, [games]): ESPN's schedule for those days, refreshed hourly
-FAST_S, SLOW_S, FAST_WITHIN_H, WINDOW_START_ET = 300, 900, 3, 9
+FAST_S, SLOW_S, FAST_WITHIN_H, WINDOW_START_ET = 180, 900, 3, 9
 
 
 def curl(url, headers=(), tries=2, raw=False, retry403=False, follow=False):
@@ -567,6 +568,7 @@ NOT_CHANGE_LOGS = ('polls.jsonl', 'tape.jsonl', 'tape_fast.jsonl', 'fastpm.jsonl
 
 class Day:
     def __init__(self, root, day):
+        self.lock = threading.RLock()                    # poll() runs source tracks in threads; they share these files and dicts
         self.dir = os.path.join(root, 'snapshots', day)
         os.makedirs(self.dir, exist_ok=True)
         self.last, self.known = {}, set()
@@ -603,11 +605,15 @@ class Day:
 
     def append(self, name, recs):
         if recs:
-            with open(os.path.join(self.dir, name), 'a') as f:
+            with self.lock, open(os.path.join(self.dir, name), 'a') as f:
                 for r in recs:
                     f.write(json.dumps(r, separators=(',', ':')) + '\n')
 
     def record(self, src, t, rows, meta):
+        with self.lock:
+            return self._record(src, t, rows, meta)
+
+    def _record(self, src, t, rows, meta):
         last = self.last.setdefault(src, {})
         out = [{'t': t, 'k': k, 'v': v} for k, v in rows.items() if last.get(k) != v]
         out += [{'t': t, 'k': k, 'v': None} for k in last if k not in rows]
@@ -636,12 +642,14 @@ def poll(root):
     sources = [('kalshi', src_kalshi), ('espn', src_espn), ('pinnacle', src_pinnacle), ('action', src_action),
                ('polymarket', src_polymarket), ('injuries', Injuries(day.dir)), ('lineups', src_lineups),
                ('prizepicks', src_prizepicks), ('underdog', src_underdog), ('sleeper', src_sleeper)]
-    polls, metas = [], {}
-    for name, fn in sources:
+    metas = {}
+    srcs = dict(sources)
+
+    def run_source(name):
         t0 = time.time()
         rec = {'t': int(t0), 'src': name, 'ok': True}
         try:
-            got = fn(slate)
+            got = srcs[name](slate)
             if name == 'injuries':
                 got, extra = got
                 rec.update(extra)
@@ -658,48 +666,81 @@ def poll(root):
             rec.update(ok=False, err=str(e)[:200])
             traceback.print_exc(limit=1)
         rec['s'] = round(time.time() - t0, 1)
-        polls.append(rec)
         print(f"  {name:10s} {'ok ' if rec['ok'] else 'ERR'} n={rec.get('n', '-')} chg={rec.get('chg', '-')} "
               f"{('seen=' + str(rec['seen']) + ' ') if 'seen' in rec else ''}{('WARN ' + rec['warn'] + ' ') if rec.get('warn') else ''}"
               f"{rec['s']}s {rec.get('err', '') or rec.get('report') or ''}", flush=True)
-    t0 = time.time()                                    # trade tapes: Polymarket accounts, Kalshi big tickets (sharp.py)
-    rec = {'t': int(t0), 'src': 'tape', 'ok': True}
-    try:
-        import sharp
-        from prop_board import TEAM as BTEAM
-        rec['n'], rec['chg'] = sharp.poll_tapes(root, day, slate, int(t0), curl, parse_event, BTEAM)
-    except Exception as e:
-        rec.update(ok=False, err=str(e)[:200])
-        traceback.print_exc(limit=1)
-    rec['s'] = round(time.time() - t0, 1)
-    polls.append(rec)
-    print(f"  tape       {'ok ' if rec['ok'] else 'ERR'} markets={rec.get('n', '-')} new={rec.get('chg', '-')} {rec['s']}s {rec.get('err', '')}", flush=True)
-    t0 = time.time()                                    # Novig exchange: public order books + trade tape (novig.py)
-    rec = {'t': int(t0), 'src': 'novig', 'ok': True}
-    NOVIG.clear()
-    try:
-        import novig
-        from prop_board import Roster
-        pre = [g for g in slate.games if g['pre']]
-        proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
-        nb = novig.poll(pre, root, slate.now, Roster(proj).find)
-        day.append('tape.jsonl', [{'t': x['t'], 's': 'nov', 'g': x['g'], 'm': x['m'], 'side': x['side'], 'line': x['line'], 'usd': round(x['usd']),
-                                   'px': x['px'], 'id': 'nov:' + x['id']} for x in nb.pop('fresh', None) or []])
-        nrows, nmeta = novig.quotes(nb, pre)
-        rec['n'] = len(nrows)                           # game lines priced (winner, main spread, main total, per game)
-        rec['chg'] = day.record('novig', slate.now, nrows, nmeta)
-        rec['props'] = len(nb['props'])
-        rec['used'], rec['budget'] = nb['used'], nb['budget']
-        if pre and not nb['games']:
-            rec['warn'] = 'no game matched a Novig event'
-        metas['novig'] = {**nmeta, **{k: {'g': str(v['g']), 'm': 'prop'} for k, v in nb['props'].items()}}
-        NOVIG['board'] = nb
-    except Exception as e:
-        rec.update(ok=False, err=str(e)[:200])
-        traceback.print_exc(limit=1)
-    rec['s'] = round(time.time() - t0, 1)
-    polls.append(rec)
-    print(f"  novig      {'ok ' if rec['ok'] else 'ERR'} lines={rec.get('n', '-')} chg={rec.get('chg', '-')} props={rec.get('props', '-')} used={rec.get('used', '-')}/{rec.get('budget', '-')} {rec['s']}s {rec.get('err', '') or rec.get('warn', '')}", flush=True)
+        return rec
+
+    def run_tape():
+        t0 = time.time()                                    # trade tapes: Polymarket accounts, Kalshi big tickets (sharp.py)
+        rec = {'t': int(t0), 'src': 'tape', 'ok': True}
+        try:
+            import sharp
+            from prop_board import TEAM as BTEAM
+            rec['n'], rec['chg'] = sharp.poll_tapes(root, day, slate, int(t0), curl, parse_event, BTEAM)
+        except Exception as e:
+            rec.update(ok=False, err=str(e)[:200])
+            traceback.print_exc(limit=1)
+        rec['s'] = round(time.time() - t0, 1)
+        print(f"  tape       {'ok ' if rec['ok'] else 'ERR'} markets={rec.get('n', '-')} new={rec.get('chg', '-')} {rec['s']}s {rec.get('err', '')}", flush=True)
+        return rec
+
+    def run_novig():
+        t0 = time.time()                                    # Novig exchange: public order books + trade tape (novig.py)
+        rec = {'t': int(t0), 'src': 'novig', 'ok': True}
+        NOVIG.clear()
+        try:
+            import novig
+            from prop_board import Roster
+            pre = [g for g in slate.games if g['pre']]
+            proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
+            nb = novig.poll(pre, root, slate.now, Roster(proj).find)
+            day.append('tape.jsonl', [{'t': x['t'], 's': 'nov', 'g': x['g'], 'm': x['m'], 'side': x['side'], 'line': x['line'], 'usd': round(x['usd']),
+                                       'px': x['px'], 'id': 'nov:' + x['id']} for x in nb.pop('fresh', None) or []])
+            nrows, nmeta = novig.quotes(nb, pre)
+            rec['n'] = len(nrows)                           # game lines priced (winner, main spread, main total, per game)
+            rec['chg'] = day.record('novig', slate.now, nrows, nmeta)
+            rec['props'] = len(nb['props'])
+            rec['used'], rec['budget'] = nb['used'], nb['budget']
+            if pre and not nb['games']:
+                rec['warn'] = 'no game matched a Novig event'
+            metas['novig'] = {**nmeta, **{k: {'g': str(v['g']), 'm': 'prop'} for k, v in nb['props'].items()}}
+            NOVIG['board'] = nb
+        except Exception as e:
+            rec.update(ok=False, err=str(e)[:200])
+            traceback.print_exc(limit=1)
+        rec['s'] = round(time.time() - t0, 1)
+        print(f"  novig      {'ok ' if rec['ok'] else 'ERR'} lines={rec.get('n', '-')} chg={rec.get('chg', '-')} props={rec.get('props', '-')} used={rec.get('used', '-')}/{rec.get('budget', '-')} {rec['s']}s {rec.get('err', '') or rec.get('warn', '')}", flush=True)
+        return rec
+
+    # Three independent tracks, so a poll takes as long as the slowest one instead of the sum (about 230 s -> 130 s; Novig is
+    # paced at ~3 requests/s by design and sets the floor). Two orderings are kept: Kalshi and Pinnacle fill FAR_DAYS before the
+    # Action Network source reads it (so they stay in their old order), and the tape reads the Kalshi and Polymarket meta (so it
+    # waits for both).
+    kalshi_done = threading.Event()
+
+    def track_main():
+        out = []
+        try:
+            for n, _ in sources:
+                if n != 'polymarket':
+                    out.append(run_source(n))
+                    if n == 'kalshi':
+                        kalshi_done.set()
+        finally:
+            kalshi_done.set()
+        return out
+
+    def track_tape():
+        out = [run_source('polymarket')]
+        kalshi_done.wait()
+        return out + [run_tape()]
+
+    with ThreadPoolExecutor(3) as ex:
+        futs = [ex.submit(track_main), ex.submit(track_tape), ex.submit(lambda: [run_novig()])]
+        done = [f.result() for f in futs]
+    by = {r['src']: r for track in done for r in track}
+    polls = [by[n] for n, _ in sources] + [by['tape'], by['novig']]      # the order Data Health has always read
     day.append('polls.jsonl', polls)
     write_status(root, day, slate, polls, metas)
     board = write_board(root, day, slate)
@@ -925,12 +966,18 @@ def shadow(root, day, board, now, polls):
         day.append('polls.jsonl', [rec])
         return
 
+    stage_s = {}
+
     def stage(name, fn):
+        t0 = time.time()
         try:
             return fn()
         except Exception as e:
             fails[name] = f'{type(e).__name__}: {e}'[:120]
             traceback.print_exc(limit=2)
+        finally:
+            stage_s[name] = round(time.time() - t0, 1)
+            print(f'  stage {name:10s} {stage_s[name]}s', flush=True)
 
     def by_game(meta):
         c = defaultdict(int)
