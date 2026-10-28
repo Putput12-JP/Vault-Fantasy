@@ -4,9 +4,10 @@ compatibility_date = "2026-09-01"
 
 # UTC. GitHub's own schedules drop runs on busy days, so this Worker starts the workflows instead.
 #   every 10 min  recorder (nba-snapshots.yml); skipped while one is already running or queued
-#   11:23 daily   box scores, rosters, projections, model state (nba-daily.yml)
+#   11:23 daily   box scores, rosters, projections, model state (nba-daily.yml); the */10 tick starts it again at 14, 17, 21 and 03 UTC
+#   (the free plan allows 5 cron triggers per account and sharp-refresh uses 2, so these ride the */10 tick, not their own crons)
 [triggers]
-crons = ["*/10 * * * *", "23 11 * * *", "23 14 * * *", "23 17 * * *", "23 21 * * *", "23 3 * * *"]
+crons = ["*/10 * * * *", "23 11 * * *"]
 
 [vars]
 REPO = "Putput12-JP/Vault-Fantasy"
