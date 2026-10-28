@@ -2,7 +2,7 @@
 // The page keeps all its logic (projection, rebalancing, pricing, storage) in plain JS and
 // hands these views PLAIN DATA plus callbacks; the views only draw. Bundled to dist.js by
 // build.mjs and inlined into projections.html by scripts/render_app.py (so CI needs no npm).
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   usePal, tokens, motion, Card, Badge, Text, Heading, Stack, Table, Button, Chip, SwitchToggle, Slider, Divider,
   SegmentedControl, Select, SearchInput, EmptyState,
@@ -286,17 +286,47 @@ function PropsTools(p) {
   );
 }
 
+const ROW_H = 66, ROW_OVER = 6;
 function PropsList(p) {
   const pal = usePal(THEME);
-  if (!p.items.length) return <Card padding={0}><div style={{ padding: 24 }}><Dim size="base">{p.empty}</Dim></div></Card>;
+  const n = p.items.length, ref = useRef(null);
+  // Only the rows on screen (plus a few either side) are drawn: the list can hold 1,600+ props and drawing them all took 60 to 290 ms per filter.
+  // Every row is exactly ROW_H tall so the spacers above and below keep the scrollbar the length of the full list.
+  const [win, setWin] = useState({ top: 0, h: 900 });
+  const tgt = useRef({ el: null, off: null });
+  const read = () => {
+    const el = ref.current, T = tgt.current; if (!el) return;
+    const sc = T.sc, lr = el.getBoundingClientRect(), sr = sc ? sc.getBoundingClientRect() : { top: 0 };
+    const top = sr.top - lr.top, h = sc ? sc.clientHeight : window.innerHeight;
+    setWin(w => (Math.abs(w.top - top) < ROW_H / 2 && w.h === h ? w : { top, h }));
+  };
+  // Runs after every draw: the scroller is looked up again each time, so the listener follows it if the list is ever re-parented.
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    let sc = el.parentElement;
+    while (sc && !/(auto|scroll)/.test(getComputedStyle(sc).overflowY)) sc = sc.parentElement;
+    const T = tgt.current;
+    if (T.sc !== sc || !T.off){
+      if (T.off) T.off();
+      const target = sc || window, on = () => read();
+      target.addEventListener('scroll', on, { passive: true }); window.addEventListener('resize', on);
+      T.sc = sc; T.off = () => { target.removeEventListener('scroll', on); window.removeEventListener('resize', on); T.off = null; };
+    }
+    read();
+  });
+  useEffect(() => () => { if (tgt.current.off) tgt.current.off(); }, []);
+  if (!n) return <Card padding={0}><div style={{ padding: 24 }}><Dim size="base">{p.empty}</Dim></div></Card>;
+  const start = Math.max(0, Math.min(n, Math.floor(win.top / ROW_H) - ROW_OVER));
+  const end = Math.min(n, Math.max(start, Math.ceil((win.top + win.h) / ROW_H) + ROW_OVER));
   return (
     <Card padding={0} style={{ overflow: 'hidden' }}>
-      {p.items.map((r, i) => {
-        const on = r.key === p.sel;
+      <div ref={ref} style={{ paddingTop: start * ROW_H, paddingBottom: (n - end) * ROW_H }}>
+      {p.items.slice(start, end).map((r, j) => {
+        const i = start + j, on = r.key === p.sel;
         return (
-          <button key={r.key} type="button" aria-current={on} onClick={() => p.onSelect(r.key)} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px', minHeight: 66, borderBottom: i < p.items.length - 1 ? `1px solid ${pal.borderSubtle}` : 'none', background: on ? pal.bgSubtle : 'transparent', transition: `background ${motion.normal} ${motion.easeInOut}` }}>
+          <button key={r.key} type="button" aria-current={on} onClick={() => p.onSelect(r.key)} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px', height: ROW_H, overflow: 'hidden', borderBottom: i < p.items.length - 1 ? `1px solid ${pal.borderSubtle}` : 'none', background: on ? pal.bgSubtle : 'transparent', transition: `background ${motion.normal} ${motion.easeInOut}` }}>
             <Cut ini={r.ini} src={r.src} fit={r.fit} h={60} />
-            <span style={{ flex: 1, minWidth: 0, padding: '10px 0' }}><Text size="md" weight="semibold">{r.name}</Text><div><Dim>{r.stat} · proj {r.proj}{r.where ? ' · ' + r.where : ''}</Dim></div></span>
+            <span style={{ flex: 1, minWidth: 0, padding: '10px 0' }}><Text size="md" weight="semibold">{r.name}</Text><div title={r.where || undefined} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><Dim>{r.stat} · proj {r.proj}{r.where ? ' · ' + r.where : ''}</Dim></div></span>
             <span style={{ textAlign: 'right', display: 'grid', gap: 3, justifyItems: 'end', padding: '10px 0' }}>
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                 {r.fav && <Badge variant="accent" style={{ textTransform: 'none', letterSpacing: 0 }}>Yours</Badge>}{r.watch && <span title="Watching" style={{ color: pal.warning }}>★</span>}{r.logged && <Badge>Logged</Badge>}
@@ -308,6 +338,7 @@ function PropsList(p) {
           </button>
         );
       })}
+      </div>
     </Card>
   );
 }
