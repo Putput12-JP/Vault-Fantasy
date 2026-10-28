@@ -1002,8 +1002,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .ck svg text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
 .ck .ck-grid{stroke:var(--border)} .ck .ck-zero{stroke:var(--border2)}
 .ck .ck-hit{fill:transparent;cursor:crosshair}
-.ck .ck-bar{opacity:.22;transition:opacity .2s ease} .ck g.on .ck-bar{opacity:1} .ck g.hov .ck-bar{stroke:var(--fg);stroke-opacity:.35;stroke-width:1}
-.ck .ck-min{fill:var(--fg2);opacity:.18;transition:opacity .2s ease} .ck g.on .ck-min{opacity:.55}
+.ck .ck-bar{opacity:1;transition:opacity .2s ease} .ck g.on .ck-bar{opacity:1} .ck g.hov .ck-bar{stroke:var(--fg);stroke-opacity:.35;stroke-width:1}
+.ck .ck-min{fill:var(--fg2);opacity:.55;transition:opacity .2s ease} .ck g.on .ck-min{opacity:.55}
 .ck .ck-ref{stroke:var(--chart-3);stroke-width:1.25;stroke-dasharray:4 4} .ck .ck-reflab{fill:var(--chart-3)}
 .ck .ck-proj{stroke:var(--fg3);stroke-width:1;stroke-dasharray:1 3}
 .ck .ck-trace{transition:transform .14s ease-out}
@@ -1012,9 +1012,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .ck .ck-vtrace{transition:transform .14s ease-out}
 .ck .ck-line{fill:none;stroke-width:2;stroke-linejoin:round} .ck .ck-area{opacity:.1}
 .ck .ck-rowbg{fill:transparent} .ck g.on .ck-rowbg{fill:rgb(var(--ink) / .035)}
-.ck .ck-stem{stroke:var(--border2);stroke-width:2} .ck g.on .ck-stem{stroke:var(--fg2)}
-.ck .ck-lab{fill:var(--fg2);font-family:var(--font-sans);font-size:12px} .ck g.on .ck-lab{fill:var(--fg)}
-.ck .ck-col{opacity:.3;transition:opacity .2s ease} .ck g.on .ck-col{opacity:1}
+.ck .ck-stem{stroke:var(--fg2);stroke-width:2} .ck g.on .ck-stem{stroke:var(--fg2)}
+.ck .ck-lab{fill:var(--fg);font-family:var(--font-sans);font-size:12px} .ck g.on .ck-lab{fill:var(--fg)}
+.ck .ck-col{opacity:1;transition:opacity .2s ease} .ck g.on .ck-col{opacity:1}
 .ck-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--fg2)}
 .ck-legend span{display:inline-flex;align-items:center;gap:6px}
 .ck-legend i{display:inline-block;width:10px;height:10px;border-radius:3px}
