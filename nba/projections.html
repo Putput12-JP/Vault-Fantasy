@@ -1658,8 +1658,8 @@ table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 #pv-full .card-h .filters{display:grid;grid-template-columns:minmax(180px,260px) auto 1fr auto;gap:12px 16px;align-items:center}
 #pstat{grid-column:1/-1;order:-1;display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;justify-self:start}
 #pstat::-webkit-scrollbar{display:none}#pstat button{flex:none;white-space:nowrap}
-#pstat{grid-row:1}#pv-full .card-h .filters .pfind{grid-area:2/1;width:100%;min-width:0}#pv-full .card-h .filters .switch{grid-area:2/2;white-space:nowrap}#pv-full .card-h .filters #psort{grid-area:2/4;justify-self:end}
-@media(max-width:640px){#pv-full .card-h .filters{grid-template-columns:1fr auto}#pv-full .card-h .filters .pfind{grid-area:2/1/3/3}#pv-full .card-h .filters .switch{grid-area:3/1}#pv-full .card-h .filters #psort{grid-area:3/2}}
+#pstat{grid-row:1}#pv-full .card-h .filters .pfind{grid-area:2/1;width:100%;min-width:0}#pv-full .card-h .filters .switch{grid-area:2/2;white-space:nowrap}#pv-full .card-h .filters .switch:has(#pwatch){grid-area:2/3}#pv-full .card-h .filters #psort{grid-area:2/4;justify-self:end}
+@media(max-width:640px){#pv-full .card-h .filters{grid-template-columns:1fr auto}#pv-full .card-h .filters .pfind{grid-area:2/1/3/3}#pv-full .card-h .filters .switch{grid-area:3/1}#pv-full .card-h .filters .switch:has(#pwatch){grid-area:4/1/4/3}#pv-full .card-h .filters #psort{grid-area:3/2}}
 #xgames{display:flex;flex-direction:column;gap:16px}
 .sx-card{display:flex;flex-direction:column;gap:16px;padding:20px 22px}
 .sx-lab{margin:0 0 6px;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
@@ -2476,6 +2476,7 @@ th{font-weight:500}
             <select class="sel" id="psort" aria-label="Sort"></select>
             <input class="pfind" id="pq" type="search" placeholder="Filter players" autocomplete="off" aria-label="Filter players">
             <label class="switch" for="pgated"><input type="checkbox" id="pgated" role="switch"> Passing gates only</label>
+            <label class="switch" for="pwatch"><input type="checkbox" id="pwatch" role="switch"> <span id="pwatchl">Watching only</span></label>
           </div>
         </div>
         <div class="card-b">
@@ -4102,7 +4103,7 @@ const PKN = {prizepicks: 'PrizePicks', underdog: 'Underdog', sleeper: 'Sleeper'}
 const PK_BE = 0.5425;              // pick'em break-even per pick on standard 5- and 6-pick flex entries (flat-payout lines)
 let PS = {board: null, mode: 'none', at: null};
 let boardTried = false, boardTimer = null, showExample = false;
-let pf = {game: 'all', stat: 'all', sort: 'edge', dir: null, q: '', gated: false, open: new Set(), limit: 120, rows: [], logKey: null, logIdx: null};
+let pf = {game: 'all', stat: 'all', sort: 'edge', dir: null, q: '', gated: false, watch: false, open: new Set(), limit: 120, rows: [], logKey: null, logIdx: null};
 
 const erf = x => { const t = 1 / (1 + 0.3275911 * Math.abs(x)); const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x); return x >= 0 ? y : -y; };
 const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
@@ -4775,7 +4776,7 @@ function renderProps(){
   const rows = (B.props || []).filter(e => PR.variance[e.s]).map(e => { const r = priceRow(e, cache); r.game = games.find(g => String(g.id) === String(e.g)); return r; });   // r.game: a logged bet needs the tip and day to settle
   const gid = pf.game, q = pf.q.trim().toLowerCase();
   let shown = rows.filter(r => (gid === 'all' || String(r.e.g) === gid) && (pf.stat === 'all' || r.e.s === pf.stat)
-    && (!q || r.name.toLowerCase().includes(q)) && (!pf.gated || r.passing));
+    && (!q || r.name.toLowerCase().includes(q)) && (!pf.gated || r.passing) && (!pf.watch || pvW[pvKey(r)]));
   const tipOf = Object.fromEntries(games.map(g => [String(g.id), g.tip]));
   // A game that has tipped can sit on the board for up to one poll; its pre-tip prices are not bettable, so hide them and say so.
   const nowS = Date.now() / 1000, beforeTip = shown.length;
@@ -4848,8 +4849,9 @@ function renderProps(){
   <span class="sc-nums"><div><small>L5</small>${scHit(sc.l5)}</div><div><small>L10</small>${scHit(sc.l10)}</div><div><small>+EV</small>${sc.ev && sc.ev.v != null ? `<b class="${sc.ev.v >= .02 ? 'pos' : ''}">${ec(sc.ev.v)}</b>` : '<b class="muted">none</b>'}</div></span>
   ${tchips ? `<span class="sc-chips">${tchips}</span>` : ''}</button>
  ${open ? `<div class="sc-dt">${scDetail(r, sc, status)}</div>` : ''}</article>`;
-  }).join('') : `<p class="empty" style="padding:16px">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p>`;
+  }).join('') : `<p class="empty" style="padding:16px">${rows.length ? pf.watch && !rows.some(r => pvW[pvKey(r)]) ? 'Nothing is on your watch list. Open a prop and tap Watch to save it here.' : 'No props match these filters.' : 'Nothing on the board yet.'}</p>`;
   scSortUi();
+  { const nw = rows.filter(r => pvW[pvKey(r)]).length; $('pwatchl').textContent = nw ? `Watching only (${nw})` : 'Watching only'; $('pwatch').checked = pf.watch; }
   $('pmore').hidden = shown.length <= pf.limit;
   $('pmore').innerHTML = `<button class="btn" type="button" id="pmorebtn">Show all ${shown.length.toLocaleString()}</button>`;
   $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props${tippedN ? ` (${tippedN.toLocaleString()} hidden: the game has tipped)` : ''}. Click a row for the Kalshi ladder and each book.`;
@@ -5092,6 +5094,7 @@ $('pscan').querySelector('.sc-h').addEventListener('click', e => { const b = e.t
 $('pstat').addEventListener('click', e => { const s = e.target.closest('button')?.dataset.s; if (s){ pf.stat = s; renderProps(); } });
 $('pq').addEventListener('input', e => { pf.q = e.target.value; renderProps(); });
 $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; renderProps(); });
+$('pwatch').addEventListener('change', e => { pf.watch = e.target.checked; renderProps(); });
 $('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
 const toggleRow = tr => { const k = tr.dataset.k; pf.open.has(k) ? pf.open.delete(k) : pf.open.add(k); renderProps(); };
 // Log and watch from a row's detail (Props Table and the Player profile share these: rows come from pf.rows or pl.rows).
@@ -5105,7 +5108,7 @@ function pbClick(e, again){
     const k = sb.dataset.pbstar, r = pbRow(k);
     if (r && !r.sharp) r.sharp = pvSharp(r);            // Player Props rows carry it; the snapshot a watch compares against reads it
     if (pvW[k]) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
-    pvSave(); again(); pvToast(pvW[k] ? 'Watching. Changes on this prop show under Alerts on Player Props.' : 'No longer watching.'); return true;
+    pvSave(); again(); pvToast(pvW[k] ? 'Watching. Switch on Watching only above the table to see your watched props.' : 'No longer watching.'); return true;
   }
   if (t.closest('[data-pbbets]')){ goView('mybets'); return true; }
   return false;
