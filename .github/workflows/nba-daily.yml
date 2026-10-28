@@ -16,6 +16,12 @@ on:
   workflow_dispatch: {}
   schedule:
     - cron: '23 11 * * *'     # 7:23 AM ET, after the overnight box scores land
+    # The box score feed has landed after 7:23 AM ET (Oct 27 games were missing that morning). Re-run through the day so a late
+    # feed is picked up the same day; each run is a no-op when nothing changed.
+    - cron: '23 14 * * *'     # 10:23 AM ET
+    - cron: '23 17 * * *'     # 1:23 PM ET
+    - cron: '23 21 * * *'     # 5:23 PM ET
+    - cron: '23 3 * * *'      # 11:23 PM ET, picks up the day's games once the feed publishes them
 
 concurrency:
   group: nba-daily
@@ -39,6 +45,9 @@ jobs:
           Y=$(date -u +%Y); M=$(date -u +%m)
           CUR=$(( 10#$M >= 8 ? Y + 1 : Y ))        # season label = the year it ends
           python3 nba/scripts/fetch_hoopr.py $((CUR-3)) $((CUR-2)) $((CUR-1)) $CUR
+
+      - name: Box score gap check
+        run: python3 nba/scripts/check_box_freshness.py
 
       - name: Season labels
         id: season
