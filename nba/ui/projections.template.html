@@ -436,14 +436,20 @@ table.nt-days .l{text-align:left}
 .ev-stake{display:grid;gap:8px;justify-items:start}
 .ev-legend{display:grid;gap:8px;font-size:12.5px;color:var(--fg2)}
 .ev-legend > div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;align-items:start}
-.ev-type{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:9px 8px;border-radius:var(--r-ctl);cursor:pointer;border:0;background:none;text-align:left;width:100%;color:inherit}
-.ev-type:hover{background:rgb(var(--ink) / .04)}
-.ev-type[aria-pressed="true"]{background:rgb(var(--ink) / .07)}
-.ev-type .nm{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;flex-wrap:wrap}
-.ev-type .roi{font-family:var(--font-mono);font-size:13px;font-weight:600;text-align:right}
-.ev-type .sub{grid-column:1/-1;font-size:11.5px;color:var(--fg3)}
-.ev-type .ebar{grid-column:1/-1;height:4px;border-radius:2px;background:var(--raised);overflow:hidden}
-.ev-type .ebar i{display:block;height:100%}
+.ev-vd{flex:2 1 320px}.ev-vd h2{margin:0;font-size:20px;letter-spacing:-.015em}.ev-vd p{margin:4px 0 0;color:var(--fg2);font-size:13px;max-width:62ch}
+.ev-sigh{display:flex;align-items:baseline;gap:10px;margin:4px 2px -4px}.ev-sigh h2{margin:0;font-size:15px}.ev-sigh span{font-size:12.5px;color:var(--fg3)}
+.ev-sigs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.ev-sig{display:grid;gap:7px;padding:13px 14px;border-radius:14px;border:1px solid var(--border);background:var(--surface);text-align:left;color:inherit;cursor:pointer;transition:border-color .15s,transform var(--dur-release,.4s) var(--ease-spring,ease)}
+.ev-sig:hover{border-color:var(--border2)}.ev-sig:active{transform:scale(.985);transition-duration:80ms}.ev-sig[aria-pressed="true"]{border-color:var(--fg)}
+.ev-sig .nm{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.ev-sig .roi{font-family:var(--font-mono);font-size:19px;font-weight:600}.ev-sig .sub{font-size:11.5px;color:var(--fg3)}
+.ev-sig .ebar{height:4px;border-radius:2px;background:var(--raised);overflow:hidden}.ev-sig .ebar i{display:block;height:100%}
+.ev-conf{display:grid;gap:3px;justify-items:start}.ev-conf small{font-size:11.5px;color:var(--fg3)}
+.ev-hid{padding:0}.ev-hid summary{cursor:pointer;list-style:none;padding:14px 18px;display:flex;gap:10px;align-items:center;color:var(--fg2)}
+.ev-hid summary::-webkit-details-marker{display:none}.ev-hid summary b{color:var(--fg)}.ev-hid summary::after{content:"Show why";margin-left:auto;font-size:12.5px;color:var(--fg3)}.ev-hid[open] summary::after{content:"Hide"}
+.ev-hrow{display:grid;grid-template-columns:minmax(0,1.3fr) 80px minmax(0,2fr);gap:12px;padding:11px 18px;border-top:1px solid var(--border);align-items:center;font-size:13px}.ev-hrow small{display:block;font-size:12px;color:var(--fg3)}
+@media (max-width:760px){.ev-sigs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:78%;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:4px}.ev-sig{scroll-snap-align:start}}
+@media (max-width:760px){.ev-hrow{grid-template-columns:1fr auto}.ev-hrow>small{grid-column:1/-1}}
 .ev-game{overflow:hidden}
 .ev-ghead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border)}
 .ev-ghead h2{margin:0;font-size:15px;font-weight:600}
@@ -482,6 +488,9 @@ table.nt-days .l{text-align:left}
 .ev-chip.news{color:var(--warn);background:rgba(251,191,36,.12)}
 .pill.proven{color:var(--up);border-color:rgba(74,222,128,.4)}
 .pill.backtested{color:var(--up);border-color:rgba(74,222,128,.25)}
+.pill.working{color:var(--up);border-color:rgba(74,222,128,.4)}
+.pill.collecting{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.pill.hidden{color:var(--down);border-color:rgba(248,113,113,.4)}
 .pill.tracking{color:var(--warn);border-color:rgba(251,191,36,.4)}
 .pill.untested{color:var(--fg3)}
 .ev-case{display:none;padding:4px 18px 18px;gap:14px;grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -2636,14 +2645,16 @@ th{font-weight:500}
       <div class="banner" id="ebanner"></div>
       <section class="card ev-strip" id="estrip"></section>
       <div class="ev-alerts" id="ealerts"></div>
+      <div class="ev-sigh"><h2>Signals</h2><span>Live record this season. Click one to filter the plays.</span></div>
+      <div class="ev-sigs" id="esigs"></div>
       <div class="ev-cols">
         <div class="ev-main">
           <section class="card tbar" id="etool" aria-label="Filters"></section>
           <div id="egames" class="ev-games"></div>
+          <details class="card ev-hid" id="ehid" hidden></details>
         </div>
         <aside class="ev-rail">
-          <section class="card"><h2>Which edges are working</h2><p>Each edge type's record this season, every market. Click one to filter.</p><div id="etypes"></div></section>
-          <section class="card"><h2>Stake</h2><p>Only Proven and Backtest GO plays are sized, on the realistic edge (a promised edge has paid less than promised). Saved in this browser.</p>
+          <section class="card"><h2>Stake</h2><p>Only plays on Working or Proven signals that passed their backtest are sized, on the realistic edge (a promised edge has paid less than promised). Saved in this browser.</p>
             <div class="ev-stake"><label class="bankroll" for="ebank">Bankroll $<input class="pfind" id="ebank" type="number" min="0" step="100" inputmode="decimal"></label>
             <div class="seg" id="ekelly" role="group" aria-label="Kelly fraction"></div><div class="seg" id="ecap" role="group" aria-label="Largest stake per play"></div></div></section>
           <section class="card"><h2>How to read a row</h2><div class="ev-legend" id="elegend"></div></section>
@@ -4830,11 +4841,16 @@ async function loadTrack(){
 }
 
 // cube helpers
+// The cube is decoded once per file (about 23,000 rows: it cost 4 ms a call, and Edges asked once per play). Callers only read the rows.
+let cubeMemo = null;
 function cubeRows(){
   const d = TR && TR.data;
   if (!d || !d.cube) return [];
+  if (cubeMemo && cubeMemo.src === d.cube) return cubeMemo.rows;
   const C = Object.fromEntries(d.cube_cols.map((c, i) => [c, i]));
-  return d.cube.map(r => { const o = Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])); o.etype = o.etype || 'model'; return o; });
+  const rows = d.cube.map(r => { const o = Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])); o.etype = o.etype || 'model'; return o; });
+  cubeMemo = {src: d.cube, rows, agg: new Map()};
+  return rows;
 }
 function trMatch(r, skip = []){
   for (const k of ['venue', 'stat', 'side', 'gate', 'ebin', 'etype', 'book', 'day']){
@@ -4873,7 +4889,13 @@ function liveVerdict(sm, bt){
   return pill('bad', bt ? 'Not matching backtest' : 'Losing');
 }
 // a signal's all-time live record (Edges status and the gated table)
-function signalAgg(stat, venue, side){ return trAgg(cubeRows().filter(r => r.stat === stat && r.venue === venue && r.side === side)); }
+function signalAgg(stat, venue, side){
+  const rows = cubeRows(), k = stat + '|' + venue + '|' + side;      // a signal's record is the same for every play of that stat, venue and side
+  if (!cubeMemo || cubeMemo.rows !== rows) return trAgg(rows.filter(r => r.stat === stat && r.venue === venue && r.side === side));
+  let a = cubeMemo.agg.get(k);
+  if (!a){ a = trAgg(rows.filter(r => r.stat === stat && r.venue === venue && r.side === side)); cubeMemo.agg.set(k, a); }
+  return a;
+}
 
 // ── Track Record top of page: season record, plays, NO-GO list, glossary ─────────────────────────────────────────
 // A PICK is one player, one stat, one side (Over or Under; Kalshi YES is Over, NO is Under). The same pick is priced at several books, apps and
@@ -5587,18 +5609,19 @@ $('tmore').addEventListener('click', e => { if (e.target.id === 'tmorebtn'){ tf.
 // Every 3%+ edge on the board, on every venue, with why it exists and how far to trust it. Same prices as Player
 // Props (priceRow, plus the consensus engine and edge types that scripts/pricing.py mirrors for the shadow ledger).
 // One row per player, stat and side: the same bet on several venues or ladder rungs is one play, its best price
-// sized (best expected log growth), the others listed. Tiers: Proven = backtest GO and MIN_LIVE (300) live bets at z >= 2.13;
-// Backtest GO = gate passed, live record still collecting (sized, shadow); Tracking = WATCH or positive live;
-// Untested = the rest. Only Proven and Backtest GO get a stake.
+// sized (best expected log growth), the others listed. Tiers come from the signal's live record (tierOf): Proven = Working, gate passed
+// and MIN_LIVE (300) bets at z >= 2.13; Working = SIG_MIN (100) settled at or above break-even; Collecting = under SIG_MIN settled.
+// A signal losing on SIG_MIN+ is hidden. Only Proven and Working get a stake.
 const ECFG_DEF = {bank: 1000, kf: .25, cap: .02};
 const GAME_CAP = 3;                 // a game's plays together stake at most this many per-play caps
 let ecfg = {...ECFG_DEF, ...(store.get('nba-edges') || {})};
 const ETYPES = {news: 'News lag', stale: 'Stale line', ladder: 'Ladder gap', gap: 'Price gap', model: 'Model edge'};
 const ETYPE_DESC = {news: 'Injury or lineup news newer than the price', stale: 'Other venues moved, this one did not',
   ladder: "A Kalshi rung out of line with its ladder and the books", gap: 'One venue off the consensus of the others', model: 'Our projection disagrees with the price'};
-const TIER = {proven: 'Proven', backtested: 'Backtest GO', tracking: 'Tracking', untested: 'Untested'};
-const TIER_ORDER = {proven: 0, backtested: 1, tracking: 2, untested: 3};
-let ef = {type: 'all', tier: 'all', venue: 'all', sort: 'tip', open: new Set()};
+const TIER = {proven: 'Proven', working: 'Working', collecting: 'Collecting'};
+const TIER_ORDER = {proven: 0, working: 1, collecting: 2, hidden: 3};
+const SIG_MIN = 100;                // settled bets before a signal's live record can hide it (or size it)
+let ef = {type: 'all', tier: 'all', sig: null, venue: 'all', sort: 'tip', open: new Set()};
 const famOf = c => c.venue === 'kalshi' ? 'kalshi' : c.venue === 'pickem' ? 'pickem' : c.bk === 'Polymarket' ? 'polymarket' : 'book';
 const FAM_LABEL = {kalshi: 'Kalshi', book: 'Sportsbooks', polymarket: 'Polymarket', pickem: "Pick'em"};
 const sideKey = c => c.side === 'Over' || c.side === 'YES' ? 'over' : 'under';
@@ -5620,15 +5643,18 @@ function growth(p){
   const k = p.costP, f = Math.min(ecfg.cap, ecfg.kf * kellyF(p)), q = k + (p.edgeR ?? realEdge(p.fairP - k));
   return f > 0 ? q * Math.log(1 + f * (1 - k) / k) + (1 - q) * Math.log(1 - f) : 0;
 }
+// A signal is one stat, venue family and side. Its live record decides whether a play shows: a signal that is losing on SIG_MIN+ settled
+// bets is hidden (never shown, never sized), whatever its backtest said; under SIG_MIN it is Collecting (shown, not sized); at or above
+// break-even on SIG_MIN+ it is Working (sized); Working that also passed its gate and holds at LIVE_Z on MIN_LIVE+ is Proven.
 function tierOf(p){
   const gs = [];
   if (p.types.includes('model')) gs.push(p.g);
   if (p.types.includes('ladder') || p.types.includes('gap')) gs.push(p.gap_g);
   const gate = gs.includes('go') ? 'go' : gs.includes('watch') ? 'watch' : 'no-go';
   const live = signalAgg(p.r.e.s, famOf(p), sideKey(p));
-  if (gate === 'go') return {tier: live.settled >= MIN_LIVE && live.z != null && live.z >= LIVE_Z ? 'proven' : 'backtested', gate, live};
-  if (gate === 'watch' || (live.settled >= 20 && live.roi > 0)) return {tier: 'tracking', gate, live};
-  return {tier: 'untested', gate, live};
+  if (live.settled < SIG_MIN) return {tier: 'collecting', gate, live};
+  if (live.roi < 0) return {tier: 'hidden', gate, live};
+  return {tier: gate === 'go' && live.settled >= MIN_LIVE && live.z != null && live.z >= LIVE_Z ? 'proven' : 'working', gate, live};
 }
 function liveStatus(key){      // kept for callers that ask by signal key
   const [st, ve, sd] = key.split('|'), x = signalAgg(st, ve, sd === 'YES' || sd === 'Over' ? 'over' : 'under');
@@ -5638,13 +5664,18 @@ const tAt = t => t ? clock(t) : '';
 const betLabel = p => `${SLABEL[p.r.e.s]} ${p.venue === 'kalshi' ? `${p.side} ${p.line + .5}+` : `${p.side} ${p.line}`}`;
 const priceLabel = p => p.venue === 'kalshi' ? Math.round(p.price * 100) + '¢' : p.price == null ? 'flat' : esc(p.price);
 
-function edgePlays(B, noEdits){
+const epMemo = new Map();
+function edgePlays(B, noEdits, withHidden){
   const games = Object.fromEntries((B.games || []).map(g => [String(g.id), g]));
   const news = {};
   for (const n of B.news || []) if (n[0]) (news[n[3]] = news[n[3]] || []).push(n[0]);
   const cache = noEdits ? {__noEdits: true} : {}, groups = {};
+  // Priced rows are reused while nothing they depend on has changed (same rule as pvRows); the plays built from them are new each call, since stakes are set on them.
+  const sig = pvSig(B) + (noEdits ? '|n' : ''), memo = epMemo.get(!!noEdits);
+  const rowsOf = memo && memo.sig === sig ? memo.map : new Map();
+  if (!memo || memo.sig !== sig) epMemo.set(!!noEdits, {sig, map: rowsOf});
   for (const e of (B.props || []).filter(e => PR.variance[e.s])){
-    const r = priceRow(e, cache);
+    let r = rowsOf.get(e); if (!r){ r = priceRow(e, cache); rowsOf.set(e, r); }
     if (!r.all || !r.all.length || r.hold) continue;          // roster guard: no edges until the model can see the team
     const times = [...(e.books || []).filter(x => x[6]).map(x => [x[0], x[6]]), ...(e.kal || []).filter(x => x[6]).map(x => ['Kalshi', x[6]]), ...(e.pk || []).filter(x => x[5]).map(x => [x[0], x[5]])];
     for (const c of r.all){
@@ -5661,7 +5692,7 @@ function edgePlays(B, noEdits){
     ps.sort((a, b) => growth(b) - growth(a) || b.edgeP - a.edgeP);
     const best = ps[0], t = tierOf(best);
     return {...best, ...t, also: ps.slice(1), types: [...new Set(ps.flatMap(x => x.types))].sort((a, b) => Object.keys(ETYPES).indexOf(a) - Object.keys(ETYPES).indexOf(b))};
-  });
+  }).filter(p => withHidden || p.tier !== 'hidden');
 }
 
 function evGauge(p){
@@ -5720,8 +5751,8 @@ function evCase(p, B){
   const size = p.stake != null
     ? `<div class="row"><span>Stake at ${ecfg.kf === .125 ? '⅛' : ecfg.kf === .5 ? '½' : '¼'} Kelly</span><b>$${p.stake.toFixed(2)}</b></div>${p.n != null ? `<div class="row"><span>Contracts</span><b>${p.n}</b></div>` : ''}
        ${p.size != null ? `<div class="row"><span>Offered at ${priceLabel(p)}</span><b>${Math.floor(p.size)}</b></div>` : ''}<div class="row"><span>Expected value</span><b class="pos">+$${p.ev.toFixed(2)}</b></div>
-       ${p.tier === 'backtested' ? `<div class="note">Shadow stake: the signal passed its 2025-26 gate; ${live.settled} of ${MIN_LIVE} live bets settled.</div>` : ''}`
-    : `<div class="note">Not sized. ${p.tier === 'tracking' ? 'Positive or on watch, but not proven.' : 'No gate and too few live bets to judge.'} It is logged in the Track Record either way.</div>`;
+       `
+    : `<div class="note">Not sized: ${p.tier === 'collecting' ? `this signal has ${live.settled} of ${SIG_MIN} settled bets, too few to judge` : 'its live record is positive but it has not passed a backtest'}. It is logged in the Track Record either way.</div>`;
   return `<div class="ev-case">
     <p class="lede">${evLede(p, B)}</p>
     <div class="ev-panel"><h3><span>Every venue at this line<small>Chance of ${esc(betLabel(p).replace(/^\S+ /, ''))}, vig removed</small></span></h3>${evDots(p, rows)}
@@ -5749,10 +5780,10 @@ function renderEdges(){
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
   $('erefresh')?.addEventListener('click', e => NBA_WORKER && onSite ? refreshNow(e.currentTarget) : loadBoard());
   const games = B.games || [];
-  const all = edgePlays(B);
+  const every = edgePlays(B, false, true), all = every.filter(p => p.tier !== 'hidden'), hid = every.filter(p => p.tier === 'hidden');
 
-  // stakes: Proven and Backtest GO only; fractional Kelly, per-play cap, then each game scaled to GAME_CAP x the cap
-  for (const p of all){ p.stake = null; p.n = null; if (p.tier === 'proven' || p.tier === 'backtested') p.stake = ecfg.bank * Math.min(ecfg.cap, ecfg.kf * kellyF(p)); }
+  // stakes: Proven and Working that also passed their backtest gate; fractional Kelly, per-play cap, then each game scaled to GAME_CAP x the cap
+  for (const p of all){ p.stake = null; p.n = null; if ((p.tier === 'proven' || p.tier === 'working') && p.gate === 'go') p.stake = ecfg.bank * Math.min(ecfg.cap, ecfg.kf * kellyF(p)); }
   const sizedAll = all.filter(p => p.stake), byGame = {};
   for (const p of sizedAll) (byGame[p.r.e.g] = byGame[p.r.e.g] || []).push(p);
   for (const ps of Object.values(byGame)){ const tot = ps.reduce((a, p) => a + p.stake, 0), lim = GAME_CAP * ecfg.cap * ecfg.bank; if (tot > lim) ps.forEach(p => { p.stake *= lim / tot; p.scaled = true; }); }
@@ -5767,16 +5798,22 @@ function renderEdges(){
   $('ebanner').innerHTML = pick.mode === 'example' ? `<b>Example: last season's final game at its pre-tip prices.</b><span>${liveN ? '' : 'No props are listed yet; Kalshi lists them the morning of a game. '}The example has no timestamps or news, so only model, price gap and ladder edges show, and there is no order book.</span>${liveN ? '<button class="linkbtn" id="eex" type="button">Back to the live board</button>' : ''}` : '';
   $('eex')?.addEventListener('click', () => { showExample = !showExample; renderEdges(); });
 
-  // summary strip
-  const cnt = k => all.filter(p => p.tier === k).length;
+  // verdict: the page's one-line answer, then the numbers
   const next = games.filter(g => g.tip > (B.t || 0)).sort((a, b) => a.tip - b.tip)[0];
   const recent = (B.news || []).filter(n => B.t - n[0] <= NEWS_S);
   const staked = sizedAll.reduce((a, p) => a + p.stake, 0), ev = sizedAll.reduce((a, p) => a + p.ev, 0);
-  $('estrip').innerHTML = `
-    <div><span class="k">Slate</span><span class="v">${games.length} ${games.length === 1 ? 'game' : 'games'}</span><span class="h">${next ? `Next tip ${clock(next.tip)} ${TZL}` : 'No upcoming tip'}</span></div>
-    <div><span class="k">Edges at ${pc(EDGE_MIN)}+</span><span class="v">${all.length}</span><span class="confs">${['proven', 'backtested', 'tracking', 'untested'].map(k => `<span class="pill ${k}">${cnt(k)} ${TIER[k]}</span>`).join('')}</span></div>
-    <div><span class="k">Sized</span><span class="v">$${staked.toFixed(0)} <small>on ${sizedAll.length} plays</small></span><span class="h">${sizedAll.length ? `EV +$${ev.toFixed(2)} · $${ecfg.bank.toLocaleString()} bankroll` : 'Only Proven and Backtest GO plays'}</span></div>
-    <div><span class="k">News, last 3 h</span><span class="v">${recent.length}</span><span class="h">${all.filter(p => p.types.includes('news')).length} news edges</span></div>`;
+  const sigOf = p => `${p.r.e.s}|${famOf(p)}|${sideKey(p)}`;
+  const sigName = p => `${FAM_LABEL[famOf(p)]} ${SLABEL[p.r.e.s]} ${sideKey(p) === 'over' ? 'over' : 'under'}`;
+  const nGames = new Set(all.map(p => p.r.e.g)).size, nWork = all.filter(p => p.tier !== 'collecting').length;
+  const bestHid = hid.length ? hid.slice().sort((a, b) => b.live.roi - a.live.roi)[0] : null;
+  $('estrip').innerHTML = all.length ? `<div class="ev-vd"><h2>${all.length} ${all.length === 1 ? 'play' : 'plays'} on ${nWork ? 'signals that are holding up or still collecting' : 'signals still collecting'}</h2>
+      <p>${hid.length ? `${hid.length} more ${hid.length === 1 ? 'edge is' : 'edges are'} hidden because ${hid.length === 1 ? 'its' : 'their'} signal is losing live. ` : ''}A play is sized only when its signal has ${SIG_MIN}+ settled bets at or above break-even and passed its backtest.</p></div>
+    <div><span class="k">Plays</span><span class="v">${all.length}</span><span class="h">${nGames} ${nGames === 1 ? 'game' : 'games'}${next ? ` · next tip ${clock(next.tip)} ${TZL}` : ''}</span></div>
+    <div><span class="k">Sized</span><span class="v">$${staked.toFixed(0)} <small>on ${sizedAll.length} plays</small></span><span class="h">${sizedAll.length ? `EV +$${ev.toFixed(2)} · $${ecfg.bank.toLocaleString()} bankroll` : 'No working signal passed its backtest'}</span></div>
+    <div><span class="k">Hidden</span><span class="v">${hid.length}</span><span class="h">signal losing live</span></div>`
+    : `<div class="ev-vd"><h2>${pick.mode === 'empty' ? 'No props listed yet' : 'No working edges right now'}</h2>
+      <p>${hid.length ? `Every edge on the board sits on a signal that is losing live, so ${hid.length} are hidden and none is sized. The best of them is ${esc(sigName(bestHid))} at ${ec(bestHid.live.roi)}%. ` : `No price on the board is ${pc(EDGE_MIN)} or more off our fair right now. `}This page fills in when a signal turns positive or a new one finishes collecting.</p></div>
+    <div><span class="k">Plays</span><span class="v">0</span></div><div><span class="k">Hidden</span><span class="v">${hid.length}</span><span class="h">signal losing live</span></div><div><span class="k">Sized</span><span class="v">$0</span></div>`;
 
   // alerts: the newest status changes
   $('ealerts').innerHTML = recent.slice(0, 3).map(n => {
@@ -5787,11 +5824,11 @@ function renderEdges(){
   // toolbar
   const seg = (key, opts) => `<div class="seg" data-f="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${ef[key] === v}">${l}</button>`).join('')}</div>`;
   const dd = (key, label, opts) => `<select class="sel" data-f="${key}" aria-label="${label}">${opts.map(([v, l]) => `<option value="${v}"${ef[key] === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
-  $('etool').innerHTML = `<div class="tfilters">${seg('type', [['all', 'All types'], ...Object.entries(ETYPES)])}${seg('tier', [['all', 'Any confidence'], ...Object.entries(TIER)])}
+  $('etool').innerHTML = `<div class="tfilters">${seg('type', [['all', 'All types'], ...Object.entries(ETYPES)])}${seg('tier', [['all', 'Any status'], ...Object.entries(TIER)])}
     ${dd('venue', 'Venue', [['all', 'All venues'], ...Object.entries(FAM_LABEL)])}${dd('sort', 'Sort', [['tip', 'By game'], ['edge', 'Biggest edge'], ['trust', 'Most trusted']])}</div>`;
 
   // rows
-  let P = all.filter(p => (ef.type === 'all' || p.types.includes(ef.type)) && (ef.tier === 'all' || p.tier === ef.tier) && (ef.venue === 'all' || famOf(p) === ef.venue || p.also.some(a => famOf(a) === ef.venue)));
+  let P = all.filter(p => (ef.type === 'all' || p.types.includes(ef.type)) && (ef.tier === 'all' || p.tier === ef.tier) && (!ef.sig || sigOf(p) === ef.sig) && (ef.venue === 'all' || famOf(p) === ef.venue || p.also.some(a => famOf(a) === ef.venue)));
   P.sort(ef.sort === 'edge' ? (a, b) => b.edgeP - a.edgeP : ef.sort === 'trust' ? (a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || b.edgeP - a.edgeP : (a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || b.edgeP - a.edgeP);
   const chev = `<svg class="ev-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>`;
   const key = p => `${p.r.e.p}|${p.r.e.s}|${sideKey(p)}`;
@@ -5802,12 +5839,12 @@ function renderEdges(){
         ${evGauge(p)}
         <div class="ev-ev">${ec(p.edgeP)}<small title="What a promised edge this size has actually paid in the backtest. Stakes are sized on this number.">realistic ${ec(p.edgeR)}</small></div>
         <div class="ev-why">${p.types.map(t => `<span class="ev-chip ${t}">${ETYPES[t]}</span>`).join('')}</div>
-        <div class="ev-conf">${pill(p.tier, TIER[p.tier])}</div>
+        <div class="ev-conf">${pill(p.tier, TIER[p.tier])}<small>${p.live.settled >= SIG_MIN ? `${ec(p.live.roi)}% on ${p.live.settled.toLocaleString()}` : `${p.live.settled}/${SIG_MIN} settled`}</small></div>
         <div class="ev-stk"${p.capped != null ? ` title="Capped: the order book only holds about $${Math.round(p.capped).toLocaleString()} at this price"` : ''}>${p.stake != null ? `$${p.stake.toFixed(0)}${p.scaled ? '*' : ''}<small>${p.capped != null ? 'all the book holds' : p.n != null ? p.n + ' contracts' : 'shadow'}</small>` : '<small>not sized</small>'}</div>
         <div class="ev-chevc">${chev}</div>
       </div>${ef.open.has(key(p)) ? evCase(p, B) : ''}</article>`;
-  const head = `<div class="ev-colh"><span>Bet</span><span>Best price</span><span>Cost vs fair</span><span class="r">Edge</span><span>Why</span><span>Confidence</span><span class="r">Stake</span><span></span></div>`;
-  const empty = `<section class="card" style="padding:18px"><p class="empty" style="margin:0">${all.length ? 'No edges match these filters.' : pick.mode === 'empty' ? 'No props listed yet.' : `No price on the board is ${pc(EDGE_MIN)} or more off our fair right now.`}</p></section>`;
+  const head = `<div class="ev-colh"><span>Bet</span><span>Best price</span><span>Cost vs fair</span><span class="r">Edge</span><span>Why</span><span>Signal</span><span class="r">Stake</span><span></span></div>`;
+  const empty = `<section class="card" style="padding:18px"><p class="empty" style="margin:0">${all.length ? 'No edges match these filters.' : pick.mode === 'empty' ? 'No props listed yet.' : hid.length ? 'Nothing to bet. The edges we find sit on signals that are losing live.' : `No price on the board is ${pc(EDGE_MIN)} or more off our fair right now.`}</p></section>`;
   if (ef.sort !== 'tip'){
     $('egames').innerHTML = P.length ? `<section class="card ev-game"><div class="ev-ghead"><h2>All games</h2><span class="meta">${ef.sort === 'edge' ? 'Biggest edge first' : 'Most trusted first'}</span><span class="count">${P.length} edges</span></div>${head}${P.map(p => row(p, true)).join('')}</section>` : empty;
   } else {
@@ -5816,25 +5853,32 @@ function renderEdges(){
     $('egames').innerHTML = html || empty;
   }
 
-  // rail: every edge type's record, all markets
-  const d = TR && TR.data, tc = d && d.type_cols ? Object.fromEntries(d.type_cols.map((c, i) => [c, i])) : null;
-  const trows = tc ? d.types.map(r => Object.fromEntries(Object.entries(tc).map(([k, i]) => [k, r[i]]))) : [];
-  const recs = Object.keys(ETYPES).map(k => ({k, a: trAgg(trows.filter(r => r.type === k))}));
-  const mx = Math.max(.05, ...recs.map(x => Math.abs(x.a.roi || 0)));
-  $('etypes').innerHTML = recs.map(({k, a}) => { const st = a.settled >= MIN_LIVE && a.z >= LIVE_Z ? 'proven' : a.settled >= MIN_LIVE && a.roi > 0 ? 'tracking' : a.settled >= MIN_LIVE ? 'untested' : 'untested';
-    const lab = a.settled < MIN_LIVE ? `Collecting ${a.settled}/${MIN_LIVE}` : st === 'proven' ? 'Holding up' : a.roi > 0 ? 'Positive' : 'Losing';
-    return `<button type="button" class="ev-type" data-type="${k}" aria-pressed="${ef.type === k}"><span class="nm"><span class="ev-chip ${k}">${ETYPES[k]}</span><span class="pill ${st}" style="height:18px;font-size:10.5px">${lab}</span></span>
-      <span class="roi ${a.roi > 0 ? 'pos' : a.roi < 0 ? 'neg' : ''}">${a.settled ? (a.roi > 0 ? '+' : '') + (a.roi * 100).toFixed(1) + '%' : ''}</span>
-      <span class="ebar"><i style="width:${Math.abs(a.roi || 0) / mx * 100}%;background:${(a.roi || 0) >= 0 ? 'var(--up)' : 'var(--down)'}"></i></span>
-      <span class="sub">${a.bets ? `${a.bets.toLocaleString()} bets · ${a.settled} settled · CLV ${a.clv != null ? ec(a.clv) : 'n/a'} · z ${a.z ?? 'n/a'}` : ETYPE_DESC[k]}</span></button>`; }).join('');
+  // signals: the live record behind every play on the board (one card per stat, venue and side)
+  const sigs = new Map();
+  for (const p of all) if (!sigs.has(sigOf(p))) sigs.set(sigOf(p), {k: sigOf(p), name: sigName(p), live: p.live, tier: p.tier, n: 0});
+  for (const p of all) sigs.get(sigOf(p)).n++;
+  const sl = [...sigs.values()].sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier] || b.live.roi - a.live.roi);
+  const smx = Math.max(.05, ...sl.map(x => Math.abs(x.live.roi || 0)));
+  $('esigs').innerHTML = sl.map(x => { const l = x.live, col = x.tier === 'collecting';
+    return `<button type="button" class="ev-sig" data-sig="${esc(x.k)}" aria-pressed="${ef.sig === x.k}"><span class="nm"><b>${esc(x.name)}</b>${pill(x.tier, col ? `Collecting ${l.settled}/${SIG_MIN}` : TIER[x.tier])}</span>
+      <span class="roi ${l.roi > 0 ? 'pos' : l.roi < 0 ? 'neg' : ''}">${l.settled ? ec(l.roi) + '%' : 'no record'}</span>
+      <span class="ebar ${col ? 'col' : ''}"><i style="width:${col ? l.settled / SIG_MIN * 100 : Math.abs(l.roi || 0) / smx * 100}%;background:${col ? 'var(--warn)' : (l.roi || 0) >= 0 ? 'var(--up)' : 'var(--down)'}"></i></span>
+      <span class="sub">${x.n} ${x.n === 1 ? 'play' : 'plays'} · ${l.bets.toLocaleString()} bets · ${l.settled.toLocaleString()} settled · CLV ${l.clv != null ? ec(l.clv) : 'n/a'}</span></button>`; }).join('');
+  $('esigs').previousElementSibling.hidden = !sl.length;
+  // hidden: plays whose signal is losing on SIG_MIN+ settled bets. Still logged and settled in the Track Record.
+  const hg = new Map();
+  for (const p of hid){ const k = sigOf(p); if (!hg.has(k)) hg.set(k, {name: sigName(p), live: p.live, n: 0}); hg.get(k).n++; }
+  $('ehid').hidden = !hid.length;
+  $('ehid').innerHTML = hid.length ? `<summary><b>${hid.length} ${hid.length === 1 ? 'edge' : 'edges'} hidden</b><span>their signal is losing live on ${SIG_MIN}+ settled bets</span></summary>`
+    + [...hg.values()].sort((a, b) => a.live.roi - b.live.roi).map(x => `<div class="ev-hrow"><div><b>${esc(x.name)}</b><small>${x.n} ${x.n === 1 ? 'edge' : 'edges'} on the board</small></div><span class="num neg">${ec(x.live.roi)}%</span><small>${x.live.settled.toLocaleString()} settled · CLV ${x.live.clv != null ? ec(x.live.clv) : 'n/a'}. Still logged in the Track Record; it returns when the signal turns positive.</small></div>`).join('') : '';
   $('ebank').value = ecfg.bank;
   $('ekelly').innerHTML = [[.125, '⅛ Kelly'], [.25, '¼ Kelly'], [.5, '½ Kelly']].map(([v, l]) => `<button type="button" data-k="${v}" aria-pressed="${ecfg.kf === v}">${l}</button>`).join('');
   $('ecap').innerHTML = [.01, .02, .03].map(v => `<button type="button" data-c="${v}" aria-pressed="${ecfg.cap === v}">${v * 100}% max</button>`).join('');
   $('elegend').innerHTML = `
-    <div>${pill('proven', 'Proven')}<span>Passed its 2025-26 gate and ${MIN_LIVE}+ live bets hold up at 2.13 standard errors. Sized.</span></div>
-    <div>${pill('backtested', 'Backtest GO')}<span>Passed its gate; the live record is still collecting. Sized as a shadow bet.</span></div>
-    <div>${pill('tracking', 'Tracking')}<span>On watch, or winning live but not proven. Not sized.</span></div>
-    <div>${pill('untested', 'Untested')}<span>No gate, too few live bets. Not sized.</span></div>
+    <div>${pill('proven', 'Proven')}<span>Working, passed its 2025-26 gate, and ${MIN_LIVE}+ live bets hold up at 2.13 standard errors. Sized.</span></div>
+    <div>${pill('working', 'Working')}<span>${SIG_MIN}+ settled bets at or above break-even. Sized only if it also passed its 2025-26 gate.</span></div>
+    <div>${pill('collecting', 'Collecting')}<span>Under ${SIG_MIN} settled bets, too few to judge. Shown, not sized.</span></div>
+    <div>${pill('hidden', 'Hidden')}<span>Losing live on ${SIG_MIN}+ settled bets. Not shown, not sized; still logged.</span></div>
     <div><span class="muted num" style="font-size:12px">cost | fair</span><span>The bar runs from what the price needs (red) to our fair chance (green).</span></div>`;
   $('efoot').innerHTML = `
     <div><b>Edges</b> are every price at ${pc(EDGE_MIN)}+ off our fair after fees, on Kalshi, the sportsbooks, Polymarket and the pick'em apps. Fair is either the model (projection blended with the price) or the consensus of the other venues moved to this line (<code>scripts/consensus.py</code>), whichever edge fired; when both did, the bigger. Several venues or rungs for the same player, stat and side are one play: the best price is sized and the others are listed.</div>
@@ -5846,7 +5890,7 @@ $('ekelly').addEventListener('click', e => { const k = e.target.closest('button'
 $('ecap').addEventListener('click', e => { const c = e.target.closest('button')?.dataset.c; if (c){ ecfg.cap = +c; store.set('nba-edges', ecfg); renderEdges(); } });
 $('etool').addEventListener('click', e => { const b = e.target.closest('.seg[data-f] button'); if (b){ ef[b.parentElement.dataset.f] = b.dataset.v; renderEdges(); } });
 $('etool').addEventListener('change', e => { const f = e.target.dataset.f; if (f){ ef[f] = e.target.value; renderEdges(); } });
-$('etypes').addEventListener('click', e => { const b = e.target.closest('.ev-type'); if (b){ ef.type = ef.type === b.dataset.type ? 'all' : b.dataset.type; renderEdges(); } });
+$('esigs').addEventListener('click', e => { const b = e.target.closest('.ev-sig'); if (b){ ef.sig = ef.sig === b.dataset.sig ? null : b.dataset.sig; renderEdges(); } });
 $('ealerts').addEventListener('click', e => { const b = e.target.closest('button[data-type]'); if (b){ ef.type = b.dataset.type; renderEdges(); $('egames').scrollIntoView({behavior: 'smooth', block: 'start'}); } });
 const evToggle = el => { const k = el.closest('.ev-edge').dataset.k; ef.open.has(k) ? ef.open.delete(k) : ef.open.add(k); renderEdges(); };
 $('egames').addEventListener('click', e => { const r = e.target.closest('.ev-row'); if (r) evToggle(r); });
@@ -8708,7 +8752,7 @@ $('v-backtests').addEventListener('click', e => {
   const c = e.target.closest('button[data-confirm]');
   if (c){ fsConf.add(c.dataset.confirm); fsSave(FS_CONF, fsConf); renderFinder(); return; }          // revealing the second half is a look: it counts
   const g = e.target.closest('[data-edges]');
-  if (g){ ef.venue = g.dataset.edges; ef.tier = 'all'; ef.type = 'all'; history.replaceState(null, '', '#edges'); show('edges'); window.scrollTo(0, 0); }
+  if (g){ ef.venue = g.dataset.edges; ef.tier = 'all'; ef.type = 'all'; ef.sig = null; history.replaceState(null, '', '#edges'); show('edges'); window.scrollTo(0, 0); }
 });
 
 // ── Player Props v2 ───────────────────────────────────────────────────────
@@ -8741,9 +8785,10 @@ const PV_TIER = {go: ['passed', 'Passed the backtest'], watch: ['tracking', 'Tra
 let priceVer = 0, pvMemo = null;
 const pvIds = new WeakMap();
 const pvId = o => { if (!pvIds.has(o)) pvIds.set(o, pvIds.size + 1); return pvIds.get(o); };
+const pvSig = B => [pvId(B), B.t, (B.props || []).length, PS.mode, priceVer, PRE_ON, Math.floor(Date.now() / 60000), JSON.stringify(edits), JSON.stringify(tonightEdits)].join('|');
 function pvRows(){
   const B = PS.board;
-  const sig = [pvId(B), B.t, (B.props || []).length, PS.mode, priceVer, PRE_ON, Math.floor(Date.now() / 60000), JSON.stringify(edits), JSON.stringify(tonightEdits)].join('|');
+  const sig = pvSig(B);
   if (pvMemo && pvMemo.sig === sig) return pvMemo.out;
   const out = pvRowsBuild();
   pvMemo = {sig, out};

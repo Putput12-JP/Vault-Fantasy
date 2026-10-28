@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vault NBA Edges V2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Edges V2 mock. One rule drives the page: a signal with a losing live record on 100+ settled bets is hidden and never staked.
+   Signals under 100 settled stay, labelled "Collecting". Example data: records for the five signal types are the live numbers
+   from the current page; the working signals and plays are illustrative so the layout can be judged. */
+:root{
+  --bg:#000; --surface:#18181B; --surface2:#1f1f23; --raised:#27272A; --border:#27272A; --border2:#3f3f46;
+  --fg:#fff; --fg2:#A1A1AA; --fg3:#71717A;
+  --up:#4ade80; --down:#f87171; --warn:#fbbf24; --info:#93c5fd;
+  --up-soft:rgba(74,222,128,.12); --warn-soft:rgba(251,191,36,.12); --down-soft:rgba(248,113,113,.1);
+  --sans:'Inter',system-ui,-apple-system,sans-serif; --mono:'JetBrains Mono',Menlo,monospace;
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pos{color:var(--up)} .neg{color:var(--down)} .mut{color:var(--fg3)}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px 56px}
+
+/* header */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid var(--border)}
+.top h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.top .crumb{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+.top .r{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:99px;font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid var(--border2);color:var(--fg2)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.up{color:var(--up);border-color:rgba(74,222,128,.4)} .pill.warn{color:var(--warn);border-color:rgba(251,191,36,.4)} .pill.down{color:var(--down);border-color:rgba(248,113,113,.4)}
+.demo{display:inline-flex;border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+.demo button{padding:5px 10px;font-size:12px;color:var(--fg2)} .demo button[aria-pressed=true]{background:var(--raised);color:var(--fg)}
+.banner{margin:14px 0 0;padding:9px 12px;border:1px solid rgba(251,191,36,.35);background:var(--warn-soft);border-radius:10px;font-size:12.5px;color:var(--fg2)}
+.banner b{color:var(--warn);font-weight:600}
+
+/* verdict */
+.verdict{margin-top:16px;padding:20px;border:1px solid var(--border);background:var(--surface);border-radius:16px;display:grid;gap:14px}
+.verdict h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.015em}
+.verdict p{margin:4px 0 0;color:var(--fg2);max-width:62ch}
+.kpis{display:flex;gap:28px;flex-wrap:wrap}
+.kpi .k{display:block;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.kpi .v{font:600 22px var(--mono)}
+.kpi .h{display:block;font-size:12px;color:var(--fg3)}
+
+/* signals */
+.sec{display:flex;align-items:baseline;gap:10px;margin:28px 0 10px}
+.sec h3{margin:0;font-size:15px;font-weight:600}
+.sec span{font-size:12.5px;color:var(--fg3)}
+.sigs{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.sig{padding:14px;border:1px solid var(--border);background:var(--surface);border-radius:14px;text-align:left;display:grid;gap:8px;transition:border-color .15s,transform var(--dur,.4s) var(--ease-out)}
+.sig:hover{border-color:var(--border2)} .sig:active{transform:scale(.985)}
+.sig[aria-pressed=true]{border-color:var(--fg)}
+.sig .nm{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sig .nm b{font-weight:600}
+.sig .roi{font:600 20px var(--mono)}
+.sig .bar{height:4px;border-radius:4px;background:var(--raised);overflow:hidden}
+.sig .bar i{display:block;height:100%;border-radius:4px}
+.sig .sub{font-size:12px;color:var(--fg3)}
+.prog{height:4px;border-radius:4px;background:var(--raised);overflow:hidden}.prog i{display:block;height:100%;background:var(--warn)}
+
+/* plays */
+.plays{display:grid;gap:10px}
+.game{display:flex;align-items:center;gap:10px;margin:18px 0 2px;color:var(--fg2);font-size:13px}
+.game b{color:var(--fg);font-weight:600;font-size:14px}
+.play{border:1px solid var(--border);background:var(--surface);border-radius:16px;overflow:hidden}
+.pr{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,1.4fr) auto;gap:16px;align-items:center;padding:14px 16px;width:100%;text-align:left}
+.pr:hover{background:var(--surface2)}
+.who{display:flex;gap:12px;align-items:center;min-width:0}
+.av{width:38px;height:38px;border-radius:50%;background:var(--raised);display:grid;place-items:center;font:600 12px var(--mono);color:var(--fg2);flex:none}
+.who b{display:block;font-weight:600;line-height:1.25}
+.who small,.px small{display:block;color:var(--fg3);font-size:12px;line-height:1.35}
+.px b{font:600 15px var(--mono)}
+.edge{display:grid;gap:6px}
+.edge .e{display:flex;align-items:baseline;gap:8px}
+.edge .e b{font:600 20px var(--mono);color:var(--up)} .edge .e small{color:var(--fg3);font-size:12px}
+.gauge{height:6px;border-radius:6px;background:var(--raised);position:relative}
+.gauge i{position:absolute;top:0;bottom:0;border-radius:6px;background:var(--up);opacity:.85}
+.gauge u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--down);text-decoration:none}
+.gl{display:flex;justify-content:space-between;font:500 11px var(--mono);color:var(--fg3)}
+.stake{text-align:right}.stake b{font:600 16px var(--mono)}.stake small{display:block;color:var(--fg3);font-size:12px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:500;background:var(--raised);color:var(--fg2)}
+.chip.ok{background:var(--up-soft);color:var(--up)} .chip.col{background:var(--warn-soft);color:var(--warn)}
+.case{display:none;padding:2px 16px 16px;border-top:1px solid var(--border);gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.play.open .case{display:grid}
+.case h4{margin:14px 0 6px;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.case p{margin:0;color:var(--fg2);font-size:13px}
+.case table{width:100%;border-collapse:collapse;font-size:12.5px}
+.case td{padding:5px 0;border-bottom:1px solid var(--border)} .case td:last-child{text-align:right;font-family:var(--mono)}
+
+/* hidden */
+details.hid{margin-top:28px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+details.hid summary{cursor:pointer;list-style:none;padding:14px 16px;display:flex;gap:10px;align-items:center;color:var(--fg2)}
+details.hid summary::-webkit-details-marker{display:none}
+details.hid summary b{color:var(--fg)}
+details.hid summary::after{content:"Show why";margin-left:auto;font-size:12.5px;color:var(--fg3)}
+details.hid[open] summary::after{content:"Hide"}
+.hrow{display:grid;grid-template-columns:minmax(0,1.3fr) 90px minmax(0,2fr) 70px;gap:12px;padding:11px 16px;border-top:1px solid var(--border);font-size:13px;align-items:center}
+.hrow .sub{color:var(--fg3);font-size:12px}
+.empty{padding:28px 20px;border:1px dashed var(--border2);border-radius:16px;color:var(--fg2);text-align:center}
+.empty b{display:block;color:var(--fg);font-size:16px;margin-bottom:4px}
+.foot{margin-top:32px;color:var(--fg3);font-size:12.5px;display:grid;gap:8px;max-width:78ch}.foot b{color:var(--fg2)}
+
+@media (max-width:760px){
+  .pr{grid-template-columns:1fr auto;gap:10px 12px}
+  .pr .px{grid-column:1}.pr .stake{grid-column:2;grid-row:1}.pr .edge{grid-column:1 / -1}
+  .hrow{grid-template-columns:1fr 70px}.hrow .sub.w{grid-column:1 / -1;order:3}
+  .kpis{gap:18px}
+}
+@media (prefers-reduced-motion:reduce){.sig{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><span class="crumb">Betting /</span> <h1 style="display:inline">Edges</h1></div>
+    <div class="r"><span class="pill up">Live</span><span>Board 11 min ago</span>
+      <span class="demo" role="group" aria-label="Mock state"><button data-s="some" aria-pressed="true">Some working</button><button data-s="none" aria-pressed="false">None working</button></span></div>
+  </header>
+  <div class="banner"><b>Design mock, example data.</b> The five signal records are the live numbers from the current page. The working signals and the plays under them are illustrative, so the layout can be judged. Nothing here is a bet.</div>
+
+  <section class="verdict" id="verdict"></section>
+
+  <div class="sec"><h3>Signals</h3><span>Live record this season, every market. Click one to filter the plays.</span></div>
+  <div class="sigs" id="sigs"></div>
+
+  <div id="plays"></div>
+  <details class="hid" id="hid"></details>
+
+  <div class="foot">
+    <div><b>The rule.</b> A signal with a losing live record on 100 or more settled bets is hidden and never staked, whatever last season's backtest said. A signal under 100 settled is kept and labelled Collecting; it is shown, but not staked until it reaches 100 and holds up.</div>
+    <div><b>Realistic edge</b> is the promised edge after the backtest haircut. Stake is fractional Kelly on that number, capped per play and per game.</div>
+    <div><b>Hidden plays are still logged</b> and settled in the Track Record, so a signal that turns around comes back on its own.</div>
+  </div>
+</div>
+
+<script>
+const MIN = 100;
+// live records: first five are the current page's numbers; the last two are illustrative
+const SIG = [
+  {id:'news',   name:'News lag',   roi:-.091, bets:1152,  settled:1015, clv:.6},
+  {id:'stale',  name:'Stale line', roi:-.103, bets:4200,  settled:3164, clv:.1},
+  {id:'ladder', name:'Ladder gap', roi:-.089, bets:3841,  settled:3097, clv:.3},
+  {id:'gap',    name:'Price gap',  roi:-.076, bets:10836, settled:8228, clv:.7},
+  {id:'model',  name:'Model edge', roi:-.072, bets:10735, settled:8823, clv:1.1},
+  {id:'k3',     name:'Kalshi 3PM NO', roi:.041, bets:212, settled:164, clv:1.8, ex:1},
+  {id:'ptsu',   name:'Book points under', roi:.018, bets:61, settled:47, clv:.9, ex:1},
+];
+const status = s => s.settled >= MIN ? (s.roi < 0 ? 'hidden' : 'working') : 'collecting';
+// illustrative plays, each tied to one signal
+const PLAYS = [
+  {sig:'k3',   g:'MIA @ ATL', who:'Tim Hardaway Jr.', ini:'TH', tm:'MIA', bet:'3PM NO 2+', bk:'Kalshi', px:'49¢', also:'moved 8:02 AM', cost:.51, fair:.558, edge:.048, real:.032, stake:16, n:31},
+  {sig:'k3',   g:'MIA @ ATL', who:'Andrew Wiggins',   ini:'AW', tm:'MIA', bet:'3PM NO 2+', bk:'Kalshi', px:'52¢', also:'also DraftKings +3.2', cost:.54, fair:.587, edge:.047, real:.032, stake:16, n:30},
+  {sig:'k3',   g:'DAL vs OKC', who:'Naji Marshall',   ini:'NM', tm:'DAL', bet:'3PM NO 3+', bk:'Kalshi', px:'71¢', also:'also Pinnacle +2.6', cost:.73, fair:.771, edge:.041, real:.029, stake:14, n:19},
+  {sig:'ptsu', g:'HOU game', who:'Alperen Sengun',  ini:'AS', tm:'HOU', bet:'PTS Under 21.5', bk:'FanDuel', px:'-104', also:'also Pinnacle +1.9', cost:.505, fair:.541, edge:.036, real:.027, stake:null, n:null},
+];
+const GAMES = {'MIA @ ATL':'Wed 6:00 PM CT · total 242.5','DAL vs OKC':'Wed 8:30 PM CT','HOU game':'Fri 7:00 PM CT'};
+// plays that exist on the board but sit under a hidden signal (counts from the current page)
+const HIDDEN_PLAYS = {news:6, stale:14, ladder:12, gap:9, model:5};
+let state='some', filt=null;
+const pct=(x,d=1)=>(x*100).toFixed(d)+'%', sgn=x=>(x>0?'+':'')+(x*100).toFixed(1)+'%';
+const $=id=>document.getElementById(id);
+
+function render(){
+  const sigs = SIG.filter(s => state==='some' || !s.ex);
+  const st = s => status(s);
+  const live = sigs.filter(s => st(s)!=='hidden');
+  const ids = new Set(live.map(s=>s.id));
+  const plays = PLAYS.filter(p => ids.has(p.sig));
+  const hiddenN = Object.entries(HIDDEN_PLAYS).reduce((a,[k,v])=> a + (sigs.some(s=>s.id===k && st(s)==='hidden') ? v : 0), 0);
+  const staked = plays.filter(p=>p.stake && status(SIG.find(s=>s.id===p.sig))==='working').reduce((a,p)=>a+p.stake,0);
+
+  // verdict
+  if (plays.length) {
+    $('verdict').innerHTML = `<div><h2>${plays.length} plays on signals that are holding up or still collecting</h2><p>${hiddenN} more edges are hidden because their signal is losing live. Nothing below is staked unless its signal has 100+ settled bets and is at or above break-even.</p></div>
+      <div class="kpis"><div class="kpi"><span class="k">Plays</span><span class="v num">${plays.length}</span><span class="h">${new Set(plays.map(p=>p.g)).size} games</span></div>
+      <div class="kpi"><span class="k">Staked</span><span class="v num">$${staked}</span><span class="h">${staked ? 'on proven signals only' : 'nothing proven yet'}</span></div>
+      <div class="kpi"><span class="k">Hidden</span><span class="v num">${hiddenN}</span><span class="h">signal losing live</span></div></div>`;
+  } else {
+    $('verdict').innerHTML = `<div><h2>No working edges right now</h2><p>Every signal with a real sample is losing live, so ${hiddenN} edges on the board are hidden and none are staked. The best signal is ${best(sigs)}. This page will fill in when a signal turns positive or a new one finishes collecting.</p></div>
+      <div class="kpis"><div class="kpi"><span class="k">Plays</span><span class="v num">0</span></div><div class="kpi"><span class="k">Hidden</span><span class="v num">${hiddenN}</span><span class="h">signal losing live</span></div><div class="kpi"><span class="k">Staked</span><span class="v num">$0</span></div></div>`;
+  }
+
+  // signal cards
+  const mx = Math.max(.05, ...sigs.map(s=>Math.abs(s.roi)));
+  $('sigs').innerHTML = sigs.slice().sort((a,b)=>({working:0,collecting:1,hidden:2}[st(a)]-{working:0,collecting:1,hidden:2}[st(b)]) || b.roi-a.roi).map(s=>{
+    const k=st(s), c = k==='working'?'up':k==='collecting'?'warn':'down';
+    const lab = k==='working'?'Working':k==='collecting'?`Collecting ${s.settled}/${MIN}`:'Hidden: losing';
+    return `<button class="sig" data-id="${s.id}" aria-pressed="${filt===s.id}"${k==='hidden'?' style="opacity:.62"':''}>
+      <span class="nm"><b>${s.name}</b><span class="pill ${c}">${lab}</span></span>
+      <span class="roi ${s.roi>0?'pos':'neg'}">${sgn(s.roi)}</span>
+      ${k==='collecting'?`<span class="prog"><i style="width:${s.settled/MIN*100}%"></i></span>`:`<span class="bar"><i style="width:${Math.abs(s.roi)/mx*100}%;background:var(--${s.roi>0?'up':'down'})"></i></span>`}
+      <span class="sub">${s.bets.toLocaleString()} bets · ${s.settled.toLocaleString()} settled · CLV ${s.clv>0?'+':''}${s.clv}</span></button>`;}).join('');
+
+  // plays
+  const shown = plays.filter(p=>!filt||p.sig===filt);
+  if (!plays.length) $('plays').innerHTML = `<div class="sec"><h3>Plays</h3></div><div class="empty"><b>Nothing to bet.</b>The edges we do find are all on signals that are losing.</div>`;
+  else {
+    let h = `<div class="sec"><h3>Plays</h3><span>${shown.length} shown${filt?` for ${SIG.find(s=>s.id===filt).name}`:''}</span></div><div class="plays">`, last='';
+    for (const p of shown) {
+      const s = SIG.find(x=>x.id===p.sig), k = status(s), key=p.who+p.bet;
+      if (p.g!==last){ h += `<div class="game"><b>${p.g}</b><span>${GAMES[p.g]}</span></div>`; last=p.g; }
+      const lo=Math.max(0,Math.min(p.cost,p.fair)-.06), hi=Math.min(1,Math.max(p.cost,p.fair)+.06), x=v=>(v-lo)/(hi-lo)*100;
+      const sized = k==='working' && p.stake;
+      h += `<article class="play" data-k="${key}"><button class="pr" aria-expanded="false">
+        <div class="who"><span class="av">${p.ini}</span><div><b>${p.who}</b><small>${p.bet} · ${p.tm}</small><span class="tags"><span class="chip ${k==='working'?'ok':'col'}">${s.name} ${sgn(s.roi)}</span><span class="chip ${k==='working'?'ok':'col'}">${k==='working'?'Working':'Collecting '+s.settled+'/'+MIN}</span></span></div></div>
+        <div class="px"><b>${p.bk} ${p.px}</b><small>${p.also}</small></div>
+        <div class="edge"><div class="e"><b>${sgn(p.real).replace('%','')}</b><small>realistic · promised ${sgn(p.edge).replace('%','')}</small></div>
+          <div class="gauge"><i style="left:${x(p.cost)}%;width:${x(p.fair)-x(p.cost)}%"></i><u style="left:${x(p.cost)}%"></u></div>
+          <div class="gl"><span>cost ${pct(p.cost)}</span><span>fair ${pct(p.fair)}</span></div></div>
+        <div class="stake">${sized?`<b>$${p.stake}</b><small>${p.n} contracts</small>`:`<small>not staked<br>until ${MIN} settle</small>`}</div></button>
+        <div class="case"><div><h4>Why it is an edge</h4><p>${p.bk} charges ${pct(p.cost)} with fees; the other venues, moved to this line, put it at ${pct(p.fair)}.</p></div>
+          <div><h4>The record behind it</h4><table><tr><td>Signal</td><td>${s.name}</td></tr><tr><td>Settled</td><td>${s.settled.toLocaleString()}</td></tr><tr><td>Live ROI</td><td class="${s.roi>0?'pos':'neg'}">${sgn(s.roi)}</td></tr><tr><td>CLV</td><td>${s.clv>0?'+':''}${s.clv}</td></tr></table></div></div></article>`;
+    }
+    $('plays').innerHTML = h + '</div>';
+  }
+
+  // hidden
+  const hs = sigs.filter(s=>st(s)==='hidden');
+  $('hid').innerHTML = hs.length ? `<summary><b>${hiddenN} edges hidden</b><span>their signal is losing live on 100+ settled bets</span></summary>`+
+    hs.map(s=>`<div class="hrow"><div><b>${s.name}</b><div class="sub">${HIDDEN_PLAYS[s.id]} edges on the board</div></div><span class="num neg">${sgn(s.roi)}</span><div class="sub w">${s.settled.toLocaleString()} settled · CLV ${s.clv>0?'+':''}${s.clv}. Still logged in the Track Record; returns when it turns positive.</div><span class="pill down">Hidden</span></div>`).join('') : '';
+  $('hid').hidden = !hs.length;
+}
+function best(sigs){ const s = sigs.slice().sort((a,b)=>b.roi-a.roi)[0]; return `${s.name} at ${sgn(s.roi)}`; }
+
+document.addEventListener('click', e=>{
+  const d=e.target.closest('.demo button'); if(d){ state=d.dataset.s; filt=null; document.querySelectorAll('.demo button').forEach(b=>b.setAttribute('aria-pressed',b===d)); render(); return; }
+  const s=e.target.closest('.sig'); if(s){ filt = filt===s.dataset.id?null:s.dataset.id; render(); return; }
+  const r=e.target.closest('.pr'); if(r){ const a=r.closest('.play'); const o=a.classList.toggle('open'); r.setAttribute('aria-expanded',o); }
+});
+render();
+</script>
+</body>
+</html>
