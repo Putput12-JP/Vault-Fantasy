@@ -4,9 +4,10 @@ Render the app page (nba/projections.html) from ui/projections.template.html wit
 since an artifact page cannot fetch local files. Called by build_player_projections.py and
 build_data_health.py; run it alone to re-render after a template change.
 
-  python3 nba/scripts/render_app.py
+  python3 nba/scripts/render_app.py          # the website page (nba/projections.html + nba/img/)
+  python3 nba/scripts/render_app.py --full   # self-contained copy for an artifact (nba/projections.full.html, not committed)
 """
-import json, os
+import base64, json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
@@ -148,7 +149,30 @@ def control():
                         {'name': "Correlated pick'em pairs", 'verdict': (pickem() or {}).get('verdict'), 'note': 'two families passed', 'doc': 'nba/docs/pickem-correlation-results.md'}]}
 
 
-def render():
+def slim_photos():
+    """photos.json for the website: each embedded headshot and logo is written once to nba/img/ and the page gets its path instead of
+    a data URI, so the browser fetches only the photos on screen and caches them (the inline copy was 3.2 MB of every page load)."""
+    d = load('photos.json')
+    if not d:
+        return d
+    img = os.path.join(HERE, '..', 'img')
+    for kind in ('heads', 'logos'):
+        os.makedirs(os.path.join(img, kind), exist_ok=True)
+        for k, uri in list(d.get(kind, {}).items()):
+            head, _, b64 = uri.partition(',')
+            if not head.startswith('data:image/png;base64'):
+                continue
+            path = os.path.join(img, kind, f'{k}.png')
+            raw = base64.b64decode(b64)
+            if not os.path.exists(path) or open(path, 'rb').read() != raw:
+                open(path, 'wb').write(raw)
+            d[kind][k] = f'img/{kind}/{k}.png'
+    return d
+
+
+def render(full=False):
+    """Default: the website page, with photos and the track-record snapshot as files beside it. full=True (--full): one self-contained
+    file with everything inlined, for publishing as an artifact (which cannot fetch local files)."""
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
     hk = os.path.join(HERE, '..', 'ui', 'halaska', 'dist.js')
     # Halaska UI bundle (ui/halaska/dist.js, built by `node build.mjs` there); the page degrades to no kit if it is absent
@@ -158,12 +182,14 @@ def render():
     tpl = tpl.replace('/*VAULT_APPEARANCE*/', open(os.path.join(HERE, '..', '..', 'src', 'vault-appearance.js')).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*MINUTES_GBM_JS*/', open(gj).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*ROTATION_MINUTES_JS*/', open(rj).read().replace('</script', '<\\/script'))
+    tpl = tpl.replace('<!--PRELOAD-->', '' if full else '<link rel="preload" href="data/track.json" as="fetch" crossorigin="anonymous">')   # starts the snapshot download while the page itself is still arriving
     html = (tpl.replace('/*DATA*/null', json.dumps(projections(), separators=(',', ':')))
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))
                .replace('/*BOARD*/null', json.dumps(load('prop_board.json'), separators=(',', ':')))
                .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
-               .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')))
+               .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')) if full else 'null')
+               .replace('/*TRACKFILE*/null', 'null' if full else "'data/track.json'")
                .replace('/*GPICKS*/null', json.dumps(load('game_picks.json'), separators=(',', ':')))
                .replace('/*LIVESEASON*/null', json.dumps(load('live_season.json'), separators=(',', ':')))
                .replace('/*GBMMODEL*/null', json.dumps(load('minutes_gbm.json'), separators=(',', ':')))
@@ -179,11 +205,11 @@ def render():
                .replace('/*DIETDEF*/null', json.dumps(load('diet_defense.json'), separators=(',', ':')))
                .replace('/*MATCHUP*/null', json.dumps(load('matchup_terms.json'), separators=(',', ':')))
                .replace('/*TEAMALLOW*/null', json.dumps(load('team_allowance.json'), separators=(',', ':')))
-               .replace('/*PHOTOS*/null', json.dumps(load('photos.json'), separators=(',', ':'))))
-    out = os.path.join(HERE, '..', 'projections.html')
+               .replace('/*PHOTOS*/null', json.dumps(load('photos.json') if full else slim_photos(), separators=(',', ':'))))
+    out = os.path.join(HERE, '..', 'projections.full.html' if full else 'projections.html')
     open(out, 'w').write(html)
     print(f'rendered {os.path.relpath(out)} ({os.path.getsize(out) // 1000} KB)')
 
 
 if __name__ == '__main__':
-    render()
+    render(full='--full' in sys.argv)
