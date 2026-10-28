@@ -4760,8 +4760,7 @@ function renderProps(){
     $('pbanner').hidden = false;
     $('pbanner').innerHTML = `<b>No player props listed yet.</b><span>Kalshi lists them the morning of a game.</span>`;
   } else {
-    $('pbanner').hidden = !PB?.example;
-    $('pbanner').innerHTML = PB?.example ? `<span>Want to see how a full board reads?</span><button class="linkbtn" id="pex" type="button">Show last season's final game</button>` : '';
+    $('pbanner').hidden = true;
   }
   $('pex')?.addEventListener('click', () => { showExample = !showExample; pf.open.clear(); renderProps(); });
 
