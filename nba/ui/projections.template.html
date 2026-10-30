@@ -8297,6 +8297,7 @@ const ST_PRE = {p_nov: 'docs/steam-chaser-prereg.md'};
 let stF = {win: 60, min: 0.02, agree: 1, sort: 'ev'}, stOpen = new Set();
 const stAm = s => { const n = parseFloat(s); return Number.isFinite(n) && Math.abs(n) >= 100 ? n : null; };
 const stDec = a => a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+const stAmOf = p => p == null ? null : p >= 0.5 ? Math.round(-100 * p / (1 - p)) : Math.round(100 * (1 - p) / p);
 const stSg = (p, d = 1) => p == null ? '-' : (p >= 0 ? '+' : '') + (p * 100).toFixed(d) + '%';
 const stPx = n => n == null ? '-' : (n > 0 ? '+' : '') + n;
 function stMove(a){
@@ -8331,6 +8332,12 @@ function stPlays(B, now){
       };
       (P.books || []).forEach(b => { if (!ST_SHARP.has(b[0])) add(b[0], b[1], b[2], b[3], false); });
       (P.pk || []).forEach(b => add(b[0], b[1], b[2], b[3], true));
+      const NV = (B.novig && B.novig.props || {})[key];     // Novig's order book for this prop (the props read this poll): the price you can take now is the ask, before any fee
+      if (NV && lead.a.type !== 'p_nov') for (const r of NV.lad || []){
+        const ao = r.ask && r.ask[0], au = r.ask && r.ask[1], pa = side === 'over' ? ao : au; if (pa == null || r.k == null) continue;
+        const same = r.k === L;
+        tg.push({name: 'Novig', ex: true, line: r.k, px: stAmOf(pa), ev: same && fair != null ? fair / pa - 1 : null, same, better: !same && (side === 'over' ? r.k < L : r.k > L), pick: false, o: stAmOf(ao), u: stAmOf(au)});
+      }
       const use = tg.filter(t => t.ev != null ? t.ev > -0.5 : t.better).sort((x, y) => (y.ev ?? -9) - (x.ev ?? -9));
       if (!use.length) continue;
       out.push({key, P, g, side, ev, lead, venues, tg: use, best: use[0], pl: (B.players || {})[P.p], t: ev[0].t, size: lead.m.kind === 'line' ? 9 : lead.m.size, rowEv: use[0].ev, fair});
@@ -8356,7 +8363,7 @@ function stCard(r){
     <div class="st-sub">${r.side === 'over' ? 'Over' : 'Under'} ${r.lead.a.line} ${TL_STAT[r.P.s] || esc(r.P.s)} · ${esc(r.g.away)} at ${esc(r.g.home)} · ${etFmt(r.g.tip, {hour: 'numeric', minute: '2-digit'})} ${TZL}</div>
     <div class="st-ch"><span class="tl-k ${r.lead.a.type}">${esc(lt)}</span><span class="muted">${esc(r.lead.m.text)} · ${fAgo(r.lead.a.t)}</span>${r.venues.filter(v => v !== r.lead.a.type).map(v => `<span class="tl-k ${v}">${esc(ST_REF[v])}</span>`).join('')}</div>
     <div class="st-t"><span>${esc(b.name)}${b.pick ? ' <span class="muted">pick\'em</span>' : ''}${b.same ? '' : ` <span class="muted">line ${b.line}</span>`}</span><b class="data-num">${stPx(b.px)}${r.fair != null && b.same ? ` <span class="muted" style="font-weight:500;font-size:12.5px">fair ${pc(r.fair, 1)}</span>` : ''}</b></div>
-    <div class="st-d"><div class="nt-tw"><table class="nt"><thead><tr><th class="l">Book</th><th>Line</th><th>Over</th><th>Under</th><th>EV</th></tr></thead><tbody>${r.tg.map(t => `<tr><td class="l">${esc(t.name)}${t.pick ? ' <small class="muted">pick\'em</small>' : ''}</td><td>${t.line}</td><td>${stPx(t.o)}</td><td>${stPx(t.u)}</td><td class="${t.ev == null ? 'muted' : t.ev >= 0 ? 'pos' : 'neg'}">${t.ev == null ? (t.better ? 'better line' : '-') : stSg(t.ev)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="st-d"><div class="nt-tw"><table class="nt"><thead><tr><th class="l">Book</th><th>Line</th><th>Over</th><th>Under</th><th>EV</th></tr></thead><tbody>${r.tg.map(t => `<tr><td class="l">${esc(t.name)}${t.pick ? ' <small class="muted">pick\'em</small>' : ''}${t.ex ? ' <small class="muted">exchange ask, before any fee</small>' : ''}</td><td>${t.line}</td><td>${stPx(t.o)}</td><td>${stPx(t.u)}</td><td class="${t.ev == null ? 'muted' : t.ev >= 0 ? 'pos' : 'neg'}">${t.ev == null ? (t.better ? 'better line' : '-') : stSg(t.ev)}</td></tr>`).join('')}</tbody></table></div>
       <ul>${r.ev.map(a => { const m = stMove(a); return `<li><span>${esc(ST_REF[a.type])}: ${esc(m ? m.text : '')}${a.lim ? ` (limit $${a.lim.toLocaleString()})` : ''}</span><span class="muted">${fAgo(a.t)}</span></li>`; }).join('')}</ul>
       <p class="muted" style="margin:8px 0 0;font-size:12.5px">EV is the price against the reference's no-vig chance when it moved, at the same line. Pinnacle is a price reference, never a place to bet.</p></div></div>`;
 }

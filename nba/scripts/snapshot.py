@@ -696,7 +696,15 @@ def poll(root):
             from prop_board import Roster
             pre = [g for g in slate.games if g['pre']]
             proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
-            nb = novig.poll(pre, root, slate.now, Roster(proj).find)
+            prio = {}                                       # props with a prop alert in the last 90 minutes: Novig reads them first so a Steam Chaser card has a Novig price
+            try:
+                import sharp
+                for a in sharp.load_signals([day.dir]).values():
+                    if str(a.get('type', '')).startswith('p_') and a.get('line') is not None and slate.now - a['t'] <= 5400 and a.get('tip', 1e18) > slate.now:
+                        prio.setdefault(f"{a['pid']}|{a['stat']}", []).append(a['line'])
+            except Exception:
+                prio = {}
+            nb = novig.poll(pre, root, slate.now, Roster(proj).find, prio)
             day.append('tape.jsonl', [{'t': x['t'], 's': 'nov', 'g': x['g'], 'm': x['m'], 'side': x['side'], 'line': x['line'], 'usd': round(x['usd']),
                                        'px': x['px'], 'id': 'nov:' + x['id']} for x in nb.pop('fresh', None) or []])
             nrows, nmeta = novig.quotes(nb, pre)

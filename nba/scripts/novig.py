@@ -194,7 +194,7 @@ def main_line(xs):
 GAME_KEEP = ('event', 'tip', 'asof', 'lines', 'tc', 'ml', 'main_spread', 'main_total', 'rest', 'depth', 'tr', 'usd')   # what a carried game remembers
 
 
-def poll(games, root, now, roster_find=None):
+def poll(games, root, now, roster_find=None, prio=None):
     """games: pre-tip slate games (id, away, home, away_name, home_name, tip). roster_find(name, teams) -> player id.
     Returns {'asof', 'games': {gid: {...}}, 'props': {'pid|stat': {...}}, 'tape': [...], 'budget': n, 'used': n, 'rotation': {...}}.
 
@@ -364,9 +364,22 @@ def poll(games, root, now, roster_find=None):
         del st.games[gid]                                 # a game that tipped long ago has nothing left to carry
 
     # props: rotate so every prop is seen within a few polls (unchanged)
+    hot = []
+    if props and prio and roster_find:                    # props with a live alert go first, at the alert's line (+-1.5): a card needs a Novig price now, not in a few hours
+        def is_hot(x):
+            g, mk, kind = x
+            m = re.match(r'(.+?)\s+[\d.]+\s+[A-Z_]+$', mk.get('description') or '')
+            pid = roster_find(m.group(1), (g['away'], g['home'])) if m else None
+            try:
+                return bool(pid) and any(abs(float(mk['strike']) - ln) <= 1.5 for ln in prio.get(f"{pid}|{STAT[kind]}", []))
+            except (TypeError, ValueError, KeyError):
+                return False
+        hot = [x for x in props if is_hot(x)]
+        props = [x for x in props if x not in hot]
     if props:
         k = st.rot % len(props)
         props = props[k:] + props[:k]
+    props = hot + props
     for g, mk, kind in props:
         if pused[0] >= PROP_BUDGET:
             break                                         # the props are last in the queue
