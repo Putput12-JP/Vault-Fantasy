@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Steam Chaser NBA</title>
+<meta name="description" content="NBA player props where a sharp reference moved and a slower book may still hold the old number, with the measured record next to it.">
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--card2:#eef0f3;--line:#d9dde3;--txt:#14161a;--mut:#5a6270;--dim:#8a919d;--acc:#1f5fd6;--good:#13803f;--warn:#a45a00;--bad:#c4302b;--chip:#e6e9ee;--good-bg:rgba(19,128,63,.1);--warn-bg:rgba(164,90,0,.1);--acc-bg:rgba(31,95,214,.1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0c0e;--card:#16181c;--card2:#1e2126;--line:#2a2e35;--txt:#f2f3f5;--mut:#a3a9b4;--dim:#767d89;--acc:#6c9cff;--good:#46e08c;--warn:#ffb84d;--bad:#ff6b66;--chip:#23272d;--good-bg:rgba(70,224,140,.12);--warn-bg:rgba(255,184,77,.12);--acc-bg:rgba(108,156,255,.14)}}
+:root[data-theme="dark"]{--bg:#0b0c0e;--card:#16181c;--card2:#1e2126;--line:#2a2e35;--txt:#f2f3f5;--mut:#a3a9b4;--dim:#767d89;--acc:#6c9cff;--good:#46e08c;--warn:#ffb84d;--bad:#ff6b66;--chip:#23272d;--good-bg:rgba(70,224,140,.12);--warn-bg:rgba(255,184,77,.12);--acc-bg:rgba(108,156,255,.14)}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.wrap{max-width:880px;margin:0 auto;padding:0 16px calc(48px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.hd{max-width:880px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;display:flex;align-items:center;gap:10px;justify-content:space-between}
+.hd h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
+.hd h1 small{font-weight:600;color:var(--mut);font-size:12px;margin-left:6px;letter-spacing:.04em}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--mut);white-space:nowrap}
+.badge.good{background:var(--good-bg);color:var(--good)}.badge.warn{background:var(--warn-bg);color:var(--warn)}.badge.acc{background:var(--acc-bg);color:var(--acc)}
+.bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:10px 0 2px;-webkit-overflow-scrolling:touch}
+.bar::-webkit-scrollbar{display:none}
+.seg{display:flex;gap:2px;flex:none;background:var(--chip);border-radius:99px;padding:2px}
+.seg>b{font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.05em;text-transform:uppercase;align-self:center;padding:0 8px 0 10px}
+.seg button{all:unset;box-sizing:border-box;cursor:pointer;padding:5px 11px;border-radius:99px;color:var(--mut);font-weight:600;font-size:13px;transition:background-color 120ms ease,color 120ms ease}
+.seg button.on{background:var(--txt);color:var(--bg)}
+.seg button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.note{margin:10px 0 0;padding:8px 12px;border-radius:12px;background:var(--warn-bg);color:var(--warn);font-size:13px;font-weight:600}
+.note a{color:inherit;text-decoration:underline}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 8px;color:var(--mut);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:0 0 10px;cursor:pointer;transition:transform 500ms cubic-bezier(.34,1.56,.64,1),border-color 120ms ease}
+.card:active{transform:scale(.99);transition:transform 80ms ease-out}
+.card:hover{border-color:var(--dim)}
+.card:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ev{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.ev small{font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.06em;margin-left:4px}
+.ev.none{color:var(--mut)}
+.pos{color:var(--good)}.neg{color:var(--bad)}.mut{color:var(--mut)}
+.who{margin:6px 0 0;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.sub{margin:2px 0 0;color:var(--mut);font-size:13.5px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tgt{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:9px 12px;background:var(--card2);border-radius:12px;font-size:14px}
+.tgt b{font-size:16px}
+.det{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.card.open .det{display:block}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+table.t th{color:var(--mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;text-align:right;padding:6px;border-bottom:1px solid var(--line)}
+table.t th:first-child,table.t td:first-child{text-align:left}
+table.t td{text-align:right;padding:7px 6px;border-bottom:1px solid var(--line)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tl{margin:0 0 10px;padding:0;list-style:none;font-size:13.5px}
+.tl li{padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.empty{padding:22px 4px;color:var(--mut)}
+.empty b{display:block;color:var(--txt);font-size:16px;margin-bottom:4px}
+details.how{margin:12px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px}
+details.how summary{cursor:pointer;font-weight:600}
+details.how p,details.how ul{color:var(--mut);font-size:13.5px}
+details.how li{margin:4px 0}
+.skel{height:132px;border-radius:16px;background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:sk 1.4s linear infinite;margin:0 0 10px}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.card,.seg button{transition:none}.skel{animation:none}}
+@media (max-width:520px){.ev{font-size:26px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd"><h1>Steam Chaser <small>NBA PROPS</small></h1><span class="badge" id="stat">Loading</span></div>
+  <div class="wrap" style="padding-bottom:0"><div class="bar" id="bar"></div></div>
+</header>
+<main class="wrap">
+  <p class="note" id="warn">Context, not a bet signal. A Pinnacle-only backtest found no edge in chasing these (see the record below). <a href="https://github.com/Putput12-JP/Vault-Fantasy/blob/main/nba/docs/steam-chaser-backtest.md">Backtest</a></p>
+  <div id="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+  <div class="sec"><span>Measured record</span><span id="recAge"></span></div>
+  <div class="card" style="cursor:default" id="rec"></div>
+  <details class="how"><summary>How this works</summary>
+    <ul>
+      <li>A reference venue moved a player prop: Pinnacle (a line or 5 points of no-vig chance), Novig (5 points at one strike), heavy Kalshi money, or sharp Polymarket accounts.</li>
+      <li>A slower book or pick'em app still holds the old number. EV is that book's price against the reference's no-vig chance when it moved, at the same line only. A different line shows as a line gap, with no EV.</li>
+      <li>Agreement is how many different reference venues moved the same side within an hour. It is context, not an agree total.</li>
+      <li>Every move is logged and graded against Pinnacle's close and the box score. The thresholds are not fitted. Novig prop history began 2026-10-30.</li>
+    </ul>
+  </details>
+</main>
+<script>
+const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const RAW='https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/';
+const Q=new URLSearchParams(location.search);
+const SRC={board:(LOCAL&&Q.get('board'))||RAW+'nba-live/board.json',track:(LOCAL&&Q.get('track'))||RAW+'nba-data/track.json'};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CT={timeZone:'America/Chicago'};
+const clock=ts=>new Date(ts*1000).toLocaleTimeString('en-US',{...CT,hour:'numeric',minute:'2-digit'})+' CT';
+const ago=(t,now)=>{const m=Math.max(1,Math.round((now-t)/60));return m<60?m+'m ago':Math.round(m/60)+'h ago'};
+const pc=(p,d=1)=>p==null?'-':(p*100).toFixed(d)+'%';
+const sg=(p,d=1)=>p==null?'-':(p>=0?'+':'')+(p*100).toFixed(d)+'%';
+const am=n=>n==null?'-':(n>0?'+':'')+n;
+const STAT={pts:'Points',reb:'Rebounds',ast:'Assists','3pm':'Threes',pra:'Pts+Reb+Ast',pr:'Pts+Reb',pa:'Pts+Ast',ra:'Reb+Ast',stl:'Steals',blk:'Blocks'};
+const REF={p_pin:'Pinnacle',p_nov:'Novig',p_kal:'Kalshi money',p_acct:'Sharp accounts'};
+const SHARP_BOOKS=new Set(['Pinnacle','Polymarket','Novig','Kalshi']);
+const amNum=s=>{const n=parseFloat(s);return Number.isFinite(n)&&Math.abs(n)>=100?n:null};
+const dec=a=>a>0?1+a/100:1+100/-a;
+const F={win:60,min:0.02,agree:1,stat:'all',sort:'ev',refs:new Set(Object.keys(REF))};
+try{const s=JSON.parse(localStorage.getItem('steam-nba-f')||'null');if(s){F.win=s.win||F.win;F.min=s.min??F.min;F.agree=s.agree||F.agree;F.sort=s.sort||F.sort}}catch(e){}
+const save=()=>{try{localStorage.setItem('steam-nba-f',JSON.stringify({win:F.win,min:F.min,agree:F.agree,sort:F.sort}))}catch(e){}};
+let B=null,T=null,OPEN=new Set();
+
+const SEGS=[
+  ['Window','win',[[15,'15m'],[30,'30m'],[60,'1H'],[90,'90m']]],
+  ['Move','min',[[0,'Any'],[0.01,'1%'],[0.02,'2%'],[0.03,'3%']]],
+  ['Agree','agree',[[1,'1+'],[2,'2+'],[3,'3+']]],
+  ['Sort','sort',[['ev','EV'],['move','Move'],['recent','Recent'],['agree','Agree']]]
+];
+function bar(){
+  $('bar').innerHTML=SEGS.map(([l,k,o])=>`<div class="seg"><b>${l}</b>${o.map(([v,t])=>`<button data-k="${k}" data-v="${v}" class="${String(F[k])===String(v)?'on':''}">${t}</button>`).join('')}</div>`).join('')
+   +`<div class="seg"><b>Market</b>${[['all','All'],...Object.entries(STAT).slice(0,5)].map(([v,t])=>`<button data-k="stat" data-v="${v}" class="${F.stat===v?'on':''}">${t}</button>`).join('')}</div>`;
+}
+$('bar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.k;let v=b.dataset.v;if(['win','agree'].includes(k))v=+v;else if(k==='min')v=+v;F[k]=v;save();bar();render()});
+
+const moveOf=a=>{
+  if(a.type==='p_pin'||a.type==='p_nov'){
+    if(a.from&&a.to&&a.from[0]!==a.to[0])return{kind:'line',size:Math.abs(a.to[0]-a.from[0]),text:`line ${a.from[0]} to ${a.to[0]}`};
+    if(a.from&&a.to&&a.from[1]!=null&&a.to[1]!=null)return{kind:'prob',size:Math.abs(a.to[1]-a.from[1]),text:`over ${pc(a.from[1])} to ${pc(a.to[1])}`};
+  }
+  if(a.type==='p_kal'&&a.from!=null&&a.to!=null)return{kind:'prob',size:Math.abs(a.to-a.from),text:`YES ${Math.round(a.from*100)}¢ to ${Math.round(a.to*100)}¢`};
+  if(a.type==='p_acct')return{kind:'usd',size:0,text:`$${(a.usd||0).toLocaleString()} from ${a.accts||1} sharp account${(a.accts||1)>1?'s':''}`};
+  return null;
+};
+
+function build(){
+  const now=Date.now()/1000,S=B.sharp||{},props=S.props||{},nov=S.nov||{};
+  const games=Object.fromEntries((B.games||[]).map(g=>[String(g.id),g]));
+  const pidx={};(B.props||[]).forEach(p=>{pidx[p.p+'|'+p.s]=p});
+  const keys=new Set([...Object.keys(props),...Object.keys(nov)]);
+  const out=[];
+  for(const key of keys){
+    const P=pidx[key];if(!P)continue;
+    const g=games[String(P.g)];if(!g||g.tip<=now)continue;
+    const all=[...(props[key]||[]),...(nov[key]||[])].filter(a=>REF[a.type]&&F.refs.has(a.type));
+    for(const side of ['over','under']){
+      const ev=all.filter(a=>a.side===side&&now-a.t<=F.win*60).sort((a,b)=>b.t-a.t);
+      if(!ev.length)continue;
+      const scored=ev.map(a=>({a,m:moveOf(a)})).filter(x=>x.m);
+      if(!scored.length)continue;
+      const lead=scored.slice().sort((x,y)=>(y.m.kind==='line')-(x.m.kind==='line')||y.m.size-x.m.size)[0];
+      if(lead.m.kind==='prob'&&lead.m.size<F.min)continue;
+      const venues=[...new Set(ev.map(a=>a.type))];
+      if(venues.length<F.agree)continue;
+      const L=lead.a.line,fair=lead.a.fair;
+      const tg=[];
+      const add=(name,line,over,under,pick)=>{
+        const px=amNum(side==='over'?over:under);if(px==null||line==null)return;
+        const same=line===L;
+        const evv=same&&fair!=null?fair*dec(px)-1:null;
+        const better=!same&&(side==='over'?line<L:line>L);
+        tg.push({name,line,px,ev:evv,same,better,pick,o:amNum(over),u:amNum(under)});
+      };
+      (P.books||[]).forEach(b=>{if(!SHARP_BOOKS.has(b[0]))add(b[0],b[1],b[2],b[3],false)});
+      (P.pk||[]).forEach(b=>add(b[0],b[1],b[2],b[3],true));
+      const useful=tg.filter(t=>t.ev!=null?t.ev>-0.5:t.better);
+      if(!useful.length)continue;
+      useful.sort((x,y)=>(y.ev??-9)-(x.ev??-9));
+      out.push({key,P,g,side,ev,lead,venues,tg:useful,best:useful[0],pl:B.players?.[P.p],t:ev[0].t,size:lead.m.kind==='line'?9:lead.m.size,rowEv:useful[0].ev,fair});
+    }
+  }
+  const ord={ev:(a,b)=>(b.rowEv??-9)-(a.rowEv??-9),move:(a,b)=>b.size-a.size,recent:(a,b)=>b.t-a.t,agree:(a,b)=>b.venues.length-a.venues.length||(b.rowEv??-9)-(a.rowEv??-9)};
+  return out.filter(r=>F.stat==='all'||r.P.s===F.stat).sort(ord[F.sort]);
+}
+
+function card(r,now){
+  const nm=r.pl?r.pl[0]:'Player '+r.P.p,open=OPEN.has(r.key+r.side);
+  const b=r.best,ev=r.rowEv;
+  const lg=r.g;
+  const evh=ev==null?`<div class="ev none">Line gap</div>`:`<div class="ev num ${ev>=0?'pos':'neg'}">${sg(ev)}<small>EV</small></div>`;
+  const mv=r.lead.m.text,lt=REF[r.lead.a.type];
+  return `<div class="card${open?' open':''}" tabindex="0" role="button" aria-expanded="${open}" data-k="${esc(r.key+r.side)}">
+   <div class="top">${evh}<span class="badge ${r.venues.length>1?'good':''}">${r.venues.length} ${r.venues.length>1?'venues':'venue'}</span></div>
+   <div class="who">${esc(nm)}</div>
+   <div class="sub">${r.side==='over'?'Over':'Under'} ${r.lead.a.line} ${esc(STAT[r.P.s]||r.P.s)} · ${esc(lg.away)} @ ${esc(lg.home)} · ${clock(lg.tip)}</div>
+   <div class="chips"><span class="badge acc">${esc(lt)} ${esc(mv)} · ${ago(r.lead.a.t,now)}</span>${r.venues.filter(v=>v!==r.lead.a.type).map(v=>`<span class="badge">${esc(REF[v])}</span>`).join('')}</div>
+   <div class="tgt"><span>${esc(b.name)}${b.pick?' <span class="mut">pick\'em</span>':''}${b.same?'':` <span class="mut">line ${b.line}</span>`}</span><b class="num">${am(b.px)}${r.fair!=null&&b.same?` <span class="mut" style="font-weight:600;font-size:13px">fair ${pc(r.fair)}</span>`:''}</b></div>
+   <div class="det">
+    <div class="sec" style="margin-top:0"><span>Where it is</span></div>
+    <div class="scroll"><table class="t"><tr><th>Book</th><th>Line</th><th>Over</th><th>Under</th><th>EV</th></tr>${r.tg.map(t=>`<tr><td>${esc(t.name)}${t.pick?' <small class="mut">pick\'em</small>':''}</td><td class="num">${t.line}</td><td class="num">${am(t.o)}</td><td class="num">${am(t.u)}</td><td class="num ${t.ev==null?'mut':t.ev>=0?'pos':'neg'}">${t.ev==null?(t.better?'better line':'-'):sg(t.ev)}</td></tr>`).join('')}</table></div>
+    <div class="sec"><span>Reference moves</span></div>
+    <ul class="tl">${r.ev.map(a=>{const m=moveOf(a);return `<li><span>${esc(REF[a.type])}: ${esc(m?m.text:'')}${a.lim?` · limit $${a.lim.toLocaleString()}`:''}</span><span class="mut">${clock(a.t)}</span></li>`}).join('')}</ul>
+    <p class="sub">EV uses the reference's no-vig chance when it moved, at the same line. Pinnacle's price is a reference, never a place to bet.</p>
+   </div></div>`;
+}
+
+function render(){
+  if(!B)return;
+  const now=Date.now()/1000,rows=build();
+  $('stat').className='badge '+(now-B.t<900?'good':'warn');
+  $('stat').textContent='Board '+ago(B.t,now);
+  $('list').innerHTML=rows.length?rows.map(r=>card(r,now)).join(''):
+   `<div class="empty"><b>No reference moves with a soft price in this window</b>Nothing has moved enough on Pinnacle, Novig, Kalshi or sharp accounts lately, or no slower book still holds the old number. Widen the window or lower the move size. The recorder polls every 5 to 15 minutes on game days.</div>`;
+}
+$('list').addEventListener('click',e=>{const c=e.target.closest('.card');if(!c)return;const k=c.dataset.k;OPEN.has(k)?OPEN.delete(k):OPEN.add(k);c.classList.toggle('open');c.setAttribute('aria-expanded',OPEN.has(k))});
+$('list').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('card')){e.preventDefault();e.target.click()}});
+
+function record(){
+  const S=T&&T.signals&&T.signals.days;if(!S){$('rec').innerHTML='<span class="mut">The graded record is not available right now.</span>';return}
+  const agg={};
+  for(const by of Object.values(S))for(const [t,r] of Object.entries(by)){const x=agg[t]=agg[t]||new Array(13).fill(0);r.forEach((v,i)=>x[i]+=v)}
+  const rows=Object.entries(REF).map(([t,l])=>{
+    const r=agg[t]||new Array(13).fill(0),n=r[0],g=r[1],m=g?r[2]/g:null,se=g>1?Math.sqrt(Math.max(r[3]/g-m*m,0)/g):null,dc=r[5]+r[6]+r[7];
+    return `<tr><td>${l}</td><td class="num">${n}</td><td class="num">${g}</td><td class="num ${m==null?'mut':m>0?'pos':m<0?'neg':''}">${m==null?'-':(m>=0?'+':'')+(m*100).toFixed(2)}${se?` <small class="mut">± ${(se*100).toFixed(2)}</small>`:''}</td><td class="num">${dc?`${r[5]}-${r[6]}${r[7]?'-'+r[7]:''}`:'-'}</td></tr>`}).join('');
+  $('rec').innerHTML=`<div class="scroll"><table class="t"><tr><th>Reference</th><th>Fired</th><th>Graded</th><th>CLV pts</th><th>W-L</th></tr>${rows}</table></div>
+  <p class="sub" style="margin-top:10px">CLV is Pinnacle's closing no-vig chance at the same line minus the chance when the move fired. A move that Pinnacle left (different line at the close) has no CLV. Backtest, Oct 20 to 30: Pinnacle moves followed at DraftKings with 2%+ EV hit 47.3% on 203 plays against 54.5% expected. No edge shown, so this page does not call anything a bet.</p>`;
+}
+
+async function jget(u){const r=await fetch(u,{cache:'no-cache'});if(!r.ok)throw new Error(u+' '+r.status);return r.json()}
+async function load(){
+  try{B=await jget(SRC.board);bar();render()}catch(e){$('stat').textContent='Offline';$('stat').className='badge warn';$('list').innerHTML='<div class="empty"><b>The live board did not load</b>Try again in a minute.</div>'}
+  try{T=await jget(SRC.track)}catch(e){T=null}
+  record();
+}
+bar();load();setInterval(()=>{jget(SRC.board).then(b=>{B=b;render()}).catch(()=>{})},60000);
+</script>
+</body>
+</html>
