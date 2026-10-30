@@ -435,6 +435,31 @@ def quotes(out, games):
     return rows, meta
 
 
+def prop_quotes(out, games):
+    """board['novig']['props'] -> (rows, meta) for Day.record('novigprops', ...): one key per player prop strike, the OVER
+    side's [bid, ask, depth to the nearest $250]. Keys are game|player|stat|strike, so a moved main line is a new key.
+    Only the props read this poll are in the board (they rotate), so the caller carries the rest forward; a quiet key here
+    means 'unchanged since read', not 'read this poll'. The price history a multi-book steam test needs from Novig."""
+    ids = {str(g['id']) for g in games}
+    rows, meta = {}, {}
+    for pk, p in (out.get('props') or {}).items():
+        gid = str(p['g'])
+        if gid not in ids:
+            continue
+        for r in p.get('lad') or []:
+            o = [str(x).lower() for x in r.get('o') or []]
+            if len(o) != 2 or r.get('k') is None or not (o[0].startswith('over') or o[1].startswith('over')):
+                continue
+            i = 0 if o[0].startswith('over') else 1
+            bid, ask = r['bid'][i], r['ask'][i]
+            if bid is None and ask is None:
+                continue
+            key = f"{gid}|{p['p']}|{p['s']}|{r['k']}"
+            rows[key] = [bid, ask, int(round(r['depth'] / 250.0)) * 250]
+            meta[key] = {'g': gid, 'p': p['p'], 's': p['s'], 'line': r['k'], 'mid': r['id']}
+    return rows, meta
+
+
 if __name__ == '__main__':
     now = time.time()
     ev = pages('/catalog/events?league=NBA&status=OPEN_PREGAME&limit=50')

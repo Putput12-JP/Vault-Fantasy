@@ -17,6 +17,8 @@ appends ONLY what changed since the last poll:
               odds_type (standard / demon / goblin) in meta. Flat payout, so the line is the price.
   underdog    Underdog Pick'em NBA lines: line plus each side's fantasy price (American) and payout multiplier
   sleeper     Sleeper Picks NBA lines: line plus each side's payout multiplier (decimal price)
+  novigprops  Novig player-prop ladders (pts, reb, ast, 3pm, pra, pr, pa, ra, stl, blk): the OVER side's [bid, ask, depth to $250] per
+              game|player|stat|strike. Props rotate across polls; unread keys are carried forward, so a quiet key is 'unchanged since read'.
   lineups     NBA.com daily lineups: each listed player's starting slot, Expected / Confirmed, active / inactive,
               so the log shows when each team's five went from Expected to Confirmed
 
@@ -701,6 +703,10 @@ def poll(root):
             rec['n'] = len(nrows)                           # game lines priced (winner, main spread, main total, per game)
             rec['chg'] = day.record('novig', slate.now, nrows, nmeta)
             rec['props'] = len(nb['props'])
+            prows, pmeta = novig.prop_quotes(nb, pre)       # props rotate, so a poll reads a subset: carry the rest forward or they read as gone
+            live = {str(g['id']) for g in pre}
+            prows = {**{k: v for k, v in (day.last.get('novigprops') or {}).items() if k.split('|')[0] in live and k not in prows}, **prows}
+            rec['pchg'] = day.record('novigprops', slate.now, prows, pmeta)
             rec['used'], rec['budget'] = nb['used'], nb['budget']
             if pre and not nb['games']:
                 rec['warn'] = 'no game matched a Novig event'
