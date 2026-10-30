@@ -1,5 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <title>Vault NBA</title>
 <script>try{var __t=JSON.parse(localStorage.getItem("nba-theme"));if(__t==="light"||__t==="dark")document.documentElement.dataset.theme=__t;if(localStorage.getItem("nba-side")==="1")document.documentElement.dataset.side="1"}catch(e){}</script>
 <script>/*VAULT_APPEARANCE*/</script>
@@ -2264,6 +2266,45 @@ th{font-weight:500}
 @media (max-width:1100px){.gp2-dt{grid-template-columns:repeat(2,minmax(0,1fr))}.gp2-dt .gp2-stat:nth-child(odd){border-left:0}.gp2-dt .gp2-stat:nth-child(n+3){border-top:1px solid rgb(var(--ink) / .07)}}
 @media (max-width:640px){.gp2-day2{border-radius:24px}.gp2-day2>header{padding:18px 20px 14px}.gp2-day2 h2{font-size:24px}
   .gp2-dt{grid-template-columns:minmax(0,1fr)}.gp2-dt .gp2-stat{border-left:0;border-top:1px solid rgb(var(--ink) / .07);padding:14px 20px}.gp2-dt .gp2-stat:first-child{border-top:0}}
+/* ── Phone and fold polish. Touch hygiene on every touch screen, then a fold layout (an unfolded foldable is one near-square screen, 600 to 1100px wide).
+   Layout only: no model, number or tracking change. Lands last so it wins the cascade. ── */
+@media (pointer:coarse){
+  *{-webkit-tap-highlight-color:transparent}
+  button,a,summary,select,input,label,[role="button"],.seg button,.gtile{touch-action:manipulation}
+  /* iOS zooms the page when a focused field is under 16px */
+  input,select,textarea,.pfind,.sel,.search input,.cc-leg select,.cc-leg input,.minctl input[type=number],.nt-min input,input.ml-num{font-size:16px}
+  .seg button,.pv-preset,.btn{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+}
+@media (max-width:1100px){ html,body{overscroll-behavior-y:none} }
+@media (max-width:820px){
+  main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .tabbar{padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+  .sidebar{height:100dvh}
+}
+/* Fold, unfolded and still on the phone shell (561 to 820px): KPI tiles go from a swipe strip to a grid, controls stop stretching */
+@media (min-width:561px) and (max-width:820px){
+  main{padding-top:12px;padding-bottom:24px;gap:16px;max-width:820px;width:100%;margin-inline:auto}
+  .bar{padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+  .kpis{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;margin:0;padding:0!important;gap:12px}
+  .kpis>.kpi{width:auto;max-width:none;min-width:0}
+  .title{flex:1 1 calc(100% - 120px)}.title h1{font-size:30px}
+  .slicer{flex:1 1 calc(50% - 8px)}.search{flex:1 1 calc(50% - 8px)}
+  .ml-kp{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .tabbar{left:50%;right:auto;width:min(560px,100% - 24px);transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom,0px));padding-bottom:6px;border-radius:24px;border:1px solid var(--border)}
+  .app{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+}
+/* Fold, desktop shell (821 to 1100px, near-square): the sidebar becomes the 72px icon rail so content gets the width */
+@media (min-width:821px) and (max-width:1100px) and (max-aspect-ratio:3/2){
+  .app,:root[data-side="1"] .app{grid-template-columns:72px minmax(0,1fr)}
+  .sidebar{padding-left:10px;padding-right:10px;overflow-x:hidden}
+  .sb-head{flex-direction:column;gap:10px;padding:0}
+  .sb-brandtxt,.sb-l,.sb-foot,.sb-secl,.sb-tog{display:none}
+  .sb-sec{margin-bottom:0!important}
+  .sb-sec::before{content:"";display:block;height:1px;background:var(--border);margin:8px 10px}
+  .sb-sec:first-child::before{display:none}
+  .sb-a{justify-content:center;position:relative;padding-left:0!important;padding-right:0!important}
+  main{padding:20px}
+}
 </style>
 
 <div class="app" id="app">
