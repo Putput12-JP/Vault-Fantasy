@@ -650,6 +650,7 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
             pin_props = pin_prop_series(dirs, pkeys.get('pinnacle') or {}, tips)
             alerts += prop_signals(by_id, pkeys, pin_props, polls, _tape_rows(day_dirs(root, now, 1)), W, day, now, kal_vol or {})
             alerts += prop_behind(board, by_id, pin_props, now)
+            alerts += nov_prop_signals(dirs, by_id, polls, tips)
         except Exception:
             traceback.print_exc(limit=3)
             prop_err = traceback.format_exc(limit=3)[-700:]
@@ -665,8 +666,18 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
     shown = sorted((a for a in every.values() if a['g'] in by_id and not a['type'].startswith('p_')), key=lambda a: -a['t'])[:300]
     per_prop = defaultdict(list)
     for a in sorted((a for a in every.values() if a['g'] in by_id and a['type'].startswith('p_')), key=lambda a: a['t']):
-        per_prop[f"{a['pid']}|{a['stat']}"].append({k: v for k, v in a.items() if k not in ('g', 'tip', 'tday', 'home', 'away', 'hn', 'pid', 'stat')})
-    return {'games': out, 'alerts': shown, 'props': dict(per_prop), 'prop_err': prop_err,
+        per_prop[f"{a['pid']}|{a['stat']}"].append({k: v for k, v in a.items() if k not in ('g', 'tip', 'tday', 'home', 'away', 'hn', 'pid', 'stat')} | {'_g': a['g']})
+    nov = {}                                           # p_nov rides apart from 'props': the Player Props page has no label for it yet; only Steam Chaser reads it
+    for k, xs in list(per_prop.items()):
+        steam_agree(xs)
+        for x in xs:
+            x.pop('_g', None)
+        if any(x['type'] == 'p_nov' for x in xs):
+            nov[k] = [x for x in xs if x['type'] == 'p_nov']
+            xs[:] = [x for x in xs if x['type'] != 'p_nov']
+            if not xs:
+                del per_prop[k]
+    return {'games': out, 'alerts': shown, 'props': dict(per_prop), 'nov': nov, 'prop_err': prop_err,
             'accounts': {'sharp': len(W['sharp']), 'nba_sharp': sum(1 for s in W['sharp'].values() if s == 'nba'), 'dull': len(W['dull']),
                          'scored': W['n'], 'generated': W['generated']}}
 
@@ -929,6 +940,64 @@ def prop_signals(by_id, pkeys, pin_props, polls, tape, W, day, now, kal_vol):
     except OSError:
         pass
     return out
+
+
+STEAM_REFS = ('p_pin', 'p_nov', 'p_kal', 'p_acct')      # reference moves: a sharp-ish venue moved a prop, whether or not a soft book followed
+NOV_TIGHT = 0.10                                         # a Novig quote wider than this says nothing about the fair price (novig.TIGHT)
+
+
+def nov_prop_signals(dirs, by_id, polls, tips):
+    """Novig prop moves from the day files (source novigprops, written by novig.prop_quotes): the over side's mid at one strike
+    moved P_PROB or more within P_WIN. Same rule and cooldown as the Pinnacle prop move (p_pin); thresholds are the per-prop
+    ones above, chosen to be rare, NOT fitted: Novig prop history started 2026-10-30, so this is shadow-logged and graded like
+    the rest until a pass rule is written down (docs/steam-chaser-prereg.md). Rows are carried forward when a prop was not read
+    in a poll, so a move is timed at the poll that read it, which can be a few polls after it happened."""
+    out, series = [], defaultdict(list)
+    for d in dirs:
+        lp = os.path.join(d, 'novigprops.jsonl')
+        if not os.path.exists(lp):
+            continue
+        for line in open(lp):
+            r = json.loads(line)
+            gid, pid, stat, strike = r['k'].split('|')
+            if gid not in by_id or tips.get(gid, 0) <= r['t']:
+                continue
+            v = r['v']
+            mid = None
+            if v and v[0] is not None and v[1] is not None and 0 < v[0] <= v[1] < 1 and v[1] - v[0] <= NOV_TIGHT:
+                mid = round((v[0] + v[1]) / 2, 4)
+            series[(gid, int(pid), stat, float(strike))].append((r['t'], mid))
+    for (gid, pid, stat, strike), S in series.items():
+        S.sort(key=lambda x: x[0])
+        last = {}
+        for i, (t, mid) in enumerate(S):
+            if mid is None or t >= tips.get(gid, 1e12) or not any(t - GAP_MAX <= q < t for q in polls):
+                continue
+            ref = next((x for x in reversed(S[:i]) if x[0] <= t - P_WIN and x[1] is not None), None) or next((x for x in S[:i] if x[1] is not None), None)
+            if not ref or ref[0] == t:
+                continue
+            dp = mid - ref[1]
+            if abs(dp) < P_PROB:
+                continue
+            side = 'over' if dp > 0 else 'under'
+            if last.get(side, -1e12) > t - STEAM_COOL:
+                continue
+            last[side] = t
+            out.append({'g': gid, 'pid': pid, 'stat': stat, 'type': 'p_nov', 't': t, 'side': side, 'line': strike,
+                        'from': [strike, r3(ref[1])], 'to': [strike, r3(mid)], 'lim': None,
+                        'fair': r3(mid if side == 'over' else 1 - mid), 'id': f"{gid}:p_nov:{pid}:{stat}:{strike}:{side}:{t}"})
+    return out
+
+
+def steam_agree(xs):
+    """Per prop: for each reference alert, which reference venues moved the same side within P_WIN of it (itself included).
+    Adds refs (type list) and agree (count). Context for the Steam Chaser page, not a bet signal and not an agree total."""
+    for a in xs:
+        if a['type'] not in STEAM_REFS:
+            continue
+        refs = {b['type'] for b in xs if b['type'] in STEAM_REFS and b.get('side') == a.get('side') and b.get('_g') == a.get('_g') and abs(b['t'] - a['t']) <= P_WIN}
+        a['refs'] = sorted(refs)
+        a['agree'] = len(refs)
 
 
 def _bpay(a):
