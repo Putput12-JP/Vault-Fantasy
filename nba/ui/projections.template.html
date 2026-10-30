@@ -1485,6 +1485,13 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 .tl-k{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--r-pill);border:1px solid var(--border2);font:500 10.5px var(--font-mono);color:var(--fg2);white-space:nowrap}
 .tl-k.p_pin{color:#7ab4ff;border-color:rgba(122,180,255,.4)}.tl-k.p_acct{color:var(--up);border-color:rgba(95,207,140,.35)}.tl-k.p_kal{color:var(--warn);border-color:rgba(229,185,85,.4)}.tl-k.p_behind,.tl-k.p_behind_x{color:var(--fg);border-color:var(--fg3)}
 .tl-s b{display:block;font-weight:600}.tl-s small{display:block;color:var(--fg3);font-size:11.5px}
+.st-fl{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px}.st-fl>div{display:flex;align-items:center;gap:8px}.st-fl label{color:var(--fg3);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.st-c{border:1px solid var(--border);border-radius:var(--r-card);padding:14px 16px;margin:0 0 10px;cursor:pointer;background:var(--surface);transition:transform 500ms cubic-bezier(.34,1.56,.64,1),border-color 120ms ease}.st-c:hover{border-color:var(--border2)}.st-c:active{transform:scale(.99);transition:transform 80ms ease-out}
+.st-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.st-ev{font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.1}.st-ev small{font-size:11px;font-weight:600;color:var(--fg3);letter-spacing:.06em;margin-left:4px}.st-ev.none{color:var(--fg2);font-size:20px}
+.st-who{margin:6px 0 0;font-size:16px;font-weight:600}.st-sub{margin:2px 0 0;color:var(--fg2);font-size:13px}.st-ch{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.st-t{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:9px 12px;background:var(--surface2);border-radius:12px;font-size:13.5px}.st-t b{font-size:15px}
+.st-d{display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px}.st-c.open .st-d{display:block}.st-d ul{list-style:none;margin:8px 0 0;padding:0;font-size:13px}.st-d li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--border)}
+@media (prefers-reduced-motion:reduce){.st-c{transition:none}}
 @media(max-width:820px){.tl-r,.tl-r.h{grid-template-columns:1fr;gap:6px}.tl-r.h{display:none}.tl-t>div{grid-template-columns:1fr;gap:3px;justify-items:start}.tl-t small{grid-column:1}}
 /* Sharp Price */
 .nt-tw.sx-cap{overflow-y:auto;overscroll-behavior:contain}.nt-tw.sx-cap #xfeed thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px 0 var(--border)}
@@ -2734,6 +2741,19 @@ th{font-weight:500}
       </section>
     </main>
     <footer id="tlfoot" hidden></footer>
+    <main id="v-steam" hidden>
+      <div class="banner" id="stbanner" hidden></div>
+      <section class="card">
+        <div class="card-h"><div><h2>Moves a slower book may not have followed</h2><p>A reference (Pinnacle, Novig, heavy Kalshi money or sharp accounts) moved a prop and a book or pick'em app still holds the old number. Context, not a bet: the Pinnacle-only backtest found no edge in chasing these.</p>
+          <div class="filters st-fl" id="stfilters"></div></div></div>
+        <div class="card-b" id="stlist"></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><div><h2>Record by reference</h2><p>Graded against Pinnacle's closing price for the same prop and line, this season.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="strecord"></table></div></div>
+      </section>
+    </main>
+    <footer id="stfoot" hidden></footer>
     <main id="v-backtests" hidden>
       <div class="wk-sec-wrap" id="wk-works"></div>
       <div class="wk-sec-wrap" id="wk-finder" hidden></div>
@@ -2817,7 +2837,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'steam', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : h === 'COMBO' ? 'bankroll' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -3046,6 +3066,7 @@ const PAGES = [
     ['Follow Board', SVG('<path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="16" r="3"/>'), 'Where ranked Polymarket accounts have put $1,000+ on games that have not tipped, the price now, and what a resting bid would take.', 'follow'],
     ['Wallets', SVG('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M19.5 5.5v5"/>'), 'Every Polymarket account ranked by its record against the close, shrunk to the league average and pooled across sports.', 'wallets'],
     ['Prop Tells', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/><path d="M18 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/>'), 'Where the market is telling you something on a player prop: Pinnacle moving it, DraftKings priced behind Pinnacle, heavy Kalshi money, sharp accounts. Each tell has its own record.', 'tells'],
+    ['Steam Chaser', SVG('<path d="M3 15c3 0 3-3 6-3s3 3 6 3 3-3 6-3"/><path d="M3 9c3 0 3-3 6-3s3 3 6 3 3-3 6-3"/>'), 'A reference moved a prop and a slower book may still hold the old number, with the graded record. Context, not a bet.', 'steam'],
   ]],
   ['Betting', [
     ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'What is really working this season, in dollars and plain-language confidence: which bets are ahead, which passed last season\'s backtest, and what does not work.', 'backtests'],
@@ -3342,6 +3363,7 @@ function show(v){
   $('v-follow').hidden = $('fbfoot').hidden = v !== 'follow';
   $('v-wallets').hidden = $('fwfoot').hidden = v !== 'wallets';
   $('v-tells').hidden = $('tlfoot').hidden = v !== 'tells';
+  $('v-steam').hidden = $('stfoot').hidden = v !== 'steam';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-player').hidden = $('plfoot').hidden = v !== 'player';
   $('v-bankroll').hidden = $('bkfoot').hidden = v !== 'bankroll';
@@ -3414,6 +3436,14 @@ function show(v){
     $('tname').textContent = 'Prop Tells';
     $('tsub').textContent = 'PINNACLE MOVES · DRAFTKINGS BEHIND PINNACLE · KALSHI MONEY · SHARP ACCOUNTS · EACH GRADED ON ITS OWN';
     renderTells();
+    if (!boardTried) loadBoard();
+    if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'steam'){
+    $('tname').textContent = 'Steam Chaser';
+    $('tsub').textContent = 'A REFERENCE MOVED · A SLOWER BOOK MAY HOLD THE OLD NUMBER · CONTEXT, NOT A BET';
+    renderSteam();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
     return;
@@ -4387,6 +4417,7 @@ async function loadBoard(){
     if (view === 'follow') renderFollow();
     if (view === 'wallets') renderWallets();
     if (view === 'tells') renderTells();
+    if (view === 'steam') renderSteam();
     if (view === 'pairs') renderPairs();
     if (view === 'player') renderPlayer();
     if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); }
@@ -4835,6 +4866,7 @@ async function loadTrack(){
     if (view === 'follow') renderFollow();
     if (view === 'wallets') renderWallets();
     if (view === 'tells') renderTells();
+    if (view === 'steam') renderSteam();
     if (['backtests', 'finder', 'btlab'].includes(view)) renderBacktests();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -8216,6 +8248,100 @@ function renderTells(){
     <div><b>Not a bet.</b> Tells are never added into a lean or an agree count. The prop thresholds were chosen to be rare, not fitted, and only DraftKings behind Pinnacle has a pass rule written before its alerts were graded.</div>
     <div><b>Graded</b> against Pinnacle's last pre-tip price for the same prop and line, so a prop whose line moved away has no like-for-like close and stays ungraded.</div>`;
 }
+// Steam Chaser: a reference venue moved a prop (Pinnacle, Novig, heavy Kalshi money, sharp accounts) and a slower book or pick'em app may still hold the old number.
+// Context, not a bet: the Pinnacle-only backtest (docs/steam-chaser-backtest.md) found no edge. EV is the slower book's price against the mover's no-vig chance at the same line.
+const ST_REF = {p_pin: 'Pinnacle', p_nov: 'Novig', p_kal: 'Kalshi money', p_acct: 'Sharp accounts'};
+const ST_SHARP = new Set(['Pinnacle', 'Polymarket', 'Novig', 'Kalshi']);
+const ST_PRE = {p_nov: 'docs/steam-chaser-prereg.md'};
+let stF = {win: 60, min: 0.02, agree: 1, sort: 'ev'}, stOpen = new Set();
+const stAm = s => { const n = parseFloat(s); return Number.isFinite(n) && Math.abs(n) >= 100 ? n : null; };
+const stDec = a => a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+const stSg = (p, d = 1) => p == null ? '-' : (p >= 0 ? '+' : '') + (p * 100).toFixed(d) + '%';
+const stPx = n => n == null ? '-' : (n > 0 ? '+' : '') + n;
+function stMove(a){
+  if ((a.type === 'p_pin' || a.type === 'p_nov') && a.from && a.to){
+    if (a.from[0] !== a.to[0]) return {kind: 'line', size: Math.abs(a.to[0] - a.from[0]), text: `line ${a.from[0]} to ${a.to[0]}`};
+    if (a.from[1] != null && a.to[1] != null) return {kind: 'prob', size: Math.abs(a.to[1] - a.from[1]), text: `over ${pc(a.from[1], 1)} to ${pc(a.to[1], 1)}`};
+  }
+  if (a.type === 'p_kal' && a.from != null && a.to != null) return {kind: 'prob', size: Math.abs(a.to - a.from), text: `YES ${Math.round(a.from * 100)}¢ to ${Math.round(a.to * 100)}¢`};
+  if (a.type === 'p_acct') return {kind: 'usd', size: 0, text: `$${(a.usd || 0).toLocaleString()} from ${a.accts || 1} sharp account${(a.accts || 1) > 1 ? 's' : ''}`};
+  return null;
+}
+function stPlays(B, now){
+  const S = B.sharp || {}, props = S.props || {}, nov = S.nov || {}, games = Object.fromEntries((B.games || []).map(g => [String(g.id), g])), pidx = {}, out = [];
+  (B.props || []).forEach(r => { pidx[`${r.p}|${r.s}`] = r; });
+  for (const key of new Set([...Object.keys(props), ...Object.keys(nov)])){
+    const P = pidx[key], g = P && games[String(P.g)];
+    if (!g || g.tip <= now) continue;
+    const all = [...(props[key] || []), ...(nov[key] || [])].filter(a => ST_REF[a.type]);
+    for (const side of ['over', 'under']){
+      const ev = all.filter(a => a.side === side && now - a.t <= stF.win * 60).sort((a, b) => b.t - a.t);
+      const sc = ev.map(a => ({a, m: stMove(a)})).filter(x => x.m);
+      if (!sc.length) continue;
+      const lead = sc.slice().sort((x, y) => (y.m.kind === 'line') - (x.m.kind === 'line') || y.m.size - x.m.size)[0];
+      if (lead.m.kind === 'prob' && lead.m.size < stF.min) continue;
+      const venues = [...new Set(ev.map(a => a.type))];
+      if (venues.length < stF.agree) continue;
+      const L = lead.a.line, fair = lead.a.fair, tg = [];
+      const add = (name, line, over, under, pick) => {
+        const px = stAm(side === 'over' ? over : under); if (px == null || line == null) return;
+        const same = line === L, e = same && fair != null ? fair * stDec(px) - 1 : null;
+        tg.push({name, line, px, ev: e, same, better: !same && (side === 'over' ? line < L : line > L), pick, o: stAm(over), u: stAm(under)});
+      };
+      (P.books || []).forEach(b => { if (!ST_SHARP.has(b[0])) add(b[0], b[1], b[2], b[3], false); });
+      (P.pk || []).forEach(b => add(b[0], b[1], b[2], b[3], true));
+      const use = tg.filter(t => t.ev != null ? t.ev > -0.5 : t.better).sort((x, y) => (y.ev ?? -9) - (x.ev ?? -9));
+      if (!use.length) continue;
+      out.push({key, P, g, side, ev, lead, venues, tg: use, best: use[0], pl: (B.players || {})[P.p], t: ev[0].t, size: lead.m.kind === 'line' ? 9 : lead.m.size, rowEv: use[0].ev, fair});
+    }
+  }
+  const ord = {ev: (a, b) => (b.rowEv ?? -9) - (a.rowEv ?? -9), move: (a, b) => b.size - a.size, recent: (a, b) => b.t - a.t, agree: (a, b) => b.venues.length - a.venues.length || (b.rowEv ?? -9) - (a.rowEv ?? -9)};
+  return out.sort(ord[stF.sort]);
+}
+function stAgg(){
+  const S = TR && TR.data && TR.data.signals, T = {};
+  for (const by of Object.values((S && S.days) || {})) for (const [t, r] of Object.entries(by)){
+    const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; r.forEach((v, i) => x[i] += v);
+  }
+  return Object.fromEntries(Object.keys(ST_REF).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null;
+    return [t, {fired: r[0], graded: g, mean: m, se: g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, w: r[5], l: r[6], p: r[7]}]; }));
+}
+function stCard(r){
+  const open = stOpen.has(r.key + r.side), b = r.best, nm = r.pl ? r.pl[0] : 'Player ' + r.P.p, lt = ST_REF[r.lead.a.type];
+  const evh = r.rowEv == null ? '<div class="st-ev none">Line gap</div>' : `<div class="st-ev ${r.rowEv >= 0 ? 'pos' : 'neg'}">${stSg(r.rowEv)}<small>EV</small></div>`;
+  return `<div class="st-c${open ? ' open' : ''}" data-k="${esc(r.key + r.side)}" tabindex="0" role="button" aria-expanded="${open}">
+    <div class="st-top">${evh}<span class="badge${r.venues.length > 1 ? ' solid' : ''}">${r.venues.length} ${r.venues.length > 1 ? 'references' : 'reference'}</span></div>
+    <div class="st-who">${esc(nm)}</div>
+    <div class="st-sub">${r.side === 'over' ? 'Over' : 'Under'} ${r.lead.a.line} ${TL_STAT[r.P.s] || esc(r.P.s)} · ${esc(r.g.away)} at ${esc(r.g.home)} · ${etFmt(r.g.tip, {hour: 'numeric', minute: '2-digit'})} ${TZL}</div>
+    <div class="st-ch"><span class="tl-k ${r.lead.a.type}">${esc(lt)}</span><span class="muted">${esc(r.lead.m.text)} · ${fAgo(r.lead.a.t)}</span>${r.venues.filter(v => v !== r.lead.a.type).map(v => `<span class="tl-k ${v}">${esc(ST_REF[v])}</span>`).join('')}</div>
+    <div class="st-t"><span>${esc(b.name)}${b.pick ? ' <span class="muted">pick\'em</span>' : ''}${b.same ? '' : ` <span class="muted">line ${b.line}</span>`}</span><b class="data-num">${stPx(b.px)}${r.fair != null && b.same ? ` <span class="muted" style="font-weight:500;font-size:12.5px">fair ${pc(r.fair, 1)}</span>` : ''}</b></div>
+    <div class="st-d"><div class="nt-tw"><table class="nt"><thead><tr><th class="l">Book</th><th>Line</th><th>Over</th><th>Under</th><th>EV</th></tr></thead><tbody>${r.tg.map(t => `<tr><td class="l">${esc(t.name)}${t.pick ? ' <small class="muted">pick\'em</small>' : ''}</td><td>${t.line}</td><td>${stPx(t.o)}</td><td>${stPx(t.u)}</td><td class="${t.ev == null ? 'muted' : t.ev >= 0 ? 'pos' : 'neg'}">${t.ev == null ? (t.better ? 'better line' : '-') : stSg(t.ev)}</td></tr>`).join('')}</tbody></table></div>
+      <ul>${r.ev.map(a => { const m = stMove(a); return `<li><span>${esc(ST_REF[a.type])}: ${esc(m ? m.text : '')}${a.lim ? ` (limit $${a.lim.toLocaleString()})` : ''}</span><span class="muted">${fAgo(a.t)}</span></li>`; }).join('')}</ul>
+      <p class="muted" style="margin:8px 0 0;font-size:12.5px">EV is the price against the reference's no-vig chance when it moved, at the same line. Pinnacle is a price reference, never a place to bet.</p></div></div>`;
+}
+function renderSteam(){
+  const pick = slateBoard(), B = pick.board, SH = B.sharp, now = Date.now() / 1000;
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
+  $('stbanner').hidden = !!(SH && SH.props);
+  $('stbanner').innerHTML = `<b>Steam Chaser needs the recorder's board.</b><span>${(B.games || []).length ? 'It fills on the next poll after this build ships.' : 'No games on the board yet. ' + noGamesWhy()}</span>`;
+  const seg = (lab, id, cur, o) => `<div><label>${lab}</label>${fSeg(id, cur, o)}</div>`;
+  $('stfilters').innerHTML = seg('Window', 'stwin', stF.win, [[15, '15m'], [30, '30m'], [60, '1H'], [90, '90m']]) + seg('Move', 'stmin', stF.min, [[0, 'Any'], [0.01, '1%'], [0.02, '2%'], [0.03, '3%']])
+    + seg('Agree', 'stag', stF.agree, [[1, '1+'], [2, '2+'], [3, '3+']]) + seg('Sort', 'stsort', stF.sort, [['ev', 'EV'], ['move', 'Move'], ['recent', 'Recent'], ['agree', 'Agree']]);
+  const rows = stPlays(B, now);
+  $('stlist').innerHTML = rows.map(stCard).join('') || '<p class="fb-empty">No reference has moved a prop in this window with a slower book still on the old number. Widen the window or lower the move size. The recorder polls every 5 to 15 minutes on game days, so quiet stretches are normal.</p>';
+  const R = stAgg();
+  $('strecord').innerHTML = `<thead><tr><th class="l">Reference</th><th>Fired</th><th title="Games final with Pinnacle's closing price for the same prop and line">Graded</th><th title="Pinnacle's closing fair minus its fair when the move fired, in probability points">Avg CLV, pts</th><th>W-L-P</th><th class="l">Status</th></tr></thead><tbody>${Object.entries(ST_REF).map(([t, l]) => { const a = R[t];
+    return `<tr><td class="l"><b>${l}</b></td><td>${a.fired}</td><td>${a.graded}</td><td>${a.mean != null ? `<span class="${a.mean > 0 ? 'pos' : a.mean < 0 ? 'neg' : ''}">${a.mean >= 0 ? '+' : ''}${(a.mean * 100).toFixed(2)}</span>${a.se ? ` <small>± ${(a.se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${a.w + a.l + a.p ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''}` : ''}</td>
+      <td class="l"><span class="muted">${ST_PRE[t] ? `Pre-registered, first look at 100 graded (${a.graded} so far), ${ST_PRE[t]}` : 'Context only · thresholds not backtested, no pass rule'}</span></td></tr>`; }).join('')}</tbody>`;
+  $('stfoot').innerHTML = `
+    <div><b>Not a bet.</b> Backtest, Oct 20 to 30: Pinnacle moves followed at DraftKings with 2%+ EV hit 47.3% on 203 plays against 54.5% expected (docs/steam-chaser-backtest.md). Nothing here is added into a lean or an agree count.</div>
+    <div><b>References.</b> Pinnacle (a line or 5 points of no-vig chance), Novig (5 points at one strike, history since 2026-10-30), heavy Kalshi money, sharp Polymarket accounts. Agreement is how many different references moved the same side within an hour.</div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#v-steam .seg button[data-v]');
+  if (b){ const id = b.parentElement.id, v = b.dataset.v; if (id === 'stwin') stF.win = +v; else if (id === 'stmin') stF.min = +v; else if (id === 'stag') stF.agree = +v; else if (id === 'stsort') stF.sort = v; renderSteam(); return; }
+  const c = e.target.closest('#stlist .st-c'); if (c){ const k = c.dataset.k; stOpen.has(k) ? stOpen.delete(k) : stOpen.add(k); renderSteam(); }
+});
 document.addEventListener('click', e => { const t = e.target.closest('#tltype button[data-v]'); if (t){ tlType = t.dataset.v; renderTells(); } });
 document.addEventListener('click', e => {
   const t = e.target.closest('#fbtier button[data-v]'); if (t){ fbTier = t.dataset.v; renderFollow(); return; }
