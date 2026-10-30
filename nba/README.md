@@ -73,7 +73,7 @@ were.
 ## Novig exchange flow
 
 `scripts/novig.py`: public, keyless reads of Novig's order books and trade tape (docs.novig.com, cached ~5 s at the edge).
-`snapshot.py` runs it on every poll and attaches `board['novig']`: per game the moneyline / main spread / main total
+`snapshot.py` also stores the prop ladders it reads as source `novigprops` (change-only, over side bid / ask / depth, from 2026-10-30). It runs on every poll and attaches `board['novig']`: per game the moneyline / main spread / main total
 (bid, ask, depth, resting dollars, new trades), per player prop a ladder, and a tape of tickets of $25 and up.
 One contract pays 1 cent, so dollars = price x qty / 100. State (trade cursors, the rolling tape) lives in
 `nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests, for the game lines; `NOVIG_PROP_BUDGET`, default 80, for player props, kept apart because the lines alone use all of the first) and honours `Retry-After`. Game lines rotate by whole game
