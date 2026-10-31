@@ -83,7 +83,7 @@ spread  FanDuel     n= 60  toward  33 / away  16  avg move toward +0.29 pts ±0.
 total   Pinnacle    n= 35  toward  22 / away  11  avg move toward +0.31 pts ±0.17
 total   FanDuel     n= 38  toward  21 / away  12  avg move toward +0.05 pts ±0.15
         -> too few games (35 of 50)
-props   Pinnacle    n=217  toward 108 / away  17  net share toward +0.42 ±0.06
+props   Pinnacle    n=218  toward 108 / away  17  net share toward +0.42 ±0.06
 props   FanDuel     n= 65  toward  33 / away   9  net share toward +0.37 ±0.12
 props   DraftKings  n= 28  toward  10 / away   4  net share toward +0.21 ±0.18
         -> NO-GO: not ahead of the controls (+0.05, z +0.4)
