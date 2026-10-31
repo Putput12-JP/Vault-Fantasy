@@ -49,9 +49,9 @@ rush_yd               57%   +0.0pp        45%    -57.5u         45%    -66.2u
 ## Game markets (at the close)
 
 ```
-games   n= 294  LL 0.7054 vs 0.6875  skill -0.026 z -1.9    level with the market (within noise)     beat close   28%  units  -13.7u
+games   n= 294  LL 0.7056 vs 0.6875  skill -0.026 z -1.9    level with the market (within noise)     beat close   28%  units  -13.7u
 ml      n=  88  LL 0.6718 vs 0.6725  skill +0.001 z +0.0    level with the market (within noise)     beat close   43%  units   +9.0u
-spread  n= 101  LL 0.7144 vs 0.6956  skill -0.027 z -1.4    level with the market (within noise)     beat close   23%  units  -18.9u
+spread  n= 101  LL 0.7150 vs 0.6956  skill -0.028 z -1.4    level with the market (within noise)     beat close   23%  units  -18.9u
 total   n= 105  LL 0.7249 vs 0.6921  skill -0.047 z -1.8    level with the market (within noise)     beat close   20%  units   -3.8u
 ```
 
@@ -83,10 +83,10 @@ spread  FanDuel     n= 60  toward  33 / away  16  avg move toward +0.29 pts ±0.
 total   Pinnacle    n= 35  toward  22 / away  11  avg move toward +0.31 pts ±0.17
 total   FanDuel     n= 38  toward  21 / away  12  avg move toward +0.05 pts ±0.15
         -> too few games (35 of 50)
-props   Pinnacle    n=218  toward 108 / away  17  net share toward +0.42 ±0.06
-props   FanDuel     n= 65  toward  33 / away   9  net share toward +0.37 ±0.12
+props   Pinnacle    n=225  toward 110 / away  18  net share toward +0.41 ±0.06
+props   FanDuel     n= 67  toward  38 / away   9  net share toward +0.43 ±0.11
 props   DraftKings  n= 28  toward  10 / away   4  net share toward +0.21 ±0.18
-        -> NO-GO: not ahead of the controls (+0.05, z +0.4)
+        -> NO-GO: not ahead of the controls (-0.02, z -0.2)
 ```
 
 ## Signals: Kalshi, Polymarket sharp accounts, withheld props
@@ -137,14 +137,14 @@ under 6 hours           22-13         +7.2u           +3.6u        7/28
 ## By week (props at the close / games at the close)
 
 ```
-Wk  1  props n= 514  LL 0.7137 vs 0.6891  skill -0.036 z -2.3     games n=  40  LL 0.7230 vs 0.6807  skill -0.062 z -1.6
-Wk  2  props n= 553  LL 0.6919 vs 0.6826  skill -0.014 z -0.8     games n=  44  LL 0.7172 vs 0.6851  skill -0.047 z -1.1
-Wk  3  props n= 590  LL 0.6974 vs 0.6883  skill -0.013 z -0.9     games n=  43  LL 0.6658 vs 0.6847  skill +0.028 z +0.7
-Wk  4  props n= 676  LL 0.7079 vs 0.6950  skill -0.019 z -1.8     games n=  44  LL 0.7011 vs 0.6903  skill -0.016 z -0.4
+Wk  1  props n= 514  LL 0.7137 vs 0.6891  skill -0.036 z -2.3     games n=  40  LL 0.7235 vs 0.6807  skill -0.063 z -1.6
+Wk  2  props n= 553  LL 0.6919 vs 0.6826  skill -0.014 z -0.8     games n=  44  LL 0.7177 vs 0.6851  skill -0.048 z -1.1
+Wk  3  props n= 590  LL 0.6974 vs 0.6883  skill -0.013 z -0.9     games n=  43  LL 0.6657 vs 0.6847  skill +0.028 z +0.7
+Wk  4  props n= 676  LL 0.7079 vs 0.6950  skill -0.019 z -1.8     games n=  44  LL 0.7010 vs 0.6903  skill -0.015 z -0.4
 Wk  5  props n= 597  LL 0.6944 vs 0.6794  skill -0.022 z -1.9     games n=  42  LL 0.6744 vs 0.6863  skill +0.017 z +0.6
-Wk  6  props n= 585  LL 0.7006 vs 0.6834  skill -0.025 z -2.0     games n=  37  LL 0.7655 vs 0.7216  skill -0.061 z -2.3
-Wk  7  props n= 587  LL 0.6877 vs 0.6835  skill -0.006 z -0.5     games n=  41  LL 0.7059 vs 0.6723  skill -0.050 z -1.2
-Wk  8  props n=  48  LL 0.7290 vs 0.6642  skill -0.098 z -2.5     games n=   3  LL 0.6134 vs 0.6150  skill +0.003 z +0.0
+Wk  6  props n= 585  LL 0.7006 vs 0.6834  skill -0.025 z -2.0     games n=  37  LL 0.7660 vs 0.7216  skill -0.062 z -2.3
+Wk  7  props n= 587  LL 0.6877 vs 0.6835  skill -0.006 z -0.5     games n=  41  LL 0.7061 vs 0.6723  skill -0.050 z -1.2
+Wk  8  props n=  48  LL 0.7290 vs 0.6642  skill -0.098 z -2.5     games n=   3  LL 0.6135 vs 0.6150  skill +0.002 z +0.0
 ```
 
 ## How to read this
