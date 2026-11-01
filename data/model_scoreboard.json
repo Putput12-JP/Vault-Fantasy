@@ -1,24 +1,24 @@
 {
- "generated": "2026-11-01T21:07:09.982695+00:00",
+ "generated": "2026-11-01T21:22:10.711789+00:00",
  "devig": "power",
  "props_half_line_check": {
   "all": {
-   "n": 485,
+   "n": 491,
    "market_p_over": 0.513,
    "over_rate": 0.54,
-   "z": 1.21
+   "z": 1.2
   },
   "pass_int": {
-   "n": 216,
+   "n": 220,
    "market_p_over": 0.491,
-   "over_rate": 0.505,
-   "z": 0.39
+   "over_rate": 0.509,
+   "z": 0.55
   },
   "pass_td": {
-   "n": 35,
-   "market_p_over": 0.64,
-   "over_rate": 0.657,
-   "z": 0.21
+   "n": 36,
+   "market_p_over": 0.641,
+   "over_rate": 0.639,
+   "z": -0.03
   },
   "rec": {
    "n": 175,
@@ -33,327 +33,327 @@
    "z": -0.12
   },
   "rush_yd": {
-   "n": 17,
-   "market_p_over": 0.452,
-   "over_rate": 0.471,
-   "z": 0.15
+   "n": 18,
+   "market_p_over": 0.457,
+   "over_rate": 0.444,
+   "z": -0.11
   }
  },
  "props": {
   "all": {
    "open": {
-    "n": 3917,
-    "logloss_vault": 0.6987,
-    "logloss_market": 0.6855,
-    "brier_vault": 0.2523,
-    "brier_market": 0.2462,
-    "skill": -0.0193,
-    "z": -3.79
+    "n": 3985,
+    "logloss_vault": 0.6984,
+    "logloss_market": 0.6856,
+    "brier_vault": 0.2521,
+    "brier_market": 0.2463,
+    "skill": -0.0187,
+    "z": -3.72
    },
    "close": {
-    "n": 4272,
-    "logloss_vault": 0.6991,
-    "logloss_market": 0.6861,
+    "n": 4347,
+    "logloss_vault": 0.6992,
+    "logloss_market": 0.6866,
     "brier_vault": 0.2525,
-    "brier_market": 0.2465,
-    "skill": -0.019,
-    "z": -3.85
+    "brier_market": 0.2467,
+    "skill": -0.0182,
+    "z": -3.73
    },
    "bets": {
-    "n_clv": 2749,
-    "clv_prob": 0.0018,
-    "n_beat": 3514,
-    "beat_close": 0.5851,
-    "n_open": 4680,
+    "n_clv": 2802,
+    "clv_prob": 0.0019,
+    "n_beat": 3577,
+    "beat_close": 0.5868,
+    "n_open": 4759,
     "win_open": 0.5316,
-    "units_open": -88.59,
-    "roi_open": -0.0189,
-    "n_close": 5137,
-    "win_close": 0.5153,
-    "units_close": -171.55,
-    "roi_close": -0.0334
+    "units_open": -89.61,
+    "roi_open": -0.0188,
+    "n_close": 5226,
+    "win_close": 0.5159,
+    "units_close": -163.59,
+    "roi_close": -0.0313
    },
    "verdict": "market better than Vault"
   },
   "pass_att": {
    "open": {
-    "n": 152,
-    "logloss_vault": 0.7083,
-    "logloss_market": 0.6956,
-    "brier_vault": 0.2563,
-    "brier_market": 0.2512,
-    "skill": -0.0182,
-    "z": -0.69
+    "n": 156,
+    "logloss_vault": 0.7074,
+    "logloss_market": 0.6957,
+    "brier_vault": 0.2559,
+    "brier_market": 0.2513,
+    "skill": -0.0168,
+    "z": -0.65
    },
    "close": {
-    "n": 149,
+    "n": 153,
     "logloss_vault": 0.7072,
-    "logloss_market": 0.689,
+    "logloss_market": 0.6899,
     "brier_vault": 0.2562,
-    "brier_market": 0.2479,
-    "skill": -0.0265,
-    "z": -1.05
+    "brier_market": 0.2484,
+    "skill": -0.0251,
+    "z": -1.01
    },
    "bets": {
-    "n_clv": 93,
-    "clv_prob": 0.0019,
-    "n_beat": 116,
-    "beat_close": 0.6293,
-    "n_open": 152,
-    "win_open": 0.5658,
-    "units_open": 12.02,
-    "roi_open": 0.0791,
-    "n_close": 152,
-    "win_close": 0.5592,
-    "units_close": 9.95,
-    "roi_close": 0.0655
+    "n_clv": 96,
+    "clv_prob": 0.0013,
+    "n_beat": 119,
+    "beat_close": 0.6134,
+    "n_open": 156,
+    "win_open": 0.5705,
+    "units_open": 13.71,
+    "roi_open": 0.0879,
+    "n_close": 156,
+    "win_close": 0.5641,
+    "units_close": 11.79,
+    "roi_close": 0.0756
    },
    "verdict": "level with the market (within noise)"
   },
   "pass_cmp": {
    "open": {
-    "n": 169,
-    "logloss_vault": 0.7155,
-    "logloss_market": 0.685,
-    "brier_vault": 0.2605,
-    "brier_market": 0.246,
-    "skill": -0.0445,
-    "z": -2.07
+    "n": 173,
+    "logloss_vault": 0.715,
+    "logloss_market": 0.6854,
+    "brier_vault": 0.2603,
+    "brier_market": 0.2461,
+    "skill": -0.0431,
+    "z": -2.04
    },
    "close": {
-    "n": 169,
-    "logloss_vault": 0.7134,
-    "logloss_market": 0.6885,
-    "brier_vault": 0.2596,
-    "brier_market": 0.2477,
-    "skill": -0.0362,
-    "z": -1.76
+    "n": 172,
+    "logloss_vault": 0.7119,
+    "logloss_market": 0.6888,
+    "brier_vault": 0.2589,
+    "brier_market": 0.2478,
+    "skill": -0.0336,
+    "z": -1.66
    },
    "bets": {
-    "n_clv": 113,
-    "clv_prob": 0.0024,
-    "n_beat": 133,
-    "beat_close": 0.594,
-    "n_open": 171,
-    "win_open": 0.4503,
-    "units_open": -26.75,
-    "roi_open": -0.1564,
-    "n_close": 171,
-    "win_close": 0.462,
-    "units_close": -21.19,
-    "roi_close": -0.1239
+    "n_clv": 116,
+    "clv_prob": 0.0027,
+    "n_beat": 136,
+    "beat_close": 0.5956,
+    "n_open": 175,
+    "win_open": 0.4457,
+    "units_open": -28.87,
+    "roi_open": -0.165,
+    "n_close": 175,
+    "win_close": 0.4571,
+    "units_close": -23.37,
+    "roi_close": -0.1335
    },
    "verdict": "level with the market (within noise)"
   },
   "pass_td": {
    "open": {
-    "n": 207,
-    "logloss_vault": 0.6541,
-    "logloss_market": 0.6717,
-    "brier_vault": 0.2301,
-    "brier_market": 0.2393,
-    "skill": 0.0262,
-    "z": 1.32
+    "n": 211,
+    "logloss_vault": 0.6603,
+    "logloss_market": 0.6743,
+    "brier_vault": 0.2331,
+    "brier_market": 0.2406,
+    "skill": 0.0208,
+    "z": 1.05
    },
    "close": {
-    "n": 204,
-    "logloss_vault": 0.6436,
-    "logloss_market": 0.6606,
-    "brier_vault": 0.2251,
-    "brier_market": 0.2339,
-    "skill": 0.0258,
-    "z": 1.24
+    "n": 208,
+    "logloss_vault": 0.6501,
+    "logloss_market": 0.6637,
+    "brier_vault": 0.2282,
+    "brier_market": 0.2354,
+    "skill": 0.0205,
+    "z": 0.99
    },
    "bets": {
-    "n_clv": 194,
-    "clv_prob": 0.0007,
-    "n_beat": 157,
-    "beat_close": 0.5096,
-    "n_open": 212,
-    "win_open": 0.6085,
-    "units_open": 10.14,
-    "roi_open": 0.0478,
-    "n_close": 212,
-    "win_close": 0.6038,
-    "units_close": 9.3,
-    "roi_close": 0.0438
+    "n_clv": 198,
+    "clv_prob": 0.0008,
+    "n_beat": 160,
+    "beat_close": 0.5125,
+    "n_open": 216,
+    "win_open": 0.5972,
+    "units_open": 6.14,
+    "roi_open": 0.0284,
+    "n_close": 216,
+    "win_close": 0.5926,
+    "units_close": 5.3,
+    "roi_close": 0.0245
    },
    "verdict": "level with the market (within noise)"
   },
   "pass_yd": {
    "open": {
-    "n": 174,
-    "logloss_vault": 0.7259,
+    "n": 178,
+    "logloss_vault": 0.7223,
     "logloss_market": 0.6935,
-    "brier_vault": 0.2653,
+    "brier_vault": 0.2635,
     "brier_market": 0.2502,
-    "skill": -0.0467,
-    "z": -2.03
+    "skill": -0.0416,
+    "z": -1.83
    },
    "close": {
-    "n": 175,
-    "logloss_vault": 0.7262,
-    "logloss_market": 0.6925,
-    "brier_vault": 0.2654,
-    "brier_market": 0.2497,
-    "skill": -0.0486,
-    "z": -2.12
+    "n": 179,
+    "logloss_vault": 0.7226,
+    "logloss_market": 0.6922,
+    "brier_vault": 0.2637,
+    "brier_market": 0.2495,
+    "skill": -0.0439,
+    "z": -1.94
    },
    "bets": {
-    "n_clv": 59,
-    "clv_prob": 0.0011,
-    "n_beat": 120,
-    "beat_close": 0.575,
-    "n_open": 176,
-    "win_open": 0.4943,
-    "units_open": -13.92,
-    "roi_open": -0.0791,
-    "n_close": 176,
-    "win_close": 0.4886,
-    "units_close": -15.43,
-    "roi_close": -0.0876
+    "n_clv": 63,
+    "clv_prob": 0.001,
+    "n_beat": 124,
+    "beat_close": 0.5645,
+    "n_open": 180,
+    "win_open": 0.5,
+    "units_open": -12.3,
+    "roi_open": -0.0683,
+    "n_close": 180,
+    "win_close": 0.4944,
+    "units_close": -13.76,
+    "roi_close": -0.0765
    },
-   "verdict": "market better than Vault"
+   "verdict": "level with the market (within noise)"
   },
   "rec": {
    "open": {
-    "n": 1295,
-    "logloss_vault": 0.6884,
-    "logloss_market": 0.6765,
-    "brier_vault": 0.2475,
-    "brier_market": 0.2418,
+    "n": 1313,
+    "logloss_vault": 0.6879,
+    "logloss_market": 0.6759,
+    "brier_vault": 0.2472,
+    "brier_market": 0.2415,
     "skill": -0.0177,
-    "z": -2.03
+    "z": -2.05
    },
    "close": {
-    "n": 1275,
-    "logloss_vault": 0.6869,
-    "logloss_market": 0.6776,
-    "brier_vault": 0.2467,
-    "brier_market": 0.2423,
-    "skill": -0.0138,
-    "z": -1.57
+    "n": 1294,
+    "logloss_vault": 0.6872,
+    "logloss_market": 0.6786,
+    "brier_vault": 0.2468,
+    "brier_market": 0.2427,
+    "skill": -0.0126,
+    "z": -1.44
    },
    "bets": {
-    "n_clv": 1001,
-    "clv_prob": 0.0018,
-    "n_beat": 1014,
-    "beat_close": 0.5927,
-    "n_open": 1374,
-    "win_open": 0.5801,
-    "units_open": 48.73,
-    "roi_open": 0.0355,
-    "n_close": 1386,
-    "win_close": 0.5483,
-    "units_close": 24.93,
-    "roi_close": 0.018
+    "n_clv": 1012,
+    "clv_prob": 0.002,
+    "n_beat": 1031,
+    "beat_close": 0.5965,
+    "n_open": 1393,
+    "win_open": 0.58,
+    "units_open": 48.77,
+    "roi_open": 0.035,
+    "n_close": 1406,
+    "win_close": 0.5491,
+    "units_close": 30.53,
+    "roi_close": 0.0217
    },
    "verdict": "level with the market (within noise)"
   },
   "rec_yd": {
    "open": {
-    "n": 1019,
-    "logloss_vault": 0.7012,
-    "logloss_market": 0.6892,
-    "brier_vault": 0.2537,
-    "brier_market": 0.2481,
-    "skill": -0.0174,
-    "z": -1.94
+    "n": 1034,
+    "logloss_vault": 0.7009,
+    "logloss_market": 0.6895,
+    "brier_vault": 0.2536,
+    "brier_market": 0.2482,
+    "skill": -0.0166,
+    "z": -1.87
    },
    "close": {
-    "n": 1313,
-    "logloss_vault": 0.7031,
-    "logloss_market": 0.6894,
-    "brier_vault": 0.2547,
-    "brier_market": 0.2482,
-    "skill": -0.0198,
-    "z": -2.31
+    "n": 1333,
+    "logloss_vault": 0.7029,
+    "logloss_market": 0.6897,
+    "brier_vault": 0.2546,
+    "brier_market": 0.2483,
+    "skill": -0.0192,
+    "z": -2.28
    },
    "bets": {
-    "n_clv": 395,
+    "n_clv": 397,
     "clv_prob": -0.0014,
-    "n_beat": 770,
-    "beat_close": 0.5558,
-    "n_open": 1033,
-    "win_open": 0.5169,
-    "units_open": -30.19,
-    "roi_open": -0.0292,
-    "n_close": 1331,
-    "win_close": 0.5064,
-    "units_close": -60.29,
-    "roi_close": -0.0453
+    "n_beat": 783,
+    "beat_close": 0.5594,
+    "n_open": 1048,
+    "win_open": 0.52,
+    "units_open": -24.26,
+    "roi_open": -0.0231,
+    "n_close": 1351,
+    "win_close": 0.5093,
+    "units_close": -53.18,
+    "roi_close": -0.0394
    },
    "verdict": "market better than Vault"
   },
   "rush_att": {
    "open": {
-    "n": 496,
-    "logloss_vault": 0.6946,
-    "logloss_market": 0.6921,
-    "brier_vault": 0.2503,
-    "brier_market": 0.2495,
-    "skill": -0.0036,
-    "z": -0.25
+    "n": 506,
+    "logloss_vault": 0.6942,
+    "logloss_market": 0.6924,
+    "brier_vault": 0.2501,
+    "brier_market": 0.2496,
+    "skill": -0.0026,
+    "z": -0.18
    },
    "close": {
-    "n": 510,
-    "logloss_vault": 0.7053,
-    "logloss_market": 0.6972,
-    "brier_vault": 0.2553,
-    "brier_market": 0.252,
-    "skill": -0.0116,
-    "z": -0.82
+    "n": 520,
+    "logloss_vault": 0.7048,
+    "logloss_market": 0.697,
+    "brier_vault": 0.2551,
+    "brier_market": 0.2519,
+    "skill": -0.0112,
+    "z": -0.8
    },
    "bets": {
-    "n_clv": 339,
-    "clv_prob": 0.0071,
-    "n_beat": 412,
-    "beat_close": 0.6286,
-    "n_open": 499,
-    "win_open": 0.5351,
-    "units_open": 7.88,
-    "roi_open": 0.0158,
-    "n_close": 518,
-    "win_close": 0.5058,
-    "units_close": -13.19,
-    "roi_close": -0.0255
+    "n_clv": 347,
+    "clv_prob": 0.0065,
+    "n_beat": 421,
+    "beat_close": 0.6295,
+    "n_open": 509,
+    "win_open": 0.5324,
+    "units_open": 5.26,
+    "roi_open": 0.0103,
+    "n_close": 528,
+    "win_close": 0.5038,
+    "units_close": -15.44,
+    "roi_close": -0.0292
    },
    "verdict": "level with the market (within noise)"
   },
   "rush_yd": {
    "open": {
-    "n": 405,
-    "logloss_vault": 0.7309,
+    "n": 414,
+    "logloss_vault": 0.7296,
     "logloss_market": 0.6969,
-    "brier_vault": 0.2672,
-    "brier_market": 0.2518,
-    "skill": -0.0488,
-    "z": -2.38
+    "brier_vault": 0.2666,
+    "brier_market": 0.2519,
+    "skill": -0.0469,
+    "z": -2.32
    },
    "close": {
-    "n": 477,
-    "logloss_vault": 0.7205,
-    "logloss_market": 0.6944,
-    "brier_vault": 0.2625,
-    "brier_market": 0.2507,
-    "skill": -0.0376,
-    "z": -2.0
+    "n": 488,
+    "logloss_vault": 0.72,
+    "logloss_market": 0.6946,
+    "brier_vault": 0.2623,
+    "brier_market": 0.2508,
+    "skill": -0.0365,
+    "z": -1.97
    },
    "bets": {
-    "n_clv": 196,
-    "clv_prob": 0.0006,
-    "n_beat": 294,
-    "beat_close": 0.5782,
-    "n_open": 407,
-    "win_open": 0.4496,
-    "units_open": -61.06,
+    "n_clv": 205,
+    "clv_prob": 0.001,
+    "n_beat": 300,
+    "beat_close": 0.58,
+    "n_open": 416,
+    "win_open": 0.4495,
+    "units_open": -62.38,
     "roi_open": -0.15,
-    "n_close": 489,
-    "win_close": 0.4519,
-    "units_close": -70.26,
+    "n_close": 500,
+    "win_close": 0.452,
+    "units_close": -71.86,
     "roi_close": -0.1437
    },
-   "verdict": "market better than Vault"
+   "verdict": "level with the market (within noise)"
   }
  },
  "props_by_week": {
@@ -499,127 +499,127 @@
   },
   "8": {
    "open": {
-    "n": 150,
-    "logloss_vault": 0.6985,
-    "logloss_market": 0.69,
-    "brier_vault": 0.2524,
-    "brier_market": 0.2484,
-    "skill": -0.0124,
-    "z": -0.53
+    "n": 218,
+    "logloss_vault": 0.6933,
+    "logloss_market": 0.6908,
+    "brier_vault": 0.25,
+    "brier_market": 0.2488,
+    "skill": -0.0037,
+    "z": -0.2
    },
    "close": {
-    "n": 170,
-    "logloss_vault": 0.7004,
-    "logloss_market": 0.6869,
-    "brier_vault": 0.2531,
-    "brier_market": 0.2468,
-    "skill": -0.0196,
-    "z": -0.95
+    "n": 245,
+    "logloss_vault": 0.7005,
+    "logloss_market": 0.6966,
+    "brier_vault": 0.2534,
+    "brier_market": 0.2511,
+    "skill": -0.0056,
+    "z": -0.33
    }
   }
  },
  "games": {
   "games": {
    "close": {
-    "n": 302,
-    "logloss_vault": 0.7046,
-    "logloss_market": 0.6865,
-    "brier_vault": 0.2551,
-    "brier_market": 0.246,
-    "skill": -0.0263,
-    "z": -1.9
+    "n": 308,
+    "logloss_vault": 0.703,
+    "logloss_market": 0.6854,
+    "brier_vault": 0.2544,
+    "brier_market": 0.2455,
+    "skill": -0.0258,
+    "z": -1.89
    },
    "bets": {
-    "n_clv": 90,
-    "clv_prob": -0.008,
-    "n_beat": 302,
-    "beat_close": 0.2748,
+    "n_clv": 92,
+    "clv_prob": -0.0078,
+    "n_beat": 308,
+    "beat_close": 0.276,
     "n_open": 0,
     "win_open": null,
     "units_open": null,
     "roi_open": null,
-    "n_close": 297,
-    "win_close": 0.4636,
-    "units_close": -15.85,
-    "roi_close": -0.0534
+    "n_close": 303,
+    "win_close": 0.4675,
+    "units_close": -14.6,
+    "roi_close": -0.0482
    },
    "verdict": "level with the market (within noise)"
   },
   "ml": {
    "close": {
-    "n": 90,
-    "logloss_vault": 0.6677,
-    "logloss_market": 0.6687,
-    "brier_vault": 0.2368,
-    "brier_market": 0.2356,
-    "skill": 0.0015,
-    "z": 0.06
+    "n": 92,
+    "logloss_vault": 0.6645,
+    "logloss_market": 0.6643,
+    "brier_vault": 0.2353,
+    "brier_market": 0.2335,
+    "skill": -0.0003,
+    "z": -0.01
    },
    "bets": {
-    "n_clv": 90,
-    "clv_prob": -0.008,
-    "n_beat": 90,
-    "beat_close": 0.4222,
+    "n_clv": 92,
+    "clv_prob": -0.0078,
+    "n_beat": 92,
+    "beat_close": 0.4239,
     "n_open": 0,
     "win_open": null,
     "units_open": null,
     "roi_open": null,
-    "n_close": 85,
-    "win_close": 0.4667,
-    "units_close": 9.06,
-    "roi_close": 0.1066
+    "n_close": 87,
+    "win_close": 0.4674,
+    "units_close": 8.59,
+    "roi_close": 0.0987
    },
    "verdict": "level with the market (within noise)"
   },
   "spread": {
    "close": {
-    "n": 104,
-    "logloss_vault": 0.7146,
-    "logloss_market": 0.6959,
-    "brier_vault": 0.2606,
-    "brier_market": 0.2514,
-    "skill": -0.0269,
-    "z": -1.39
+    "n": 106,
+    "logloss_vault": 0.7145,
+    "logloss_market": 0.6963,
+    "brier_vault": 0.2605,
+    "brier_market": 0.2516,
+    "skill": -0.0262,
+    "z": -1.37
    },
    "bets": {
     "n_clv": 0,
     "clv_prob": null,
-    "n_beat": 104,
-    "beat_close": 0.2308,
+    "n_beat": 106,
+    "beat_close": 0.2264,
     "n_open": 0,
     "win_open": null,
     "units_open": null,
     "roi_open": null,
-    "n_close": 104,
-    "win_close": 0.4231,
-    "units_close": -20.0,
-    "roi_close": -0.1923
+    "n_close": 106,
+    "win_close": 0.4245,
+    "units_close": -20.09,
+    "roi_close": -0.1895
    },
    "verdict": "level with the market (within noise)"
   },
   "total": {
    "close": {
-    "n": 108,
-    "logloss_vault": 0.7256,
-    "logloss_market": 0.6923,
-    "brier_vault": 0.2651,
+    "n": 110,
+    "logloss_vault": 0.7242,
+    "logloss_market": 0.6924,
+    "brier_vault": 0.2644,
     "brier_market": 0.2496,
-    "skill": -0.0481,
-    "z": -1.89
+    "skill": -0.0458,
+    "z": -1.83
    },
    "bets": {
     "n_clv": 0,
     "clv_prob": null,
-    "n_beat": 108,
-    "beat_close": 0.1944,
+    "n_beat": 110,
+    "beat_close": 0.2,
     "n_open": 0,
     "win_open": null,
     "units_open": null,
     "roi_open": null,
-    "n_close": 108,
-    "win_close": 0.5,
-    "units_close": -4.91,
-    "roi_close": -0.0455
+    "n_close": 110,
+    "win_close": 0.5091,
+    "units_close": -3.09,
+    "roi_close": -0.0281
    },
    "verdict": "level with the market (within noise)"
   }
@@ -704,13 +704,13 @@
   },
   "8": {
    "close": {
-    "n": 11,
-    "logloss_vault": 0.6523,
-    "logloss_market": 0.641,
-    "brier_vault": 0.2306,
-    "brier_market": 0.2264,
-    "skill": -0.0177,
-    "z": -0.33
+    "n": 17,
+    "logloss_vault": 0.6427,
+    "logloss_market": 0.6364,
+    "brier_vault": 0.2257,
+    "brier_market": 0.2235,
+    "skill": -0.0098,
+    "z": -0.24
    }
   }
  },
@@ -730,82 +730,82 @@
    },
    "no news": {
     "open": {
-     "n": 1586,
-     "over_hit": 0.4798,
-     "market_said": 0.4934
+     "n": 1634,
+     "over_hit": 0.478,
+     "market_said": 0.4937
     },
     "close": {
-     "n": 1741,
-     "over_hit": 0.4796,
+     "n": 1792,
+     "over_hit": 0.4777,
      "market_said": 0.495
     }
    },
    "usage down": {
     "open": {
-     "n": 508,
+     "n": 518,
      "over_hit": 0.5,
-     "market_said": 0.4928
+     "market_said": 0.4931
     },
     "close": {
-     "n": 580,
-     "over_hit": 0.4983,
+     "n": 591,
+     "over_hit": 0.4992,
      "market_said": 0.4885
     }
    },
    "usage up / teammate out": {
     "open": {
-     "n": 2318,
-     "over_hit": 0.5009,
+     "n": 2337,
+     "over_hit": 0.5006,
      "market_said": 0.4945
     },
     "close": {
-     "n": 2465,
-     "over_hit": 0.4917,
-     "market_said": 0.4941
+     "n": 2489,
+     "over_hit": 0.4918,
+     "market_said": 0.494
     }
    }
   },
   "big_disagreements": {
    "against the news": {
-    "n": 696,
-    "vault_side_won": 353,
-    "win": 0.5072,
+    "n": 701,
+    "vault_side_won": 356,
+    "win": 0.5078,
     "score": {
-     "n": 696,
-     "logloss_vault": 0.7375,
+     "n": 701,
+     "logloss_vault": 0.7372,
      "logloss_market": 0.6938,
-     "brier_vault": 0.2698,
-     "brier_market": 0.2503,
-     "skill": -0.0631,
-     "z": -3.42
+     "brier_vault": 0.2697,
+     "brier_market": 0.2504,
+     "skill": -0.0626,
+     "z": -3.41
     }
    },
    "agrees with the news": {
-    "n": 394,
-    "vault_side_won": 213,
-    "win": 0.5406,
+    "n": 395,
+    "vault_side_won": 214,
+    "win": 0.5418,
     "score": {
-     "n": 394,
-     "logloss_vault": 0.6953,
-     "logloss_market": 0.6956,
-     "brier_vault": 0.2513,
-     "brier_market": 0.251,
-     "skill": 0.0005,
-     "z": 0.02
+     "n": 395,
+     "logloss_vault": 0.6961,
+     "logloss_market": 0.6988,
+     "brier_vault": 0.2518,
+     "brier_market": 0.2522,
+     "skill": 0.0037,
+     "z": 0.16
     }
    },
    "no news": {
-    "n": 606,
-    "vault_side_won": 318,
-    "win": 0.5248,
+    "n": 619,
+    "vault_side_won": 325,
+    "win": 0.525,
     "score": {
-     "n": 606,
-     "logloss_vault": 0.7056,
-     "logloss_market": 0.6854,
-     "brier_vault": 0.2552,
-     "brier_market": 0.2461,
-     "skill": -0.0295,
-     "z": -1.5
+     "n": 619,
+     "logloss_vault": 0.7044,
+     "logloss_market": 0.6848,
+     "brier_vault": 0.2547,
+     "brier_market": 0.2459,
+     "skill": -0.0286,
+     "z": -1.47
     }
    }
   }
@@ -975,65 +975,65 @@
     }
    },
    "8": {
-    "rows": 150,
+    "rows": 218,
     "live": {
      "open": {
-      "n": 23,
-      "W": 9,
-      "units": -2.84
+      "n": 35,
+      "W": 15,
+      "units": -2.96
      },
      "close": {
-      "n": 23,
-      "W": 9,
-      "units": -3.7
+      "n": 35,
+      "W": 16,
+      "units": -2.26
      }
     },
     "anchored": {
      "open": {
-      "n": 4,
+      "n": 6,
       "W": 2,
-      "units": 0.38
+      "units": -1.62
      },
      "close": {
-      "n": 4,
+      "n": 6,
       "W": 2,
-      "units": -0.08
+      "units": -2.08
      }
     }
    }
   },
   "all": {
-   "rows": 3445,
+   "rows": 3513,
    "live": {
     "open": {
-     "n": 726,
-     "W": 372,
-     "units": 19.86
+     "n": 738,
+     "W": 378,
+     "units": 19.73
     },
     "close": {
-     "n": 726,
-     "W": 368,
-     "units": -0.05
+     "n": 738,
+     "W": 375,
+     "units": 1.4
     }
    },
    "anchored": {
     "open": {
-     "n": 107,
+     "n": 109,
      "W": 57,
-     "units": 11.13
+     "units": 9.13
     },
     "close": {
-     "n": 107,
+     "n": 109,
      "W": 58,
-     "units": 10.69
+     "units": 8.69
     }
    }
   },
   "ll_open": {
-   "n": 3445,
-   "market": 0.6845,
-   "live": 0.6955,
-   "anchored": 0.6836
+   "n": 3513,
+   "market": 0.6847,
+   "live": 0.6952,
+   "anchored": 0.6838
   }
  },
  "timing": {
@@ -1119,9 +1119,9 @@
    },
    "Pinnacle": {
     "n": 230,
-    "toward": 120,
+    "toward": 121,
     "away": 20,
-    "mean_move": 0.435,
+    "mean_move": 0.439,
     "se": 0.059
    },
    "DraftKings": {
@@ -1131,19 +1131,19 @@
     "mean_move": 0.214,
     "se": 0.185
    },
-   "verdict": "NO-GO: not ahead of the controls (-0.04, z -0.3)"
+   "verdict": "NO-GO: not ahead of the controls (-0.03, z -0.3)"
   }
  },
  "signals": {
   "kalshi_vs_books": {
-   "n": 33,
-   "won": 21,
-   "said": 16.31,
-   "verdict": "tracking (33 of 50)",
+   "n": 35,
+   "won": 23,
+   "said": 17.31,
+   "verdict": "tracking (35 of 50)",
    "all_lines": {
-    "n": 904,
-    "logloss_kalshi": 0.684,
-    "logloss_books": 0.6874
+    "n": 946,
+    "logloss_kalshi": 0.6834,
+    "logloss_books": 0.6869
    },
    "rows": [
     {
@@ -1165,6 +1165,48 @@
      "first_ts": "2026-10-30T01:00:06.293Z",
      "last_ts": "2026-10-30T07:06:40.760Z",
      "actual": 6.0,
+     "won": 1
+    },
+    {
+     "name": "Jaylen Warren",
+     "team": "PIT",
+     "opp": "CLE",
+     "pos": "RB",
+     "market": "rec_yd",
+     "line": 24.5,
+     "commence": "2026-11-01T18:00:00Z",
+     "pick": "Under",
+     "kalshi": 0.445,
+     "books": 0.5,
+     "vault": 0.494,
+     "nBooks": 3,
+     "price": 0.5,
+     "price_basis": "books",
+     "interp": false,
+     "first_ts": "2026-10-30T01:00:06.293Z",
+     "last_ts": "2026-10-31T17:43:51.590Z",
+     "actual": 0.0,
+     "won": 1
+    },
+    {
+     "name": "Jahmyr Gibbs",
+     "team": "DET",
+     "opp": "MIN",
+     "pos": "RB",
+     "market": "rec_yd",
+     "line": 34.5,
+     "commence": "2026-11-01T18:00:00Z",
+     "pick": "Under",
+     "kalshi": 0.395,
+     "books": 0.501,
+     "vault": 0.507,
+     "nBooks": 3,
+     "price": 0.499,
+     "price_basis": "books",
+     "interp": false,
+     "first_ts": "2026-10-30T19:23:17.260Z",
+     "last_ts": "2026-10-30T23:47:15.547Z",
+     "actual": 15.0,
      "won": 1
     },
     {
@@ -1842,11 +1884,32 @@
    ]
   },
   "vault_vs_kalshi": {
-   "n": 166,
-   "won": 76,
-   "said": 88.21,
+   "n": 167,
+   "won": 77,
+   "said": 88.82,
    "verdict": "no edge yet (z -1.9)",
    "rows": [
+    {
+     "name": "Jahmyr Gibbs",
+     "team": "DET",
+     "opp": "MIN",
+     "pos": "RB",
+     "market": "rec_yd",
+     "line": 34.5,
+     "commence": "2026-11-01T18:00:00Z",
+     "pick": "Under",
+     "kalshi": 0.395,
+     "books": 0.501,
+     "vault": 0.507,
+     "nBooks": 3,
+     "price": 0.605,
+     "price_basis": "kalshi",
+     "interp": false,
+     "first_ts": "2026-10-30T19:23:17.260Z",
+     "last_ts": "2026-10-30T23:47:15.547Z",
+     "actual": 15.0,
+     "won": 1
+    },
     {
      "name": "Rhamondre Stevenson",
      "team": "NE",
@@ -5773,9 +5836,9 @@
    ]
   },
   "withheld": {
-   "lines": 341,
-   "lean_won": 172,
-   "overs_hit": 167,
+   "lines": 345,
+   "lean_won": 173,
+   "overs_hit": 169,
    "would_be_plays": {
     "W": 6,
     "L": 10,
