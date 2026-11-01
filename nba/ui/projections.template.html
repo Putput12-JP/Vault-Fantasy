@@ -2306,41 +2306,29 @@ th{font-weight:500}
   main{padding:20px}
 }
 /* ── iPhone Duo (approved mocks: mocks/nba-iphone-duo.html). Picked by the shape of the screen, never by device name.
-   Apple's rules: on a screen that is short for its width the bars move to a strip on the right edge, under the right thumb;
-   open like a book, the page list sits beside its detail and nothing crosses the fold; open upright, bars go back to top and
-   bottom with an even number of columns. Safari's fold flags (device posture, viewport segments) only fine-tune this. Layout only. ── */
+   On the Duo iOS keeps the right edge of both screens for its status bar and Safari can't draw there, so Vault keeps its own bars off
+   that edge except where height is scarce. Open like a book, the page list sits beside its detail and nothing crosses the fold;
+   open upright, an even number of columns. Safari's fold flags (device posture, viewport segments) only fine-tune this. Layout only. ── */
 :root{--fold-x:50vw;--fold-gap:0px}
 @media (horizontal-viewport-segments:2){:root{--fold-x:env(viewport-segment-right 0 0,50vw);--fold-gap:calc(env(viewport-segment-left 1 0,50vw) - env(viewport-segment-right 0 0,50vw))}}
-/* Strip: phone shell on a screen that is not tall. Safari 27.1's own sizes for the Duo: closed 382 wide by 580 to 618 tall,
-   sideways 594 x 368-406, two windows side by side 385 x 571-609. As a home-screen app the closed page is about 382 x 678 (iOS keeps
-   the right edge for the status bar), too tall for the shape test, so the physical screen also counts: the closed Duo's screen is
-   678 tall and at least 0.55 wide-to-tall, every other supported iPhone is about 0.46 (the SE, 0.56, is 667 tall). */
-@media (max-width:820px) and (min-aspect-ratio:3/5) and (max-height:700px),
-       (max-width:820px) and (max-device-width:500px) and (min-device-aspect-ratio:11/20) and (min-device-height:670px){
-  .app{padding-bottom:env(safe-area-inset-bottom,0px);padding-right:max(64px,env(safe-area-inset-right,0px))}
-  .tabbar{left:auto;right:0;top:0;bottom:0;width:max(64px,env(safe-area-inset-right,0px));transform:none;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;
-    padding:calc(8px + env(safe-area-inset-top,0px)) 0 calc(12px + env(safe-area-inset-bottom,0px));border:0;border-left:1px solid var(--border);border-radius:0}
-  .tabbar button{flex:none;width:52px;min-height:54px;gap:2px;font-size:9.5px;letter-spacing:.01em}
+/* Strip: only on a phone screen with no height to spare (the closed Duo turned sideways, 594 x 368-406; a small iPhone sideways).
+   Upright, the closed Duo keeps the bottom bar: iOS already keeps the right edge for its status bar and Safari can't draw there,
+   so a second strip beside it cost a third of the width. Icons only (the name stays as button text for VoiceOver); games two across. */
+@media (max-width:820px) and (min-aspect-ratio:3/5) and (max-height:520px){
+  .app{padding-bottom:env(safe-area-inset-bottom,0px);padding-right:max(56px,env(safe-area-inset-right,0px))}
+  .tabbar{left:auto;right:0;top:0;bottom:0;width:max(56px,env(safe-area-inset-right,0px));transform:none;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;
+    padding:calc(8px + env(safe-area-inset-top,0px)) 0 calc(10px + env(safe-area-inset-bottom,0px));border:0;border-left:1px solid var(--border);border-radius:0}
+  .tabbar button{flex:none;width:46px;min-height:46px;font-size:0;gap:0}
   .tabbar button.on{background:var(--raised)}
   main{padding-right:16px}
   .bar{padding-right:16px}
-}
-/* Sideways closed Duo or small iPhone: no height for labels, icons only (the name stays as the button's text for VoiceOver); games two across */
-@media (max-width:820px) and (min-aspect-ratio:3/5) and (max-height:520px){
-  .tabbar{gap:2px}
-  .tabbar button{min-height:46px;font-size:0;gap:0}
   .lw-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
-/* Open like a book (desktop shell, wide and short): the icon rail moves to the right edge, where the closed phone's strip was,
+/* Open like a book (desktop shell, wide and short): the icon rail stays on the left, away from iOS's status bar on the right edge,
    and Props splits list | detail on the fold line instead of stacking */
-@media (min-width:821px) and (max-width:1100px) and (max-aspect-ratio:7/4){
-  .app,:root[data-side="1"] .app{grid-template-columns:minmax(0,1fr) 72px}
-  .sidebar{grid-column:2;grid-row:1;border-right:0;border-left:1px solid var(--border);box-shadow:inset 1px 0 0 rgb(var(--ink) / .05)}
-  .inset{grid-column:1;grid-row:1;min-width:0}
-}
 @media (min-width:821px) and (max-width:1100px) and (min-aspect-ratio:4/3) and (max-aspect-ratio:7/4){
-  /* 28px = the page's 8px body margin + main's 20px padding, so the list ends half a gap short of the fold */
-  .pv-main{grid-template-columns:calc(var(--fold-x) - 28px - var(--gap) / 2) minmax(0,1fr);column-gap:calc(var(--gap) + var(--fold-gap))}
+  /* 100px = the page's 8px body margin + the 72px rail + main's 20px padding, so the list ends half a gap short of the fold */
+  .pv-main{grid-template-columns:calc(var(--fold-x) - 100px - var(--gap) / 2) minmax(0,1fr);column-gap:calc(var(--gap) + var(--fold-gap))}
   .pv-list{position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px);max-height:calc(100dvh - 96px - env(safe-area-inset-top,0px))}
 }
 /* Props sits in a one-column grid whose track grew to the day strip's full width (1140px on an 890px screen): keep it to the page */
@@ -2349,8 +2337,8 @@ th{font-weight:500}
 @media (min-width:561px) and (max-width:820px) and (min-height:701px){
   .lw-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
-/* A game card narrower than 360px puts its tip-off time on top instead of in a side column */
-@container lw (max-width:360px){
+/* A game card narrower than 760px puts its tip-off time on top instead of in a 62px side column, where it broke onto four lines */
+@container lw (max-width:760px){
   .lw-b{grid-template-columns:minmax(0,1fr) 22px;grid-template-areas:"t c" "m c" "s c" "w c" "b c" "e c" "k c";padding:12px 14px}
 }
 </style>
