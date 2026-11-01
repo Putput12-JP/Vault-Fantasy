@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Vault NBA screen check</title>
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;background:#0b0c0e;color:#f3f4f6;font:15px/1.5 -apple-system,system-ui,sans-serif}
+main{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
+h1{font-size:20px;margin:0 0 4px}
+p{color:#a2a7b1;margin:0 0 14px;font-size:13px}
+table{border-collapse:collapse;width:100%}
+td{padding:6px 4px;border-bottom:1px solid #22252b;vertical-align:top}
+td:last-child{text-align:right;font:600 14px ui-monospace,Menlo,monospace}
+#sa{position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Vault NBA screen check</h1>
+  <p>Screenshot this page in each position (closed upright, closed sideways, open, open upright, half open) and send it back. It only reads the screen; nothing is saved or sent.</p>
+  <table id="t"></table>
+</main>
+<div id="sa"></div>
+<script>
+// Each row: what the page sees. The mq rows are the exact media queries Vault NBA uses to pick a layout.
+function mq(q){try{return matchMedia(q).matches?'yes':'no'}catch(e){return 'error'}}
+function draw(){
+  var sa=getComputedStyle(document.getElementById('sa'));
+  var rows=[
+    ['Page size (CSS px)',innerWidth+' x '+innerHeight],
+    ['Screen size',screen.width+' x '+screen.height],
+    ['Pixel ratio',devicePixelRatio],
+    ['Safe area top / right / bottom / left',[sa.paddingTop,sa.paddingRight,sa.paddingBottom,sa.paddingLeft].map(parseFloat).join(' / ')],
+    ['Home-screen app',(navigator.standalone||mq('(display-mode: standalone)')==='yes')?'yes':'no'],
+    ['Touch screen',mq('(pointer:coarse)')],
+    ['Fold posture API',mq('(device-posture:folded)')==='yes'?'folded':(mq('(device-posture:continuous)')==='yes'?'flat':'not on')],
+    ['Fold left-right segments',mq('(horizontal-viewport-segments:2)')],
+    ['Fold top-bottom segments',mq('(vertical-viewport-segments:2)')],
+    ['Right-edge strip (shape)',mq('(max-width:820px) and (min-aspect-ratio:3/5) and (max-height:700px)')],
+    ['Right-edge strip (screen)',mq('(max-width:820px) and (max-device-width:500px) and (min-device-aspect-ratio:11/20) and (min-device-height:670px)')],
+    ['Icons-only strip',mq('(max-width:820px) and (min-aspect-ratio:3/5) and (max-height:520px)')],
+    ['Book layout',mq('(min-width:821px) and (max-width:1100px) and (min-aspect-ratio:4/3) and (max-aspect-ratio:7/4)')],
+    ['Open upright, 2 across',mq('(min-width:561px) and (max-width:820px) and (min-height:701px)')]
+  ];
+  document.getElementById('t').innerHTML=rows.map(function(r){return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>'}).join('');
+}
+draw();addEventListener('resize',draw);addEventListener('orientationchange',function(){setTimeout(draw,300)});
+</script>
+</body>
+</html>
