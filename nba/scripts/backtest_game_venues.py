@@ -4,7 +4,7 @@ Which market is sharpest on NBA game lines, and does the game model add to it? T
 nba/docs/game-venues-test.md.
 
 2025-26 season, one row per game (home team's chance), only games with all three closes:
-  Polymarket  last minute of the home moneyline token at or before tip (clob.polymarket.com/prices-history), cached
+  Polymarket  last minute of the home moneyline token at or before tip (data-api.polymarket.com/v2/prices-history), cached
   Kalshi      pre-tip VWAP / last from the Kalshi backfill (as backtest_game_vs_kalshi.py)
   Sportsbook  ESPN BET's closing moneyline, vig removed (raw/tables/game_lines.csv)
   Model       the game model's home win chance at 1 PM ET (walk-forward, as backtest_game_vs_kalshi.py)
@@ -78,10 +78,14 @@ def pm_close(tip, tok):
     p = os.path.join(CACHE, f'close_{tok[:16]}.json')
     if os.path.exists(p):
         return json.load(open(p))
-    h = (curl_json(f'https://clob.polymarket.com/prices-history?market={tok}&startTs={int(tip) - 3600}&endTs={int(tip)}&fidelity=1') or {}).get('history') or []
-    pre = [x for x in h if x['t'] <= tip]
-    v = pre[-1]['p'] if pre and tip - pre[-1]['t'] <= 1800 else None
-    json.dump(v, open(p, 'w'))
+    # v2 (the v1 clob endpoint is shut down Oct 30). Minute buckets exist only for recent games; a resolved market
+    # older than a few days comes back in 3-hour buckets, which the 30-minute gate below rejects as None.
+    h = (curl_json(f'https://data-api.polymarket.com/v2/prices-history?token_id={tok}&start={int(tip) - 3600}'
+                   f'&end={int(tip) + 1}&bucket_seconds=60') or {}).get('data') or []
+    pre = [x for x in h if x['timestamp'] <= tip and x.get('resolution_seconds', 0) <= 60]
+    v = pre[-1]['price'] if pre and tip - pre[-1]['timestamp'] <= 1800 else None
+    if h:                                                     # an empty reply is a failed read, not a measured miss
+        json.dump(v, open(p, 'w'))
     return v
 
 
