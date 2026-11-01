@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vault NBA on iPhone Duo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Vault NBA "Graphite" tokens, inlined from nba/ui/projections.template.html */
+:root{
+  --bg:#0b0c0e; --surface:#131418; --surface2:#191b20; --raised:#22252b;
+  --border:#22252b; --border2:#343841;
+  --fg:#f3f4f6; --fg2:#a2a7b1; --fg3:#6e7380;
+  --primary:#f3f4f6; --on-primary:#0b0c0e;
+  --up:#5fcf8c; --down:#ec7f7f; --warn:#e5b955;
+  --font-sans:'Geist',system-ui,-apple-system,sans-serif;
+  --font-mono:'Geist Mono',ui-monospace,Menlo,monospace;
+  --page:#060708; --fold:#ffb84d;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--fg);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding:40px 24px 80px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+h1{font-size:34px;letter-spacing:-.02em;margin:0 0 8px}
+.lede{color:var(--fg2);max-width:760px;font-size:15px;line-height:1.55;margin:0}
+.eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.legend{display:flex;flex-wrap:wrap;gap:18px;margin:22px 0 0;font-size:12.5px;color:var(--fg2)}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px dashed var(--fold);vertical-align:middle;margin-right:6px}
+.legend b{display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(95,207,140,.18);border:1px solid rgba(95,207,140,.5);vertical-align:-2px;margin-right:6px}
+
+/* ── gallery ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,560px),1fr));gap:28px;margin-top:36px}
+.card{background:#0e0f12;border:1px solid #1b1d22;border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:16px}
+.card.wide{grid-column:1/-1}
+.card header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.card h2{font-size:18px;margin:0;letter-spacing:-.01em}
+.card .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);border:1px solid var(--border2);border-radius:999px;padding:2px 8px}
+.stage{display:grid;place-items:center;padding:18px 0;min-height:200px;overflow:hidden}
+.notes{margin:0;padding-left:18px;color:var(--fg2);font-size:13.5px;line-height:1.55}
+.notes li{margin:3px 0}
+.notes b{color:var(--fg)}
+
+/* ── device: true iPhone Duo point sizes, scaled with zoom ── */
+.dev{position:relative;background:var(--bg);border-radius:34px;overflow:hidden;
+  box-shadow:0 0 0 7px #1d1f24,0 0 0 8px #2c2f36,0 30px 60px rgba(0,0,0,.55);flex:none}
+.dev.outer{width:466px;height:678px}
+.dev.outer.land{width:678px;height:466px}
+.dev.inner{width:890px;height:626px}
+.dev.inner.port{width:626px;height:890px}
+.fold-v,.fold-h{position:absolute;z-index:40;pointer-events:none}
+.fold-v{left:50%;top:0;bottom:0;border-left:1.5px dashed var(--fold);opacity:.7}
+.fold-h{top:50%;left:0;right:0;border-top:1.5px dashed var(--fold);opacity:.7}
+
+/* app chrome shared by every frame */
+.app{position:absolute;inset:0;display:flex;font-size:14px;line-height:1.45}
+.content{flex:1;min-width:0;overflow:hidden;padding:18px 18px 0;display:flex;flex-direction:column;gap:12px}
+.ttl{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.ttl h3{margin:0;font-size:26px;font-weight:650;letter-spacing:-.02em;line-height:1.1}
+.ttl small{display:block;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);margin-top:4px}
+
+/* trailing vertical bar (outer display, inner landscape) */
+.rail{flex:none;width:62px;border-left:1px solid var(--border);background:#0d0e11;display:flex;flex-direction:column;align-items:center;padding:12px 0 16px;gap:4px}
+.rail.lead{border-left:0;border-right:1px solid var(--border);order:-1}
+.rail .island{width:22px;height:62px;border-radius:12px;background:#000;box-shadow:0 0 0 1px #1a1b1f;margin-bottom:6px}
+.rail .time{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--fg);writing-mode:vertical-rl;transform:rotate(180deg);margin:4px 0 6px}
+.rail .grow{flex:1}
+.rail .sp{height:1px;width:28px;background:var(--border2);margin:8px 0}
+.rbtn{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;color:var(--fg3);position:relative}
+.rbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rbtn.on{color:var(--fg);background:var(--raised)}
+.rbtn.prim{color:var(--on-primary);background:var(--primary)}
+.rbtn em{position:absolute;bottom:-1px;font-style:normal;font-size:8.5px;font-weight:600;letter-spacing:.02em}
+.rbtn.lbl{height:52px;padding-bottom:12px}
+
+/* horizontal bars (inner portrait) */
+.status{height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-family:var(--font-mono);font-size:12px;font-weight:600;flex:none}
+.status .isl{width:110px;height:30px;border-radius:16px;background:#000;box-shadow:0 0 0 1px #1a1b1f}
+.tabbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:4px;padding:6px;border-radius:24px;background:color-mix(in srgb,var(--surface2) 88%,transparent);border:1px solid var(--border2);backdrop-filter:blur(18px);z-index:20}
+.tabbar span{width:74px;height:50px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--fg3)}
+.tabbar span.on{background:var(--raised);color:var(--fg)}
+.tabbar svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* controls */
+.seg{display:flex;gap:2px;padding:3px;border-radius:12px;background:var(--surface);border:1px solid var(--border);overflow:hidden;flex:none}
+.seg span{flex:none;padding:7px 11px;border-radius:9px;font-size:12px;font-weight:550;color:var(--fg2);white-space:nowrap}
+.seg span.on{background:var(--primary);color:var(--on-primary)}
+.seg em{font-style:normal;font-family:var(--font-mono);font-size:10.5px;opacity:.6;margin-left:4px}
+.chips{display:flex;gap:6px;overflow:hidden;flex:none}
+.chips span{flex:none;padding:5px 10px;border-radius:999px;border:1px solid var(--border2);font-family:var(--font-mono);font-size:11px;color:var(--fg2)}
+.chips span.on{background:var(--raised);color:var(--fg);border-color:var(--raised)}
+
+/* prop rows */
+.list{display:flex;flex-direction:column;border-radius:16px;background:var(--surface);border:1px solid var(--border);overflow:hidden}
+.row{display:flex;align-items:center;gap:11px;padding:11px 13px;border-top:1px solid var(--border)}
+.row:first-child{border-top:0}
+.row.sel{background:var(--raised)}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(160deg,#2a2d34,#17191d);display:grid;place-items:center;font-size:11px;font-weight:600;color:var(--fg2);flex:none;border:1px solid var(--border2)}
+.row .who{flex:1;min-width:0}
+.row b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row small{display:block;font-size:11.5px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.edge{text-align:right;flex:none}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.06em;padding:2px 6px;border-radius:6px;background:rgba(95,207,140,.14);color:var(--up)}
+.edge .v{display:block;font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--up);margin-top:2px}
+
+/* game cards */
+.games{display:grid;gap:10px}
+.gc{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:8px}
+.gc .top{display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3)}
+.gc .mu{font-size:15px;font-weight:650}
+.gc .mu span{color:var(--fg3);font-weight:400;margin:0 5px}
+.gc .ln{font-family:var(--font-mono);font-size:13px;font-weight:600}
+.wp{display:flex;height:6px;border-radius:4px;overflow:hidden;background:var(--raised)}
+.wp i{display:block;background:#4a7bd8}
+.wp i+i{background:#d8554a}
+.wpl{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--fg3)}
+.lean{align-self:flex-start;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--raised);color:var(--fg2)}
+
+/* detail pane */
+.det{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.det h4{margin:0;font-size:22px;letter-spacing:-.01em}
+.det .sub{font-size:12px;color:var(--fg3)}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat div{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.stat label{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+.stat strong{font-family:var(--font-mono);font-size:22px;font-weight:600}
+.stat small{display:block;font-size:11px;color:var(--fg3)}
+.betbox{border:1px solid rgba(95,207,140,.35);background:rgba(95,207,140,.06);border-radius:14px;padding:12px 14px;font-size:12.5px;color:var(--fg2);line-height:1.5}
+.betbox b{color:var(--fg)}
+.btn{display:flex;align-items:center;justify-content:center;height:44px;border-radius:12px;background:var(--primary);color:var(--on-primary);font-weight:600;font-size:14px}
+.btn.ghost{background:var(--raised);color:var(--fg)}
+
+/* rotation sliders (Teams) */
+.rot{display:flex;flex-direction:column;gap:8px}
+.rp{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.rp b{font-size:13.5px}
+.rp .m{font-family:var(--font-mono);font-size:13px;font-weight:600}
+.trk{grid-column:1/-1;height:6px;border-radius:4px;background:var(--raised);position:relative}
+.trk i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#4a7bd8}
+.trk u{position:absolute;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.rp.out{opacity:.45}
+.toast{position:absolute;right:16px;bottom:22px;width:250px;background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:11px 13px;font-size:12.5px;box-shadow:0 14px 30px rgba(0,0,0,.5);z-index:30}
+.toast small{display:block;color:var(--fg3);font-size:11px;margin-top:2px}
+
+/* chart */
+.chart{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px;flex:1;display:flex;flex-direction:column;min-height:0}
+.chart svg{flex:1;width:100%}
+
+/* folded poses */
+.pose{perspective:1600px;display:flex}
+.pose.book{gap:0}
+.half{position:relative;overflow:hidden;background:var(--bg)}
+.pose.book .half{width:445px;height:626px}
+.pose.book .half.l{transform:rotateY(22deg);transform-origin:right center;border-radius:34px 0 0 34px;box-shadow:0 0 0 7px #1d1f24,0 30px 60px rgba(0,0,0,.55)}
+.pose.book .half.r{transform:rotateY(-22deg);transform-origin:left center;border-radius:0 34px 34px 0;box-shadow:0 0 0 7px #1d1f24,0 30px 60px rgba(0,0,0,.55)}
+.pose.table{flex-direction:column}
+.pose.table .half{width:890px;height:313px}
+.pose.table .half.t{transform:rotateX(18deg);transform-origin:center bottom;border-radius:34px 34px 0 0;box-shadow:0 0 0 7px #1d1f24}
+.pose.table .half.b{transform:rotateX(52deg);transform-origin:center top;border-radius:0 0 34px 34px;box-shadow:0 0 0 7px #1d1f24,0 40px 60px rgba(0,0,0,.6)}
+.split{display:flex;gap:6px}
+.other{width:439px;height:626px;border-radius:0 34px 34px 0;background:repeating-linear-gradient(135deg,#121317 0 12px,#0f1013 12px 24px);display:grid;place-items:center;color:var(--fg3);font-size:13px;text-align:center;line-height:1.5}
+
+/* rules table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:10px 10px;border-bottom:1px solid var(--border2)}
+td{padding:11px 10px;border-bottom:1px solid var(--border);color:var(--fg2);vertical-align:top;line-height:1.5}
+td:first-child{color:var(--fg);font-weight:600;white-space:nowrap}
+code{font-family:var(--font-mono);font-size:11.5px;background:#16181c;border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:#d5d8de}
+.tbl{overflow-x:auto}
+.sec{margin-top:52px}
+.sec h2{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px;margin-top:16px}
+.box{background:#0e0f12;border:1px solid #1b1d22;border-radius:18px;padding:18px 20px}
+.box h3{margin:0 0 8px;font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Vault NBA · mobile rehaul · mocks for approval</div>
+  <h1>Vault NBA on iPhone Duo</h1>
+  <p class="lede">One layout that adapts to both screens and every way the phone is held. Frames are drawn at the real point size of each screen (outer 466 × 678, inner 890 × 626 open like a book), then scaled to fit. The data is from the live board on Oct 30.</p>
+  <div class="legend"><span><i></i>Fold line (no tap targets or text cross it)</span><span><b></b>Bet that passed the backtest</span></div>
+
+  <div class="grid">
+
+  <!-- 1 · Closed, portrait -->
+  <section class="card">
+    <header><h2>1 · Closed, held upright</h2><span class="tag">outer 466 × 678 · compact width</span></header>
+    <div class="stage"><div class="scale" data-w="466" data-h="678">
+      <div class="dev outer"><div class="app">
+        <div class="content">
+          <div class="ttl"><div><h3>Player Props</h3><small>Board from Oct 30, 12:47 PM CT</small></div></div>
+          <div class="seg"><span class="on">Passed <em>26</em></span><span>Edges 3%+ <em>77</em></span><span>Kalshi NO <em>43</em></span><span>Pick'em</span></div>
+          <div class="chips"><span class="on">All</span><span>3PM</span><span>AST</span><span>PTS</span><span>REB</span><span>PRA</span><span>BLK</span></div>
+          <div class="list">
+            <div class="row"><div class="av">IJ</div><div class="who"><b>Isaiah Joe</b><small>3-pointers · proj 1.1 · Kalshi NO on 2+ · 47¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+10.3%</span></div></div>
+            <div class="row"><div class="av">NJ</div><div class="who"><b>Nikola Jokic</b><small>3-pointers · proj 1.2 · Kalshi NO on 2+ · 50¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+7.1%</span></div></div>
+            <div class="row"><div class="av">JM</div><div class="who"><b>Jaden McDaniels</b><small>3-pointers · proj 1.3 · Kalshi NO on 2+ · 48¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.4%</span></div></div>
+            <div class="row"><div class="av">DD</div><div class="who"><b>DeMar DeRozan</b><small>3-pointers · proj 0.5 · Kalshi NO on 1+ · 51¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.2%</span></div></div>
+            <div class="row"><div class="av">FW</div><div class="who"><b>Franz Wagner</b><small>3-pointers · proj 1.0 · Kalshi NO on 2+ · 59¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.1%</span></div></div>
+            <div class="row"><div class="av">AG</div><div class="who"><b>Aaron Gordon</b><small>3-pointers · proj 1.3 · Kalshi NO on 2+ · 50¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.1%</span></div></div>
+            <div class="row"><div class="av">TY</div><div class="who"><b>Trae Young</b><small>3-pointers · proj 2.0 · Kalshi NO on 3+ · 57¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+5.2%</span></div></div>
+          </div>
+        </div>
+        <nav class="rail">
+          <div class="island"></div><div class="time">9:41</div>
+          <div class="rbtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></div>
+          <div class="rbtn"><svg viewBox="0 0 24 24"><path d="M5 12a7 7 0 1 0 2-5M5 4v4h4"/></svg></div>
+          <div class="grow"></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><em>Games</em></div>
+          <div class="rbtn lbl on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg><em>Props</em></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-8"/></svg><em>Edges</em></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M17 11a3 3 0 1 0 0-6M21 20c0-2.6-1.5-4.6-4-5.5"/></svg><em>Teams</em></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><em>More</em></div>
+        </nav>
+      </div></div>
+    </div></div>
+    <ul class="notes">
+      <li><b>The tab bar moves to a strip on the right edge.</b> The outer screen is wider and shorter than a normal iPhone, so Apple moves bars to the side to give the list its height back. Tabs sit at the bottom of the strip, under the right thumb.</li>
+      <li>The status bar and Dynamic Island live in the same strip, so the page title starts at the very top.</li>
+      <li>The board filter stays horizontal. Apple keeps controls that are too wide for the strip, like segmented filters, in the page.</li>
+      <li>Shows 7 props on the first screen. The current phone layout shows 3 under the filters.</li>
+    </ul>
+  </section>
+
+  <!-- 2 · Closed, landscape -->
+  <section class="card">
+    <header><h2>2 · Closed, turned sideways</h2><span class="tag">outer 678 × 466 · compact height</span></header>
+    <div class="stage"><div class="scale" data-w="678" data-h="466">
+      <div class="dev outer land"><div class="app">
+        <div class="content">
+          <div class="ttl"><div><h3>Game Lines</h3><small>Fri, Oct 30 · 10 games</small></div><div class="seg"><span class="on">By time</span><span>Biggest move</span><span>Sharp lean</span></div></div>
+          <div class="games" style="grid-template-columns:1fr 1fr">
+            <div class="gc"><div class="top"><span>6:00 PM CT</span><span>BR −110</span></div><div class="mu">CHA<span>@</span>WSH</div><div class="ln">CHA −1.0</div><div class="wp"><i style="width:51%"></i><i style="width:49%"></i></div><div class="wpl"><span>CHA 51</span><span>49 WSH</span></div></div>
+            <div class="gc"><div class="top"><span>6:30 PM CT</span><span>MGM −110</span></div><div class="mu">CHI<span>@</span>BOS</div><div class="ln">BOS −15.0</div><div class="wp"><i style="width:12%"></i><i style="width:88%"></i></div><div class="wpl"><span>CHI 12</span><span>88 BOS</span></div></div>
+            <div class="gc"><div class="top"><span>6:30 PM CT</span><span>PIN −110</span></div><div class="mu">DET<span>@</span>BKN</div><div class="ln">DET −8.0</div><div class="wp"><i style="width:74%"></i><i style="width:26%"></i></div><div class="wpl"><span>DET 74</span><span>26 BKN</span></div></div>
+            <div class="gc"><div class="top"><span>6:30 PM CT</span><span>DK −115</span></div><div class="mu">NY<span>@</span>PHI</div><div class="ln">NY −2.0</div><div class="wp"><i style="width:53%"></i><i style="width:47%"></i></div><div class="wpl"><span>NY 53</span><span>47 PHI</span></div></div>
+          </div>
+        </div>
+        <nav class="rail">
+          <div class="island" style="height:46px"></div>
+          <div class="grow"></div>
+          <div class="rbtn on"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div class="rbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg></div>
+          <div class="rbtn"><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-8"/></svg></div>
+          <div class="rbtn"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M17 11a3 3 0 1 0 0-6M21 20c0-2.6-1.5-4.6-4-5.5"/></svg></div>
+          <div class="rbtn"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></div>
+        </nav>
+      </div></div>
+    </div></div>
+    <ul class="notes">
+      <li><b>Same right-edge strip, icons only.</b> There is no height for labels, so tabs drop to icons (long-press shows the name).</li>
+      <li>Game cards go two across. The day picker and sort sit in the title row instead of taking their own lines.</li>
+      <li>The strip stays on the physical right edge in both directions, so it never ends up under the Dynamic Island.</li>
+    </ul>
+  </section>
+
+  <!-- 3 · Open flat, book -->
+  <section class="card wide">
+    <header><h2>3 · Open flat, like a book</h2><span class="tag">inner 890 × 626 · regular width · the main open view</span></header>
+    <div class="stage"><div class="scale" data-w="890" data-h="626">
+      <div class="dev inner"><div class="fold-v"></div><div class="app">
+        <div class="content" style="flex-direction:row;gap:16px;padding:18px 0 0 18px">
+          <div style="width:419px;display:flex;flex-direction:column;gap:12px;flex:none">
+            <div class="ttl"><div><h3>Player Props</h3><small>Board from Oct 30, 12:47 PM CT</small></div></div>
+            <div class="seg"><span class="on">Passed <em>26</em></span><span>Edges 3%+ <em>77</em></span><span>Kalshi NO <em>43</em></span></div>
+            <div class="list">
+              <div class="row sel"><div class="av">IJ</div><div class="who"><b>Isaiah Joe</b><small>3-pointers · Kalshi NO on 2+ · 47¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+10.3%</span></div></div>
+              <div class="row"><div class="av">NJ</div><div class="who"><b>Nikola Jokic</b><small>3-pointers · Kalshi NO on 2+ · 50¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+7.1%</span></div></div>
+              <div class="row"><div class="av">JM</div><div class="who"><b>Jaden McDaniels</b><small>3-pointers · Kalshi NO on 2+ · 48¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.4%</span></div></div>
+              <div class="row"><div class="av">DD</div><div class="who"><b>DeMar DeRozan</b><small>3-pointers · Kalshi NO on 1+ · 51¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.2%</span></div></div>
+              <div class="row"><div class="av">FW</div><div class="who"><b>Franz Wagner</b><small>3-pointers · Kalshi NO on 2+ · 59¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.1%</span></div></div>
+              <div class="row"><div class="av">AG</div><div class="who"><b>Aaron Gordon</b><small>3-pointers · Kalshi NO on 2+ · 50¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+6.1%</span></div></div>
+              <div class="row"><div class="av">TY</div><div class="who"><b>Trae Young</b><small>3-pointers · Kalshi NO on 3+ · 57¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+5.2%</span></div></div>
+              <div class="row"><div class="av">DB</div><div class="who"><b>Devin Booker</b><small>3-pointers · Kalshi NO on 2+ · 49¢</small></div><div class="edge"><span class="pill">BET</span><span class="v">+5.0%</span></div></div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;padding:0 16px 0 0;margin-left:2px">
+            <div class="det">
+              <div><h4>Isaiah Joe</h4><div class="sub">3-pointers · DET vs BKN · Fri 6:30 PM CT · Questionable</div></div>
+              <div class="stat"><div><label>Projection</label><strong>1.1</strong><small>usually 0 to 3</small></div><div><label>Minutes</label><strong>9.4</strong><small>0 to 18 likely · usual 12</small></div></div>
+              <div class="betbox"><span class="pill">BET</span> <b>Kalshi NO on 2+ at 47¢</b> · passed the backtest<br>We think he gets 1 or fewer threes 59% of the time; Kalshi charges 49¢ with its fee. Edge <b>+10.3%</b>.</div>
+              <div style="display:flex;gap:8px"><div class="btn" style="flex:1">Track bet</div><div class="btn ghost" style="flex:1">☆ Watch</div></div>
+            </div>
+          </div>
+        </div>
+        <nav class="rail">
+          <div class="time" style="margin-top:2px">9:41</div>
+          <div class="rbtn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></div>
+          <div class="grow"></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><em>Games</em></div>
+          <div class="rbtn lbl on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg><em>Props</em></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-8"/></svg><em>Edges</em></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M17 11a3 3 0 1 0 0-6M21 20c0-2.6-1.5-4.6-4-5.5"/></svg><em>Teams</em></div>
+          <div class="rbtn lbl"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><em>More</em></div>
+        </nav>
+      </div></div>
+    </div></div>
+    <ul class="notes">
+      <li><b>List on the left page, the open prop on the right page.</b> Tapping a row fills the right side instead of opening a sheet over the list. The two columns meet on the fold, so nothing sits on the crease.</li>
+      <li><b>The strip stays on the right edge.</b> When you open the phone, the right half of the big screen is where the small screen was, so the tabs are still under the same thumb. Apple uses side bars on the inner screen when it is held this way.</li>
+      <li>Replaces today's 72px icon sidebar on the left, which puts the nav on the far side from the thumb and splits the content off-center from the fold.</li>
+    </ul>
+  </section>
+
+  <!-- 4 · Open flat, portrait -->
+  <section class="card">
+    <header><h2>4 · Open, turned upright</h2><span class="tag">inner 626 × 890 · fold runs across</span></header>
+    <div class="stage"><div class="scale" data-w="626" data-h="890">
+      <div class="dev inner port"><div class="fold-h"></div><div class="app" style="flex-direction:column">
+        <div class="status"><span>9:41</span><span class="isl"></span><span>100%</span></div>
+        <div class="content" style="padding-top:6px">
+          <div class="ttl"><div><h3>Game Lines</h3><small>Board from Oct 30, 12:47 PM CT</small></div><div class="seg"><span class="on">Fri 10</span><span>Sat 7</span><span>Sun 4</span></div></div>
+          <div class="games" style="grid-template-columns:1fr 1fr">
+            <div class="gc"><div class="top"><span>6:00 PM</span><span>Mixed</span></div><div class="mu">CHA<span>@</span>WSH</div><div class="ln">CHA −1.0</div><div class="wp"><i style="width:51%"></i><i style="width:49%"></i></div><div class="wpl"><span>CHA 51</span><span>49 WSH</span></div></div>
+            <div class="gc"><div class="top"><span>6:30 PM</span><span>Mixed</span></div><div class="mu">CHI<span>@</span>BOS</div><div class="ln">BOS −15.0</div><div class="wp"><i style="width:12%"></i><i style="width:88%"></i></div><div class="wpl"><span>CHI 12</span><span>88 BOS</span></div></div>
+            <div class="gc"><div class="top"><span>6:30 PM</span><span>Mixed</span></div><div class="mu">DET<span>@</span>BKN</div><div class="ln">DET −8.0</div><div class="wp"><i style="width:74%"></i><i style="width:26%"></i></div><div class="wpl"><span>DET 74</span><span>26 BKN</span></div></div>
+            <div class="gc"><div class="top"><span>6:30 PM</span><span class="lean">Leaning NY</span></div><div class="mu">NY<span>@</span>PHI</div><div class="ln">NY −2.0</div><div class="wp"><i style="width:53%"></i><i style="width:47%"></i></div><div class="wpl"><span>NY 53</span><span>47 PHI</span></div></div>
+            <div class="gc"><div class="top"><span>6:30 PM</span><span>Mixed</span></div><div class="mu">ORL<span>@</span>TOR</div><div class="ln">TOR −5.5</div><div class="wp"><i style="width:34%"></i><i style="width:66%"></i></div><div class="wpl"><span>ORL 34</span><span>66 TOR</span></div></div>
+            <div class="gc"><div class="top"><span>7:00 PM</span><span>Mixed</span></div><div class="mu">IND<span>@</span>MIA</div><div class="ln">MIA −9.0</div><div class="wp"><i style="width:26%"></i><i style="width:74%"></i></div><div class="wpl"><span>IND 26</span><span>74 MIA</span></div></div>
+            <div class="gc"><div class="top"><span>7:00 PM</span><span class="lean">Leaning HOU</span></div><div class="mu">HOU<span>@</span>DAL</div><div class="ln">HOU −6.5</div><div class="wp"><i style="width:69%"></i><i style="width:31%"></i></div><div class="wpl"><span>HOU 69</span><span>32 DAL</span></div></div>
+            <div class="gc"><div class="top"><span>7:00 PM</span><span class="lean">Leaning MIN</span></div><div class="mu">LAC<span>@</span>MIN</div><div class="ln">MIN −7.0</div><div class="wp"><i style="width:29%"></i><i style="width:71%"></i></div><div class="wpl"><span>LAC 29</span><span>71 MIN</span></div></div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <span class="on"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Games</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg>Props</span>
+          <span><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-8"/></svg>Edges</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M17 11a3 3 0 1 0 0-6M21 20c0-2.6-1.5-4.6-4-5.5"/></svg>Teams</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</span>
+        </div>
+      </div></div>
+    </div></div>
+    <ul class="notes">
+      <li><b>Bars go back to top and bottom</b>, which is Apple's rule for the inner screen held upright. The tab bar floats at the bottom, as in today's fold layout.</li>
+      <li>An even two-column grid, so the fold never lands in the middle of a card's text column. Scrolling lists are allowed to pass over the fold, per Apple.</li>
+      <li>8 games on the first screen instead of 1.5.</li>
+    </ul>
+  </section>
+
+  <!-- 7 · Split View -->
+  <section class="card">
+    <header><h2>5 · Next to a sportsbook (Split View)</h2><span class="tag">half of the inner screen · 445 × 626</span></header>
+    <div class="stage"><div class="scale" data-w="890" data-h="626">
+      <div class="split">
+        <div class="dev" style="width:445px;height:626px;border-radius:34px 0 0 34px"><div class="app">
+          <nav class="rail lead">
+            <div class="time">9:41</div>
+            <div class="grow"></div>
+            <div class="rbtn"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+            <div class="rbtn on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg></div>
+            <div class="rbtn"><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-8"/></svg></div>
+            <div class="rbtn"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M17 11a3 3 0 1 0 0-6M21 20c0-2.6-1.5-4.6-4-5.5"/></svg></div>
+            <div class="rbtn"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></div>
+          </nav>
+          <div class="content">
+            <div class="ttl"><div><h3>Player Props</h3><small>Passed the backtest · 26</small></div></div>
+            <div class="list">
+              <div class="row sel"><div class="av">IJ</div><div class="who"><b>Isaiah Joe</b><small>Kalshi NO on 2+ · 47¢</small></div><div class="edge"><span class="v">+10.3%</span></div></div>
+              <div class="row"><div class="av">NJ</div><div class="who"><b>Nikola Jokic</b><small>Kalshi NO on 2+ · 50¢</small></div><div class="edge"><span class="v">+7.1%</span></div></div>
+              <div class="row"><div class="av">JM</div><div class="who"><b>Jaden McDaniels</b><small>Kalshi NO on 2+ · 48¢</small></div><div class="edge"><span class="v">+6.4%</span></div></div>
+              <div class="row"><div class="av">DD</div><div class="who"><b>DeMar DeRozan</b><small>Kalshi NO on 1+ · 51¢</small></div><div class="edge"><span class="v">+6.2%</span></div></div>
+              <div class="row"><div class="av">FW</div><div class="who"><b>Franz Wagner</b><small>Kalshi NO on 2+ · 59¢</small></div><div class="edge"><span class="v">+6.1%</span></div></div>
+              <div class="row"><div class="av">AG</div><div class="who"><b>Aaron Gordon</b><small>Kalshi NO on 2+ · 50¢</small></div><div class="edge"><span class="v">+6.1%</span></div></div>
+              <div class="row"><div class="av">TY</div><div class="who"><b>Trae Young</b><small>Kalshi NO on 3+ · 57¢</small></div><div class="edge"><span class="v">+5.2%</span></div></div>
+            </div>
+          </div>
+        </div></div>
+        <div class="other">Kalshi, a sportsbook,<br>or Sleeper<br><span class="mono" style="font-size:11px">the other app</span></div>
+      </div>
+    </div></div>
+    <ul class="notes">
+      <li><b>Vault uses the compact layout</b> (same as the closed phone), with the strip moved to the outside edge, away from the divider. Apple moves an app's bars to the left edge when it sits on the left.</li>
+      <li>Rows drop the stat name to fit; tapping one opens the detail as a sheet over the list.</li>
+      <li><b>Open question:</b> a web page can't tell which side of a split it's on. Needs a check on a real device before we commit to the left-edge strip.</li>
+    </ul>
+  </section>
+
+  <!-- 5 · Half open, book -->
+  <section class="card wide">
+    <header><h2>6 · Half open, held like a book</h2><span class="tag">fold bent ~110° · two pages</span></header>
+    <div class="stage"><div class="scale" data-w="900" data-h="640">
+      <div class="pose book">
+        <div class="half l"><div class="app"><div class="content">
+          <div class="ttl"><div><h3>Knicks rotation</h3><small>274.2 of 240 minutes · 34.2 over</small></div></div>
+          <div class="rot">
+            <div class="rp out"><b>Jalen Brunson · OUT</b><span class="m">0.0</span><div class="trk"><i style="width:0"></i><u style="left:0"></u></div></div>
+            <div class="rp"><b>OG Anunoby</b><span class="m">32.4</span><div class="trk"><i style="width:67%"></i><u style="left:67%"></u></div></div>
+            <div class="rp"><b>Josh Hart</b><span class="m">30.7</span><div class="trk"><i style="width:64%"></i><u style="left:64%"></u></div></div>
+            <div class="rp"><b>Karl-Anthony Towns</b><span class="m">29.2</span><div class="trk"><i style="width:61%"></i><u style="left:61%"></u></div></div>
+            <div class="rp"><b>Mikal Bridges</b><span class="m">29.0</span><div class="trk"><i style="width:60%"></i><u style="left:60%"></u></div></div>
+            <div class="rp"><b>Miles McBride</b><span class="m">18.0</span><div class="trk"><i style="width:37%"></i><u style="left:37%"></u></div></div>
+          </div>
+        </div></div></div>
+        <div class="half r"><div class="app"><div class="content" style="padding-right:16px">
+          <div class="ttl"><div><h3>What it moves</h3><small>Every stat and prop price follows the minutes</small></div></div>
+          <div class="stat"><div><label>Team pts / 240</label><strong>109.7</strong><small>vs projection: same</small></div><div><label>Players changed</label><strong>1</strong><small>Brunson marked out</small></div></div>
+          <div class="list">
+            <div class="row"><div class="av">OA</div><div class="who"><b>OG Anunoby</b><small>gains Brunson's shots</small></div><div class="edge"><span class="v" style="color:var(--fg2)">PRA ↑</span></div></div>
+            <div class="row"><div class="av">MM</div><div class="who"><b>Miles McBride</b><small>gains minutes</small></div><div class="edge"><span class="v" style="color:var(--fg2)">MIN ↑</span></div></div>
+            <div class="row"><div class="av">JH</div><div class="who"><b>Josh Hart</b><small>gains assists</small></div><div class="edge"><span class="v" style="color:var(--fg2)">AST ↑</span></div></div>
+          </div>
+          <div class="toast"><b>Brunson marked out</b><small>Knicks props are repricing</small></div>
+        </div></div></div>
+      </div>
+    </div></div>
+    <ul class="notes">
+      <li><b>One job per page.</b> Left page is what you change (the minutes sliders), right page is what that changes. You drag on one side and read on the other without your hand covering the result.</li>
+      <li>Alerts appear on the right page, which is where Apple sends them in this pose, so they stay visible if you close the phone.</li>
+      <li>This is a bonus for people who turn on Safari's fold flag. Without it, the flat book layout (frame 3) already keeps both columns off the crease, so the page still looks right half open. (Movers here show direction only; the real page shows the numbers.)</li>
+    </ul>
+  </section>
+
+  <!-- 6 · Tabletop -->
+  <section class="card wide">
+    <header><h2>7 · Tabletop, standing on the desk</h2><span class="tag">fold across · top half up, bottom half flat</span></header>
+    <div class="stage"><div class="scale" data-w="900" data-h="560">
+      <div class="pose table">
+        <div class="half t"><div class="app"><div class="content" style="padding:16px 22px 12px;flex-direction:row;gap:16px">
+          <div style="flex:none;width:250px;display:flex;flex-direction:column;gap:8px">
+            <div class="eyebrow">Fri 9:00 PM CT</div>
+            <div style="font-size:30px;font-weight:650;letter-spacing:-.02em">LAL <span style="color:var(--fg3);font-weight:400">@</span> GS</div>
+            <div class="ln mono" style="font-size:15px;font-weight:600">LAL −3.5</div><div class="mono" style="font-size:11.5px;color:var(--fg3);margin-top:-4px">5.0 to LAL</div>
+            <div class="wp"><i style="width:58%"></i><i style="width:42%"></i></div><div class="wpl"><span>LAL 58</span><span>42 GS</span></div>
+            <div style="font-size:11.5px;color:var(--fg3);line-height:1.45">Sharp lean LAL, 3 of 4 signals. Context, not a bet.</div>
+          </div>
+          <div class="chart"><div class="eyebrow">Line history · LAL spread</div>
+            <svg viewBox="0 0 520 190" preserveAspectRatio="none"><path d="M0 120 L80 118 L140 110 L200 112 L260 96 L320 92 L380 78 L440 80 L520 70" fill="none" stroke="#f3f4f6" stroke-width="2"/><path d="M0 150 H520" stroke="#22252b"/><path d="M0 90 H520" stroke="#22252b"/><path d="M0 30 H520" stroke="#22252b"/></svg>
+          </div>
+        </div></div></div>
+        <div class="half b"><div class="app"><div class="content" style="padding:16px 22px;flex-direction:row;gap:14px;align-items:flex-start">
+          <div class="seg"><span class="on">Spread</span><span>Total</span><span>Props</span></div>
+          <div class="btn ghost" style="flex:1">LAL −3.5 · MGM −102</div>
+          <div class="btn ghost" style="flex:1">GS +3.5 · PIN −109</div>
+          <div class="btn" style="width:120px">Track</div>
+        </div>
+        <div class="tabbar" style="bottom:22px">
+          <span class="on"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Games</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg>Props</span>
+          <span><svg viewBox="0 0 24 24"><path d="M4 16l5-5 4 4 7-8"/></svg>Edges</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M17 11a3 3 0 1 0 0-6M21 20c0-2.6-1.5-4.6-4-5.5"/></svg>Teams</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</span>
+        </div></div></div>
+      </div>
+    </div></div>
+    <ul class="notes">
+      <li><b>Things to look at go up top, things to tap go on the flat half.</b> That is Apple's rule for this pose: the screen you read is upright, the buttons are on the part resting on the desk, so tapping doesn't wobble the phone.</li>
+      <li>The tab bar moves to the flat half too, so every tap happens on the part touching the desk.</li>
+      <li>Good for game nights: the line and win chances stay readable from across the couch, with the market buttons by your hand.</li>
+      <li>Same controls as the regular game page, just arranged differently. Apple says this pose must not add or remove controls. The chart shape in this mock is a placeholder; the real one draws the stored line history.</li>
+    </ul>
+  </section>
+
+  </div>
+
+  <section class="sec">
+    <h2>How the page knows which layout to use</h2>
+    <p class="lede">Picked by what the screen can do, not by guessing the phone model. Each row is a CSS check; nothing sniffs the browser name.</p>
+    <div class="tbl box" style="margin-top:16px;padding:6px 10px">
+    <table>
+      <thead><tr><th>Layout</th><th>Shows when</th><th>Navigation</th><th>Content</th></tr></thead>
+      <tbody>
+        <tr><td>Normal iPhone</td><td>Narrow and tall, like every iPhone before Duo</td><td>Bottom tab bar, as today</td><td>One column</td></tr>
+        <tr><td>1 · 2 · 5 Duo closed / split</td><td>Narrow screen that is not tall: <code>(max-width:700px) and (min-aspect-ratio:3/5)</code></td><td>Strip on the right edge (left in Split View if we can detect it)</td><td>One column; two cards across when sideways</td></tr>
+        <tr><td>3 · Open flat, book</td><td>Wide and short: <code>(min-width:840px) and (min-aspect-ratio:4/3)</code></td><td>Strip on the right edge with labels</td><td>List left, detail right, gap centred on the screen's middle</td></tr>
+        <tr><td>4 · Open, upright</td><td>Wide and tall: <code>(min-width:600px) and (max-aspect-ratio:3/4)</code></td><td>Floating bottom tab bar</td><td>Even two-column grid</td></tr>
+        <tr><td>6 · 7 Half open</td><td>Safari fold flags on: <code>(device-posture:folded)</code> plus <code>(horizontal-viewport-segments:2)</code> or <code>(vertical-viewport-segments:2)</code></td><td>Same as the flat layout</td><td>Panes sized from <code>env(viewport-segment-*)</code>; tabletop puts buttons on the bottom half</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="cols">
+      <div class="box"><h3>Touch fixes kept from #314 (and checked against the mobile-native guide)</h3>
+        <ul class="notes">
+          <li>No grey tap flash, no 300ms tap delay, fields at 16px so iOS doesn't zoom, zoom itself never disabled.</li>
+          <li>No pull-to-refresh hijack on the page; inner lists use <code>overscroll-behavior:contain</code>.</li>
+          <li>Separate status-bar colours for dark and light.</li>
+          <li>Add: hover effects only on screens with a real pointer, so a tapped row doesn't stay lit.</li>
+          <li>Add: app height from <code>100dvh</code>, never <code>100vh</code>, so the page fits when Safari's bar shows and hides.</li>
+          <li>Add: safe-area padding on all four sides, since the outer screen puts the Dynamic Island on the side.</li>
+        </ul>
+      </div>
+      <div class="box"><h3>What changes from today</h3>
+        <ul class="notes">
+          <li>Today's fold layouts use width cut-offs (561-820px and 821-1100px). The open book (890 wide) gets the left icon sidebar and a 4-across tile row that doesn't line up with the fold.</li>
+          <li>The closed Duo (466 wide) gets the normal phone layout, so the bottom bar eats height on a screen that is already short.</li>
+          <li>New: right-edge strip on short screens, two-page list + detail when open, even columns everywhere, fold poses as an add-on.</li>
+          <li>Layout only. No model, number or tracking change.</li>
+        </ul>
+      </div>
+      <div class="box"><h3>Needs a real iPhone Duo before shipping</h3>
+        <ul class="notes">
+          <li>Point sizes come from Apple's pixel counts divided by 3; Apple doesn't publish them. Confirm with <code>innerWidth</code> on the device.</li>
+          <li>Where the Dynamic Island sits on each screen in Safari and in a home-screen app.</li>
+          <li>The fold APIs are off by default in Safari 27.1 and may change, so the main layout can't depend on them.</li>
+          <li>Which side of Split View the page is on (frame 5).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+// Fit each true-size frame into its card.
+function fit(){document.querySelectorAll('.scale').forEach(function(s){
+  var w=+s.dataset.w,h=+s.dataset.h,avail=s.parentElement.clientWidth-24;
+  var k=Math.min(1,avail/w);
+  s.style.zoom=k;});}
+fit();addEventListener('resize',fit);
+</script>
+</body>
+</html>
