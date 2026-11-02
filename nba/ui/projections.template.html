@@ -2342,95 +2342,124 @@ th{font-weight:500}
   .lw-b{grid-template-columns:minmax(0,1fr) 22px;grid-template-areas:"t c" "m c" "s c" "w c" "b c" "e c" "k c";padding:12px 14px}
 }
 
-/* Summary: the night as a rail of tip times (left column: your team, bets, records, news). Motion: none beyond the shared press. */
+/* Summary (Focus layout): your team's game and tonight's three best things first, then a time scrubber over uniform game tiles,
+   then bets, records and news in one row. Every section is the same module (.sm-mod + .sm-mh). Motion: the shared press only. */
 .sm .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.sm-grid{display:grid;grid-template-columns:320px minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:"top rail" "side rail";gap:16px 22px;align-items:start}
-.sm-top{grid-area:top}.sm-rail{grid-area:rail;min-width:0}.sm-side{grid-area:side;display:grid;gap:14px;align-content:start}
-.sm .card{padding:14px 16px}
-.sm-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.sm-h h2{margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;min-width:0}
-.sm-h>.muted,.sm-h>.sm-more,.sm-h>.sm-chg{margin-left:auto;font-size:12px}
-.sm-note{margin:8px 0 0;font-size:12.5px;color:var(--fg2);line-height:1.45}
-.sm-note.muted{color:var(--fg3)}
-.sm-note b{color:var(--fg);font-weight:600}
-.sm-fav{background:linear-gradient(160deg,color-mix(in srgb,var(--tc,var(--surface)) 22%,var(--surface)),var(--surface) 62%);border-color:color-mix(in srgb,var(--tc,var(--border)) 40%,var(--border))}
-.sm-chg select,.sm-pick select{font:500 12.5px var(--font-sans);background:var(--surface2);color:var(--fg);border:1px solid var(--border2);border-radius:var(--r-ctl);padding:5px 8px}
-.sm-pick{display:block;margin-top:10px}.sm-pick select{width:100%;padding:9px 10px;font-size:14px}
-.sm-when{margin:0 0 12px;font-size:13px;color:var(--fg2)}.sm-when b{color:var(--fg);font-weight:600;display:inline-flex;align-items:center;gap:5px}
-.sm-five{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.sm-five>div{display:grid;justify-items:center;gap:4px;font-size:11.5px;color:var(--fg2);text-align:center;line-height:1.2;min-width:0}
-.sm-five>div>span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sm-mod{background:var(--surface);border:1px solid var(--border);border-radius:14px;min-width:0;display:flex;flex-direction:column}
+.sm-mh{display:flex;align-items:center;gap:10px;padding:13px 16px 10px}
+.sm-mh h2{margin:0;font-size:14px;font-weight:600}
+.sm-mh .act{margin-left:auto;font-size:12px;color:var(--fg2);text-decoration:none;white-space:nowrap}
+.sm-mh .act:hover{color:var(--fg)}
+.sm-mh>.muted{font-size:12px}
+.sm-k{font:600 10.5px var(--font-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--fg3)}
+.sm-n{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.sm-tag{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:var(--r-pill);border:1px solid var(--border2);font:500 10.5px var(--font-mono);color:var(--fg2);white-space:nowrap}
+.sm-tag.bad{color:var(--down);border-color:rgba(236,127,127,.4)}
+.sm-tag.warn{color:var(--warn);border-color:rgba(229,185,85,.4)}
+.sm-tag.up{color:var(--up);border-color:rgba(95,207,140,.35)}
 .sm-face{position:relative;width:var(--s);height:var(--s);border-radius:50%;overflow:hidden;background:var(--raised);display:grid;place-items:center;flex:none}
-.sm-face>span{font:600 11px var(--font-mono);color:var(--fg3)}
+.sm-face>span{font:600 10px var(--font-mono);color:var(--fg3)}
 .sm-face img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;transform:scale(1.25);transform-origin:50% 10%}
-.sm-inj{margin:10px 0 0;font-size:12.5px;color:var(--fg2);display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
-.sm-q{display:inline-flex;gap:6px;align-items:center}
-.sm-lines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:12px}
-.sm-lines>div{background:rgb(var(--ink) / .04);border:1px solid var(--border);border-radius:var(--r-ctl);padding:7px 9px}
-.sm-lines small,.sm-tot small{display:block;font:600 10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
-.sm-lines b{font:600 14px var(--font-mono)}
-.sm-v{color:var(--primary)}
-.sm-bet,.sm-rec{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:13px}
-.sm-bet>div:first-child,.sm-rec>div:first-child{min-width:0;flex:1}
-.sm-bet b,.sm-rec b{display:block;font-weight:600}
-.sm-bet span,.sm-rec span{display:block;font-size:11.5px;color:var(--fg3)}
-.sm-bet .r,.sm-rec .r{text-align:right;font-family:var(--font-mono);flex:none}
-.sm-bet .r span.pos,.sm-rec .r span.pos{color:var(--up)}.sm-rec .r span.neg{color:var(--down)}
-.sm-tot{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--border);margin:4px -16px 0;padding:10px 16px 0}
-.sm-tot b{font:600 14px var(--font-mono)}
-.sm-more{display:inline-block;margin-top:10px;font-size:12.5px;color:var(--fg2);text-decoration:none}
-.sm-more:hover{color:var(--fg)}
-.sm-news{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--border);font-size:12.5px}
-.sm-news .t{font:500 11px var(--font-mono);color:var(--fg3)}
-.sm-news .n{min-width:0}.sm-news .n b{font-weight:600}
-/* the rail */
-.sm-rail{position:relative;padding-left:78px}
-.sm-rail::before{content:"";position:absolute;left:58px;top:8px;bottom:8px;width:2px;border-radius:2px;background:linear-gradient(var(--primary),var(--border2) 30%)}
-.sm-slot{position:relative;margin-bottom:22px}
-.sm-slot::before{content:"";position:absolute;left:-25px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--fg3)}
-.sm-slot.now::before{border-color:var(--primary);background:var(--primary);box-shadow:0 0 0 5px color-mix(in srgb,var(--primary) 18%,transparent)}
-.sm-slot.past{opacity:.72}
-.sm-when{}
-.sm-slot>.sm-when{position:absolute;left:-78px;top:0;width:44px;text-align:right;margin:0;line-height:1.1}
-.sm-slot>.sm-when b{display:block;font:600 15px var(--font-mono);color:var(--fg)}
-.sm-slot>.sm-when span{font:500 10px var(--font-mono);color:var(--fg3);letter-spacing:.04em}
-.sm-sh{font:600 10.5px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin:2px 0 8px}
-.sm-gs{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
-.sm-g{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 12px 10px;min-width:0}
-.sm-g.fav{border-color:color-mix(in srgb,var(--tc,var(--primary)) 55%,var(--border));background:linear-gradient(160deg,color-mix(in srgb,var(--tc,var(--primary)) 16%,var(--surface)),var(--surface) 58%)}
-.sm-g.mine{box-shadow:inset 3px 0 0 var(--warn)}
-.sm-gh,.sm-tr{display:grid;grid-template-columns:minmax(0,1fr) 62px 62px;gap:8px;align-items:center}
-.sm-gh{font:600 9.5px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:3px}
-.sm-gh span,.sm-tr .n{text-align:right}
-.sm-tr{padding:2px 0;font-size:14px}
-.sm-tr .tm{display:flex;align-items:center;gap:8px;min-width:0}.sm-tr .tm b{font-weight:600}
-.sm-tr .n{font:500 13px var(--font-mono);color:var(--fg2)}.sm-tr .n.v{color:var(--primary);font-weight:600}
-.sm-star{font-style:normal;color:var(--tc,var(--warn));font-size:12px}
-.sm-cs,.sm-pks{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
-.sm-c{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-pill);border:1px solid var(--border2);font:500 11px var(--font-mono);color:var(--fg2);white-space:nowrap}
-.sm-c.mv{color:var(--fg);border-color:color-mix(in srgb,var(--primary) 35%,var(--border2))}
-.sm-c.warn{color:var(--warn);border-color:rgba(251,191,36,.4)}
-.sm-c.live{color:var(--up);border-color:rgba(74,222,128,.35)}
-.sm-pk{display:inline-flex;align-items:center;gap:6px;padding:5px 8px 5px 9px;border-radius:9px;background:rgb(var(--ink) / .05);border:1px solid var(--border2);font-size:12.5px;font-weight:600}
-.sm-pk.lean{border-style:dashed}
-.sm-pk small{font:600 9.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
-.sm-pk .gp2-gr{margin-left:2px}.sm-pk .gp2-rk{margin-left:0}
-.sm-pl{margin-top:9px;padding-top:8px;border-top:1px dashed var(--border2);display:grid;gap:5px}
-.sm-play{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--fg);text-decoration:none;min-width:0;border-radius:6px}
+.sm .gp2-gr{margin-left:0}
+/* hero */
+.sm-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
+.sm-next{padding:18px 20px;position:relative;overflow:hidden;background:radial-gradient(90% 120% at 100% 0%,color-mix(in srgb,var(--tc,var(--surface2)) 34%,transparent),transparent 62%),var(--surface);border-color:color-mix(in srgb,var(--tc,var(--border)) 40%,var(--border))}
+.sm-next .wm{position:absolute;right:-30px;top:-40px;width:230px;height:230px;opacity:.08;pointer-events:none}
+.sm-next .wm img{width:100%;height:100%}
+.sm-r1{display:flex;align-items:center;gap:8px;position:relative}
+.sm-r1 .sm-k{color:var(--fg2)}
+.sm-r1 select{margin-left:auto;font:500 12px var(--font-sans);background:var(--surface2);color:var(--fg);border:1px solid var(--border2);border-radius:var(--r-ctl);padding:4px 8px}
+.sm-mu{display:grid;grid-template-columns:72px 1fr 72px;align-items:center;gap:12px;margin:16px 0 12px;position:relative}
+.sm-mu .t{display:flex;flex-direction:column;align-items:center;gap:6px;font:600 13px var(--font-mono)}
+.sm-mu .c{text-align:center;min-width:0}
+.sm-mu .c b{display:block;font:600 28px var(--font-mono);letter-spacing:-.02em;line-height:1.1}
+.sm-mu .c span{font:500 12px var(--font-mono);color:var(--fg3)}
+.sm-gauge{position:relative;height:46px;margin:2px 6px 0}
+.sm-gauge .ax{position:absolute;left:0;right:0;top:21px;height:2px;border-radius:2px;background:var(--raised)}
+.sm-gauge .mid{position:absolute;left:50%;top:17px;width:1px;height:10px;background:var(--fg3)}
+.sm-gauge .seg{position:absolute;top:19px;height:6px;border-radius:3px;background:color-mix(in srgb,var(--primary) 30%,transparent)}
+.sm-gauge .mk{position:absolute;top:13px;width:2px;height:18px;border-radius:2px;transform:translateX(-50%)}
+.sm-gauge .mk em{position:absolute;left:50%;transform:translateX(-50%);font:600 10.5px var(--font-mono);font-style:normal;white-space:nowrap}
+.sm-gauge .mk.bk{background:var(--fg2)}.sm-gauge .mk.bk em{top:-15px;color:var(--fg2)}
+.sm-gauge .mk.vl{background:var(--primary)}.sm-gauge .mk.vl em{top:22px;color:var(--primary)}
+.sm-gends{display:flex;justify-content:space-between;font:500 10.5px var(--font-mono);color:var(--fg3);margin-top:2px}
+.sm-foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12.5px;color:var(--fg2);position:relative}
+.sm-foot b{color:var(--fg);font-weight:600}
+.sm-five{display:flex}.sm-five .sm-face{border:2px solid var(--surface);margin-left:-6px}.sm-five .sm-face:first-child{margin-left:0}
+.sm-pick2{display:inline-flex;align-items:center;gap:6px}
+.sm-best{display:grid;grid-template-rows:repeat(3,1fr);gap:12px}
+.sm-b{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;min-width:0;transition:transform var(--dur-release,.5s) var(--ease-spring,cubic-bezier(.34,1.56,.64,1)),border-color .15s ease}
+.sm-b:hover{border-color:var(--border2)}
+.sm-b:active{transform:scale(var(--press-card,.975));transition:transform 80ms ease-out}
+.sm-b .ic{width:42px;height:42px;border-radius:12px;background:var(--surface2);display:grid;place-items:center}
+.sm-b .w{min-width:0}
+.sm-b .w b{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:600;letter-spacing:-.01em;margin-top:1px}
+.sm-b .w span:last-child{display:block;font-size:12px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sm-b .v{text-align:right}
+.sm-b .v b{display:block;font:600 18px var(--font-mono)}
+.sm-b .v span{font:500 11px var(--font-mono);color:var(--fg3)}
+.sm-b.none{cursor:default}.sm-b.none:active{transform:none}
+/* scrubber + tiles */
+.sm-scrub{display:flex;gap:6px;align-items:center;margin:20px 0 12px;overflow-x:auto;scrollbar-width:none}
+.sm-scrub::-webkit-scrollbar{display:none}
+.sm-scrub .sm-k{margin-right:4px;flex:none}
+.sm-chip{all:unset;box-sizing:border-box;flex:none;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-pill);border:1px solid var(--border2);font:500 12.5px var(--font-mono);color:var(--fg2);cursor:pointer;transition:background-color .15s ease,color .15s ease,transform var(--dur-release,.5s) var(--ease-spring,cubic-bezier(.34,1.56,.64,1))}
+.sm-chip:active{transform:scale(var(--press-chip,.88));transition:transform 80ms ease-out}
+.sm-chip i{font-style:normal;font-size:10.5px;opacity:.7}
+.sm-chip[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.sm-chip.sep{margin-left:8px}
+.sm-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.sm-t{padding:12px 14px 11px;scroll-margin-top:90px}
+.sm-t.fav{border-color:color-mix(in srgb,var(--tc,var(--primary)) 55%,var(--border));background:linear-gradient(160deg,color-mix(in srgb,var(--tc,var(--primary)) 14%,var(--surface)),var(--surface) 55%)}
+.sm-t.mine{box-shadow:inset 3px 0 0 var(--warn)}
+.sm-t.past{opacity:.7}
+.sm-t .hd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.sm-t .hd b{font:600 13px var(--font-mono)}
+.sm-t .hd .sm-k{margin-left:auto}
+.sm-t .tm{display:grid;grid-template-columns:minmax(0,1fr) 54px 54px;gap:6px;align-items:center;font-size:13.5px;padding:2px 0}
+.sm-t .tm .nm{display:flex;align-items:center;gap:7px;font-weight:600;min-width:0}
+.sm-t .tm .n{text-align:right;font:500 12.5px var(--font-mono);color:var(--fg2)}
+.sm-t .tm .n.v{color:var(--primary);font-weight:600}
+.sm-t .tm.h{font:600 9px var(--font-mono);letter-spacing:.09em;color:var(--fg3);text-transform:uppercase;padding:0 0 2px}
+.sm-t .tm.h span:not(:first-child){text-align:right}
+.sm-t .pks{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.sm-t .pks>div{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:6px 8px;min-width:0}
+.sm-t .pks>div.lean{border-style:dashed}
+.sm-t .pks .sm-k{font-size:9px}
+.sm-t .pks b{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:13px;font-weight:600;margin-top:2px;white-space:nowrap}
+.sm-t .pks b.dim{color:var(--fg3);font-weight:500}
+.sm-sg{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px;min-height:20px}
+.sm-dot{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:var(--r-pill);font:600 10.5px var(--font-mono);background:var(--surface2);color:var(--fg2);white-space:nowrap}
+.sm-dot.p{background:rgba(95,207,140,.12);color:var(--up)}
+.sm-dot.b{background:rgba(229,185,85,.12);color:var(--warn)}
+.sm-dot.n{background:rgba(236,127,127,.1);color:var(--down)}
+.sm-dot.live{background:rgba(95,207,140,.12);color:var(--up)}
+.sm-pl{margin-top:9px;padding-top:8px;border-top:1px dashed var(--border2);display:grid;gap:4px}
+.sm-play{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--fg);text-decoration:none;min-width:0}
 .sm-play b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sm-play .pill{height:19px;padding:0 7px;font-size:10.5px;flex:none}.sm-play .pill::before{display:none}
-.sm-play .r{margin-left:auto;font:500 12px var(--font-mono);color:var(--fg2);flex:none}.sm-play .r em{font-style:normal}
+.sm-play .r{margin-left:auto;font:500 11.5px var(--font-mono);color:var(--fg2);flex:none}
 .sm-play:hover b{text-decoration:underline;text-underline-offset:2px}
 .sm-empty{padding:22px}.sm-empty p{color:var(--fg2);margin:6px 0 0}
+/* bottom row */
+.sm-low{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px;align-items:start}
+.sm-li{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid var(--border);font-size:13px;min-width:0}
+.sm-li .m{min-width:0;flex:1}
+.sm-li .m b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sm-li .m span{display:block;font-size:11.5px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sm-li .r{text-align:right;font:500 12.5px var(--font-mono);flex:none}
+.sm-li .r span{display:block;font-size:11px}
+.sm-li .t{font:500 11px var(--font-mono);color:var(--fg3);width:58px;flex:none}
+.sm-note{padding:4px 16px 14px;font-size:12.5px;color:var(--fg2);margin:0}
+.sm-note a{color:var(--fg)}
+.sm-tot{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--border)}
+.sm-tot div{padding:10px 16px;border-left:1px solid var(--border)}.sm-tot div:first-child{border-left:0}
+.sm-tot b{display:block;font:600 15px var(--font-mono);margin-top:2px}
 #smfoot{font-size:12.5px;color:var(--fg3);line-height:1.5}
-@media (max-width:1100px){.sm-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "rail" "side"}}
+@media (max-width:1180px){.sm-hero{grid-template-columns:minmax(0,1fr)}.sm-best{grid-template-rows:none}.sm-low{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:640px){
-  .sm-rail{padding-left:0}.sm-rail::before,.sm-slot::before{display:none}
-  .sm-slot>.sm-when{position:static;width:auto;text-align:left;display:flex;align-items:baseline;gap:5px;margin-bottom:2px}
-  .sm-slot>.sm-when b{display:inline}
-  .sm-gs{grid-template-columns:minmax(0,1fr)}
-  .sm-tot{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:8px}
-  .sm-fav .sm-note.muted{display:none}   /* phone: the team card stays short so the rail starts on the first screen */
+  .sm-next{padding:16px}.sm-mu .c b{font-size:22px}.sm-mu{grid-template-columns:56px 1fr 56px}
+  .sm-tiles{grid-template-columns:minmax(0,1fr)}
+  .sm-b .w span:last-child{white-space:normal}
 }
 </style>
 
@@ -10923,13 +10952,14 @@ $('pv-bets').addEventListener('click', async e => {
 
 /* KPI hints are clipped to keep the tiles short; hovering one shows the whole line */
 document.addEventListener('mouseover', e => { const h = e.target.closest && e.target.closest('.kpi .hint'); if (h && !h.title) h.title = h.textContent; });
-// ── Summary: tonight on one page ─────────────────────────────────────────
-// The night as a rail of tip times. Each game carries the Vault line against the book, its Game Picks (with their shadow grades), the Sharp Plays
-// logged on it and the viewer's own bets; the left column holds the favorite team, the bet slip and the records. Nothing here is computed fresh:
-// the Vault line and picks come from gpUse / gpPickOf (Game Picks), the starting five from labLineup (NBA.com), bets from My Bets, and the
-// Sharp Plays from the Sharp Money ledger (sharp-data/v2_plays.json, written by scripts/track-v2-plays.mjs).
+// ── Summary: tonight on one page (Focus layout) ─────────────────────────
+// Your team's game (or the next tip) with the book against the Vault line on one gauge, tonight's three best things, a time scrubber over
+// uniform game tiles, then bets, records and news. Nothing here is computed fresh: the Vault line and picks come from gpUse / gpPickOf (Game
+// Picks), the starting five from labLineup (NBA.com), bets from My Bets, and the Sharp Plays from the Sharp Money ledger
+// (sharp-data/v2_plays.json, written by scripts/track-v2-plays.mjs).
 const SMP = {rows: null, tried: false, at: 0, timer: null};
 // The two strict gates as sharp-money/v2/gates.js applies them to a stored ledger row (heldBack): priced 55%+ and called inside 48 hours.
+// Change them there and here together.
 const SM_GATE = {minPrice: 0.55, earlyH: 48};
 const SM_AB = {WAS: 'WSH', NOP: 'NO', NYK: 'NY', GSW: 'GS', SAS: 'SA', UTA: 'UTAH', PHO: 'PHX', BRK: 'BKN'};
 const smAb = t => SM_AB[t] || t;
@@ -10961,95 +10991,108 @@ const smBetOn = (b, p) => p.kind === 'prop' && String(b.p) === String(p.prop.esp
 const smFace = (id, name, s = 34) => `<span class="sm-face" style="--s:${s}px"><span>${esc(initials(name || ''))}</span>${id == null ? '' : `<img src="${phSrc(id)}" alt="" loading="lazy" onerror="this.remove()">`}</span>`;
 const smDur = s => { s = Math.max(0, Math.round(s / 60)); return s >= 60 ? `${Math.floor(s / 60)}h ${s % 60}m` : `${s}m`; };
 const smStat = s => ({'3pm': '3PM', pra: 'PRA', pr: 'P+R', pa: 'P+A', ra: 'R+A'})[s] || s;
-const smSp = x => x == null ? '' : x === 0 ? 'PK' : gpS(x);
+const smSp = x => x == null ? DASH : x === 0 ? 'PK' : gpS(x);
+const smEx = p => (p.first.refs || []).find(r => r.n === 'Exchange') || (p.first.refs || [])[0] || {};
+let smF = null;                              // tile filter: null, 'A', 'plays' or 'bets'
 
-function smFavCard(games, B, status, now){
-  const T = PRO.team;
-  if (!T || !D.teams[T]) return `<section class="card sm-fav"><div class="sm-h"><h2>Your team</h2></div>
-    <p class="sm-note">Pick a team to pin its game, starting five and injuries here.</p>
-    <label class="sm-pick"><span class="sr">Favorite team</span><select data-smfav><option value="">Choose a team</option>${TEAMS.map(t => `<option value="${t}">${esc(D.teams[t].name)}</option>`).join('')}</select></label></section>`;
-  const g = games.find(x => x.away === T || x.home === T), opp = g ? (g.away === T ? g.home : g.away) : null, home = g && g.home === T;
-  const lu = labLineup(T), P = D.teams[T].players;
+// One game with everything the page shows about it, computed once per render.
+function smGame(g, B, status, now){
+  const {locked, use} = gpUse(g, B, status), pk = use ? gpPickOf(use) : {}, L = gpLine(g);
+  const opn = g.mk ? lvBooks(g.mk).find(b => b.n === 'Open') : null, sp = L && L.spread != null ? L.spread : null;
+  const ats = pk.ats ? {team: pk.ats.side === 'H' ? g.home : g.away, line: pk.ats.side === 'H' ? use.spread : -use.spread, edge: pk.ats.edge, gr: gpGrade('ats', pk.ats.edge)} : null;
+  const ml = pk.ml ? {team: pk.ml.side === 'H' ? g.home : g.away, p: pk.ml.p, gr: gpGrade('ml', pk.ml.p)} : null;
+  return {g, locked, use, sp, vl: use ? +(-use.margin).toFixed(1) : null, ats, ml, moved: opn && opn.s && sp != null && opn.s.l !== sp ? +(sp - opn.s.l).toFixed(1) : 0,
+    open: opn && opn.s ? opn.s.l : null, openT: opn && opn.t ? opn.t.l : null, plays: smPlaysFor(g), bets: pvBets.filter(b => !b.res && !b.ex && String(b.gid) === String(g.id)),
+    news: (B.news || []).filter(n => (n[3] === g.away || n[3] === g.home) && n[0] > now - 6 * 3600).length, started: g.tip <= now,
+    fav: !!PRO.team && (g.away === PRO.team || g.home === PRO.team)};
+}
+function smGauge(x){                         // the home side's line: the book's number and the Vault line on one symmetric scale
+  const g = x.g, R = Math.max(6, Math.ceil(Math.max(Math.abs(x.sp), Math.abs(x.vl))) + 2), at = v => ((v + R) / (2 * R) * 100).toFixed(2) + '%';
+  const lo = Math.min(x.sp, x.vl), hi = Math.max(x.sp, x.vl);
+  return `<div class="sm-k" style="position:relative">${esc(D.teams[g.home] ? D.teams[g.home].name.split(' ').pop() : g.home)}' line: book vs Vault</div>
+    <div class="sm-gauge" role="img" aria-label="Book ${g.home} ${smSp(x.sp)}, Vault ${g.home} ${smSp(x.vl)}"><div class="ax"></div><div class="mid"></div>
+      <div class="seg" style="left:${at(lo)};width:calc(${at(hi)} - ${at(lo)})"></div>
+      <div class="mk bk" style="left:${at(x.sp)}"><em>Book ${g.home} ${smSp(x.sp)}</em></div><div class="mk vl" style="left:${at(x.vl)}"><em>Vault ${g.home} ${smSp(x.vl)}</em></div></div>
+    <div class="sm-gends"><span>${g.home} by more</span><span>even</span><span>${g.away} by more</span></div>`;
+}
+function smHero(X, B, status, now){
+  const T = PRO.team && D.teams[PRO.team] ? PRO.team : null;
+  const x = T ? X.find(y => y.fav) : X.find(y => !y.started) || X[0];
+  const pickSel = `<label><span class="sr">Favorite team</span><select data-smfav>${T ? '' : '<option value="">Pick your team</option>'}${TEAMS.map(t => `<option value="${t}"${t === T ? ' selected' : ''}>${T ? t : esc(D.teams[t].name)}</option>`).join('')}</select></label>`;
+  if (!x) return `<section class="sm-mod sm-next"><div class="sm-r1"><span class="sm-k">${T ? 'Your team' : 'Next up'}</span>${pickSel}</div>
+    <p class="sm-note" style="padding:14px 0 0">${T ? `No ${esc(D.teams[T].name)} game on the board in the next two days.` : 'No games on the board yet.'}</p></section>`;
+  const g = x.g, tc = T ? teamWash(T) : '', team = T || g.home;
+  const lu = labLineup(team), P = D.teams[team] ? D.teams[team].players : [];
   const five = lu ? lu.ids.map(id => P.find(p => p.id === id)).filter(Boolean) : P.filter(p => !/^(Out|Inactive)$/.test(status[p.id] || '')).sort((a, b) => b.min0 - a.min0).slice(0, 5);
-  const outs = (B.outs || []).filter(o => o[1] === T).map(o => ({pid: +o[0], st: o[2] || 'Out', name: (P.find(p => p.id === +o[0]) || {}).name || ((B.players || {})[o[0]] || [])[0] || ((B.news || []).find(n => +n[1] === +o[0]) || [])[2]}));
-  const qs = P.filter(p => /^(Questionable|Doubtful)$/.test(status[p.id] || '') && !outs.some(o => o.pid === p.id)).map(p => ({pid: p.id, st: status[p.id], name: p.name}));
-  const named = outs.filter(o => o.name), more = outs.length - named.length;
-  const next = g ? games.find(x => x !== g && (x.away === T || x.home === T) && x.tip > g.tip) : null;
-  let line = '';
-  if (g){
-    const u = gpUse(g, B, status).use, pk = u ? gpPickOf(u) : null, L = gpLine(g);
-    const bk = L && L.spread != null ? `${g.home} ${smSp(L.spread)}` : 'no line yet', vl = u ? `${g.home} ${smSp(+(-u.margin).toFixed(1))}` : null;
-    line = `<div class="sm-lines"><div><small>Book</small><b>${bk}</b></div><div><small>Vault line</small><b class="sm-v">${vl || DASH}</b></div><div><small>Total</small><b>${g.total != null ? g.total : DASH}</b></div></div>
-      ${pk && pk.ats ? `<p class="sm-note">Game Picks: <b>${pk.ats.side === 'H' ? g.home : g.away} ${smSp(pk.ats.side === 'H' ? u.spread : -u.spread)}</b>${gpBadge('ats', pk.ats.edge, null, `edge ${pk.ats.edge.toFixed(1)} points`)} by ${pk.ats.edge.toFixed(1)} points${pk.ml ? `, winner <b>${pk.ml.side === 'H' ? g.home : g.away}</b> ${leanPct(pk.ml.p, 0)}${gpBadge('ml', pk.ml.p, null, `${leanPct(pk.ml.p, 0)} chance`)}` : ''}.</p>` : ''}`;
-    const fg = ((B.follow && B.follow.games) || []).find(f => Math.abs(f.tip - g.tip) < 3600 && new RegExp(`-${g.away}-${g.home}-`, 'i').test(f.g));
-    if (fg && fg.items && fg.items.length){
-      const top = fg.items.map(it => ({q: `${it.side}${it.line != null && it.type === 'totals' ? ' ' + it.line : ''}`, usd: (it.wallets || []).reduce((a, w) => a + (w.usd || 0), 0)})).sort((a, b) => b.usd - a.usd)[0];
-      if (top && top.usd) line += `<p class="sm-note muted">Tracked sharp accounts: $${Math.round(top.usd).toLocaleString()} on ${esc(top.q)}. Context only, not a pick.</p>`;
-    }
-  }
-  return `<section class="card sm-fav" style="${teamWash(T) ? `--tc:${teamWash(T)}` : ''}">
-    <div class="sm-h"><h2>${lgImg(T, 26)}${esc(D.teams[T].name)}</h2><label class="sm-chg"><span class="sr">Change team</span><select data-smfav>${TEAMS.map(t => `<option value="${t}"${t === T ? ' selected' : ''}>${t}</option>`).join('')}</select></label></div>
-    ${g ? `<p class="sm-when"><b>${home ? 'vs' : '@'} ${lgImg(opp, 18)}${opp}</b> · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}${g.tip > now ? ` · tips in ${smDur(g.tip - now)}` : ' · in progress'}</p>` : '<p class="sm-when muted">No game on the board in the next two days.</p>'}
-    <div class="sm-five">${five.map(p => `<div>${smFace(p.id, p.name, 40)}<span>${esc(last(p.name))}</span></div>`).join('')}</div>
-    <p class="sm-note muted">${lu ? (lu.confirmed ? 'Starting five confirmed by NBA.com.' : 'Expected starters (NBA.com). Confirmed about 30 minutes before tip.') : 'Top five by projected minutes. NBA.com posts starters on game day.'}</p>
-    ${named.length || more || qs.length ? `<p class="sm-inj">${named.length || more ? `<span class="pill bad">Out</span> ${named.map(o => esc(o.name)).join(', ')}${more ? `${named.length ? ' +' : ''}${more}${named.length ? ' more' : ' players'}` : ''}` : ''}${qs.length ? `<span class="sm-q"><span class="pill warn">Q</span> ${qs.map(o => `${esc(o.name)}${o.st === 'Doubtful' ? ' (D)' : ''}`).join(', ')}</span>` : ''}</p>` : ''}
-    ${line}
-    ${next ? `<p class="sm-note">Next: ${next.home === T ? 'vs' : '@'} ${next.home === T ? next.away : next.home}, ${etFmt(next.tip, {weekday: 'short', month: 'short', day: 'numeric'})} ${clock(next.tip)} ${TZL}</p>` : ''}
+  const outs = (B.outs || []).filter(o => o[1] === team).map(o => (P.find(p => p.id === +o[0]) || {}).name || ((B.players || {})[o[0]] || [])[0] || ((B.news || []).find(n => +n[1] === +o[0]) || [])[2]).filter(Boolean);
+  const nOut = (B.outs || []).filter(o => o[1] === team).length;
+  const next = (B.games || []).filter(y => (y.away === team || y.home === team) && y.tip > g.tip).sort((a, b) => a.tip - b.tip)[0];
+  return `<section class="sm-mod sm-next" style="${tc ? `--tc:${tc}` : ''}">${lgImg(team, 230) ? `<div class="wm" aria-hidden="true">${lgImg(team, 230)}</div>` : ''}
+    <div class="sm-r1"><span class="sm-k">${T ? 'Your team · next up' : 'Next up'}</span><span class="sm-tag">${x.started ? 'in progress' : `tips in ${smDur(g.tip - now)}`}</span>${pickSel}</div>
+    <div class="sm-mu"><div class="t">${lgImg(g.away, 52)}${g.away}</div>
+      <div class="c"><b>${clock(g.tip)}</b><span>${etFmt(g.tip, {weekday: 'short'})} ${TZL}${g.total != null ? ` · O/U ${g.total}${x.openT != null && x.openT !== g.total ? ` (opened ${x.openT})` : ''}` : ''}</span></div>
+      <div class="t">${lgImg(g.home, 52)}${g.home}</div></div>
+    ${x.sp != null && x.vl != null ? smGauge(x) : `<p class="sm-note" style="padding:0">${x.vl == null ? 'No Vault line for this game yet.' : 'No book line posted yet.'}</p>`}
+    <div class="sm-foot"><span class="sm-five">${five.map(p => smFace(p.id, p.name, 28)).join('')}</span><span>${five.map(p => esc(last(p.name))).join(', ')}${lu && lu.confirmed ? ' · confirmed' : lu ? ' · expected' : ' · by projected minutes'}</span>
+      ${nOut ? `<span class="sm-tag bad" title="${esc(outs.join(', '))}">${nOut} out</span>` : ''}
+      ${x.ats ? `<span class="sm-pick2">Pick <b>${x.ats.team} ${smSp(x.ats.line)}</b>${gpBadge('ats', x.ats.edge, null, `edge ${x.ats.edge.toFixed(1)} points`)}</span>` : ''}
+      ${next ? `<span class="muted">Next: ${next.home === team ? 'vs' : '@'} ${next.home === team ? next.away : next.home}, ${etFmt(next.tip, {weekday: 'short'})} ${clock(next.tip)} ${TZL}</span>` : ''}</div>
   </section>`;
 }
-function smBetsCard(now){
+function smBest(X, now){
+  const up = X.filter(x => !x.started);
+  const a = up.filter(x => x.ats).sort((p, q) => q.ats.edge - p.ats.edge)[0], m = up.filter(x => x.ml).sort((p, q) => q.ml.p - p.ml.p)[0];
+  const pl = up.flatMap(x => x.plays.map(p => ({x, p}))).sort((p, q) => (smEx(q.p).edge || 0) - (smEx(p.p).edge || 0))[0];
+  const lock = x => x.locked ? 'locked' : `live lean, locks ${clock(x.g.tip - 4 * 3600)}`;
+  const card = (ic, k, title, sub, val, vsub, attrs) => `<button type="button" class="sm-b${attrs ? '' : ' none'}" ${attrs || 'disabled'}><span class="ic">${ic}</span><span class="w"><span class="sm-k">${k}</span><b>${title}</b><span>${sub}</span></span><span class="v">${val}<span>${vsub}</span></span></button>`;
+  return `<div class="sm-best">
+    ${a ? card(lgImg(a.ats.team, 28), `Top spread pick · ${clock(a.g.tip)}`, `${a.ats.team} ${smSp(a.ats.line)}${gpBadge('ats', a.ats.edge, null, `edge ${a.ats.edge.toFixed(1)} points`)}`, `${a.g.away} @ ${a.g.home} · Vault ${a.g.home} ${smSp(a.vl)} · ${lock(a)}`, `<b>${a.ats.edge.toFixed(1)}</b>`, 'pts edge', 'data-go="games"') : card('', 'Top spread pick', 'None yet', 'Waiting on lines and the Vault line', '', '', '')}
+    ${m ? card(lgImg(m.ml.team, 28), `Top winner · ${clock(m.g.tip)}`, `${esc(D.teams[m.ml.team] ? D.teams[m.ml.team].name.split(' ').pop() : m.ml.team)}${gpBadge('ml', m.ml.p, null, `${leanPct(m.ml.p, 0)} chance`)}`, `${m.g.away} @ ${m.g.home} · ${lock(m)}`, `<b>${leanPct(m.ml.p, 0)}</b>`, 'Vault chance', 'data-go="games"') : card('', 'Top winner', 'None yet', 'Waiting on the Vault line', '', '', '')}
+    ${pl ? card(pl.p.kind === 'prop' ? smFace(pl.p.prop.espnId, pl.p.prop.name, 38) : lgImg(pl.x.g.home, 28), `Top Sharp Play · ${clock(pl.x.g.tip)}`, esc(smTitle(pl.p)), `${esc(pl.p.first.price.book)} ${smAm(pl.p.first.price.am)} · ${(pl.p.first.refs || []).map(r => `${r.n} ${leanPct(r.p, 1)}`).join(', ')}`, `<b class="pos">+${((smEx(pl.p).edge || 0) * 100).toFixed(1)}%</b>`, 'edge', 'data-href="https://vaultfantasy.com/sharp-money/#plays"')
+      : card('', 'Top Sharp Play', 'None open', SMP.rows ? 'No price beats both fair prices right now' : 'Loading the Sharp Money ledger', '', '', '')}
+  </div>`;
+}
+function smTile(x, now){
+  const g = x.g, tc = x.fav ? teamWash(PRO.team) : '', dots = [];
+  if (x.started) dots.push('<span class="sm-dot live">In progress</span>');
+  if (x.plays.length) dots.push(`<span class="sm-dot p">● ${x.plays.length} Sharp Play${x.plays.length > 1 ? 's' : ''}</span>`);
+  if (x.bets.length) dots.push(`<span class="sm-dot b">● ${x.bets.length} bet${x.bets.length > 1 ? 's' : ''}</span>`);
+  if (x.moved) dots.push(`<span class="sm-dot" title="Spread at open ${g.home} ${smSp(x.open)}, now ${smSp(x.sp)}">moved ${Math.abs(x.moved)}</span>`);
+  if (x.news) dots.push(`<span class="sm-dot n" title="Injury report updates in the last 6 hours">${x.news} injury update${x.news > 1 ? 's' : ''}</span>`);
+  const bk = t => x.sp == null ? DASH : smSp(t === g.home ? x.sp : -x.sp), vl = t => x.vl == null ? DASH : smSp(t === g.home ? x.vl : -x.vl);
+  const on = p => pvBets.some(b => !b.res && smBetOn(b, p));
+  return `<article class="sm-mod sm-t${x.fav ? ' fav' : ''}${x.bets.length ? ' mine' : ''}${x.started ? ' past' : ''}" data-tip="${clock(g.tip)}" style="${tc ? `--tc:${tc}` : ''}">
+    <div class="hd"><b>${clock(g.tip)}</b>${x.fav ? '<span class="sm-tag">★ Your team</span>' : ''}<span class="sm-k">${g.total != null ? `O/U ${g.total}` : ''}</span></div>
+    <div class="tm h"><span></span><span>Book</span><span>Vault</span></div>
+    ${[g.away, g.home].map(t => `<div class="tm"><span class="nm">${lgImg(t, 20)}${t}</span><span class="n">${bk(t)}</span><span class="n v">${vl(t)}</span></div>`).join('')}
+    <div class="pks"><div class="${x.locked ? '' : 'lean'}" title="${x.locked ? 'Locked 4 hours before tip' : 'Live lean: locks 4 hours before tip'}"><span class="sm-k">Spread${x.locked ? '' : ' · lean'}</span>${x.ats ? `<b>${x.ats.team} ${smSp(x.ats.line)}${gpBadge('ats', x.ats.edge, null, `edge ${x.ats.edge.toFixed(1)} points`)}</b>` : `<b class="dim">${x.sp == null ? 'No line' : 'No pick'}</b>`}</div>
+      <div class="${x.locked ? '' : 'lean'}"><span class="sm-k">Winner</span>${x.ml ? `<b>${x.ml.team} ${leanPct(x.ml.p, 0)}${gpBadge('ml', x.ml.p, null, `${leanPct(x.ml.p, 0)} chance`)}</b>` : '<b class="dim">Even</b>'}</div></div>
+    <div class="sm-sg">${dots.join('')}</div>
+    ${x.plays.length || x.bets.length ? `<div class="sm-pl">${x.plays.slice(0, 3).map(p => `<a class="sm-play" href="https://vaultfantasy.com/sharp-money/#plays" target="_blank" rel="noopener" title="${esc(smName(p))}"><b>${esc(smTitle(p))}</b>${on(p) ? '<span class="sm-tag warn">On it</span>' : ''}<span class="r">${smAm(p.first.price.am)} <span class="pos">+${((smEx(p).edge || 0) * 100).toFixed(1)}%</span></span></a>`).join('')}${x.plays.length > 3 ? `<span class="muted" style="font-size:11.5px">+${x.plays.length - 3} more on Sharp Money</span>` : ''}
+      ${x.bets.filter(b => !x.plays.some(p => smBetOn(b, p))).map(b => `<a class="sm-play" href="#mybets" data-go="mybets"><span class="sm-tag warn">My bet</span><b>${esc(last(b.name))} ${esc(b.side)} ${b.line} ${smStat(b.s)}</b><span class="r">${esc(String(b.price).replace('-', MINUS))}</span></a>`).join('')}</div>` : ''}
+  </article>`;
+}
+function smLow(X, B, now){
   const open = pvBets.filter(b => !b.res && !b.ex && b.tip && b.tip > now - 4 * 3600).sort((a, b) => a.tip - b.tip);
   const T = pvGrp(pvBets.filter(b => !b.ex).map(b => ({b}))), win = open.reduce((a, b) => a + (b.cost ? b.stake * (1 - b.cost) / b.cost : 0), 0);
-  const recent = pvBets.filter(b => b.res && b.res.res !== 'void' && !b.ex && b.tip && b.tip > now - 30 * 3600), rw = recent.filter(b => b.res.res === 'won').length;
-  const body = open.length ? open.map(b => `<div class="sm-bet"><div><b>${esc(b.name)} ${esc(b.side)} ${b.line} ${smStat(b.s)}</b><span>${esc(b.m)} · ${clock(b.tip)} · ${esc(b.bk || b.venue)}</span></div><div class="r"><b>${esc(String(b.price).replace('-', MINUS))}</b><span class="pos">+$${(b.cost ? b.stake * (1 - b.cost) / b.cost : 0).toFixed(2)}</span></div></div>`).join('')
-    : `<p class="sm-note">No open bets. Log one from <a href="#props" data-go="props">Player Props</a> with the price you got and it shows up here and on its game.</p>`;
-  return `<section class="card sm-bets"><div class="sm-h"><h2>My bets</h2>${open.length ? `<span class="muted">$${open.reduce((a, b) => a + b.stake, 0).toFixed(0)} risked</span>` : ''}</div>${body}
-    <div class="sm-tot"><div><small>To win</small><b class="${win ? 'pos' : ''}">${win ? '+$' + win.toFixed(2) : DASH}</b></div><div><small>Last day</small><b>${recent.length ? `${rw}${DASH}${recent.length - rw}` : DASH}</b></div><div><small>All time</small><b class="${T.pl > 0 ? 'pos' : T.pl < 0 ? 'neg' : ''}">${T.w + T.l ? pvMoney(T.pl) : DASH}</b></div><div><small>CLV</small><b class="${T.clv == null ? '' : T.clv >= 0 ? 'pos' : 'neg'}">${T.clv == null ? DASH : pvSg(T.clv)}</b></div></div>
-    <a class="sm-more" href="#mybets" data-go="mybets">All bets</a></section>`;
-}
-function smRecordCard(){
+  const bets = `<section class="sm-mod"><div class="sm-mh"><h2>My bets</h2>${open.length ? `<span class="muted">${open.length} open · $${open.reduce((a, b) => a + b.stake, 0).toFixed(0)} risked</span>` : ''}<a class="act" href="#mybets" data-go="mybets">All bets</a></div>
+    ${open.length ? open.slice(0, 5).map(b => `<div class="sm-li">${smFace(b.p, b.name, 30)}<div class="m"><b>${esc(b.name)} ${esc(b.side)} ${b.line} ${smStat(b.s)}</b><span>${esc(b.m)} · ${clock(b.tip)} · ${esc(b.bk || b.venue)}</span></div><div class="r">${esc(String(b.price).replace('-', MINUS))}<span class="pos">+$${(b.cost ? b.stake * (1 - b.cost) / b.cost : 0).toFixed(2)}</span></div></div>`).join('')
+      : `<p class="sm-note">No open bets. Log one from <a href="#props" data-go="props">Player Props</a> with the price you got and it shows here and on its game.</p>`}
+    <div class="sm-tot"><div><span class="sm-k">To win</span><b class="${win ? 'pos' : ''}">${win ? '+$' + win.toFixed(2) : DASH}</b></div><div><span class="sm-k">All-time CLV</span><b class="${T.clv == null ? '' : T.clv >= 0 ? 'pos' : 'neg'}">${T.clv == null ? DASH : pvSg(T.clv)}</b></div></div></section>`;
   const R = smRecord(), items = gpItems(), A = gpStats(items, 'ats'), M = gpStats(items, 'ml');
-  const row = (l, rec, u, n, sub) => `<div class="sm-rec"><div><b>${l}</b><span>${sub}</span></div><div class="r"><b>${rec}</b><span class="${u == null ? 'muted' : u >= 0 ? 'pos' : 'neg'}">${u == null ? '' : `${gpS(u, 1)}u`}${n ? ` · ${n} graded` : ''}</span></div></div>`;
-  return `<section class="card sm-recs"><div class="sm-h"><h2>Records</h2><span class="muted">flat 1 unit</span></div>
-    ${SMP.rows ? row('Sharp Plays', R.n ? `${R.w}${DASH}${R.l}` : DASH, R.n ? R.units : null, R.n, R.n ? `${R.roi >= 0 ? '+' : MINUS}${Math.abs(R.roi * 100).toFixed(1)}% ROI · strict gates${R.n < 100 ? ', small sample' : ''}` : 'no settled NBA plays yet') : row('Sharp Plays', DASH, null, 0, SMP.tried ? 'loading the ledger' : 'not loaded')}
-    ${row('Game Picks spread', A.n ? gpRec(A) : DASH, A.nu ? A.units : null, A.n, 'Vault line against the spread')}
-    ${row('Game Picks winner', M.n ? gpRec(M) : DASH, M.nu ? M.units : null, M.n, 'straight up')}
-    <p class="sm-note muted">Sharp Plays: a US book price that beats both the exchange (Kalshi, Novig) and Pinnacle's no-vig price by 2% or more. Shown with their records, losing or not.</p></section>`;
-}
-function smWireCard(games, B, now){
-  const teams = new Set(games.flatMap(g => [g.away, g.home])), mine = new Set(pvBets.filter(b => !b.res).map(b => String(b.p)));
-  const open = (SMP.rows || []).filter(p => p.status === 'open' && p.kind === 'prop'), play = new Set(open.map(p => String(p.prop.espnId)));
-  const N = (B.news || []).filter(n => teams.has(n[3]) && n[0] > now - 24 * 3600).sort((a, b) => b[0] - a[0]).slice(0, 7);
-  if (!N.length) return '';
-  return `<section class="card sm-wire"><div class="sm-h"><h2>Injury news</h2><a class="sm-more" href="#wire" data-go="wire">Injury Wire</a></div>
-    ${N.map(n => { const st = String(n[5] || ''), cls = /^out|inactive/i.test(st) ? 'bad' : /questionable|doubtful/i.test(st) ? 'warn' : 'idle', hit = mine.has(String(n[1])) ? 'Your bet' : play.has(String(n[1])) ? 'Sharp Play' : '';
-      return `<div class="sm-news"><span class="t">${clock(n[0])}</span><span class="n"><b>${esc(n[2])}</b> <span class="muted">${n[3]}</span>${hit ? ` <span class="pill warn">${hit}</span>` : ''}</span><span class="pill ${cls}">${esc(st || 'Update')}</span></div>`; }).join('')}</section>`;
-}
-function smGameCard(g, B, status, now, rk){
-  const {locked, use} = gpUse(g, B, status), pk = use ? gpPickOf(use) : null, L = gpLine(g), fav = PRO.team && (g.away === PRO.team || g.home === PRO.team);
-  const opn = g.mk ? lvBooks(g.mk).find(b => b.n === 'Open') : null, sp = L && L.spread != null ? L.spread : g.spread;
-  const plays = smPlaysFor(g), bets = pvBets.filter(b => !b.res && !b.ex && String(b.gid) === String(g.id));
-  const vl = t => use ? smSp(+((t === g.home ? -use.margin : use.margin)).toFixed(1)) : '';
-  const bk = t => sp == null ? DASH : smSp(t === g.home ? sp : -sp);
-  const chips = [];
-  if (g.total != null) chips.push(`<span class="sm-c">O/U ${g.total}</span>`);
-  if (opn && opn.s && sp != null && opn.s.l !== sp) chips.push(`<span class="sm-c mv" title="Spread at open, then now">Moved ${g.home} ${smSp(opn.s.l)} → ${smSp(sp)}</span>`);
-  if (opn && opn.t && g.total != null && Math.abs(opn.t.l - g.total) >= 1) chips.push(`<span class="sm-c mv">Total ${opn.t.l} → ${g.total}</span>`);
-  const nw = (B.news || []).filter(n => (n[3] === g.away || n[3] === g.home) && n[0] > now - 6 * 3600).length;
-  if (nw) chips.push(`<span class="sm-c warn">${nw} injury update${nw === 1 ? '' : 's'}</span>`);
-  const pick = [];
-  if (pk && pk.ats) pick.push(`<span class="sm-pk${locked ? '' : ' lean'}" title="${locked ? 'Game Pick, locked 4 hours before tip' : 'Live lean: the pick locks 4 hours before tip'}"><small>Spread</small>${pk.ats.side === 'H' ? g.home : g.away} ${smSp(pk.ats.side === 'H' ? use.spread : -use.spread)}${gpBadge('ats', pk.ats.edge, rk.ats, `edge ${pk.ats.edge.toFixed(1)} points`)}</span>`);
-  if (pk && pk.ml) pick.push(`<span class="sm-pk${locked ? '' : ' lean'}"><small>Winner</small>${pk.ml.side === 'H' ? g.home : g.away} ${leanPct(pk.ml.p, 0)}${gpBadge('ml', pk.ml.p, rk.ml, `${leanPct(pk.ml.p, 0)} chance`)}</span>`);
-  const started = g.tip <= now;
-  return `<article class="sm-g${fav ? ' fav' : ''}${bets.length ? ' mine' : ''}" style="${fav && teamWash(PRO.team) ? `--tc:${teamWash(PRO.team)}` : ''}">
-    <div class="sm-gh"><span></span><span>Book</span><span>Vault</span></div>
-    ${[g.away, g.home].map(t => `<div class="sm-tr"><span class="tm">${lgImg(t, 20)}<b>${t}</b>${t === PRO.team ? '<i class="sm-star" title="Your team">★</i>' : ''}</span><span class="n">${bk(t)}</span><span class="n v">${use ? vl(t) : (t === g.away ? '<span class="muted">soon</span>' : '')}</span></div>`).join('')}
-    ${chips.length ? `<div class="sm-cs">${started ? '<span class="sm-c live">In progress</span>' : ''}${chips.join('')}</div>` : ''}
-    ${pick.length ? `<div class="sm-pks">${pick.join('')}</div>` : ''}
-    ${plays.length || bets.length ? `<div class="sm-pl">${plays.map(p => { const on = pvBets.some(b => !b.res && smBetOn(b, p)), px = p.first.price, ex = (p.first.refs || []).find(r => r.n === 'Exchange') || (p.first.refs || [])[0];
-        return `<a class="sm-play" href="https://vaultfantasy.com/sharp-money/#plays" target="_blank" rel="noopener" title="${esc(smName(p))}: ${px.book} ${smAm(px.am)} (${leanPct(px.p, 1)}), ${(p.first.refs || []).map(r => `${r.n} ${leanPct(r.p, 1)}`).join(', ')}"><span class="pill ok">Play</span><b>${esc(smTitle(p))}</b>${on ? '<span class="pill warn">On it</span>' : ''}<span class="r">${smAm(px.am)}${ex && ex.edge != null ? ` <em class="pos">+${(ex.edge * 100).toFixed(1)}%</em>` : ''}</span></a>`; }).join('')}
-      ${bets.filter(b => !plays.some(p => smBetOn(b, p))).map(b => `<a class="sm-play" href="#mybets" data-go="mybets"><span class="pill warn">My bet</span><b>${esc(last(b.name))} ${esc(b.side)} ${b.line} ${smStat(b.s)}</b><span class="r">${esc(String(b.price).replace('-', MINUS))}</span></a>`).join('')}</div>` : ''}
-  </article>`;
+  const row = (l, sub, rec, u) => `<div class="sm-li"><div class="m"><b>${l}</b><span>${sub}</span></div><div class="r">${rec}<span class="${u == null ? 'muted' : u >= 0 ? 'pos' : 'neg'}">${u == null ? '' : gpS(u, 1) + 'u'}</span></div></div>`;
+  const recs = `<section class="sm-mod"><div class="sm-mh"><h2>Records</h2><span class="muted">flat 1 unit</span><a class="act" href="#track" data-go="track">Track Record</a></div>
+    ${row('Sharp Plays', SMP.rows ? (R.n ? `strict gates · ${R.roi >= 0 ? '+' : MINUS}${Math.abs(R.roi * 100).toFixed(1)}% ROI · n=${R.n}${R.n < 100 ? ', small sample' : ''}` : 'no settled NBA plays yet') : 'loading the ledger', R.n ? `${R.w}${DASH}${R.l}` : DASH, R.n ? R.units : null)}
+    ${row('Game Picks spread', `${A.n} graded`, A.n ? gpRec(A) : DASH, A.nu ? A.units : null)}
+    ${row('Game Picks winner', `${M.n} graded`, M.n ? gpRec(M) : DASH, M.nu ? M.units : null)}</section>`;
+  const teams = new Set(X.flatMap(x => [x.g.away, x.g.home])), mine = new Set(pvBets.filter(b => !b.res).map(b => String(b.p)));
+  const play = new Set((SMP.rows || []).filter(p => p.status === 'open' && p.kind === 'prop').map(p => String(p.prop.espnId)));
+  const N = (B.news || []).filter(n => teams.has(n[3]) && n[0] > now - 24 * 3600).sort((a, b) => b[0] - a[0]).slice(0, 5);
+  const news = `<section class="sm-mod"><div class="sm-mh"><h2>Injury news</h2><span class="muted">tonight's teams</span><a class="act" href="#wire" data-go="wire">Injury Wire</a></div>
+    ${N.length ? N.map(n => { const st = String(n[5] || ''), cls = /^out|inactive/i.test(st) ? 'bad' : /questionable|doubtful/i.test(st) ? 'warn' : '', hit = mine.has(String(n[1])) ? 'Your bet' : play.has(String(n[1])) ? 'Sharp Play' : '';
+      return `<div class="sm-li"><span class="t">${clock(n[0])}</span><div class="m"><b>${esc(n[2])} <span class="muted" style="font-weight:500">${n[3]}</span></b>${hit ? `<span class="warn">${hit} on this player</span>` : ''}</div><span class="sm-tag ${cls}">${esc(st || 'Update')}</span></div>`; }).join('')
+      : '<p class="sm-note">No injury news for tonight\'s teams in the last day.</p>'}</section>`;
+  return `<div class="sm-low">${bets}${recs}${news}</div>`;
 }
 function renderSummary(){
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, status = statusFromBoard(B);
@@ -11058,20 +11101,33 @@ function renderSummary(){
   $('tname').textContent = 'Summary';
   $('tsub').textContent = games.length ? `${etFmt(games[0].tip, {weekday: 'long', month: 'short', day: 'numeric'}).toUpperCase()} · ${games.length} ${games.length === 1 ? 'GAME' : 'GAMES'} · FIRST TIP ${clock(games[0].tip)} ${TZL}` : 'TONIGHT ON ONE PAGE';
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
-  const ents = games.map(g => { const u = gpUse(g, B, status).use, p = u ? gpPickOf(u) : {}; return {id: String(g.id), edge: p.ats ? p.ats.edge : null, p: p.ml ? p.ml.p : null}; }), rk = gpRanks(ents);
-  const slots = []; for (const g of games){ const t = clock(g.tip), s = slots[slots.length - 1]; if (s && s.t === t) s.g.push(g); else slots.push({t, tip: g.tip, g: [g]}); }
-  const nxt = slots.findIndex(s => s.tip > now);
-  const rail = games.length ? slots.map((s, i) => `<section class="sm-slot${i === nxt ? ' now' : ''}${s.tip <= now ? ' past' : ''}"><div class="sm-when"><b>${s.t.replace(/ ?[AP]M$/, '')}</b><span>${/PM$/.test(s.t) ? 'PM' : 'AM'} ${TZL}</span></div>
-      <div class="sm-sh">${s.g.length} ${s.g.length === 1 ? 'game' : 'games'}${s.tip > now ? ` · tips in ${smDur(s.tip - now)}` : ' · in progress'}</div>
-      <div class="sm-gs">${s.g.map(g => smGameCard(g, B, status, now, {ats: rk.ats[String(g.id)], ml: rk.ml[String(g.id)]})).join('')}</div></section>`).join('')
-    : `<section class="card sm-empty"><b>No games on the board yet.</b><p>${noGamesWhy()}</p></section>`;
-  $('v-summary').innerHTML = `<div class="sm-grid"><div class="sm-top">${smFavCard(all, B, status, now)}</div>
-    <div class="sm-rail">${rail}</div>
-    <div class="sm-side">${smBetsCard(now)}${smRecordCard()}${smWireCard(games, B, now)}</div></div>`;
-  $('smfoot').innerHTML = `<div><b>How to read it.</b> Book is DraftKings' spread for each team; Vault is the Vault line from the Slate page. Spread and Winner are the Game Picks, locked 4 hours before tip (dashed until then). A, B and C are their shadow grades, labels fixed in advance, not recommendations. <b>Play</b> rows are Sharp Plays logged on Sharp Money that pass its strict price and timing gates; sharp-account money is context only and never counts toward a play.</div>`;
+  if (!games.length){ $('v-summary').innerHTML = `<section class="sm-mod sm-empty"><b>No games on the board yet.</b><p>${noGamesWhy()}</p></section>`; $('smfoot').innerHTML = ''; return; }
+  const X = games.map(g => smGame(g, B, status, now));
+  // the favorite team's game may be tomorrow: the hero looks across everything on the board, the tiles show tonight
+  const favX = PRO.team && !X.some(x => x.fav) ? all.filter(g => g.away === PRO.team || g.home === PRO.team).slice(0, 1).map(g => smGame(g, B, status, now)) : [];
+  const keep = x => smF === 'A' ? (x.ats && x.ats.gr === 'A') || (x.ml && x.ml.gr === 'A') : smF === 'plays' ? x.plays.length > 0 : smF === 'bets' ? x.bets.length > 0 : true;
+  const nA = X.filter(x => (x.ats && x.ats.gr === 'A') || (x.ml && x.ml.gr === 'A')).length, nP = X.reduce((a, x) => a + x.plays.length, 0), nB = X.filter(x => x.bets.length).length;
+  const slots = [...new Set(X.map(x => clock(x.g.tip)))], nxt = (X.find(x => !x.started) || X[0]).g.tip;
+  const shown = X.filter(keep);
+  $('v-summary').innerHTML = `<div class="sm-hero">${smHero(X.concat(favX), B, status, now)}${smBest(X, now)}</div>
+    <div class="sm-scrub" role="toolbar" aria-label="Jump to a tip time or narrow the games"><span class="sm-k">Jump to</span>
+      ${slots.map(t => `<button type="button" class="sm-chip" data-smjump="${t}" aria-pressed="${t === clock(nxt) && !smF}">${t.replace(/ ?[AP]M$/, '')}<i>${X.filter(x => clock(x.g.tip) === t).length}</i></button>`).join('')}
+      <button type="button" class="sm-chip sep" data-smf="A" aria-pressed="${smF === 'A'}">Graded A<i>${nA}</i></button>
+      <button type="button" class="sm-chip" data-smf="plays" aria-pressed="${smF === 'plays'}">Sharp Plays<i>${nP}</i></button>
+      ${nB ? `<button type="button" class="sm-chip" data-smf="bets" aria-pressed="${smF === 'bets'}">My bets<i>${nB}</i></button>` : ''}</div>
+    <div class="sm-tiles">${shown.length ? shown.map(x => smTile(x, now)).join('') : '<section class="sm-mod sm-empty"><b>No games match.</b><p>Clear the filter to see every game.</p></section>'}</div>
+    ${smLow(X, B, now)}`;
+  $('smfoot').innerHTML = `<div><b>How to read it.</b> Book is DraftKings' spread for each team; Vault is the Vault line from the Slate page. Spread and Winner are the Game Picks, locked 4 hours before tip (dashed until then). A, B and C are their shadow grades, labels fixed in advance, not recommendations. Sharp Plays are logged on Sharp Money and pass its strict price and timing gates; sharp-account money is context only and never counts toward a play.</div>`;
 }
 $('v-summary').addEventListener('change', e => { const s = e.target.closest('[data-smfav]'); if (!s || !s.value) return; PRO.team = s.value; proSave(); renderNav(); renderSummary(); });
-$('v-summary').addEventListener('click', e => { const a = e.target.closest('[data-go]'); if (a){ e.preventDefault(); goView(a.dataset.go); } });
+$('v-summary').addEventListener('click', e => {
+  const go = e.target.closest('[data-go]'); if (go){ e.preventDefault(); goView(go.dataset.go); return; }
+  const hr = e.target.closest('[data-href]'); if (hr){ window.open(hr.dataset.href, '_blank', 'noopener'); return; }
+  const f = e.target.closest('[data-smf]'); if (f){ smF = smF === f.dataset.smf ? null : f.dataset.smf; renderSummary(); return; }
+  const j = e.target.closest('[data-smjump]');
+  if (j){ if (smF){ smF = null; renderSummary(); } const t = document.querySelector(`#v-summary .sm-t[data-tip="${j.dataset.smjump}"]`); if (t) t.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'});
+    document.querySelectorAll('#v-summary [data-smjump]').forEach(b => b.setAttribute('aria-pressed', b === document.querySelector(`#v-summary [data-smjump="${j.dataset.smjump}"]`))); }
+});
 
 show(view);
 pvSettle();
