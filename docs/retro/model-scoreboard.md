@@ -78,7 +78,7 @@ _When Pinnacle's no-vig line sat half a point or more off the recreational books
 
 ```
 spread  Pinnacle    n= 76  toward  47 / away  16  avg move toward +0.47 pts ±0.10
-spread  FanDuel     n= 66  toward  38 / away  17  avg move toward +0.28 pts ±0.14
+spread  FanDuel     n= 67  toward  39 / away  17  avg move toward +0.28 pts ±0.14
         -> NO-GO: not ahead of the control (+0.19 pts, z +1.1)
 total   Pinnacle    n= 39  toward  24 / away  12  avg move toward +0.23 pts ±0.17
 total   FanDuel     n= 42  toward  24 / away  13  avg move toward +0.16 pts ±0.16
