@@ -17,13 +17,17 @@ Game lines (Vault line and simulation within 3 points of the final margin and to
 
   record(root, now, prev, rescan_days, games, L) -> per tip day, per game:
     {'game', 'matchup', 'tip', 's': {stat: [n, proj_in, proj_abs, line_in, line_abs]},
-     'hits': [[player, team, stat, proj, actual], ...]}    every points prop the projection had within NEAR_PROP, closest first
-  An empty prev (the first run) scans every stored day, so the record starts from opening night, not from the day it shipped.
+     'hits': [[player, team, stat, proj, actual, line], ...],    every prop the projection had within NEAR_PROP, closest first
+     'x': {stat: {'books|o': [n, proj_in, proj_abs, line_in], ...}}}       the same counts split by where the line came from (books, pickem: the psim row's
+                                                                  price_src) and which side of it the projection sat (o: above the line, u: below)
+  An empty prev (the first run) scans every stored day, so the record starts from opening night, not from the day it shipped. The ledger passes an
+  empty prev whenever track.json near_v is not VERSION, so a change to the stored format rescans every night too (v2: hits on all four stats, with the line).
 """
 import glob, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 
+VERSION = 2
 NEAR_PROP = 1.0                     # a prop projection within this many of the actual (points, rebounds, assists or 3-pointers)
 STATS = ['pts', 'reb', 'ast', '3pm']
 STAT_BOX = {'pts': 'points', 'reb': 'rebounds', 'ast': 'assists', '3pm': 'threePointFieldGoalsMade'}
@@ -56,7 +60,7 @@ def record(root, now, prev, rescan_days, games, L):
         if bx is None:
             continue
         s = {st: [0, 0, 0.0, 0, 0.0] for st in STATS}
-        hits = []
+        hits, x = [], {}
         for v, m in rows:
             st = bx.get(int(m['pid']))
             if not st:                                          # did not play: no actual to be near
@@ -66,14 +70,17 @@ def record(root, now, prev, rescan_days, games, L):
             a = s[stat]
             ep, el = abs(mu - y), abs(line - y)
             a[0] += 1; a[1] += ep <= NEAR_PROP; a[2] += ep; a[3] += el <= NEAR_PROP; a[4] += el
-            if stat == 'pts' and ep <= NEAR_PROP:
-                hits.append([m['player'], m['team'], stat, round(mu, 1), y])
+            c = x.setdefault(stat, {}).setdefault(f"{v[6] if len(v) > 6 and v[6] else 'books'}|{'o' if mu > line else 'u'}", [0, 0, 0.0, 0])
+            c[0] += 1; c[1] += ep <= NEAR_PROP; c[2] += ep; c[3] += el <= NEAR_PROP
+            if ep <= NEAR_PROP:
+                hits.append([m['player'], m['team'], stat, round(mu, 1), y, line])
         if not any(a[0] for a in s.values()):
             continue
         m = rows[0][1]
         hits.sort(key=lambda h: abs(h[3] - h[4]))
         per_day.setdefault(L.tip_day(m['tip']), []).append({'game': gid, 'matchup': m['matchup'], 'tip': m['tip'],
             's': {st: [round(x, 2) if isinstance(x, float) else x for x in a] for st, a in s.items() if a[0]}, 'hits': hits,
+            'x': {st: {k: [c[0], c[1], round(c[2], 2), c[3]] for k, c in by.items()} for st, by in x.items()},
             **({'replay': 1} if m.get('replay') else {})})
     for d, gs in per_day.items():
         days[d] = sorted(gs, key=lambda g: g['tip'])
