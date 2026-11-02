@@ -37,7 +37,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { buildPropsBoard } from './build-props-board.mjs';
-import { trackPlays, recordOf, loadLedger, overlayEspn } from './track-prop-plays.mjs';
+import { trackPlays, recordOf, loadLedger, overlayEspn, fetchPropSnaps } from './track-prop-plays.mjs';
 import { makeModelProbe } from './prop-model-probe.mjs';
 import { loadModelIndex, learnAbbrs, modelSideFor } from './sharp_model_side.mjs';
 
@@ -1453,8 +1453,9 @@ async function pollOnce() {
     const shift = rj(resolve(ROOT, 'data', 'prop_line_shift.json'));
     P.props = buildPropsBoard({ feed, kalshi: kal, novig: nv, shift });
     // Track every fresh +EV call: logged at first sighting, closing price + box-score settlement later.
-    const lf = resolve(DIR, 'prop_plays.json');
-    const ledger = trackPlays({ board: P.props, feed, games: P.games, ledger: loadLedger(lf), stats: overlayEspn(rj(resolve(ROOT, 'data', `nflverse_stats_${feed?.season}.json`)), rj(resolve(ROOT, 'data', `espn_player_stats_${feed?.season}.json`))), nowS: now(), shift, probe: makeModelProbe(feed) });
+    // Sleeper's weekly stats tell a player who played and recorded none of a stat (no box-score row) from one who did not play.
+    const lf = resolve(DIR, 'prop_plays.json'), prev = loadLedger(lf), nflSnaps = await fetchPropSnaps(prev, now());
+    const ledger = trackPlays({ board: P.props, feed, games: P.games, ledger: prev, stats: overlayEspn(rj(resolve(ROOT, 'data', `nflverse_stats_${feed?.season}.json`)), rj(resolve(ROOT, 'data', `espn_player_stats_${feed?.season}.json`))), nowS: now(), shift, probe: makeModelProbe(feed), nflSnaps });
     writeFileSync(lf, JSON.stringify(ledger));
     P.propRecord = recordOf(ledger);
   } catch (e) { log('props board failed', e.message); }

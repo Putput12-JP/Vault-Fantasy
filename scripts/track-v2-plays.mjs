@@ -35,7 +35,8 @@ import { readFileSync, writeFileSync, existsSync, renameSync, readdirSync } from
 import { createRequire } from 'node:module';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { actualOf, overlayEspn } from './track-prop-plays.mjs';
+import { overlayEspn, nflWeekOf, nflResult as nflResultOf, fetchSleeperWeeks, SLEEPER_WEEK } from './track-prop-plays.mjs';
+export { nflWeekOf, SLEEPER_WEEK };
 
 const HERE = dirname(fileURLToPath(import.meta.url)), ROOT = resolve(HERE, '..');
 const gates = createRequire(import.meta.url)(resolve(ROOT, 'sharp-money', 'v2', 'gates.js'));
@@ -192,40 +193,11 @@ export function nbaClose(P) {
 }
 
 /* ---- NFL props: the week a kickoff is in, and whether a player missing from the box score played ---- */
-// Week 1 opens the Tuesday after Labor Day and weeks turn over Tuesday 12:00 UTC, after Monday night. Weeks 19+ are the playoffs (nflverse numbering).
-export function nflWeekOf(start, season) {
-  const y = +season; if (!y || !start) return null;
-  const labor = Date.UTC(y, 8, 1 + (8 - new Date(Date.UTC(y, 8, 1)).getUTCDay()) % 7);
-  const w = Math.floor((start * 1000 - labor - 36 * 3600e3) / (7 * 86400e3)) + 1;
-  return w >= 1 && w <= 22 ? w : null;
-}
-export const SLEEPER_WEEK = (season, week) => `https://api.sleeper.app/v1/stats/nfl/regular/${season}/${week}`;
-const SLEEPER_COL = { pass_yd: ['pass_yd'], pass_att: ['pass_att'], pass_cmp: ['pass_cmp'], pass_td: ['pass_td'], pass_int: ['pass_int'],
-  rush_yd: ['rush_yd'], rush_att: ['rush_att'], rec: ['rec'], rec_yd: ['rec_yd'], anytime_td: ['rush_td', 'rec_td'], rush_rec_yd: ['rush_yd', 'rec_yd'], pass_rush_yd: ['pass_yd', 'rush_yd'] };
-const BOX_TEAM = { LAR: 'LA', WSH: 'WAS', JAC: 'JAX', LVR: 'LV', OAK: 'LV', ARZ: 'ARI' }, bt = t => BOX_TEAM[t] || t;
-// the team's game is in the box once any opponent has a row that week against it
-const teamInBox = (stats, team, wk) => !!team && Object.values(stats || {}).some(p => (p.weeks || []).some(w => w.wk === wk && bt(w.opp) === bt(team)));
-/* { val, wk, src? } graded, { dnp: true } did not play, or { wk } not known yet. Sleeper's ids are the board's pids. */
-export function nflResult(P, stats, snaps = {}) {
-  const wk = nflWeekOf(P.start, P.prop.season) ?? P.prop.week;
-  const a = actualOf(stats, P.prop.name, wk, P.prop.mkt);
-  if (a.has) return { wk, val: a.val };
-  const day = snaps[P.prop.season + '|' + wk];
-  if (!day || !teamInBox(stats, P.prop.team, wk)) return { wk };
-  const s = day[P.prop.pid];
-  if (!s || !(s.gp > 0 || s.off_snp > 0)) return { wk, dnp: true };
-  const cols = SLEEPER_COL[P.prop.mkt];
-  return cols ? { wk, val: cols.reduce((t, c) => t + (+s[c] || 0), 0), src: 'sleeper' } : { wk };
-}
+// The week and the snap check live with the prop ledger (track-prop-plays.mjs), which settles the same way. A v2 row carries them on its prop.
+const nflRow = P => ({ ...P.prop, start: P.start });
+export const nflResult = (P, stats, snaps) => nflResultOf(nflRow(P), stats, snaps);
 const nflOpen = (P, nowS) => P.kind === 'prop' && P.sport !== 'nba' && nowS >= P.start + 3 * 3600 && (P.status === 'open' || (P.status === 'void' && !P.voidWhy));
-export async function fetchNflSnaps(L, nowS, fetchJson = async u => { const r = await fetch(u); return r.ok ? r.json() : null; }) {
-  const keys = new Set(), out = {};
-  for (const P of Object.values(L.plays)) if (nflOpen(P, nowS)) { const w = nflWeekOf(P.start, P.prop.season); if (w && w <= 18) keys.add(P.prop.season + '|' + w); }
-  for (const k of keys) {
-    try { const d = await fetchJson(SLEEPER_WEEK(...k.split('|'))); if (d && Object.values(d).some(r => r && r.gp > 0)) out[k] = d; } catch { /* Sleeper is down: tried again next run, the 36h void still applies */ }
-  }
-  return out;
-}
+export const fetchNflSnaps = (L, nowS, fetchJson) => fetchSleeperWeeks(Object.values(L.plays).filter(P => nflOpen(P, nowS)).map(nflRow), fetchJson);
 
 /* ---- settle ---- */
 export const payout = p => 1 / p - 1;

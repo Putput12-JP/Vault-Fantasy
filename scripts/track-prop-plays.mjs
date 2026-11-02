@@ -14,8 +14,11 @@
               the fast read: it accrues without waiting for results. NOTE: closeFair comes from the same fair source that
               raised the call, so it repeats the call's own edge. clvX (scripts/regrade_prop_clv.py) is the same ratio against
               the exchange close from the prop close tape, which did not raise the call. Read clvX, not clv, as confirmation.
-     settle   from data/nflverse_stats_<season>.json box scores (ESPN's overlay fills weeks nflverse lacks). Flat 1 unit at the
-              called price. A player with no box-score row 36h after kickoff is void.
+     settle   from data/nflverse_stats_<season>.json box scores (ESPN's overlay fills weeks nflverse lacks), in the week the kickoff
+              falls in (the board's week can lag the slate). A box score lists only players who recorded a stat, so a missing row is
+              not a DNP: once the team's game is in the box, Sleeper's weekly stats say whether the player took a snap. Played =
+              graded on Sleeper's number (a stat it omits is 0); not played = void. No answer 36h after kickoff = void. Flat 1 unit
+              at the called price. Pick'em legs settle the same way.
 
    The ledger is append/merge keyed, carried between runs in <dir>/prop_plays.json
    (the Action loads it from the sharp-data branch and publishes it back).
@@ -62,6 +65,59 @@ export function actualOf(stats, name, week, mkt) {
   return { has: true, val: cols.reduce((s, c) => s + (+w[c] || 0), 0) };
 }
 
+/* ---- NFL settle: the week a kickoff is in, and whether a player missing from the box score played ----
+   Shared with track-v2-plays.mjs. A row is { season, week, start, name, pid, team, mkt } (the prop ledger's own shape; v2 passes its prop). */
+// Week 1 opens the Tuesday after Labor Day and weeks turn over Tuesday 12:00 UTC, after Monday night. Weeks 19+ are the playoffs (nflverse numbering).
+export function nflWeekOf(start, season) {
+  const y = +season; if (!y || !start) return null;
+  const labor = Date.UTC(y, 8, 1 + (8 - new Date(Date.UTC(y, 8, 1)).getUTCDay()) % 7);
+  const w = Math.floor((start * 1000 - labor - 36 * 3600e3) / (7 * 86400e3)) + 1;
+  return w >= 1 && w <= 22 ? w : null;
+}
+export const SLEEPER_WEEK = (season, week) => `https://api.sleeper.app/v1/stats/nfl/regular/${season}/${week}`;
+const SLEEPER_COL = { pass_yd: ['pass_yd'], pass_att: ['pass_att'], pass_cmp: ['pass_cmp'], pass_td: ['pass_td'], pass_int: ['pass_int'],
+  rush_yd: ['rush_yd'], rush_att: ['rush_att'], rec: ['rec'], rec_yd: ['rec_yd'], anytime_td: ['rush_td', 'rec_td'], rush_rec_yd: ['rush_yd', 'rec_yd'], pass_rush_yd: ['pass_yd', 'rush_yd'] };
+const BOX_TEAM = { LAR: 'LA', WSH: 'WAS', JAC: 'JAX', LVR: 'LV', OAK: 'LV', ARZ: 'ARI' }, bt = t => BOX_TEAM[t] || t;
+// the team's game is in the box once any opponent has a row that week against it
+const teamInBox = (stats, team, wk) => !!team && Object.values(stats || {}).some(p => (p.weeks || []).some(w => w.wk === wk && bt(w.opp) === bt(team)));
+/* { val, wk, src? } graded, { wk, dnp: true } did not play, or { wk } not known yet. Sleeper's ids are the board's pids. */
+export function nflResult(x, stats, snaps = {}) {
+  const wk = nflWeekOf(x.start, x.season) ?? x.week;
+  const a = actualOf(stats, x.name, wk, x.mkt);
+  if (a.has) return { wk, val: a.val };
+  const day = snaps[x.season + '|' + wk];
+  if (!day || !teamInBox(stats, x.team, wk)) return { wk };
+  const s = day[x.pid];
+  if (!s || !(s.gp > 0 || s.off_snp > 0)) return { wk, dnp: true };
+  const cols = SLEEPER_COL[x.mkt];
+  return cols ? { wk, val: cols.reduce((t, c) => t + (+s[c] || 0), 0), src: 'sleeper' } : { wk };
+}
+const getJson = async u => { const r = await fetch(u, { signal: AbortSignal.timeout(20000) }); return r.ok ? r.json() : null; };
+// Sleeper's weekly stats for each (season, week) in rows, regular season only: { 'season|week': { pid: stats } }. A week with no game played yet is left out.
+export async function fetchSleeperWeeks(rows, fetchJson = getJson) {
+  const keys = new Set(), out = {};
+  for (const x of rows) { const w = nflWeekOf(x.start, x.season); if (w && w <= 18) keys.add(x.season + '|' + w); }
+  for (const k of keys) {
+    try { const d = await fetchJson(SLEEPER_WEEK(...k.split('|'))); if (d && Object.values(d).some(r => r && r.gp > 0)) out[k] = d; } catch { /* Sleeper is down: tried again next run, the 36h void still applies */ }
+  }
+  return out;
+}
+const SETTLED = new Set(['won', 'lost', 'push']);
+// graded before the week came from kickoff, against the board's lagging week: its own game is a week later
+const misweek = x => SETTLED.has(x.status) && x.statWeek == null && (nflWeekOf(x.start, x.season) ?? x.week) !== x.week;
+// still to settle, voided before the snap check (no voidWhy), or graded on the wrong week
+const nflDue = (x, nowS) => nowS >= x.start + 3 * 3600 && (x.status === 'open' || (x.status === 'void' && !x.voidWhy) || misweek(x));
+// the prop ledger's plays and legs that need Sleeper this run; fetch-sharp-money.mjs awaits this before the synchronous trackPlays
+export const fetchPropSnaps = (L, nowS, fetchJson) => fetchSleeperWeeks([...Object.values(L?.plays || {}), ...Object.values(L?.legs || {})].filter(x => nflDue(x, nowS)), fetchJson);
+function noteWeek(x, r) { if (r.wk !== x.week) x.statWeek = r.wk; if (r.src) x.actualSrc = r.src; }
+function gradeRow(x, a, priced, nowS) {
+  const was = x.status; x.actual = a;
+  const push = a === x.line, win = x.side === 'over' ? a > x.line : a < x.line;
+  x.status = push ? 'push' : win ? 'won' : 'lost';
+  if (priced) { x.units = push ? 0 : win ? +(dec(x.called.p) - 1).toFixed(3) : -1; if (x.status !== was || x.settledAt == null) x.settledAt = nowS; }
+}
+function voidRow(x, priced) { x.status = 'void'; if (priced) x.units = 0; delete x.actual; }
+
 // nflverse box scores publish hours-to-a-day after a game; data/espn_player_stats_<season>.json carries ESPN's the minutes it ends
 // (settle_bets.py overlays it the same way). Fill any week nflverse does not have yet; nflverse always wins on conflict.
 export function overlayEspn(stats, espn) {
@@ -89,7 +145,7 @@ function modelBlock(probe, r, c, line, fair) {
   return { proj: m.proj, p: +p.toFixed(4), d: fair != null ? +(lgt(p) - lgt(fair)).toFixed(4) : null, games: m.games, roleMult: m.roleMult ?? null };
 }
 
-export function trackPlays({ board, feed, games, ledger, stats, nowS, shift, probe }) {
+export function trackPlays({ board, feed, games, ledger, stats, nowS, shift, probe, nflSnaps = {} }) {
   const L = ledger && ledger.plays ? ledger : { plays: {} };
   L.legs ||= {};
   const season = String(feed?.season || ''), week = feed?.week;
@@ -141,26 +197,29 @@ export function trackPlays({ board, feed, games, ledger, stats, nowS, shift, pro
     if (P.closeFair != null) P.clv = +(P.closeFair / P.called.p - 1).toFixed(4);
   }
 
-  // 2. settle
-  for (const P of Object.values(L.plays)) {
-    if (P.status !== 'open' || nowS < P.start + 3 * 3600) continue;
-    const a = actualOf(stats, P.name, P.week, P.mkt);
-    if (!a.has) { if (nowS > P.start + VOID_AFTER) { P.status = 'void'; P.units = 0; } continue; }
-    P.actual = a.val;
-    const win = P.side === 'over' ? a.val > P.line : a.val < P.line;
-    const push = a.val === P.line;
-    P.status = push ? 'push' : win ? 'won' : 'lost';
-    P.units = push ? 0 : win ? +(dec(P.called.p) - 1).toFixed(3) : -1;
-    P.settledAt = nowS;
-  }
-  for (const G of Object.values(L.legs)) {
-    if (G.status !== 'open' || nowS < G.start + 3 * 3600) continue;
-    const a = actualOf(stats, G.name, G.week, G.mkt);
-    if (!a.has) { if (nowS > G.start + VOID_AFTER) G.status = 'void'; continue; }
-    G.actual = a.val;
-    G.status = a.val === G.line ? 'push' : (G.side === 'over' ? a.val > G.line : a.val < G.line) ? 'won' : 'lost';
-  }
+  settleProps(L, { stats, nowS, nflSnaps });
   return L;
+}
+
+// 2. settle (plays and pick'em legs)
+export function settleProps(L, { stats, nowS, nflSnaps = {} }) {
+  L.legs ||= {};
+  // History is fixed here, once per row. A play or leg voided before the snap check may be a player who played and recorded none of the
+  // stat: graded if he played, marked dnp if he did not, marked nobox once the week can be read and still says nothing. One graded on
+  // the board's lagging week is graded again on its own game; `regraded` keeps what it was.
+  const out = { settled: 0, void: 0, regraded: 0 };
+  for (const [xs, priced] of [[L.plays, true], [L.legs, false]]) for (const x of Object.values(xs)) {
+    if (!nflDue(x, nowS)) continue;
+    const r = nflResult(x, stats, nflSnaps), was = x.status, read = !!nflSnaps[x.season + '|' + r.wk] || !(r.wk <= 18);
+    const redo = was === 'open' ? null : was === 'void' ? { from: 'void', at: nowS } : { from: was, wk: x.week, actual: x.actual ?? null, ...(priced ? { units: x.units } : {}), at: nowS };
+    if (r.val != null) { noteWeek(x, r); gradeRow(x, r.val, priced, nowS); }
+    else if (r.dnp) { noteWeek(x, r); x.voidWhy = 'dnp'; voidRow(x, priced); }
+    else if (was === 'open' ? nowS > x.start + VOID_AFTER : read) { if (was !== 'void') noteWeek(x, r); x.voidWhy = 'nobox'; voidRow(x, priced); }
+    else continue;
+    if (!redo) x.status === 'void' ? out.void++ : out.settled++;
+    else if (was === 'void' ? x.status !== 'void' : x.status !== was || x.actual !== redo.actual) { x.regraded = redo; out.regraded++; }
+  }
+  return out;
 }
 
 // aggregates the page reads: overall and split by what a reader would want to know
