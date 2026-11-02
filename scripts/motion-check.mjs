@@ -129,6 +129,9 @@ function recorder(rootSel) {
       for (const el of all) {
         const r = el.getBoundingClientRect()
         if (r.width * r.height < 16) continue
+        // Off-screen rows can't be seen to jump, and recording them makes frames
+        // slow enough that the analysis has to skip stalls
+        if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue
         // Things that step on purpose: carets, spinners, skeleton shimmer,
         // and anything marked data-snap
         if (el.closest('[data-snap], .spinner, .skel, .v-loading')) continue
@@ -140,17 +143,30 @@ function recorder(rootSel) {
           cs.backgroundImage !== 'none' || cs.boxShadow !== 'none' ||
           parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth) > 0 ||
           cs.overflowX !== 'visible' || cs.overflowY !== 'visible'
+        // Visible fill, border or shadow: only these make a width change visible
+        // on a left-aligned text box (overflow clipping alone does not)
+        const fills = (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent') ||
+          cs.backgroundImage !== 'none' || cs.boxShadow !== 'none' ||
+          parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth) > 0
         const ownText = [...el.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim())
         if (!paints && !ownText && el.children.length && el.tagName.toLowerCase() !== 'svg') continue
         // Invisible through an ancestor's opacity counts as invisible
         let alpha = 1
-        for (let p = el; p && p !== document.body && alpha > 0.02; p = p.parentElement) alpha *= +getComputedStyle(p).opacity
-        if (alpha <= 0.02) continue
+        let rotating = false
+        for (let p = el; p && p !== document.body && alpha > 0.02; p = p.parentElement) {
+          const pcs = getComputedStyle(p)
+          alpha *= +pcs.opacity
+          // A rotating icon (a chevron flipping) changes its bounding box every
+          // frame without anything jumping
+          const m = pcs.transform.match(/^matrix\(([^)]+)\)$/)
+          if (m) { const v = m[1].split(',').map(Number); if (Math.abs(v[1]) > 0.001 || Math.abs(v[2]) > 0.001) rotating = true }
+        }
+        if (alpha <= 0.02 || rotating) continue
         const { n: k, name } = id(el)
         const pid = el.parentElement ? id(el.parentElement).n : -1
         const sib = el.nextElementSibling
         const next = sib && inFlow(el) && inFlow(sib) ? id(sib).n : -1
-        items.push([k, name, r.left - box.left, r.top - box.top, r.width, r.height, pid, next])
+        items.push([k, name, r.left - box.left, r.top - box.top, r.width, r.height, pid, next, fills || !el.firstChild || el.tagName.toLowerCase() === 'svg' || [...el.childNodes].every((c) => c.nodeType !== 3 || !c.textContent.trim()) ? 1 : 0])
       }
       V.frames.push({ t: performance.now() - t0, mark: V.mark, items })
     } catch (e) { V.errors.push(`recorder: ${e.message}`); return }
@@ -161,8 +177,7 @@ function recorder(rootSel) {
 
 // Pill state right after a click: the .vrail strip holding the clicked
 // element, its pill's running left/width transitions, and .rail-noanim.
-function pillProbe(sel) {
-  const el = document.querySelector(sel)
+function pillProbe(el) {
   const strip = el && el.closest('.vrail')
   if (!strip) return null
   const pill = strip.querySelector(':scope > .v-pill')
@@ -191,6 +206,10 @@ function analyse(frames) {
       const a = at[f - 2].get(k), b = at[f - 1].get(k), c = at[f + 1].get(k)
       if (!a || !b || !c) continue
       for (const [axis, ix] of [['x', 2], ['y', 3], ['width', 4], ['height', 5]]) {
+        // A text box with no fill, border or shadow can widen without anything
+        // visible moving (left-aligned text); wrapping still shows as a height
+        // or y change
+        if (axis === 'width' && !it[8]) continue
         const d = it[ix] - b[ix]
         const calm = Math.max(Math.abs(b[ix] - a[ix]), Math.abs(c[ix] - it[ix]), 0.4)
         if (Math.abs(d) > 2 && Math.abs(d) > 3 * calm) {
@@ -249,8 +268,22 @@ function analyse(frames) {
   return [
     ...[...anchored.values()].filter((a) => Math.abs(a.y) >= 1).map((a) => `anchor: ${a.name} moves ${a.y > 0 ? 'down' : 'up'} ${Math.abs(a.y).toFixed(1)}px while its height changes ${a.h.toFixed(0)}px (from ${where(a.fr)}); anchor it by its top`),
     ...[...drift.values()].filter((d) => d.count >= 4).map((d) => `drift: ${d.a} and ${d.b} glide out of step (gap moves up to ${d.max.toFixed(1)}px a frame, ${d.count} frames from ${where(d.fr)})`),
-    ...kept.map((l) => `jump: ${l.name} ${l.axis} ${l.d > 0 ? '+' : ''}${l.d.toFixed(1)}px in one frame at ${where(l.fr)}${l.count > 1 ? `, ${l.count} times` : ''}`),
+    ...groupJumps(kept).map(({ l, others }) => `jump: ${l.name} ${l.axis} ${l.d > 0 ? '+' : ''}${l.d.toFixed(1)}px in one frame at ${where(l.fr)}${l.count > 1 ? `, ${l.count} times` : ''}${others ? `; ${others} more elements moved the same ${Math.abs(l.d).toFixed(1)}px on ${l.axis} in that frame (a layout shift: something above them changed size)` : ''}`),
   ]
+}
+
+// Everything below a section that changes height moves by the same amount in
+// the same frame. Report that once: the first element in document order, plus
+// how many others shifted identically.
+function groupJumps(list) {
+  const groups = new Map()
+  for (const l of list) {
+    const key = `${Math.round(l.t / 20)}|${l.axis}|${Math.round(l.d * 2) / 2}`
+    const g = groups.get(key)
+    if (g) g.others++
+    else groups.set(key, { l, others: 0 })
+  }
+  return [...groups.values()]
 }
 
 // ---- Run -------------------------------------------------------------------
@@ -289,12 +322,15 @@ try {
   await page.waitForTimeout(300)
   if (opt.click.length) {
     for (const sel of opt.click) {
-      await page.evaluate((m) => { window.__mc.mark = m }, `click ${sel}`)
-      await page.click(sel, { timeout: 10000 })
+      await page.evaluate((m) => { if (window.__mc) window.__mc.mark = m }, `click ${sel}`)
+      const target = page.locator(sel).locator('visible=true').first()
+      await target.click({ timeout: 10000 }).catch((e) => { throw new Error(`click ${sel}: ${e.message.split('\n')[0]}`) })
       await page.waitForTimeout(40)
-      const p = await page.evaluate(pillProbe, sel)
+      const p = await target.evaluate(pillProbe).catch(() => null)
       if (p) pills.push({ click: sel, ...p })
       await page.waitForTimeout(opt.gap)
+      // A click that reloads the page takes the recorder with it
+      if (!(await page.evaluate(() => !!window.__mc).catch(() => false))) throw new Error(`page reloaded on click ${sel}; the recorder was lost, so nothing before it is reported`)
     }
   } else {
     await page.waitForTimeout(opt.ms)
