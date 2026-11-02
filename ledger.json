@@ -2,7 +2,7 @@
  "version": 1,
  "paper_only": true,
  "live_orders": false,
- "updated": "2026-11-01T21:50:47Z",
+ "updated": "2026-11-02T01:22:19Z",
  "bankroll_start": 1000.0,
  "cash": 929.08,
  "trades": [
@@ -4624,7 +4624,7 @@
    "pnl": null,
    "close_mid": null,
    "clv": null,
-   "mark_value": 0.505,
+   "mark_value": 0.555,
    "won": null,
    "exit_pnl_pc": null,
    "hold_status": "pending",
@@ -4687,7 +4687,7 @@
    "pnl": null,
    "close_mid": null,
    "clv": null,
-   "mark_value": 45.125,
+   "mark_value": 45.6,
    "won": null,
    "exit_pnl_pc": null,
    "hold_status": "pending",
@@ -4750,7 +4750,70 @@
    "pnl": null,
    "close_mid": null,
    "clv": null,
-   "mark_value": 46.865,
+   "mark_value": 49.14,
+   "won": null,
+   "exit_pnl_pc": null,
+   "hold_status": "pending",
+   "hold_pnl_pc": null,
+   "hold_pnl": null,
+   "hold_result": null
+  },
+  {
+   "id": "novig:01a19604-f088-7a83-a12e-066abac8f6a1:01a19604-f088-7a83-a12e-067d5ab11ff6:1793582539",
+   "ts": "2026-11-02T01:22:19Z",
+   "status": "open",
+   "source": "cfb_jp_novig",
+   "strategy": "cfb_jp_novig",
+   "book": "novig",
+   "ticker": "novig:01a19604-f088-7a83-a12e-066abac8f6a1:01a19604-f088-7a83-a12e-067d5ab11ff6",
+   "event": "cfb:289870",
+   "title": "GA Tech +13.5",
+   "game": "Louisville @ GA Tech",
+   "side": "yes",
+   "strike": 13.5,
+   "strike_distance": 0.0,
+   "model_prob": null,
+   "edge": 6.2,
+   "edge_bucket": "5+",
+   "counts_toward_pass": true,
+   "yes_bid": 0.405,
+   "yes_ask": 0.475,
+   "price": 0.475,
+   "fee_per": 0.0,
+   "fee_total": 0.0,
+   "contracts": 1,
+   "stake": 0.475,
+   "ask_size": 1662.74,
+   "uncapped_contracts": 415,
+   "uncapped_stake": 197.125,
+   "capped_by": "day cap",
+   "bankroll_before": null,
+   "detail": {
+    "venue": "novig",
+    "edge_unit": "pts",
+    "jp_side": "home",
+    "team": "GA Tech",
+    "week": 10,
+    "kick": 1794097800,
+    "model_margin": -7.3,
+    "open_margin": -13.5,
+    "open_hcap": 13.5,
+    "strike_distance": 0.0,
+    "size_rule": "25% of contracts within 2 cents of the best ask, rounded down, capped at 5% of bankroll per trade and $150 per ET day",
+    "depth_contracts": 1662.74,
+    "entry_delay_min": 0.0,
+    "novig_listed_ts": 1793518268,
+    "first_seen_ts": 1793582539,
+    "novig_market_id": "01a19604-f088-7a83-a12e-066abac8f6a1",
+    "novig_outcome_id": "01a19604-f088-7a83-a12e-067d5ab11ff6"
+   },
+   "settled_ts": null,
+   "result": null,
+   "payout": null,
+   "pnl": null,
+   "close_mid": null,
+   "clv": null,
+   "mark_value": 0.405,
    "won": null,
    "exit_pnl_pc": null,
    "hold_status": "pending",
@@ -5135,8 +5198,8 @@
     },
     "slices": {
      "3+": {
-      "entered": 55,
-      "open": 4,
+      "entered": 56,
+      "open": 5,
       "no_exit_bid": 0,
       "exit": {
        "n": 51,
@@ -5154,8 +5217,8 @@
       }
      },
      "5+": {
-      "entered": 27,
-      "open": 2,
+      "entered": 28,
+      "open": 3,
       "no_exit_bid": 0,
       "exit": {
        "n": 25,
@@ -5200,13 +5263,13 @@
      "note": null
     },
     "counts": {
-     "entered": 55,
-     "open": 4,
+     "entered": 56,
+     "open": 5,
      "exited": 51,
      "no_exit_bid": 0,
      "stale_exits": 34,
      "hold_graded": 51,
-     "hold_pending": 4
+     "hold_pending": 5
     }
    }
   },
@@ -5237,7 +5300,7 @@
     "clv_n": 51,
     "clv_mean": -0.008,
     "brier": null,
-    "open": 4,
+    "open": 5,
     "vetoed": 0
    },
    "cfb_ml": {
@@ -5486,6 +5549,54 @@
       ]
      },
      "entry_ts": 1792477468
+    },
+    "cfb:289599": {
+     "key": "cfb:289599",
+     "game": "Delaware @ Kennesaw St",
+     "home": "Kennesaw St",
+     "away": "Delaware",
+     "home_id": 338,
+     "away_id": 48,
+     "week": 10,
+     "kick": 1794081600,
+     "side": "home",
+     "team": "Kennesaw St",
+     "edge": 3.3,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "model_margin": 0.3,
+     "open_margin": -3.0,
+     "open_hcap": 3.0,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18e7e-be77-7111-80ec-2b3d47bb4d1c",
+      "market_id": "01a197d1-814f-7b31-ac81-b0375e5159d6",
+      "outcome_id": "01a197d1-814f-7b31-ac81-b041a24132e8",
+      "other_id": "01a197d1-814f-7b31-ac81-b05cafa3e16d",
+      "code": "KENN",
+      "hcap": 3.5,
+      "strike_distance": 0.5,
+      "listed_ts": 1793548452,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.535,0.62,855.0,1111.0"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07DELKENN",
+      "ticker": "KXNCAAFSPREAD-26NOV07DELKENN-DEL4",
+      "side": "no",
+      "floor": 3.5,
+      "listed_ts": 1793552760.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.55,0.6,100.0,"
+      ]
+     }
     },
     "cfb:289604": {
      "key": "cfb:289604",
@@ -8135,7 +8246,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.485,0.54,1136.65,2911.74",
-       "1793569847,0.505,,,2125.82"
+       "1793569847,0.505,,,2125.82",
+       "1793582539,0.555,0.585,382.0,1813.99"
       ]
      },
      "kalshi": {
@@ -8148,7 +8260,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.48,0.51,1075.0,",
-       "1793569847,0.52,0.58,55.0,"
+       "1793569847,0.52,0.58,55.0,",
+       "1793582539,0.55,0.56,353.0,"
       ]
      },
      "entry_ts": 1793555567
@@ -8186,7 +8299,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,,,,",
-       "1793569847,0.49,0.51,1025.08,2744.01"
+       "1793569847,0.49,0.51,1025.08,2744.01",
+       "1793582539,0.52,0.545,2594.43,600.77"
       ]
      },
      "kalshi": {
@@ -8199,7 +8313,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.3,0.78,9.0,",
-       "1793569847,0.49,0.51,1548.0,"
+       "1793569847,0.49,0.51,1548.0,",
+       "1793582539,0.52,0.54,64.0,"
       ]
      }
     },
@@ -8236,7 +8351,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.475,0.525,1083.59,527.97",
-       "1793569847,0.475,0.52,969.6,421.04"
+       "1793569847,0.475,0.52,969.6,421.04",
+       "1793582539,0.48,0.515,1076.0,568.72"
       ]
      },
      "kalshi": {
@@ -8249,10 +8365,107 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.5,0.53,1150.0,",
-       "1793569847,0.5,0.51,1199.0,"
+       "1793569847,0.5,0.51,1199.0,",
+       "1793582539,0.5,0.51,2169.0,"
       ]
      },
      "entry_ts": 1793555567
+    },
+    "cfb:289844": {
+     "key": "cfb:289844",
+     "game": "S. Alabama @ Louisiana",
+     "home": "Louisiana",
+     "away": "S. Alabama",
+     "home_id": 309,
+     "away_id": 6,
+     "week": 10,
+     "kick": 1794088800,
+     "side": "home",
+     "team": "Louisiana",
+     "edge": 3.9,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "model_margin": 9.4,
+     "open_margin": 5.5,
+     "open_hcap": -5.5,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18eed-6f90-7662-a931-6d7d4481ff31",
+      "market_id": "01a197da-aab9-7272-88cc-e529806db8b2",
+      "outcome_id": "01a197da-aab9-7272-88cc-e53ae7aff102",
+      "other_id": "01a197da-aab9-7272-88cc-e54fc49fdc0f",
+      "code": "UL",
+      "hcap": -5.5,
+      "strike_distance": 0.0,
+      "listed_ts": 1793549052,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,,,,"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07USAULL",
+      "ticker": "KXNCAAFSPREAD-26NOV07USAULL-ULL6",
+      "side": "yes",
+      "floor": 5.5,
+      "listed_ts": 1793553000.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.59,0.69,25.0,"
+      ]
+     }
+    },
+    "cfb:289855": {
+     "key": "cfb:289855",
+     "game": "UCF @ Kansas",
+     "home": "Kansas",
+     "away": "UCF",
+     "home_id": 2305,
+     "away_id": 2116,
+     "week": 10,
+     "kick": 1794084300,
+     "side": "home",
+     "team": "Kansas",
+     "edge": 5.0,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "model_margin": 7.5,
+     "open_margin": 2.5,
+     "open_hcap": -2.5,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18b3e-6a6a-7f00-a0ea-891ef5e463c4",
+      "market_id": "01a195ef-e1f3-7512-ba69-33ceb734db6e",
+      "outcome_id": "01a195ef-e1f3-7512-ba69-33d7ed2caab8",
+      "other_id": "01a195ef-e1f3-7512-ba69-33e381a8d62d",
+      "code": "KU",
+      "hcap": -2.5,
+      "strike_distance": 0.0,
+      "listed_ts": 1793516888,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.545,0.575,1304.41,1777.54"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07UCFKU",
+      "ticker": "KXNCAAFSPREAD-26NOV07UCFKU-KU3",
+      "side": "yes",
+      "floor": 2.5,
+      "listed_ts": 1793520600.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.55,0.56,655.0,"
+      ]
+     }
     },
     "cfb:289859": {
      "key": "cfb:289859",
@@ -8286,7 +8499,8 @@
       "listed_ts": 1793549109,
       "first_seen_ts": 1793569847,
       "snaps": [
-       "1793569847,,,,"
+       "1793569847,,,,",
+       "1793582539,0.48,,,270.0"
       ]
      },
      "kalshi": {
@@ -8298,9 +8512,155 @@
       "push_mismatch": false,
       "first_seen_ts": 1793569847,
       "snaps": [
-       "1793569847,0.52,0.96,13.0,"
+       "1793569847,0.52,0.96,13.0,",
+       "1793582539,0.55,0.63,232.0,"
       ]
      }
+    },
+    "cfb:289860": {
+     "key": "cfb:289860",
+     "game": "Oregon @ Ohio State",
+     "home": "Ohio State",
+     "away": "Oregon",
+     "home_id": 194,
+     "away_id": 2483,
+     "week": 10,
+     "kick": 1794083400,
+     "side": "home",
+     "team": "Ohio State",
+     "edge": 3.9,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "model_margin": 9.9,
+     "open_margin": 6.0,
+     "open_hcap": -6.0,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18e9a-ec3c-7b41-a2f3-f3b0093d1cd7",
+      "market_id": "01a1954f-a3dc-7602-ad1a-0b2194af4dc3",
+      "outcome_id": "01a1954f-a3dc-7602-ad1a-0b30343658ee",
+      "other_id": "01a1954f-a3dc-7602-ad1a-0b43aaf309cb",
+      "code": "OSU",
+      "hcap": -5.5,
+      "strike_distance": 0.5,
+      "listed_ts": 1793393880,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.53,0.63,700.0,700.0"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07OREOSU",
+      "ticker": "KXNCAAFSPREAD-26NOV07OREOSU-OSU6",
+      "side": "yes",
+      "floor": 5.5,
+      "listed_ts": 1793520600.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.55,0.59,1.0,"
+      ]
+     }
+    },
+    "cfb:289862": {
+     "key": "cfb:289862",
+     "game": "Texas A&M @ S. Carolina",
+     "home": "S. Carolina",
+     "away": "Texas A&M",
+     "home_id": 2579,
+     "away_id": 245,
+     "week": 10,
+     "kick": 1794081600,
+     "side": "away",
+     "team": "Texas A&M",
+     "edge": 4.1,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "model_margin": 2.4,
+     "open_margin": 6.5,
+     "open_hcap": 6.5,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18e7e-c316-7bb2-9ee4-6c080b4076d8",
+      "market_id": "01a1958c-daf1-79a3-ba8d-80c193f9a535",
+      "outcome_id": "01a1958c-daf1-79a3-ba8d-80ebb206808a",
+      "other_id": "01a1958c-daf1-79a3-ba8d-80d861c4bf31",
+      "code": "TA&M",
+      "hcap": 6.5,
+      "strike_distance": 0.0,
+      "listed_ts": 1793510398,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.4,0.48,1216.92,700.0"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07TXAMSCAR",
+      "ticker": "KXNCAAFSPREAD-26NOV07TXAMSCAR-SCAR7",
+      "side": "no",
+      "floor": 6.5,
+      "listed_ts": 1793520540.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.42,0.46,16.0,"
+      ]
+     }
+    },
+    "cfb:289870": {
+     "key": "cfb:289870",
+     "game": "Louisville @ GA Tech",
+     "home": "GA Tech",
+     "away": "Louisville",
+     "home_id": 59,
+     "away_id": 97,
+     "week": 10,
+     "kick": 1794097800,
+     "side": "home",
+     "team": "GA Tech",
+     "edge": 6.2,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "model_margin": -7.3,
+     "open_margin": -13.5,
+     "open_hcap": 13.5,
+     "state": "entered",
+     "trade_id": "novig:01a19604-f088-7a83-a12e-066abac8f6a1:01a19604-f088-7a83-a12e-067d5ab11ff6:1793582539",
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18f75-9a7b-79d3-8ce4-4756b8ed495a",
+      "market_id": "01a19604-f088-7a83-a12e-066abac8f6a1",
+      "outcome_id": "01a19604-f088-7a83-a12e-067d5ab11ff6",
+      "other_id": "01a19604-f088-7a83-a12e-068ae7581c65",
+      "code": "GT",
+      "hcap": 13.5,
+      "strike_distance": 0.0,
+      "listed_ts": 1793518268,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.405,0.475,1662.74,1050.0"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07LOUGT",
+      "ticker": "KXNCAAFSPREAD-26NOV07LOUGT-LOU14",
+      "side": "no",
+      "floor": 13.5,
+      "listed_ts": 1793520720.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.43,0.46,16.0,"
+      ]
+     },
+     "entry_ts": 1793582539
     },
     "cfb:289877": {
      "key": "cfb:289877",
@@ -8335,7 +8695,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.5,0.545,1967.88,6250.3",
-       "1793569847,0.515,0.545,1.13,1363.02"
+       "1793569847,0.515,0.545,1.13,1363.02",
+       "1793582539,0.54,0.6,167.5,1546.27"
       ]
      },
      "kalshi": {
@@ -8348,10 +8709,59 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.51,0.53,150.0,",
-       "1793569847,0.54,0.57,0.5,"
+       "1793569847,0.54,0.57,0.5,",
+       "1793582539,0.56,0.59,222.0,"
       ]
      },
      "entry_ts": 1793555567
+    },
+    "cfb:289878": {
+     "key": "cfb:289878",
+     "game": "Vanderbilt @ Mississippi St",
+     "home": "Mississippi St",
+     "away": "Vanderbilt",
+     "home_id": 344,
+     "away_id": 238,
+     "week": 10,
+     "kick": 1794086100,
+     "side": "home",
+     "team": "Mississippi St",
+     "edge": 4.5,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "model_margin": 7.5,
+     "open_margin": 3.0,
+     "open_hcap": -3.0,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18eb6-6065-78a1-990c-038323df3eab",
+      "market_id": "01a19588-4711-7a81-874f-060f86b2e403",
+      "outcome_id": "01a19588-4711-7a81-874f-061c06c7fc18",
+      "other_id": "01a19588-4711-7a81-874f-062f25f904a3",
+      "code": "MSST",
+      "hcap": -2.5,
+      "strike_distance": 0.5,
+      "listed_ts": 1793510098,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.525,0.54,114.78,1910.37"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07VANMSST",
+      "ticker": "KXNCAAFSPREAD-26NOV07VANMSST-MSST3",
+      "side": "yes",
+      "floor": 2.5,
+      "listed_ts": 1793520660.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.53,0.55,1154.08,"
+      ]
+     }
     },
     "cfb:289883": {
      "key": "cfb:289883",
@@ -8385,7 +8795,8 @@
       "listed_ts": 1793518258,
       "first_seen_ts": 1793569847,
       "snaps": [
-       "1793569847,0.465,0.505,4239.81,4504.53"
+       "1793569847,0.465,0.505,4239.81,4504.53",
+       "1793582539,0.48,0.505,4470.71,3311.03"
       ]
      },
      "kalshi": {
@@ -8397,7 +8808,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1793569847,
       "snaps": [
-       "1793569847,0.48,0.5,127.34,"
+       "1793569847,0.48,0.5,127.34,",
+       "1793582539,0.49,0.5,72.02,"
       ]
      }
     },
@@ -8434,7 +8846,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.525,0.75,2650.0,94.79",
-       "1793569847,0.56,0.735,2660.0,105.65"
+       "1793569847,0.56,0.735,2660.0,105.65",
+       "1793582539,0.56,0.62,900.0,105.75"
       ]
      },
      "kalshi": {
@@ -8447,7 +8860,8 @@
       "first_seen_ts": 1793555567,
       "snaps": [
        "1793555567,0.51,0.59,14.0,",
-       "1793569847,0.57,0.59,15.0,"
+       "1793569847,0.57,0.59,15.0,",
+       "1793582539,0.56,0.59,9.0,"
       ]
      },
      "entry_ts": 1793555567
@@ -8484,7 +8898,8 @@
       "listed_ts": 1793517728,
       "first_seen_ts": 1793569847,
       "snaps": [
-       "1793569847,0.25,0.75,1226.0,1200.0"
+       "1793569847,0.25,0.75,1226.0,1200.0",
+       "1793582539,0.25,0.75,1225.0,1200.0"
       ]
      },
      "kalshi": {
@@ -8530,7 +8945,8 @@
       "listed_ts": 1793380742,
       "first_seen_ts": 1793569847,
       "snaps": [
-       "1793569847,0.505,0.715,1414.92,1548.01"
+       "1793569847,0.505,0.715,1414.92,1548.01",
+       "1793582539,0.585,0.715,1250.0,1251.0"
       ]
      },
      "kalshi": {
@@ -8542,7 +8958,104 @@
       "push_mismatch": false,
       "first_seen_ts": 1793569847,
       "snaps": [
-       "1793569847,0.58,0.67,161.0,"
+       "1793569847,0.58,0.67,161.0,",
+       "1793582539,0.61,0.66,1.46,"
+      ]
+     }
+    },
+    "cfb:289921": {
+     "key": "cfb:289921",
+     "game": "Air Force @ Army",
+     "home": "Army",
+     "away": "Air Force",
+     "home_id": 349,
+     "away_id": 2005,
+     "week": 10,
+     "kick": 1794097800,
+     "side": "away",
+     "team": "Air Force",
+     "edge": 6.2,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "model_margin": -0.2,
+     "open_margin": 6.0,
+     "open_hcap": 6.0,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18f75-9d50-77a0-ab4b-c594eea2fbe4",
+      "market_id": "01a18f75-9e2f-76c2-8428-44521968e248",
+      "outcome_id": "01a18f75-9e2f-76c2-8428-447df7ef3e56",
+      "other_id": "01a18f75-9e2f-76c2-8428-446ac3af61df",
+      "code": "AFA",
+      "hcap": 6.5,
+      "strike_distance": 0.5,
+      "listed_ts": 1793408212,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,,,,"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07AFAARMY",
+      "ticker": "KXNCAAFSPREAD-26NOV07AFAARMY-ARMY7",
+      "side": "no",
+      "floor": 6.5,
+      "listed_ts": 1793553120.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.55,0.62,72.0,"
+      ]
+     }
+    },
+    "cfb:290167": {
+     "key": "cfb:290167",
+     "game": "W. Kentucky @ Middle Tenn",
+     "home": "Middle Tenn",
+     "away": "W. Kentucky",
+     "home_id": 2393,
+     "away_id": 98,
+     "week": 10,
+     "kick": 1794083400,
+     "side": "home",
+     "team": "Middle Tenn",
+     "edge": 3.8,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "model_margin": 5.3,
+     "open_margin": 1.5,
+     "open_hcap": -1.5,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18e9a-eaf7-7c91-910a-d4612f7e8076",
+      "market_id": "01a197e0-3c80-7652-8a62-9985c86a0953",
+      "outcome_id": "01a197e0-3c80-7652-8a62-999c0869495b",
+      "other_id": "01a197e0-3c80-7652-8a62-99ae8fc5402d",
+      "code": "MTSU",
+      "hcap": -1.5,
+      "strike_distance": 0.0,
+      "listed_ts": 1793549417,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.47,0.5,1104.58,2354.58"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07WKUMTU",
+      "ticker": "KXNCAAFSPREAD-26NOV07WKUMTU-MTU2",
+      "side": "yes",
+      "floor": 1.5,
+      "listed_ts": 1793552820.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.47,0.5,1062.0,"
       ]
      }
     },
@@ -8593,6 +9106,54 @@
       "snaps": [
        "1792386425,0.55,0.56,2681.0,",
        "1792698639,0.51,0.52,62532.15,"
+      ]
+     }
+    },
+    "cfb:290259": {
+     "key": "cfb:290259",
+     "game": "Missouri St @ FIU",
+     "home": "FIU",
+     "away": "Missouri St",
+     "home_id": 2229,
+     "away_id": 2623,
+     "week": 10,
+     "kick": 1794085200,
+     "side": "home",
+     "team": "FIU",
+     "edge": 5.9,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "model_margin": 10.4,
+     "open_margin": 4.5,
+     "open_hcap": -4.5,
+     "state": "watching",
+     "trade_id": null,
+     "created": "2026-11-02T01:22:19Z",
+     "code_src": "name",
+     "novig": {
+      "event_id": "01a18eb6-5be1-7d02-9270-4973e7933a4b",
+      "market_id": "01a197e9-417c-7cb3-86b1-54800d338835",
+      "outcome_id": "01a197e9-417c-7cb3-86b1-549e48ce215e",
+      "other_id": "01a197e9-417c-7cb3-86b1-54a0e8666a56",
+      "code": "FIU",
+      "hcap": -4.5,
+      "strike_distance": 0.0,
+      "listed_ts": 1793550008,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.465,0.5,3124.78,4327.91"
+      ]
+     },
+     "kalshi": {
+      "event": "KXNCAAFSPREAD-26NOV07MOSUFIU",
+      "ticker": "KXNCAAFSPREAD-26NOV07MOSUFIU-FIU5",
+      "side": "yes",
+      "floor": 4.5,
+      "listed_ts": 1793553000.0,
+      "push_mismatch": false,
+      "first_seen_ts": 1793582539,
+      "snaps": [
+       "1793582539,0.46,0.5,2.0,"
       ]
      }
     },
@@ -8662,8 +9223,8 @@
     },
     "slices": {
      "3+": {
-      "entered": 55,
-      "open": 4,
+      "entered": 56,
+      "open": 5,
       "no_exit_bid": 0,
       "exit": {
        "n": 51,
@@ -8681,8 +9242,8 @@
       }
      },
      "5+": {
-      "entered": 27,
-      "open": 2,
+      "entered": 28,
+      "open": 3,
       "no_exit_bid": 0,
       "exit": {
        "n": 25,
@@ -8727,13 +9288,13 @@
      "note": null
     },
     "counts": {
-     "entered": 55,
-     "open": 4,
+     "entered": 56,
+     "open": 5,
      "exited": 51,
      "no_exit_bid": 0,
      "stale_exits": 34,
      "hold_graded": 51,
-     "hold_pending": 4
+     "hold_pending": 5
     }
    },
    "watch": [
@@ -10694,20 +11255,20 @@
      "kalshi_first_seen_ts": 1793555567,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV04TOLSAC-TOL28",
      "kalshi_side": "no",
-     "novig_snaps": 2,
-     "kalshi_snaps": 2,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
-      "ts": 1793569847,
-      "bid": 0.505,
-      "ask": null,
-      "ask_size": null,
-      "bid_size": 2125.82
+      "ts": 1793582539,
+      "bid": 0.555,
+      "ask": 0.585,
+      "ask_size": 382.0,
+      "bid_size": 1813.99
      },
      "kalshi_last": {
-      "ts": 1793569847,
-      "bid": 0.52,
-      "ask": 0.58,
-      "ask_size": 55.0,
+      "ts": 1793582539,
+      "bid": 0.55,
+      "ask": 0.56,
+      "ask_size": 353.0,
       "bid_size": null
      }
     },
@@ -10731,20 +11292,20 @@
      "kalshi_first_seen_ts": 1793555567,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV05JMUUSM-JMU16",
      "kalshi_side": "no",
-     "novig_snaps": 2,
-     "kalshi_snaps": 2,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
-      "ts": 1793569847,
-      "bid": 0.49,
-      "ask": 0.51,
-      "ask_size": 1025.08,
-      "bid_size": 2744.01
+      "ts": 1793582539,
+      "bid": 0.52,
+      "ask": 0.545,
+      "ask_size": 2594.43,
+      "bid_size": 600.77
      },
      "kalshi_last": {
-      "ts": 1793569847,
-      "bid": 0.49,
-      "ask": 0.51,
-      "ask_size": 1548.0,
+      "ts": 1793582539,
+      "bid": 0.52,
+      "ask": 0.54,
+      "ask_size": 64.0,
       "bid_size": null
      }
     },
@@ -10768,20 +11329,20 @@
      "kalshi_first_seen_ts": 1793555567,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV06VTSMU-SMU8",
      "kalshi_side": "no",
-     "novig_snaps": 2,
-     "kalshi_snaps": 2,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
-      "ts": 1793569847,
+      "ts": 1793582539,
       "bid": 0.56,
-      "ask": 0.735,
-      "ask_size": 2660.0,
-      "bid_size": 105.65
+      "ask": 0.62,
+      "ask_size": 900.0,
+      "bid_size": 105.75
      },
      "kalshi_last": {
-      "ts": 1793569847,
-      "bid": 0.57,
+      "ts": 1793582539,
+      "bid": 0.56,
       "ask": 0.59,
-      "ask_size": 15.0,
+      "ask_size": 9.0,
       "bid_size": null
      }
     },
@@ -10805,20 +11366,20 @@
      "kalshi_first_seen_ts": 1793555567,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV06NEBILL-NEB6",
      "kalshi_side": "yes",
-     "novig_snaps": 2,
-     "kalshi_snaps": 2,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
-      "ts": 1793569847,
-      "bid": 0.475,
-      "ask": 0.52,
-      "ask_size": 969.6,
-      "bid_size": 421.04
+      "ts": 1793582539,
+      "bid": 0.48,
+      "ask": 0.515,
+      "ask_size": 1076.0,
+      "bid_size": 568.72
      },
      "kalshi_last": {
-      "ts": 1793569847,
+      "ts": 1793582539,
       "bid": 0.5,
       "ask": 0.51,
-      "ask_size": 1199.0,
+      "ask_size": 2169.0,
       "bid_size": null
      }
     },
@@ -10842,20 +11403,20 @@
      "kalshi_first_seen_ts": 1793555567,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV06UNMNEV-UNM13",
      "kalshi_side": "no",
-     "novig_snaps": 2,
-     "kalshi_snaps": 2,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
-      "ts": 1793569847,
-      "bid": 0.515,
-      "ask": 0.545,
-      "ask_size": 1.13,
-      "bid_size": 1363.02
+      "ts": 1793582539,
+      "bid": 0.54,
+      "ask": 0.6,
+      "ask_size": 167.5,
+      "bid_size": 1546.27
      },
      "kalshi_last": {
-      "ts": 1793569847,
-      "bid": 0.54,
-      "ask": 0.57,
-      "ask_size": 0.5,
+      "ts": 1793582539,
+      "bid": 0.56,
+      "ask": 0.59,
+      "ask_size": 222.0,
       "bid_size": null
      }
     },
@@ -10879,20 +11440,20 @@
      "kalshi_first_seen_ts": 1793569847,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07TLSATULN-TLSA4",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1793569847,
-      "bid": null,
+      "ts": 1793582539,
+      "bid": 0.48,
       "ask": null,
       "ask_size": null,
-      "bid_size": null
+      "bid_size": 270.0
      },
      "kalshi_last": {
-      "ts": 1793569847,
-      "bid": 0.52,
-      "ask": 0.96,
-      "ask_size": 13.0,
+      "ts": 1793582539,
+      "bid": 0.55,
+      "ask": 0.63,
+      "ask_size": 232.0,
       "bid_size": null
      }
     },
@@ -10916,20 +11477,20 @@
      "kalshi_first_seen_ts": 1793569847,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07FSUBC-FSU7",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1793569847,
-      "bid": 0.465,
+      "ts": 1793582539,
+      "bid": 0.48,
       "ask": 0.505,
-      "ask_size": 4239.81,
-      "bid_size": 4504.53
+      "ask_size": 4470.71,
+      "bid_size": 3311.03
      },
      "kalshi_last": {
-      "ts": 1793569847,
-      "bid": 0.48,
+      "ts": 1793582539,
+      "bid": 0.49,
       "ask": 0.5,
-      "ask_size": 127.34,
+      "ask_size": 72.02,
       "bid_size": null
      }
     },
@@ -10953,20 +11514,20 @@
      "kalshi_first_seen_ts": 1793569847,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07BYUUTAH-UTAH3",
      "kalshi_side": "yes",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1793569847,
-      "bid": 0.505,
+      "ts": 1793582539,
+      "bid": 0.585,
       "ask": 0.715,
-      "ask_size": 1414.92,
-      "bid_size": 1548.01
+      "ask_size": 1250.0,
+      "bid_size": 1251.0
      },
      "kalshi_last": {
-      "ts": 1793569847,
-      "bid": 0.58,
-      "ask": 0.67,
-      "ask_size": 161.0,
+      "ts": 1793582539,
+      "bid": 0.61,
+      "ask": 0.66,
+      "ask_size": 1.46,
       "bid_size": null
      }
     },
@@ -10990,19 +11551,389 @@
      "kalshi_first_seen_ts": null,
      "kalshi_ticker": null,
      "kalshi_side": null,
-     "novig_snaps": 1,
+     "novig_snaps": 2,
      "kalshi_snaps": 0,
      "novig_last": {
-      "ts": 1793569847,
+      "ts": 1793582539,
       "bid": 0.25,
       "ask": 0.75,
-      "ask_size": 1226.0,
+      "ask_size": 1225.0,
       "bid_size": 1200.0
      },
      "kalshi_last": null
+    },
+    {
+     "key": "cfb:289599",
+     "game": "Delaware @ Kennesaw St",
+     "week": 10,
+     "kick": 1794081600,
+     "team": "Kennesaw St",
+     "edge": 3.3,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "open_hcap": 3.0,
+     "strike": 3.5,
+     "strike_distance": 0.5,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793548452,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793552760.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07DELKENN-DEL4",
+     "kalshi_side": "no",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.535,
+      "ask": 0.62,
+      "ask_size": 855.0,
+      "bid_size": 1111.0
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.55,
+      "ask": 0.6,
+      "ask_size": 100.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:289862",
+     "game": "Texas A&M @ S. Carolina",
+     "week": 10,
+     "kick": 1794081600,
+     "team": "Texas A&M",
+     "edge": 4.1,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "open_hcap": 6.5,
+     "strike": 6.5,
+     "strike_distance": 0.0,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793510398,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793520540.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07TXAMSCAR-SCAR7",
+     "kalshi_side": "no",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.4,
+      "ask": 0.48,
+      "ask_size": 1216.92,
+      "bid_size": 700.0
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.42,
+      "ask": 0.46,
+      "ask_size": 16.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:289860",
+     "game": "Oregon @ Ohio State",
+     "week": 10,
+     "kick": 1794083400,
+     "team": "Ohio State",
+     "edge": 3.9,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "open_hcap": -6.0,
+     "strike": -5.5,
+     "strike_distance": 0.5,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793393880,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793520600.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07OREOSU-OSU6",
+     "kalshi_side": "yes",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.53,
+      "ask": 0.63,
+      "ask_size": 700.0,
+      "bid_size": 700.0
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.55,
+      "ask": 0.59,
+      "ask_size": 1.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:290167",
+     "game": "W. Kentucky @ Middle Tenn",
+     "week": 10,
+     "kick": 1794083400,
+     "team": "Middle Tenn",
+     "edge": 3.8,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "open_hcap": -1.5,
+     "strike": -1.5,
+     "strike_distance": 0.0,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793549417,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793552820.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07WKUMTU-MTU2",
+     "kalshi_side": "yes",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.47,
+      "ask": 0.5,
+      "ask_size": 1104.58,
+      "bid_size": 2354.58
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.47,
+      "ask": 0.5,
+      "ask_size": 1062.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:289855",
+     "game": "UCF @ Kansas",
+     "week": 10,
+     "kick": 1794084300,
+     "team": "Kansas",
+     "edge": 5.0,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "open_hcap": -2.5,
+     "strike": -2.5,
+     "strike_distance": 0.0,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793516888,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793520600.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07UCFKU-KU3",
+     "kalshi_side": "yes",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.545,
+      "ask": 0.575,
+      "ask_size": 1304.41,
+      "bid_size": 1777.54
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.55,
+      "ask": 0.56,
+      "ask_size": 655.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:290259",
+     "game": "Missouri St @ FIU",
+     "week": 10,
+     "kick": 1794085200,
+     "team": "FIU",
+     "edge": 5.9,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "open_hcap": -4.5,
+     "strike": -4.5,
+     "strike_distance": 0.0,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793550008,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793553000.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07MOSUFIU-FIU5",
+     "kalshi_side": "yes",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.465,
+      "ask": 0.5,
+      "ask_size": 3124.78,
+      "bid_size": 4327.91
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.46,
+      "ask": 0.5,
+      "ask_size": 2.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:289878",
+     "game": "Vanderbilt @ Mississippi St",
+     "week": 10,
+     "kick": 1794086100,
+     "team": "Mississippi St",
+     "edge": 4.5,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "open_hcap": -3.0,
+     "strike": -2.5,
+     "strike_distance": 0.5,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793510098,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793520660.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07VANMSST-MSST3",
+     "kalshi_side": "yes",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.525,
+      "ask": 0.54,
+      "ask_size": 114.78,
+      "bid_size": 1910.37
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.53,
+      "ask": 0.55,
+      "ask_size": 1154.08,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:289844",
+     "game": "S. Alabama @ Louisiana",
+     "week": 10,
+     "kick": 1794088800,
+     "team": "Louisiana",
+     "edge": 3.9,
+     "edge_bucket": "3+",
+     "counts_toward_pass": false,
+     "open_hcap": -5.5,
+     "strike": -5.5,
+     "strike_distance": 0.0,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793549052,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793553000.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07USAULL-ULL6",
+     "kalshi_side": "yes",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": null,
+      "ask": null,
+      "ask_size": null,
+      "bid_size": null
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.59,
+      "ask": 0.69,
+      "ask_size": 25.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:289870",
+     "game": "Louisville @ GA Tech",
+     "week": 10,
+     "kick": 1794097800,
+     "team": "GA Tech",
+     "edge": 6.2,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "open_hcap": 13.5,
+     "strike": 13.5,
+     "strike_distance": 0.0,
+     "state": "entered",
+     "trade_id": "novig:01a19604-f088-7a83-a12e-066abac8f6a1:01a19604-f088-7a83-a12e-067d5ab11ff6:1793582539",
+     "novig_listed_ts": 1793518268,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793520720.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07LOUGT-LOU14",
+     "kalshi_side": "no",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": 0.405,
+      "ask": 0.475,
+      "ask_size": 1662.74,
+      "bid_size": 1050.0
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.43,
+      "ask": 0.46,
+      "ask_size": 16.0,
+      "bid_size": null
+     }
+    },
+    {
+     "key": "cfb:289921",
+     "game": "Air Force @ Army",
+     "week": 10,
+     "kick": 1794097800,
+     "team": "Air Force",
+     "edge": 6.2,
+     "edge_bucket": "5+",
+     "counts_toward_pass": true,
+     "open_hcap": 6.0,
+     "strike": 6.5,
+     "strike_distance": 0.5,
+     "state": "watching",
+     "trade_id": null,
+     "novig_listed_ts": 1793408212,
+     "novig_first_seen_ts": 1793582539,
+     "kalshi_listed_ts": 1793553120.0,
+     "kalshi_first_seen_ts": 1793582539,
+     "kalshi_ticker": "KXNCAAFSPREAD-26NOV07AFAARMY-ARMY7",
+     "kalshi_side": "no",
+     "novig_snaps": 1,
+     "kalshi_snaps": 1,
+     "novig_last": {
+      "ts": 1793582539,
+      "bid": null,
+      "ask": null,
+      "ask_size": null,
+      "bid_size": null
+     },
+     "kalshi_last": {
+      "ts": 1793582539,
+      "bid": 0.55,
+      "ask": 0.62,
+      "ask_size": 72.0,
+      "bid_size": null
+     }
     }
    ],
-   "updated": "2026-11-01T21:50:47Z",
+   "updated": "2026-11-02T01:22:19Z",
    "version": 1,
    "config": {
     "min_week": 7,
@@ -11016,14 +11947,21 @@
     "fees": 0
    },
    "last_run": {
-    "ts": "2026-11-01T21:50:47Z",
+    "ts": "2026-11-02T01:22:19Z",
     "notes": [
-     "cfb:289909: no entry, day cap leaves no room",
+     "cfb:289878: no entry, day cap leaves no room",
+     "cfb:290259: no entry, day cap leaves no room",
+     "cfb:289855: no entry, day cap leaves no room",
+     "cfb:290167: no entry, day cap leaves no room",
+     "cfb:289860: no entry, day cap leaves no room",
+     "cfb:289862: no entry, day cap leaves no room",
+     "cfb:289599: no entry, day cap leaves no room",
+     "cfb:289826: no entry, day cap leaves no room",
      "cfb:289883: no entry, day cap leaves no room",
-     "cfb:289920: no entry, day cap leaves no room",
-     "cfb:289826: no entry, day cap leaves no room"
+     "cfb:289909: no entry, day cap leaves no room",
+     "cfb:289920: no entry, day cap leaves no room"
     ],
-    "novig_requests": 14,
+    "novig_requests": 30,
     "novig_errors": 0
    }
   }
