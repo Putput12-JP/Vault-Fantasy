@@ -11,7 +11,9 @@
              A play is keyed on the pick (game or player, market, side, line), not on the book, so a better price at another book later
              does not become a second play.
      settle  props from the same box scores the prop ledger uses (data/nflverse_stats_<season>.json, ESPN overlay fills a week nflverse
-             lacks; no box score 36h after kickoff = void). Games from the final score (the board's `final`, else
+             lacks), in the week the kickoff falls in (the board's week can lag the slate). A box score lists only players who recorded a
+             stat, so a missing row is not a DNP: once the team's game is in the box, Sleeper's weekly stats say whether the player took a
+             snap. Played = graded on Sleeper's number (a stat it omits is 0); not played = void. No answer 36h after kickoff = void. Games from the final score (the board's `final`, else
              data/exchange_edge_results.json; no final 72h after kickoff = void). Flat 1 unit at the stored price: win pays 1/price - 1.
      CLV     close fair of the side / stored price - 1, against the EXCHANGE close, which did not raise the call: props from
              prop_close_tape.json (mean of the Kalshi and Novig ladders at the exact line), games from data/book_tape (mean of the Kalshi
@@ -189,14 +191,64 @@ export function nbaClose(P) {
   return r && r.t < P.start && P.start - r.t <= CLOSE_AGE ? { p: r.p, src: r.src, n: r.n, t: r.t } : null;
 }
 
+/* ---- NFL props: the week a kickoff is in, and whether a player missing from the box score played ---- */
+// Week 1 opens the Tuesday after Labor Day and weeks turn over Tuesday 12:00 UTC, after Monday night. Weeks 19+ are the playoffs (nflverse numbering).
+export function nflWeekOf(start, season) {
+  const y = +season; if (!y || !start) return null;
+  const labor = Date.UTC(y, 8, 1 + (8 - new Date(Date.UTC(y, 8, 1)).getUTCDay()) % 7);
+  const w = Math.floor((start * 1000 - labor - 36 * 3600e3) / (7 * 86400e3)) + 1;
+  return w >= 1 && w <= 22 ? w : null;
+}
+export const SLEEPER_WEEK = (season, week) => `https://api.sleeper.app/v1/stats/nfl/regular/${season}/${week}`;
+const SLEEPER_COL = { pass_yd: ['pass_yd'], pass_att: ['pass_att'], pass_cmp: ['pass_cmp'], pass_td: ['pass_td'], pass_int: ['pass_int'],
+  rush_yd: ['rush_yd'], rush_att: ['rush_att'], rec: ['rec'], rec_yd: ['rec_yd'], anytime_td: ['rush_td', 'rec_td'], rush_rec_yd: ['rush_yd', 'rec_yd'], pass_rush_yd: ['pass_yd', 'rush_yd'] };
+const BOX_TEAM = { LAR: 'LA', WSH: 'WAS', JAC: 'JAX', LVR: 'LV', OAK: 'LV', ARZ: 'ARI' }, bt = t => BOX_TEAM[t] || t;
+// the team's game is in the box once any opponent has a row that week against it
+const teamInBox = (stats, team, wk) => !!team && Object.values(stats || {}).some(p => (p.weeks || []).some(w => w.wk === wk && bt(w.opp) === bt(team)));
+/* { val, wk, src? } graded, { dnp: true } did not play, or { wk } not known yet. Sleeper's ids are the board's pids. */
+export function nflResult(P, stats, snaps = {}) {
+  const wk = nflWeekOf(P.start, P.prop.season) ?? P.prop.week;
+  const a = actualOf(stats, P.prop.name, wk, P.prop.mkt);
+  if (a.has) return { wk, val: a.val };
+  const day = snaps[P.prop.season + '|' + wk];
+  if (!day || !teamInBox(stats, P.prop.team, wk)) return { wk };
+  const s = day[P.prop.pid];
+  if (!s || !(s.gp > 0 || s.off_snp > 0)) return { wk, dnp: true };
+  const cols = SLEEPER_COL[P.prop.mkt];
+  return cols ? { wk, val: cols.reduce((t, c) => t + (+s[c] || 0), 0), src: 'sleeper' } : { wk };
+}
+const nflOpen = (P, nowS) => P.kind === 'prop' && P.sport !== 'nba' && nowS >= P.start + 3 * 3600 && (P.status === 'open' || (P.status === 'void' && !P.voidWhy));
+export async function fetchNflSnaps(L, nowS, fetchJson = async u => { const r = await fetch(u); return r.ok ? r.json() : null; }) {
+  const keys = new Set(), out = {};
+  for (const P of Object.values(L.plays)) if (nflOpen(P, nowS)) { const w = nflWeekOf(P.start, P.prop.season); if (w && w <= 18) keys.add(P.prop.season + '|' + w); }
+  for (const k of keys) {
+    try { const d = await fetchJson(SLEEPER_WEEK(...k.split('|'))); if (d && Object.values(d).some(r => r && r.gp > 0)) out[k] = d; } catch { /* Sleeper is down: tried again next run, the 36h void still applies */ }
+  }
+  return out;
+}
+
 /* ---- settle ---- */
 export const payout = p => 1 / p - 1;
 function finish(P, status, nowS) {
   P.status = status; P.settledAt = nowS; if (P.close == null) P.close = false;      // false = settled with no exchange close; it is not looked for again
   P.units = status === 'won' ? r3(payout(P.first.price.p)) : status === 'lost' ? -1 : 0;
 }
-export function settlePlays(L, { statsFor, finals, T, exch, nowS, nbaBoxes = {} }) {
-  const out = { settled: 0, void: 0, closed: 0 };
+function gradeProp(P, a, nowS) {
+  P.actual = a;
+  finish(P, a === P.prop.line ? 'push' : (P.prop.side === 'over' ? a > P.prop.line : a < P.prop.line) ? 'won' : 'lost', nowS);
+}
+function noteNfl(P, r) { if (r.wk !== P.prop.week) P.statWeek = r.wk; if (r.src) P.actualSrc = r.src; }
+export function settlePlays(L, { statsFor, finals, T, exch, nowS, nbaBoxes = {}, nflSnaps = {} }) {
+  const out = { settled: 0, void: 0, closed: 0, regraded: 0 };
+  // An NFL prop voided before the snap check may be a player who played and recorded none of the stat. Each is looked at once more:
+  // graded if he played, marked dnp if he did not, marked nobox once the week can be read and still says nothing.
+  for (const P of Object.values(L.plays)) {
+    if (P.status !== 'void' || !nflOpen(P, nowS)) continue;
+    const r = nflResult(P, statsFor(P), nflSnaps);
+    if (r.val != null) { noteNfl(P, r); P.regraded = { from: 'void', at: nowS }; gradeProp(P, r.val, nowS); out.regraded++; }
+    else if (r.dnp) P.voidWhy = 'dnp';
+    else if (nflSnaps[P.prop.season + '|' + r.wk] || !(r.wk <= 18)) P.voidWhy = 'nobox';
+  }
   for (const P of Object.values(L.plays)) {
     if (P.status !== 'open' && P.close !== undefined) continue;
     if (nowS < P.start) continue;
@@ -212,14 +264,13 @@ export function settlePlays(L, { statsFor, finals, T, exch, nowS, nbaBoxes = {} 
       if (!box) { if (nowS > P.start + PROP_VOID_AFTER) { finish(P, 'void', nowS); out.void++; } continue; }
       const a = nbaActual(box, P.prop.espnId, P.prop.mkt);
       if (a == null) { finish(P, 'void', nowS); out.void++; continue; }          // did not play, or the stat is not in the box: the prop is void
-      P.actual = a;
-      finish(P, a === P.prop.line ? 'push' : (P.prop.side === 'over' ? a > P.prop.line : a < P.prop.line) ? 'won' : 'lost', nowS); out.settled++;
+      gradeProp(P, a, nowS); out.settled++;
     } else if (P.kind === 'prop') {
       if (nowS < P.start + 3 * 3600) continue;
-      const a = actualOf(statsFor(P), P.prop.name, P.prop.week, P.prop.mkt);
-      if (!a.has) { if (nowS > P.start + PROP_VOID_AFTER) { finish(P, 'void', nowS); out.void++; } continue; }
-      P.actual = a.val;
-      finish(P, a.val === P.prop.line ? 'push' : (P.prop.side === 'over' ? a.val > P.prop.line : a.val < P.prop.line) ? 'won' : 'lost', nowS); out.settled++;
+      const r = nflResult(P, statsFor(P), nflSnaps);
+      if (r.val != null) { noteNfl(P, r); gradeProp(P, r.val, nowS); out.settled++; }
+      else if (r.dnp) { noteNfl(P, r); P.voidWhy = 'dnp'; finish(P, 'void', nowS); out.void++; }
+      else if (nowS > P.start + PROP_VOID_AFTER) { P.voidWhy = 'nobox'; finish(P, 'void', nowS); out.void++; }
     } else {
       const f = finals(P);
       if (!f) { if (nowS > P.start + GAME_VOID_AFTER) { finish(P, 'void', nowS); out.void++; } continue; }
@@ -270,7 +321,7 @@ function readTape(dataDir, sport) {
 
 export const ledgerFile = tier => tier === 'play' ? 'v2_plays.json' : tier === 'watch' ? 'v2_watch.json' : 'v2_passed.json';
 
-export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {} }) {
+export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {}, nflSnaps = {} }) {
   const D = rj(resolve(dir, 'data.json')), P = rj(resolve(dir, 'props.json')), T = rj(resolve(dir, 'prop_close_tape.json')), E = rj(resolve(dataDir, 'exchange_edge_live.json')), N = rj(resolve(dir, 'nba_board.json'));
   if (!D) throw new Error('no data.json in ' + dir);
   const file = resolve(dir, ledgerFile(tier)), L = loadLedger(file);
@@ -286,7 +337,7 @@ export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {} }) {
   for (const s of seasons) stats[s] = overlayEspn(rj(resolve(dataDir, `nflverse_stats_${s}.json`)), rj(resolve(dataDir, `espn_player_stats_${s}.json`)));
   const tapes = {}, results = rj(resolve(dataDir, 'exchange_edge_results.json'));
   if (N) noteNbaReads(L, N, nowS);
-  const out = settlePlays(L, { nbaBoxes,
+  const out = settlePlays(L, { nbaBoxes, nflSnaps,
     statsFor: P => stats[P.prop.season], finals: makeFinals(D, results), T, nowS,
     exch: sport => tapes[sport] ||= exchIndex(readTape(dataDir, sport)),
   });
@@ -298,10 +349,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   const dir = resolve(arg('dir') || 'sharp-out'), dataDir = resolve(arg('data') || resolve(ROOT, 'data')), nowS = +arg('now') || Math.floor(Date.now() / 1000);
   const tier = arg('tier') || 'play';
   if (!['play', 'watch', 'pass'].includes(tier)) throw new Error('--tier must be play, watch or pass');
-  const nbaBoxes = await fetchNbaBoxes(loadLedger(resolve(dir, ledgerFile(tier))), nowS);      // plays logged in an earlier run; one logged this run has not started
-  const { L, added, out, skippedExch, file } = run({ dir, dataDir, nowS, tier, nbaBoxes });
+  const prev = loadLedger(resolve(dir, ledgerFile(tier)));      // plays logged in an earlier run; one logged this run has not started
+  const nbaBoxes = await fetchNbaBoxes(prev, nowS), nflSnaps = await fetchNflSnaps(prev, nowS);
+  const { L, added, out, skippedExch, file } = run({ dir, dataDir, nowS, tier, nbaBoxes, nflSnaps });
   L.updated = nowS;
   writeFileSync(file + '.tmp', JSON.stringify(L)); renameSync(file + '.tmp', file);
   const s = summary(L);
-  console.log(`v2 plays: ${added.length} new, ${out.settled} settled, ${out.void} void, ${out.closed} closes frozen; ledger ${s.n} plays (${s.open} open, ${s.w}-${s.l}, ${s.push} push, ${s.void} void, ${s.units}u, CLV on ${s.clvN}${s.held ? `, ${s.held} held back by the strict gates` : ''})${skippedExch ? '; exchange list too old, game plays off it not logged this run' : ''}`);
+  console.log(`v2 plays: ${added.length} new, ${out.settled} settled, ${out.void} void, ${out.regraded} old voids regraded, ${out.closed} closes frozen; ledger ${s.n} plays (${s.open} open, ${s.w}-${s.l}, ${s.push} push, ${s.void} void, ${s.units}u, CLV on ${s.clvN}${s.held ? `, ${s.held} held back by the strict gates` : ''})${skippedExch ? '; exchange list too old, game plays off it not logged this run' : ''}`);
 }

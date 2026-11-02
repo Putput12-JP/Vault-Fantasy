@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { loadFixtures, jitter } from './v2_page_harness.mjs';
-import { logPlays, settlePlays, propClose, gameClose, exchIndex, makeFinals, ledgerKey, summary, payout, loadLedger } from '../scripts/track-v2-plays.mjs';
+import { logPlays, settlePlays, propClose, gameClose, exchIndex, makeFinals, ledgerKey, summary, payout, loadLedger, nflWeekOf, fetchNflSnaps, SLEEPER_WEEK } from '../scripts/track-v2-plays.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const gates = createRequire(import.meta.url)(path.join(ROOT, 'sharp-money', 'v2', 'gates.js'));
@@ -63,9 +63,10 @@ test('nothing is logged that is not a play, or that has started', () => {
   assert.equal(Object.keys(L.plays).length, 0);
 });
 
+const WK = nflWeekOf(1_800_000_000, '2026');
 const propPlay = (over = {}) => ({ id: 'p1', kind: 'prop', sport: 'nfl', start: 1_800_000_000, firstSeen: 1_799_990_000, status: 'open',
-  first: { price: { am: -110, p: 0.5238, book: 'FanDuel' } }, prop: { season: '2026', week: 6, pid: '9', name: 'Test Player', mkt: 'rec_yd', line: 50.5, side: 'over', ...over } });
-const stats = (val, wk = 6) => ({ 'Test Player': { weeks: [{ wk, recyds: val }] } });
+  first: { price: { am: -110, p: 0.5238, book: 'FanDuel' } }, prop: { season: '2026', week: WK, pid: '9', name: 'Test Player', team: 'DEN', mkt: 'rec_yd', line: 50.5, side: 'over', ...over } });
+const stats = (val, wk = WK) => ({ 'Test Player': { weeks: [{ wk, recyds: val }] } });
 const tapeFor = (kal, nov, { line = 50.5, age = 600, start = 1_800_000_000 } = {}) => ({ props: { ['2026|9|rec_yd|' + new Date(start * 1000).toISOString().slice(0, 10)]: { commence: new Date(start * 1000).toISOString(),
   books: { Kalshi: { ladder: [[line, kal, 100, 0.01]], t: start - age }, Novig: { ladder: [[line, nov, 0.02, 100]], t: start - age } }, frozen: true } } });
 
@@ -88,6 +89,55 @@ test('a prop waits 3 hours, and a player with no box score 36 hours after kickof
   assert.equal(P.status, 'open');
   settlePlays({ plays: { p1: P } }, { statsFor: () => ({}), finals: () => null, T: {}, nowS: P.start + 37 * 3600 });
   assert.equal(P.status, 'void'); assert.equal(P.units, 0);
+});
+
+test('the box-score week comes from kickoff, not the board week (a row logged before the board rolled over)', () => {
+  assert.equal(nflWeekOf(Date.parse('2026-11-01T18:00Z') / 1000, '2026'), 8);
+  assert.equal(nflWeekOf(Date.parse('2026-11-03T01:15Z') / 1000, '2026'), 8, 'Monday night is the same week');
+  assert.equal(nflWeekOf(Date.parse('2025-09-05T00:20Z') / 1000, '2025'), 1);
+  const P = propPlay({ week: WK - 1 }); settlePlays({ plays: { p1: P } }, { statsFor: () => ({ 'Test Player': { weeks: [{ wk: WK - 1, recyds: 10 }, { wk: WK, recyds: 60 }] } }), finals: () => null, T: {}, nowS: P.start + 4 * 3600 });
+  assert.equal(P.status, 'won'); assert.equal(P.actual, 60); assert.equal(P.statWeek, WK);
+});
+
+// the opponent has a row that week, so DEN's game is in the box; Test Player has none
+const boxNoRow = { Opp: { weeks: [{ wk: WK, opp: 'DEN', recyds: 30 }] } };
+const snaps = row => ({ ['2026|' + WK]: { 9: row, 77: { gp: 1 } } });
+test('a player missing from the box who took a snap is graded on Sleeper, a stat it omits being 0', () => {
+  const U = propPlay({ mkt: 'rec', line: 1.5, side: 'under' });
+  settlePlays({ plays: { p1: U } }, { statsFor: () => boxNoRow, finals: () => null, T: {}, nowS: U.start + 4 * 3600, nflSnaps: snaps({ gp: 1, off_snp: 29 }) });
+  assert.equal(U.status, 'won'); assert.equal(U.actual, 0); assert.equal(U.actualSrc, 'sleeper');
+  const O = propPlay({ mkt: 'rec_yd', line: 22.5, side: 'over' });
+  settlePlays({ plays: { p1: O } }, { statsFor: () => boxNoRow, finals: () => null, T: {}, nowS: O.start + 4 * 3600, nflSnaps: snaps({ gp: 1, off_snp: 20, rec_yd: 12 }) });
+  assert.equal(O.status, 'lost'); assert.equal(O.actual, 12);
+});
+
+test('a player active but without a snap, or not on the stat sheet at all, is void once his game is in the box', () => {
+  for (const row of [{ gms_active: 1 }, undefined]) {
+    const P = propPlay({ mkt: 'rec', line: 3.5, side: 'under' });
+    settlePlays({ plays: { p1: P } }, { statsFor: () => boxNoRow, finals: () => null, T: {}, nowS: P.start + 4 * 3600, nflSnaps: snaps(row) });
+    assert.equal(P.status, 'void'); assert.equal(P.voidWhy, 'dnp'); assert.equal(P.units, 0);
+  }
+  const W = propPlay(); settlePlays({ plays: { p1: W } }, { statsFor: () => ({}), finals: () => null, T: {}, nowS: W.start + 4 * 3600, nflSnaps: snaps(undefined) });
+  assert.equal(W.status, 'open', 'his game is not in the box yet: wait');
+});
+
+test('an old void is looked at once more: graded if the player played, marked dnp if not, never reopened', () => {
+  const V = { ...propPlay({ mkt: 'rec', line: 2.5, side: 'over' }), status: 'void', units: 0, settledAt: 1, close: false };
+  const L = { plays: { p1: V } }, o = settlePlays(L, { statsFor: () => boxNoRow, finals: () => null, T: {}, nowS: V.start + 50 * 3600, nflSnaps: snaps({ gp: 1, off_snp: 20 }) });
+  assert.equal(o.regraded, 1); assert.equal(V.status, 'lost'); assert.equal(V.units, -1); assert.deepEqual(V.regraded.from, 'void');
+  const D = { ...propPlay(), status: 'void', units: 0, settledAt: 1, close: false };
+  settlePlays({ plays: { p1: D } }, { statsFor: () => boxNoRow, finals: () => null, T: {}, nowS: D.start + 50 * 3600, nflSnaps: snaps({ gms_active: 1 }) });
+  assert.equal(D.status, 'void'); assert.equal(D.voidWhy, 'dnp');
+  const N = { ...propPlay({ week: 8 }), start: Date.parse('2026-11-01T18:00Z') / 1000, status: 'void', units: 0, settledAt: 1, close: false };
+  settlePlays({ plays: { p1: N } }, { statsFor: () => boxNoRow, finals: () => null, T: {}, nowS: N.start + 50 * 3600 });
+  assert.equal(N.status, 'void'); assert.equal(N.voidWhy, undefined, 'no Sleeper read: left to try again');
+});
+
+test('Sleeper is read once per open week, regular season only', async () => {
+  const seen = [], P = propPlay({ season: '2026' }); P.start = Date.parse('2026-11-01T18:00Z') / 1000;
+  const L = { plays: { p1: P, p2: { ...P, id: 'p2' }, p3: { ...P, id: 'p3', start: P.start + 10 * 86400 } } };
+  const got = await fetchNflSnaps(L, P.start + 4 * 3600, async u => { seen.push(u); return { 1: { gp: 1 } }; });
+  assert.deepEqual(seen, [SLEEPER_WEEK('2026', 8)]); assert.ok(got['2026|8']);
 });
 
 test('prop CLV is the exchange close (mean of the Kalshi and Novig ladders at the exact line) over the stored price', () => {
