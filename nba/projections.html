@@ -5784,13 +5784,14 @@ function renderNearRecord(){
     $('tneark').innerHTML = ''; $('tnearg').innerHTML = ''; $('tnearp').innerHTML = ''; $('tnearl').innerHTML = `<tbody><tr><td class="l"><p class="empty">No games scored yet. Each game is scored about 3 hours after tip.</p></td></tr></tbody>`;
     $('tnearmore').hidden = true; $('tnearnote').textContent = ''; return;
   }
-  const of = (k, n) => n ? `${k.toLocaleString()} of ${n.toLocaleString()}` : 'none yet', rate = (k, n) => n ? pc(k / n, 0) : 'none';
+  const of = (k, n) => `${k.toLocaleString()} of ${n.toLocaleString()}`, rate = (k, n) => n ? pc(k / n, 0) : 'none';
+  const wait = 'Fills in once games are scored, about 3 hours after tip.';
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   $('tneark').innerHTML =
-    kpi('Margin within 3', ICON.edit, rate(cnt(V, 'm'), V.length), `Vault line: ${of(cnt(V, 'm'), V.length)} games. The books: ${rate(cnt(B, 'm'), B.length)}.`) +
-    kpi('Total within 3', ICON.pts, rate(cnt(V, 't'), V.length), `Vault line: ${of(cnt(V, 't'), V.length)} games. The books: ${rate(cnt(B, 't'), B.length)}.`) +
-    kpi('Props within 1', ICON.star, rate(all[1], all[0]), `${of(all[1], all[0])} projections, all four stats. The line on the same props: ${rate(all[3], all[0])}.`) +
-    kpi('Points within 1', ICON.clock, rate(S.pts[1], S.pts[0]), `${of(S.pts[1], S.pts[0])} points projections, the hardest stat to nail. The line: ${rate(S.pts[3], S.pts[0])}.`);
+    kpi('Margin within 3', ICON.edit, rate(cnt(V, 'm'), V.length), V.length ? `Vault line: ${of(cnt(V, 'm'), V.length)} games. The books: ${rate(cnt(B, 'm'), B.length)}.` : wait) +
+    kpi('Total within 3', ICON.pts, rate(cnt(V, 't'), V.length), V.length ? `Vault line: ${of(cnt(V, 't'), V.length)} games. The books: ${rate(cnt(B, 't'), B.length)}.` : wait) +
+    kpi('Props within 1', ICON.star, rate(all[1], all[0]), all[0] ? `${of(all[1], all[0])} projections, all four stats. The line on the same props: ${rate(all[3], all[0])}.` : 'Fills in once the props of a finished game are scored, about 3 hours after tip.') +
+    kpi('Points within 1', ICON.clock, rate(S.pts[1], S.pts[0]), S.pts[0] ? `${of(S.pts[1], S.pts[0])} points projections, the hardest stat to nail. The line: ${rate(S.pts[3], S.pts[0])}.` : 'Fills in once the props of a finished game are scored, about 3 hours after tip.');
   const avg = (xs, k) => xs.length ? (xs.reduce((a, x) => a + x[k], 0) / xs.length).toFixed(1) : '';
   $('tnearg').innerHTML = `<thead><tr><th class="l" scope="col">Number</th><th scope="col">Games</th><th scope="col" title="Final home margin within 3 points of the number">Margin within 3</th><th scope="col" title="Final total within 3 points of the number">Total within 3</th><th scope="col">Both</th><th scope="col" title="Average distance from the final margin, points">Avg miss, margin</th><th scope="col" title="Average distance from the final total, points">Avg miss, total</th></tr></thead><tbody>${NEAR_ENVS.map(([env, l, why]) => { const X = gs(env);
     return `<tr><td class="l"><b>${l}</b><small>${why}</small></td><td class="num">${X.length}</td><td class="num">${rate(cnt(X, 'm'), X.length)}<small>${cnt(X, 'm')}</small></td><td class="num">${rate(cnt(X, 't'), X.length)}<small>${cnt(X, 't')}</small></td><td class="num">${X.filter(x => x.m && x.t).length}</td><td class="num">${avg(X, 'em')}</td><td class="num">${avg(X, 'et')}</td></tr>`; }).join('')}</tbody>`;
