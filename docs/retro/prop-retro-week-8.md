@@ -1,22 +1,22 @@
 # Player-prop retro — week 8
 
-_649 graded props (649 with a projection to score)._
+_679 graded props (679 with a projection to score)._
 
 ## Headline
 
-- **Record:** 326-323 (50.2%) vs 52.4% break-even → below break-even
-- **CLV beat-rate:** 55.5% — how often we land on the right side of the closing line
-- **Model vs market log-loss:** 0.7120 vs 0.6929 → **market prices probability better** by 0.0191
+- **Record:** 337-342 (49.6%) vs 52.4% break-even → below break-even
+- **CLV beat-rate:** 55.8% — how often we land on the right side of the closing line
+- **Model vs market log-loss:** 0.7126 vs 0.6926 → **market prices probability better** by 0.0200
 
 The closing line is the sharpest number the market posts, so it is our stand-in for "industry tools." Beating it on CLV = real side-selection edge; a worse log-loss = our confidence numbers are still less calibrated than consensus.
 
 ## By market
 
 ```
-rec            n= 162    82-80 50.6% | CLV 56.8% | MAE   1.5 bias -0.32 | edge -0.025
-rec_yd         n= 155    81-74 52.3% | CLV 60.0% | MAE  21.3 bias -2.76 | edge -0.012
-rush_att       n=  74    35-39 47.3% | CLV 51.4% | MAE   3.3 bias -0.50 | edge +0.002
-rush_yd        n=  73    31-42 42.5% | CLV 57.5% | MAE  23.1 bias -2.61 | edge -0.045
+rec            n= 175    88-87 50.3% | CLV 57.7% | MAE   1.5 bias -0.20 | edge -0.026
+rec_yd         n= 165    83-82 50.3% | CLV 60.0% | MAE  20.7 bias -1.84 | edge -0.010
+rush_att       n=  77    37-40 48.1% | CLV 49.4% | MAE   3.3 bias -0.37 | edge +0.004
+rush_yd        n=  77    32-45 41.6% | CLV 59.7% | MAE  22.6 bias -1.74 | edge -0.056
 rush_rec_yd    n=  41    23-18 56.1% | CLV 61.0% | MAE  34.1 bias -11.80 | edge   -  
 pass_td        n=  26    14-12 53.8% | CLV 46.2% | MAE   1.1 bias -0.01 | edge -0.049
 pass_cmp       n=  26    11-15 42.3% | CLV 57.7% | MAE   6.6 bias +1.85 | edge +0.011
@@ -30,28 +30,28 @@ rush_td        n=   6      6-0 100.0% | CLV  0.0% | MAE   0.3 bias -0.00 | edge 
 ## By position
 
 ```
-RB     n= 229  118-111 51.5% | CLV 54.6% | MAE  16.4 bias -5.06 | edge -0.023
-QB     n= 185    91-94 49.2% | CLV 53.0% | MAE  18.9 bias +4.57 | edge -0.001
-WR     n= 149    64-85 43.0% | CLV 57.7% | MAE  13.4 bias +1.09 | edge -0.034
+RB     n= 244  120-124 49.2% | CLV 56.1% | MAE  15.7 bias -4.39 | edge -0.024
+QB     n= 191    93-98 48.7% | CLV 52.9% | MAE  18.6 bias +4.74 | edge -0.009
+WR     n= 158    71-87 44.9% | CLV 57.0% | MAE  13.0 bias +1.41 | edge -0.029
 TE     n=  86    53-33 61.6% | CLV 59.3% | MAE   9.7 bias -4.10 | edge -0.016
 ```
 
 ## Over vs under
 
 ```
-over   n= 388  194-194 50.0% | CLV 55.2% | MAE  16.9 bias -0.04 | edge -0.013
-under  n= 261  132-129 50.6% | CLV 55.9% | MAE  13.4 bias -1.86 | edge -0.029
+over   n= 408  195-213 47.8% | CLV 56.1% | MAE  16.5 bias +0.36 | edge -0.019
+under  n= 271  142-129 52.4% | CLV 55.4% | MAE  13.0 bias -1.63 | edge -0.022
 ```
 
 ## Calibration (model P(over) → realized)
 
 ```
       bucket    n   pred  actual
-0.50-0.55    165  0.523   0.503
-0.55-0.60    150  0.576   0.520
-0.60-0.65     86  0.625   0.430  << overconfident
-0.65-0.70     22  0.669   0.591
-0.70-0.80     29  0.740   0.517  << overconfident
+0.50-0.55    169  0.524   0.497
+0.55-0.60    159  0.576   0.522
+0.60-0.65     91  0.625   0.440  << overconfident
+0.65-0.70     25  0.669   0.560  << overconfident
+0.70-0.80     32  0.740   0.500  << overconfident
 0.80-1.01      3  0.828   0.667  << overconfident
 ```
 
@@ -64,7 +64,7 @@ Ranked by demonstrated edge (sample-shrunk log-loss + CLV, collapsed when the tw
 
 ## Flags
 
-- **[vs-market]** rush_yd: market prices it better (log-loss +0.045 worse) — defer / blend toward the line
+- **[vs-market]** rush_yd: market prices it better (log-loss +0.056 worse) — defer / blend toward the line
 - **[vs-market]** pass_td: market prices it better (log-loss +0.049 worse) — defer / blend toward the line
 - **[bias]** pass_att: OVER-projects by 3.4 (25 props, MAE 8.2) — systematic, not noise
 - **[vs-market]** pass_yd: market prices it better (log-loss +0.036 worse) — defer / blend toward the line

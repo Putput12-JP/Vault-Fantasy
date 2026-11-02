@@ -1,56 +1,56 @@
 {
   "season": "2026",
-  "generated": "2026-11-02T12:00:11.862537+00:00",
+  "generated": "2026-11-02T15:01:37.086549+00:00",
   "line_basis": "close",
   "latest_week": 8,
   "skipped": 793,
   "cumulative": {
     "overall": {
-      "n": 4845,
+      "n": 4875,
       "pred_avg": 55.0,
-      "actual_avg": 51.6,
+      "actual_avg": 51.5,
       "brier": 0.2535,
-      "logloss": 0.7014,
-      "ece": 5.4,
+      "logloss": 0.7013,
+      "ece": 5.3,
       "reliability": [
         {
           "bucket": "< 50%",
-          "n": 1410,
+          "n": 1418,
           "pred": 44.1,
-          "actual": 47.6,
-          "gap": 3.5
+          "actual": 47.3,
+          "gap": 3.2
         },
         {
           "bucket": "50\u201355%",
-          "n": 1168,
+          "n": 1171,
           "pred": 52.5,
           "actual": 51.0,
-          "gap": -1.4
+          "gap": -1.5
         },
         {
           "bucket": "55\u201360%",
-          "n": 960,
+          "n": 967,
           "pred": 57.5,
-          "actual": 55.0,
-          "gap": -2.5
+          "actual": 54.9,
+          "gap": -2.6
         },
         {
           "bucket": "60\u201365%",
-          "n": 652,
+          "n": 656,
           "pred": 62.4,
-          "actual": 52.8,
-          "gap": -9.6
+          "actual": 52.9,
+          "gap": -9.5
         },
         {
           "bucket": "65\u201370%",
-          "n": 291,
+          "n": 295,
           "pred": 67.1,
-          "actual": 55.0,
-          "gap": -12.1
+          "actual": 54.9,
+          "gap": -12.2
         },
         {
           "bucket": "70\u201375%",
-          "n": 212,
+          "n": 216,
           "pred": 72.6,
           "actual": 51.4,
           "gap": -21.2
@@ -73,54 +73,54 @@
     },
     "by_market": {
       "rec": {
-        "n": 1499,
+        "n": 1512,
         "pred_avg": 55.2,
-        "actual_avg": 54.8,
-        "brier": 0.2488,
-        "logloss": 0.6917,
-        "ece": 5.3,
+        "actual_avg": 54.7,
+        "brier": 0.2487,
+        "logloss": 0.6915,
+        "ece": 5.2,
         "reliability": [
           {
             "bucket": "< 50%",
-            "n": 411,
+            "n": 414,
             "pred": 43.9,
-            "actual": 46.5,
-            "gap": 2.5
+            "actual": 46.1,
+            "gap": 2.2
           },
           {
             "bucket": "50\u201355%",
-            "n": 381,
+            "n": 382,
             "pred": 52.4,
-            "actual": 58.8,
-            "gap": 6.4
+            "actual": 58.9,
+            "gap": 6.5
           },
           {
             "bucket": "55\u201360%",
-            "n": 317,
+            "n": 319,
             "pred": 57.4,
             "actual": 58.0,
             "gap": 0.6
           },
           {
             "bucket": "60\u201365%",
-            "n": 176,
+            "n": 177,
             "pred": 62.4,
-            "actual": 56.2,
-            "gap": -6.1
+            "actual": 56.5,
+            "gap": -5.9
           },
           {
             "bucket": "65\u201370%",
-            "n": 93,
+            "n": 96,
             "pred": 67.3,
-            "actual": 52.7,
-            "gap": -14.6
+            "actual": 52.1,
+            "gap": -15.2
           },
           {
             "bucket": "70\u201375%",
-            "n": 66,
-            "pred": 72.9,
-            "actual": 59.1,
-            "gap": -13.8
+            "n": 69,
+            "pred": 72.8,
+            "actual": 59.4,
+            "gap": -13.4
           },
           {
             "bucket": "75\u201380%",
@@ -139,40 +139,40 @@
         ]
       },
       "rec_yd": {
-        "n": 1438,
+        "n": 1448,
         "pred_avg": 52.8,
-        "actual_avg": 50.8,
-        "brier": 0.256,
-        "logloss": 0.706,
-        "ece": 8.4,
+        "actual_avg": 50.6,
+        "brier": 0.2558,
+        "logloss": 0.7055,
+        "ece": 8.3,
         "reliability": [
           {
             "bucket": "< 50%",
-            "n": 517,
-            "pred": 43.6,
-            "actual": 52.6,
-            "gap": 9.0
+            "n": 522,
+            "pred": 43.7,
+            "actual": 52.1,
+            "gap": 8.4
           },
           {
             "bucket": "50\u201355%",
-            "n": 385,
+            "n": 387,
             "pred": 52.4,
-            "actual": 47.8,
-            "gap": -4.6
+            "actual": 47.5,
+            "gap": -4.8
           },
           {
             "bucket": "55\u201360%",
-            "n": 259,
+            "n": 261,
             "pred": 57.7,
             "actual": 50.6,
             "gap": -7.2
           },
           {
             "bucket": "60\u201365%",
-            "n": 159,
+            "n": 160,
             "pred": 62.1,
-            "actual": 47.2,
-            "gap": -14.9
+            "actual": 47.5,
+            "gap": -14.6
           },
           {
             "bucket": "65\u201370%",
@@ -205,11 +205,11 @@
         ]
       },
       "rush_att": {
-        "n": 569,
+        "n": 572,
         "pred_avg": 55.5,
-        "actual_avg": 49.9,
-        "brier": 0.2551,
-        "logloss": 0.7049,
+        "actual_avg": 50.0,
+        "brier": 0.2549,
+        "logloss": 0.7044,
         "ece": 5.5,
         "reliability": [
           {
@@ -228,17 +228,17 @@
           },
           {
             "bucket": "55\u201360%",
-            "n": 112,
+            "n": 114,
             "pred": 57.7,
-            "actual": 55.4,
-            "gap": -2.3
+            "actual": 55.3,
+            "gap": -2.4
           },
           {
             "bucket": "60\u201365%",
-            "n": 101,
+            "n": 102,
             "pred": 62.7,
-            "actual": 56.4,
-            "gap": -6.3
+            "actual": 56.9,
+            "gap": -5.8
           },
           {
             "bucket": "65\u201370%",
@@ -264,12 +264,12 @@
         ]
       },
       "rush_yd": {
-        "n": 539,
+        "n": 543,
         "pred_avg": 56.3,
-        "actual_avg": 45.3,
-        "brier": 0.262,
-        "logloss": 0.7202,
-        "ece": 11.0,
+        "actual_avg": 45.1,
+        "brier": 0.2627,
+        "logloss": 0.7216,
+        "ece": 11.2,
         "reliability": [
           {
             "bucket": "< 50%",
@@ -287,31 +287,31 @@
           },
           {
             "bucket": "55\u201360%",
-            "n": 85,
-            "pred": 57.2,
-            "actual": 49.4,
-            "gap": -7.8
+            "n": 86,
+            "pred": 57.3,
+            "actual": 48.8,
+            "gap": -8.4
           },
           {
             "bucket": "60\u201365%",
-            "n": 80,
+            "n": 81,
             "pred": 62.7,
-            "actual": 50.0,
-            "gap": -12.7
+            "actual": 49.4,
+            "gap": -13.3
           },
           {
             "bucket": "65\u201370%",
-            "n": 32,
-            "pred": 66.8,
-            "actual": 43.8,
-            "gap": -23.1
+            "n": 33,
+            "pred": 66.9,
+            "actual": 45.5,
+            "gap": -21.4
           },
           {
             "bucket": "70\u201375%",
-            "n": 25,
-            "pred": 72.3,
-            "actual": 40.0,
-            "gap": -32.3
+            "n": 26,
+            "pred": 72.4,
+            "actual": 38.5,
+            "gap": -33.9
           },
           {
             "bucket": "75\u201380%",
@@ -1018,58 +1018,6 @@
             }
           ]
         },
-        "pass_cmp": {
-          "n": 21,
-          "pred_avg": 57.2,
-          "actual_avg": 38.1,
-          "brier": 0.2636,
-          "logloss": 0.721,
-          "ece": 33.1,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 2,
-              "pred": 48.2,
-              "actual": 0.0,
-              "gap": -48.2
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 9,
-              "pred": 54.5,
-              "actual": 22.2,
-              "gap": -32.3
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 5,
-              "pred": 56.0,
-              "actual": 80.0,
-              "gap": 24.0
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 2,
-              "pred": 63.1,
-              "actual": 50.0,
-              "gap": -13.1
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 2,
-              "pred": 67.3,
-              "actual": 0.0,
-              "gap": -67.3
-            },
-            {
-              "bucket": "70\u201375%",
-              "n": 1,
-              "pred": 73.1,
-              "actual": 100.0,
-              "gap": 26.9
-            }
-          ]
-        },
         "pass_att": {
           "n": 21,
           "pred_avg": 58.0,
@@ -1119,6 +1067,58 @@
               "pred": 76.1,
               "actual": 100.0,
               "gap": 23.9
+            }
+          ]
+        },
+        "pass_cmp": {
+          "n": 21,
+          "pred_avg": 57.2,
+          "actual_avg": 38.1,
+          "brier": 0.2636,
+          "logloss": 0.721,
+          "ece": 33.1,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 2,
+              "pred": 48.2,
+              "actual": 0.0,
+              "gap": -48.2
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 9,
+              "pred": 54.5,
+              "actual": 22.2,
+              "gap": -32.3
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 5,
+              "pred": 56.0,
+              "actual": 80.0,
+              "gap": 24.0
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 2,
+              "pred": 63.1,
+              "actual": 50.0,
+              "gap": -13.1
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 2,
+              "pred": 67.3,
+              "actual": 0.0,
+              "gap": -67.3
+            },
+            {
+              "bucket": "70\u201375%",
+              "n": 1,
+              "pred": 73.1,
+              "actual": 100.0,
+              "gap": 26.9
             }
           ]
         },
@@ -2493,51 +2493,6 @@
             }
           ]
         },
-        "pass_yd": {
-          "n": 31,
-          "pred_avg": 55.2,
-          "actual_avg": 38.7,
-          "brier": 0.2617,
-          "logloss": 0.7166,
-          "ece": 20.7,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 3,
-              "pred": 48.4,
-              "actual": 33.3,
-              "gap": -15.1
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 17,
-              "pred": 52.8,
-              "actual": 35.3,
-              "gap": -17.5
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 5,
-              "pred": 57.1,
-              "actual": 40.0,
-              "gap": -17.1
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 4,
-              "pred": 62.4,
-              "actual": 25.0,
-              "gap": -37.4
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 2,
-              "pred": 66.9,
-              "actual": 100.0,
-              "gap": 33.1
-            }
-          ]
-        },
         "pass_td": {
           "n": 31,
           "pred_avg": 57.1,
@@ -2594,6 +2549,51 @@
               "pred": 79.2,
               "actual": 100.0,
               "gap": 20.8
+            }
+          ]
+        },
+        "pass_yd": {
+          "n": 31,
+          "pred_avg": 55.2,
+          "actual_avg": 38.7,
+          "brier": 0.2617,
+          "logloss": 0.7166,
+          "ece": 20.7,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 3,
+              "pred": 48.4,
+              "actual": 33.3,
+              "gap": -15.1
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 17,
+              "pred": 52.8,
+              "actual": 35.3,
+              "gap": -17.5
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 5,
+              "pred": 57.1,
+              "actual": 40.0,
+              "gap": -17.1
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 4,
+              "pred": 62.4,
+              "actual": 25.0,
+              "gap": -37.4
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 2,
+              "pred": 66.9,
+              "actual": 100.0,
+              "gap": 33.1
             }
           ]
         },
@@ -3010,65 +3010,6 @@
             }
           ]
         },
-        "pass_yd": {
-          "n": 29,
-          "pred_avg": 57.9,
-          "actual_avg": 48.3,
-          "brier": 0.2953,
-          "logloss": 0.7919,
-          "ece": 23.6,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 6,
-              "pred": 46.3,
-              "actual": 66.7,
-              "gap": 20.3
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 3,
-              "pred": 50.8,
-              "actual": 33.3,
-              "gap": -17.5
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 9,
-              "pred": 57.7,
-              "actual": 66.7,
-              "gap": 9.0
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 6,
-              "pred": 61.9,
-              "actual": 50.0,
-              "gap": -11.9
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 2,
-              "pred": 67.7,
-              "actual": 0.0,
-              "gap": -67.7
-            },
-            {
-              "bucket": "70\u201375%",
-              "n": 2,
-              "pred": 72.3,
-              "actual": 0.0,
-              "gap": -72.3
-            },
-            {
-              "bucket": "75\u201380%",
-              "n": 1,
-              "pred": 77.8,
-              "actual": 0.0,
-              "gap": -77.8
-            }
-          ]
-        },
         "pass_td": {
           "n": 29,
           "pred_avg": 62.9,
@@ -3135,48 +3076,62 @@
             }
           ]
         },
-        "pass_cmp": {
-          "n": 25,
-          "pred_avg": 57.1,
-          "actual_avg": 32.0,
-          "brier": 0.2804,
-          "logloss": 0.7555,
-          "ece": 25.1,
+        "pass_yd": {
+          "n": 29,
+          "pred_avg": 57.9,
+          "actual_avg": 48.3,
+          "brier": 0.2953,
+          "logloss": 0.7919,
+          "ece": 23.6,
           "reliability": [
             {
               "bucket": "< 50%",
-              "n": 2,
-              "pred": 46.6,
-              "actual": 0.0,
-              "gap": -46.6
+              "n": 6,
+              "pred": 46.3,
+              "actual": 66.7,
+              "gap": 20.3
             },
             {
               "bucket": "50\u201355%",
-              "n": 4,
-              "pred": 53.1,
-              "actual": 0.0,
-              "gap": -53.1
+              "n": 3,
+              "pred": 50.8,
+              "actual": 33.3,
+              "gap": -17.5
             },
             {
               "bucket": "55\u201360%",
-              "n": 13,
-              "pred": 57.3,
-              "actual": 53.8,
-              "gap": -3.5
+              "n": 9,
+              "pred": 57.7,
+              "actual": 66.7,
+              "gap": 9.0
             },
             {
               "bucket": "60\u201365%",
-              "n": 5,
-              "pred": 62.5,
-              "actual": 20.0,
-              "gap": -42.5
+              "n": 6,
+              "pred": 61.9,
+              "actual": 50.0,
+              "gap": -11.9
             },
             {
               "bucket": "65\u201370%",
-              "n": 1,
-              "pred": 65.3,
+              "n": 2,
+              "pred": 67.7,
               "actual": 0.0,
-              "gap": -65.3
+              "gap": -67.7
+            },
+            {
+              "bucket": "70\u201375%",
+              "n": 2,
+              "pred": 72.3,
+              "actual": 0.0,
+              "gap": -72.3
+            },
+            {
+              "bucket": "75\u201380%",
+              "n": 1,
+              "pred": 77.8,
+              "actual": 0.0,
+              "gap": -77.8
             }
           ]
         },
@@ -3222,6 +3177,51 @@
               "pred": 66.9,
               "actual": 60.0,
               "gap": -6.9
+            }
+          ]
+        },
+        "pass_cmp": {
+          "n": 25,
+          "pred_avg": 57.1,
+          "actual_avg": 32.0,
+          "brier": 0.2804,
+          "logloss": 0.7555,
+          "ece": 25.1,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 2,
+              "pred": 46.6,
+              "actual": 0.0,
+              "gap": -46.6
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 4,
+              "pred": 53.1,
+              "actual": 0.0,
+              "gap": -53.1
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 13,
+              "pred": 57.3,
+              "actual": 53.8,
+              "gap": -3.5
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 5,
+              "pred": 62.5,
+              "actual": 20.0,
+              "gap": -42.5
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 1,
+              "pred": 65.3,
+              "actual": 0.0,
+              "gap": -65.3
             }
           ]
         },
@@ -4159,6 +4159,58 @@
             }
           ]
         },
+        "pass_td": {
+          "n": 25,
+          "pred_avg": 58.5,
+          "actual_avg": 56.0,
+          "brier": 0.2349,
+          "logloss": 0.6616,
+          "ece": 11.5,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 3,
+              "pred": 39.3,
+              "actual": 33.3,
+              "gap": -5.9
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 4,
+              "pred": 53.1,
+              "actual": 75.0,
+              "gap": 21.9
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 4,
+              "pred": 57.3,
+              "actual": 50.0,
+              "gap": -7.3
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 9,
+              "pred": 61.8,
+              "actual": 55.6,
+              "gap": -6.3
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 4,
+              "pred": 68.1,
+              "actual": 50.0,
+              "gap": -18.1
+            },
+            {
+              "bucket": "75\u201380%",
+              "n": 1,
+              "pred": 75.5,
+              "actual": 100.0,
+              "gap": 24.5
+            }
+          ]
+        },
         "pass_yd": {
           "n": 25,
           "pred_avg": 58.0,
@@ -4256,58 +4308,6 @@
             }
           ]
         },
-        "pass_td": {
-          "n": 25,
-          "pred_avg": 58.5,
-          "actual_avg": 56.0,
-          "brier": 0.2349,
-          "logloss": 0.6616,
-          "ece": 11.5,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 3,
-              "pred": 39.3,
-              "actual": 33.3,
-              "gap": -5.9
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 4,
-              "pred": 53.1,
-              "actual": 75.0,
-              "gap": 21.9
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 4,
-              "pred": 57.3,
-              "actual": 50.0,
-              "gap": -7.3
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 9,
-              "pred": 61.8,
-              "actual": 55.6,
-              "gap": -6.3
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 4,
-              "pred": 68.1,
-              "actual": 50.0,
-              "gap": -18.1
-            },
-            {
-              "bucket": "75\u201380%",
-              "n": 1,
-              "pred": 75.5,
-              "actual": 100.0,
-              "gap": 24.5
-            }
-          ]
-        },
         "rush_td": {
           "n": 4,
           "pred_avg": 69.5,
@@ -4350,54 +4350,54 @@
     },
     "8": {
       "overall": {
-        "n": 571,
-        "pred_avg": 54.6,
-        "actual_avg": 49.6,
-        "brier": 0.258,
-        "logloss": 0.7106,
-        "ece": 6.1,
+        "n": 601,
+        "pred_avg": 54.8,
+        "actual_avg": 48.9,
+        "brier": 0.2573,
+        "logloss": 0.7093,
+        "ece": 5.9,
         "reliability": [
           {
             "bucket": "< 50%",
-            "n": 150,
+            "n": 158,
             "pred": 44.1,
-            "actual": 46.0,
-            "gap": 1.9
+            "actual": 43.7,
+            "gap": -0.5
           },
           {
             "bucket": "50\u201355%",
-            "n": 160,
+            "n": 163,
             "pred": 52.4,
-            "actual": 49.4,
-            "gap": -3.0
+            "actual": 49.1,
+            "gap": -3.3
           },
           {
             "bucket": "55\u201360%",
-            "n": 124,
-            "pred": 57.4,
-            "actual": 56.5,
-            "gap": -1.0
+            "n": 131,
+            "pred": 57.5,
+            "actual": 55.7,
+            "gap": -1.8
           },
           {
             "bucket": "60\u201365%",
-            "n": 82,
+            "n": 86,
             "pred": 62.6,
-            "actual": 43.9,
-            "gap": -18.7
+            "actual": 45.3,
+            "gap": -17.2
           },
           {
             "bucket": "65\u201370%",
-            "n": 24,
-            "pred": 67.4,
-            "actual": 58.3,
-            "gap": -9.0
+            "n": 28,
+            "pred": 67.3,
+            "actual": 57.1,
+            "gap": -10.2
           },
           {
             "bucket": "70\u201375%",
-            "n": 19,
+            "n": 23,
             "pred": 72.4,
-            "actual": 47.4,
-            "gap": -25.0
+            "actual": 47.8,
+            "gap": -24.6
           },
           {
             "bucket": "75\u201380%",
@@ -4417,54 +4417,54 @@
       },
       "by_market": {
         "rec": {
-          "n": 162,
-          "pred_avg": 54.5,
-          "actual_avg": 50.6,
-          "brier": 0.2546,
-          "logloss": 0.7037,
-          "ece": 5.5,
+          "n": 175,
+          "pred_avg": 54.9,
+          "actual_avg": 50.3,
+          "brier": 0.2533,
+          "logloss": 0.7012,
+          "ece": 6.0,
           "reliability": [
             {
               "bucket": "< 50%",
-              "n": 27,
-              "pred": 42.1,
-              "actual": 40.7,
-              "gap": -1.4
+              "n": 30,
+              "pred": 42.2,
+              "actual": 36.7,
+              "gap": -5.5
             },
             {
               "bucket": "50\u201355%",
-              "n": 64,
+              "n": 65,
               "pred": 52.1,
-              "actual": 50.0,
-              "gap": -2.1
+              "actual": 50.8,
+              "gap": -1.3
             },
             {
               "bucket": "55\u201360%",
-              "n": 38,
+              "n": 40,
               "pred": 57.1,
-              "actual": 60.5,
-              "gap": 3.4
+              "actual": 60.0,
+              "gap": 2.9
             },
             {
               "bucket": "60\u201365%",
-              "n": 15,
-              "pred": 62.8,
-              "actual": 40.0,
-              "gap": -22.8
+              "n": 16,
+              "pred": 62.7,
+              "actual": 43.8,
+              "gap": -19.0
             },
             {
               "bucket": "65\u201370%",
-              "n": 11,
-              "pred": 67.5,
-              "actual": 63.6,
-              "gap": -3.9
+              "n": 14,
+              "pred": 67.4,
+              "actual": 57.1,
+              "gap": -10.2
             },
             {
               "bucket": "70\u201375%",
-              "n": 6,
-              "pred": 73.0,
-              "actual": 50.0,
-              "gap": -23.0
+              "n": 9,
+              "pred": 72.7,
+              "actual": 55.6,
+              "gap": -17.2
             },
             {
               "bucket": "75\u201380%",
@@ -4476,40 +4476,40 @@
           ]
         },
         "rec_yd": {
-          "n": 155,
-          "pred_avg": 52.1,
-          "actual_avg": 52.3,
-          "brier": 0.2611,
-          "logloss": 0.7158,
-          "ece": 10.1,
+          "n": 165,
+          "pred_avg": 52.0,
+          "actual_avg": 50.3,
+          "brier": 0.2586,
+          "logloss": 0.7107,
+          "ece": 8.3,
           "reliability": [
             {
               "bucket": "< 50%",
-              "n": 59,
+              "n": 64,
               "pred": 44.7,
-              "actual": 57.6,
-              "gap": 13.0
+              "actual": 53.1,
+              "gap": 8.4
             },
             {
               "bucket": "50\u201355%",
-              "n": 43,
+              "n": 45,
               "pred": 52.7,
-              "actual": 53.5,
-              "gap": 0.8
+              "actual": 51.1,
+              "gap": -1.6
             },
             {
               "bucket": "55\u201360%",
-              "n": 34,
+              "n": 36,
               "pred": 58.0,
               "actual": 50.0,
               "gap": -8.0
             },
             {
               "bucket": "60\u201365%",
-              "n": 17,
-              "pred": 62.7,
-              "actual": 35.3,
-              "gap": -27.5
+              "n": 18,
+              "pred": 62.8,
+              "actual": 38.9,
+              "gap": -23.9
             },
             {
               "bucket": "65\u201370%",
@@ -4520,65 +4520,13 @@
             }
           ]
         },
-        "rush_att": {
-          "n": 74,
-          "pred_avg": 56.1,
-          "actual_avg": 47.3,
-          "brier": 0.2436,
-          "logloss": 0.6803,
-          "ece": 11.4,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 19,
-              "pred": 45.2,
-              "actual": 31.6,
-              "gap": -13.7
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 14,
-              "pred": 52.7,
-              "actual": 35.7,
-              "gap": -17.0
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 14,
-              "pred": 57.6,
-              "actual": 64.3,
-              "gap": 6.7
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 19,
-              "pred": 62.8,
-              "actual": 52.6,
-              "gap": -10.1
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 3,
-              "pred": 67.3,
-              "actual": 66.7,
-              "gap": -0.6
-            },
-            {
-              "bucket": "70\u201375%",
-              "n": 5,
-              "pred": 71.2,
-              "actual": 60.0,
-              "gap": -11.2
-            }
-          ]
-        },
         "rush_yd": {
-          "n": 73,
-          "pred_avg": 54.5,
-          "actual_avg": 42.5,
-          "brier": 0.2791,
-          "logloss": 0.76,
-          "ece": 12.1,
+          "n": 77,
+          "pred_avg": 55.1,
+          "actual_avg": 41.6,
+          "brier": 0.2827,
+          "logloss": 0.7675,
+          "ece": 13.6,
           "reliability": [
             {
               "bucket": "< 50%",
@@ -4596,24 +4544,31 @@
             },
             {
               "bucket": "55\u201360%",
-              "n": 14,
+              "n": 15,
               "pred": 57.4,
-              "actual": 57.1,
-              "gap": -0.3
+              "actual": 53.3,
+              "gap": -4.1
             },
             {
               "bucket": "60\u201365%",
-              "n": 11,
+              "n": 12,
               "pred": 63.5,
-              "actual": 36.4,
-              "gap": -27.2
+              "actual": 33.3,
+              "gap": -30.2
             },
             {
               "bucket": "65\u201370%",
-              "n": 2,
-              "pred": 66.9,
-              "actual": 50.0,
-              "gap": -16.9
+              "n": 3,
+              "pred": 67.4,
+              "actual": 66.7,
+              "gap": -0.7
+            },
+            {
+              "bucket": "70\u201375%",
+              "n": 1,
+              "pred": 74.8,
+              "actual": 0.0,
+              "gap": -74.8
             },
             {
               "bucket": "75\u201380%",
@@ -4631,55 +4586,55 @@
             }
           ]
         },
-        "pass_cmp": {
-          "n": 26,
-          "pred_avg": 55.7,
-          "actual_avg": 42.3,
-          "brier": 0.2468,
-          "logloss": 0.687,
-          "ece": 17.1,
+        "rush_att": {
+          "n": 77,
+          "pred_avg": 56.3,
+          "actual_avg": 48.1,
+          "brier": 0.2425,
+          "logloss": 0.678,
+          "ece": 10.2,
           "reliability": [
             {
               "bucket": "< 50%",
-              "n": 5,
-              "pred": 48.8,
-              "actual": 20.0,
-              "gap": -28.8
+              "n": 19,
+              "pred": 45.2,
+              "actual": 31.6,
+              "gap": -13.7
             },
             {
               "bucket": "50\u201355%",
-              "n": 9,
-              "pred": 52.3,
-              "actual": 33.3,
-              "gap": -19.0
+              "n": 14,
+              "pred": 52.7,
+              "actual": 35.7,
+              "gap": -17.0
             },
             {
               "bucket": "55\u201360%",
-              "n": 6,
-              "pred": 56.8,
-              "actual": 50.0,
-              "gap": -6.8
+              "n": 16,
+              "pred": 57.7,
+              "actual": 62.5,
+              "gap": 4.8
             },
             {
               "bucket": "60\u201365%",
-              "n": 3,
-              "pred": 62.0,
-              "actual": 66.7,
-              "gap": 4.7
+              "n": 20,
+              "pred": 62.7,
+              "actual": 55.0,
+              "gap": -7.7
             },
             {
               "bucket": "65\u201370%",
-              "n": 1,
-              "pred": 66.2,
-              "actual": 100.0,
-              "gap": 33.8
+              "n": 3,
+              "pred": 67.3,
+              "actual": 66.7,
+              "gap": -0.6
             },
             {
               "bucket": "70\u201375%",
-              "n": 2,
-              "pred": 70.3,
-              "actual": 50.0,
-              "gap": -20.3
+              "n": 5,
+              "pred": 71.2,
+              "actual": 60.0,
+              "gap": -11.2
             }
           ]
         },
@@ -4739,6 +4694,58 @@
               "pred": 75.6,
               "actual": 100.0,
               "gap": 24.4
+            }
+          ]
+        },
+        "pass_cmp": {
+          "n": 26,
+          "pred_avg": 55.7,
+          "actual_avg": 42.3,
+          "brier": 0.2468,
+          "logloss": 0.687,
+          "ece": 17.1,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 5,
+              "pred": 48.8,
+              "actual": 20.0,
+              "gap": -28.8
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 9,
+              "pred": 52.3,
+              "actual": 33.3,
+              "gap": -19.0
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 6,
+              "pred": 56.8,
+              "actual": 50.0,
+              "gap": -6.8
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 3,
+              "pred": 62.0,
+              "actual": 66.7,
+              "gap": 4.7
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 1,
+              "pred": 66.2,
+              "actual": 100.0,
+              "gap": 33.8
+            },
+            {
+              "bucket": "70\u201375%",
+              "n": 2,
+              "pred": 70.3,
+              "actual": 50.0,
+              "gap": -20.3
             }
           ]
         },
