@@ -7002,7 +7002,7 @@ $('wevents').addEventListener('click', e => { if (e.target.closest('[data-wedges
 // the injury report through each player's value above replacement, and back-to-backs, the same arithmetic the
 // backtest walked. It does not beat the closing line (docs/game-model.md), so a gap is a reason to look, never a bet.
 // "Game Lines" is the same page with every book's lines open.
-let sv = {day: null, open: {}, mk: {}, all: {}, sd: {}, bk: {}, ro: {}, sort: 'time', roInit: false};
+let sv = {day: null, open: {}, mk: {}, all: {}, sd: {}, bk: {}, ro: {}, sort: 'time', roInit: false, dv: (() => { try { return localStorage.getItem('nba-slate-dv') === 'now' ? 'now' : 'blend'; } catch (e) { return 'blend'; } })()};
 const SL_BOOKS = ['Pinnacle', 'Consensus', 'DraftKings', 'FanDuel', 'BetMGM', 'ESPN BET', 'bet365', 'BetRivers'];
 function slateBoard(){
   const live = PS.live || (PB && PB.live);
@@ -7330,12 +7330,15 @@ $('sgames').addEventListener('click', e => {
   else if (a){ sv.all[a.dataset.lall] = !sv.all[a.dataset.lall]; lvRefresh(a.dataset.lall); }
   else if (d){ sv.sd[d.dataset.lsd] = !sv.sd[d.dataset.lsd]; lvRefresh(d.dataset.lsd); } });
 
-// ── Slate V2 card: who starts, who is out, and how each defense treats the position the starter plays (build_matchups.py, last regular season).
+// ── Slate V2 card: who starts, who is out, and how each defense treats the position the starter plays (build_matchups.py: blended, or this season only).
 const ordn = n => { const v = n % 100, a = ['th', 'st', 'nd', 'rd']; return n + (a[(v - 20) % 10] || a[v] || a[0]); };
 const SLOTW = {PG: 'point guards', SG: 'shooting guards', SF: 'small forwards', PF: 'power forwards', C: 'centers'};
 const MUS = [['pts', 'PTS', 'points'], ['reb', 'REB', 'rebounds'], ['ast', 'AST', 'assists'], ['3pm', '3PM', 'threes']];
 const svMin = {};                                            // per render: game id|team -> model minutes
-function muGet(def, slot, s){ const t = MU && MU.teams[def]; return t && slot && t.pos[slot] ? t.pos[slot][s] : null; }
+const muNow = () => sv.dv === 'now' && !!(MU && MU.now);    // the Slate's "This season" toggle: this season's games only
+const muSrc = def => { const t = MU && MU.teams[def]; return t && (muNow() ? t.now : t); };
+const muLabel = () => !MU ? '' : muNow() ? `${MU.now.season} only` : MU.season;
+function muGet(def, slot, s){ const t = muSrc(def); return t && slot && t.pos[slot] ? t.pos[slot][s] : null; }
 function muWords(def, slot, s, r){                           // "DAL gives up the 5th most points to point guards"
   const w = (MUS.find(x => x[0] === s) || [])[2] || s, most = r[1] <= 15;
   return `${def} gives up the ${ordn(most ? r[1] : 31 - r[1])} ${most ? 'most' : 'fewest'} ${w} to ${SLOTW[slot] || slot} (${r[0]} a game)`;
@@ -7667,8 +7670,9 @@ function svDef(t){                                          // one team's defens
   const pl = r => `<span class="mp ${r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : ''}">${r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest'}</span>`;
   const row = (l, v, pill, tip) => `<div class="sv-dr" title="${esc(tip || '')}"><span>${l}</span><b>${v}</b>${pill}</div>`;
   const rows = [G && G.D && G.D[t] != null ? row('Defense (Vault)', sgn(G.D[t]), `<span class="mp">${ordn(rk(G.D, t))} best</span>`, 'Points held below the league base, from the game model') : '',
-    ...(MU && MU.teams[t] ? [['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([k, l]) => { const r = MU.teams[t].all[k]; return r ? row(l, fmt(r[0], 1), pl(r), `${l} per game, ${MU.season} regular season`) : ''; }) : [])].join('');
-  return rows ? `<div class="sv-df"><h4>${t} defense, per game${MU ? ` · ${MU.season}` : ''}</h4>${rows}</div>` : '';
+    ...(muSrc(t) ? [['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([k, l]) => { const r = muSrc(t).all[k]; return r ? row(l, fmt(r[0], 1), pl(r), `${l} per game, ${muLabel()} regular season`) : ''; }) : [])].join('');
+  const gn = muNow() && MU.teams[t] ? ` (${MU.teams[t].gn} games)` : '';
+  return rows ? `<div class="sv-df"><h4>${t} defense, per game${MU ? ` · ${muLabel()}${gn}` : ''}</h4>${rows}</div>` : '';
 }
 function svSide(team, opp, g, B, st){
   const F = slateFive(team, g, B, st), T = D.teams[team];
@@ -7718,7 +7722,7 @@ function renderSlate(){
   $('sbanner').hidden = !!games.length;
   $('sbanner').innerHTML = `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span>`;
   $('sdays').innerHTML = days.length ? `<div class="seg" id="sday">${days.map(d => { const n = games.filter(g => etDay(g.tip) === d).length;
-    return `<button type="button" data-d="${d}" aria-pressed="${d === sv.day}">${slDay(games.find(g => etDay(g.tip) === d).tip)} · ${n}</button>`; }).join('')}</div>${lines ? `<div class="seg" id="lsort" role="group" aria-label="Sort">${[['time', 'By time'], ['move', 'Biggest move'], ['lean', 'Sharp lean']].map(([k, l]) => `<button type="button" data-ls="${k}" aria-pressed="${sv.sort === k}">${l}</button>`).join('')}</div>` : ''}` : '';
+    return `<button type="button" data-d="${d}" aria-pressed="${d === sv.day}">${slDay(games.find(g => etDay(g.tip) === d).tip)} · ${n}</button>`; }).join('')}</div>${lines ? `<div class="seg" id="lsort" role="group" aria-label="Sort">${[['time', 'By time'], ['move', 'Biggest move'], ['lean', 'Sharp lean']].map(([k, l]) => `<button type="button" data-ls="${k}" aria-pressed="${sv.sort === k}">${l}</button>`).join('')}</div>` : MU && MU.now ? `<div class="seg" id="sdv" role="group" aria-label="Defense by position">${[['blend', 'Blended', `${MU.season}: each team's weight on this season is its games played out of games + ${MU.anchor}`], ['now', 'This season', `${MU.now.season} games only (${MU.now.games[0]} to ${MU.now.games[1]} a team so far). Noisier this early`]].map(([k, l, tip]) => `<button type="button" data-dv="${k}" aria-pressed="${sv.dv === k}" title="${esc(tip)}">${l}</button>`).join('')}</div>` : ''}` : '';
   $('sdays').parentElement.hidden = !days.length;
   // KPIs over the chosen day
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
@@ -7759,7 +7763,7 @@ function renderSlate(){
   if (!lines){
     const per = MU && MU.persistence || {};
     $('sfoot').innerHTML = `<div><b>Starting fives.</b> Confirmed means NBA.com has posted the lineup; Expected means it lists part of the five; Projected is the depth chart until lineups post. Minutes are the Minutes Lab's game-day numbers. Out and doubtful come from the official injury report and the books' news.</div>
-      <div><b>Defense by position.</b> Each pill is how many points, rebounds, assists and threes a team gave up per game to players at that depth-chart position, ranked 1 to 30 (1st gives up the most; green is a soft spot, red a tough one). It starts from last season's regular season and blends in this season's games as they are played (a team's weight on this season is its games played out of 15, then fully this season); right now: ${MU ? MU.season : 'n/a'}. Players with no depth slot are left out. <b>Context, not an edge.</b> Splitting last season in half, a team's rank in one half barely predicted the other (rank correlation ${per.pts != null ? per.pts : 'n/a'} for points, ${per.reb != null ? per.reb : 'n/a'} for rebounds, ${per.ast != null ? per.ast : 'n/a'} for assists, ${per['3pm'] != null ? per['3pm'] : 'n/a'} for threes), and the books already know these ranks.</div>`;
+      <div><b>Defense by position.</b> Each pill is how many points, rebounds, assists and threes a team gave up per game to players at that depth-chart position, ranked 1 to 30 (1st gives up the most; green is a soft spot, red a tough one). Blended starts from last season's regular season and blends in this season's games as they are played: last season counts as ${MU ? MU.anchor : 10} games, so a team's weight on this season is its games played out of games + ${MU ? MU.anchor : 10} (half at ${MU ? MU.anchor : 10} games, 80% at ${MU ? 4 * MU.anchor : 40}); right now: ${MU ? `${MU.season}, ${Math.round(MU.mix * 100)}% this season on average` : 'n/a'}. This season ranks each defense on its own games only${MU && MU.now ? ` (${MU.now.games[0]} to ${MU.now.games[1]} a team so far)` : ''}. In four past seasons, a team's first games alone predicted the rest of its season worse than last season did until about 30 games, so Blended is the default. Players with no depth slot are left out. <b>Context, not an edge.</b> Splitting last season in half, a team's rank in one half barely predicted the other (rank correlation ${per.pts != null ? per.pts : 'n/a'} for points, ${per.reb != null ? per.reb : 'n/a'} for rebounds, ${per.ast != null ? per.ast : 'n/a'} for assists, ${per['3pm'] != null ? per['3pm'] : 'n/a'} for threes), and the books already know these ranks.</div>`;
     return;
   }
   $('sfoot').innerHTML = `
@@ -7777,7 +7781,9 @@ function renderSlateRatings(){
   $('srat').innerHTML = `<thead><tr><th class="l">#</th><th class="l">Team</th><th title="Points better than an average team on a neutral floor">Rating</th><th title="Points scored above the league base">Offense</th><th title="Points held below the league base">Defense</th></tr></thead><tbody>
     ${ts.map((t, i) => `<tr><td class="l muted">${i + 1}</td><td class="l"><b>${t}</b><small>${esc((D.teams[t] && D.teams[t].name) || t)}</small></td><td class="${G.R[t] >= 0 ? 'pos' : 'neg'}">${sgn(G.R[t])}</td><td>${sgn(G.O[t] || 0)} <span class="muted">${rk(G.O, t)}</span></td><td>${sgn(G.D[t] || 0)} <span class="muted">${rk(G.D, t)}</span></td></tr>`).join('')}</tbody>`;
 }
-$('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'), s2 = e.target.closest('button[data-ls]'); if (b){ sv.day = b.dataset.d; renderSlate(); } else if (s2){ sv.sort = s2.dataset.ls; renderSlate(); } });
+$('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'), s2 = e.target.closest('button[data-ls]'), s3 = e.target.closest('button[data-dv]');
+  if (b){ sv.day = b.dataset.d; renderSlate(); } else if (s2){ sv.sort = s2.dataset.ls; renderSlate(); }
+  else if (s3){ sv.dv = s3.dataset.dv; try { localStorage.setItem('nba-slate-dv', sv.dv); } catch (e2) {} renderSlate(); } });
 $('sgames').addEventListener('toggle', e => { const d = e.target.closest('details[data-g]'); if (d) sv.open[d.dataset.g] = d.open; }, true);
 
 // ── Game Picks (game_pick_record.py → nba-data gpicks/<day>.json + open.json; rules: docs/game-picks.md) ─────────────────────────────────────────
