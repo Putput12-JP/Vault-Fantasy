@@ -131,7 +131,7 @@ def pearson(a, b):
 
 
 FULL_SEASON_GAMES = 1230            # 30 teams x 82 games / 2: a season file with fewer regular-season games is still being played
-MIN_GAMES = 15                      # same blend rule as build_matchups.py
+MIN_GAMES = 15                      # games out of 15 (build_matchups.py now anchors last season at 10 games instead)
 
 
 def season_files(raw):

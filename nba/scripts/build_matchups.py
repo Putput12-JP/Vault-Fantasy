@@ -10,6 +10,11 @@ data/depth_charts.json, current rosters). A team's "allowed to PG" is the sum of
 the team's games. Rank 1 = gives up the most. Players with no depth slot (about 2% of minutes) are left out of the position
 split but counted in the team totals. Persistence (the same ranking built from the first and second half of the season) is
 reported so the page can say how much a rank is worth: this is context, not a bet.
+
+Blend: last season counts as ANCHOR games of evidence, so a team's weight on this season is games / (games + ANCHOR): 50/50 at
+10 games, 80% this season at 40. Each team also carries `now`, the same table from this season's games only, for the page's
+"This season" toggle. A 4-season backtest (first N games predicting the rest of the season) found this-season-only ranks trail
+last season's until about 30 games, so the blend stays the default.
 """
 import datetime as dt, json, math, os
 from collections import defaultdict
@@ -19,7 +24,7 @@ DATA = os.path.join(HERE, '..', 'data')
 POS = ['PG', 'SG', 'SF', 'PF', 'C']
 STATS = ['pts', 'reb', 'ast', '3pm', 'pra', 'stl', 'blk', 'tov']
 TEAM_STATS = ['pts', 'reb', 'ast', '3pm', 'tpa', 'tov']
-MIN_GAMES = 15
+ANCHOR = 10                                                 # games of evidence last season counts as
 FAKE = {'STARS', 'WORLD', 'STRIPES'}
 
 
@@ -50,7 +55,7 @@ def build():
             if p['depth']:
                 pos[str(p['id'])] = min(p['depth'], key=lambda x: x['rank'])['pos'].upper()
     # rows carry the season's end year (2026 = 2025-26). Per-game allowed values come from the last full season, blended with the new one
-    # by its games played: weight = games / MIN_GAMES for each team, all new at MIN_GAMES. Ranks are taken on the blended values.
+    # by its games played: weight = games / (games + ANCHOR) for each team. Ranks are taken on the blended values.
     per = defaultdict(lambda: defaultdict(set))                 # season -> team -> days played
     for rows in g['players'].values():
         for r in rows:
@@ -58,8 +63,6 @@ def build():
                 per[r[1]][T[r[c.index('opp')]]].add(r[0])
     newest = max(per)
     prev = max((x for x in per if x < newest and len(per[x]) >= 30), default=None)
-    if prev is None or (len(per[newest]) >= 30 and min(len(v) for v in per[newest].values()) >= 20):
-        prev, newest = None, newest                              # only one usable season
     last = prev if prev is not None else newest
     def table(season, lo=0, hi=10 ** 9):
         pt = defaultdict(lambda: defaultdict(float))            # (team, pos) -> stat -> total
@@ -79,7 +82,7 @@ def build():
         return pt, tt, {k: len(v) for k, v in ng.items()}
     pa, ta, na = table(last)
     pn, tn, nn = table(newest) if last != newest else ({}, {}, {})
-    wt = {t: min(1.0, nn.get(t, 0) / MIN_GAMES) for t in na}
+    wt = {t: nn.get(t, 0) / (nn.get(t, 0) + ANCHOR) for t in na}
     teams = {t: {'g': na[t], 'gn': nn.get(t, 0), 'w': round(wt[t], 2), 'pos': {}, 'all': {}} for t in na if na[t] >= 20}
     def blend(old, new, t, key, s):
         o = old[key][s] / na[t]
@@ -93,10 +96,22 @@ def build():
         vals = {t: blend(ta, tn, t, t, s) for t in teams}
         for i, t in enumerate(sorted(vals, key=lambda t: -vals[t])):
             teams[t]['all'][s] = [round(vals[t], 1), i + 1]
+    # this season only: the same tables from the new season's games alone, ranked among the teams that have played
+    nt = [t for t in teams if nn.get(t)]
+    for p_ in POS:
+        for s in STATS:
+            vals = {t: pn[(t, p_)][s] / nn[t] for t in nt}
+            for i, t in enumerate(sorted(vals, key=lambda t: -vals[t])):
+                teams[t].setdefault('now', {'pos': {}, 'all': {}})['pos'].setdefault(p_, {})[s] = [round(vals[t], 1), i + 1]
+    for s in TEAM_STATS:
+        vals = {t: tn[t][s] / nn[t] for t in nt}
+        for i, t in enumerate(sorted(vals, key=lambda t: -vals[t])):
+            teams[t]['now']['all'][s] = [round(vals[t], 1), i + 1]
     ws = [x['w'] for x in teams.values()]
     mix = sum(ws) / len(ws) if ws else 0
-    season = (newest if mix >= 1 else last) - 1
-    label = f'{last - 1}-{str(last)[2:]}' if mix == 0 else f'{newest - 1}-{str(newest)[2:]}' if mix >= 1 else f'{last - 1}-{str(last)[2:]} blended with {newest - 1}-{str(newest)[2:]}'
+    sl = lambda y: f'{y - 1}-{str(y)[2:]}'
+    label = sl(last) if mix == 0 else f'{sl(last)} blended with {sl(newest)}'
+    gn = sorted(nn.values())
     # persistence: first half vs second half of the last full season, per position and stat
     days = sorted({x for v in per[last].values() for x in v})
     mid = days[len(days) // 2]
@@ -111,7 +126,8 @@ def build():
             rs.append(spearman(a_, b_))
         rs = [x for x in rs if x is not None]
         per[s] = round(sum(rs) / len(rs), 2) if rs else None
-    return {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'season': label, 'mix': round(mix, 2),
+    return {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'season': label, 'mix': round(mix, 2), 'anchor': ANCHOR,
+            'now': {'season': sl(newest), 'teams': len(nt), 'games': [gn[0], gn[-1]] if gn else None} if nt else None,
             'through': g.get('through'), 'pos': POS, 'stats': STATS, 'teams': teams, 'persistence': per,
             'coverage': 'players without a depth slot are left out of the position split'}
 
