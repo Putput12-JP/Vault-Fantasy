@@ -994,7 +994,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         xstat_days = track.get('xstat_days')
     try:                                          # prop projections within a point of the box score (near_record.py); the first run scans every stored day
         import near_record as NR
-        near_days = NR.record(root, now, track.get('near_days'), rescan_days, season, me)
+        near_days = NR.record(root, now, track.get('near_days') if track.get('near_v') == NR.VERSION else None, rescan_days, season, me)
     except Exception as e:
         SETTLE_ERR['near-exact record'] = f'{type(e).__name__}: {e}'[:120]
         print('near record failed:', e, flush=True)
@@ -1027,7 +1027,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = track.get('signals')
     box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
     STUCK[:] = stuck_games(root, now, tips, changed)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'near_v': getattr(sys.modules.get('near_record'), 'VERSION', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:

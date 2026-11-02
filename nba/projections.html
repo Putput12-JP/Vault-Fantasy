@@ -2764,8 +2764,17 @@ th{font-weight:500}
         <div class="card-b">
           <p class="hint tplain">Not a bet record. Before each game we write down the Vault line's margin and total, the simulation's, and every prop projection. After the final we count how often each one landed almost exactly on the result: a game margin or total within 3 points, a prop (points, rebounds, assists, 3-pointers) within 1. The sportsbooks' own numbers sit beside ours as the yardstick, scored the same way.</p>
           <div class="kpis" id="tneark"></div>
+          <h3 class="sim-h">Night by night: what landed</h3>
+          <div class="filters"><select class="sel" id="tnearday" aria-label="Night"></select><select class="sel" id="tnearsf" aria-label="Stat"><option value="all">All four stats</option><option value="pts">Points</option><option value="reb">Rebounds</option><option value="ast">Assists</option><option value="3pm">3-pointers</option></select></div>
+          <p class="hint" id="tnightsub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tnightg"></table></div>
+          <div class="tablewrap"><table class="ht tsim" id="tnightp"></table></div>
+          <div class="more" id="tnightmore" hidden></div>
           <h3 class="sim-h">Game lines, within 3 points</h3>
           <div class="tablewrap"><table class="ht tsim" id="tnearg"></table></div>
+          <h3 class="sim-h">Where it lands: by stat, line and side</h3>
+          <p class="hint" id="tnearxsub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tnearx"></table></div>
           <h3 class="sim-h">Prop projections, within 1</h3>
           <div class="tablewrap"><table class="ht tsim" id="tnearp"></table></div>
           <h3 class="sim-h">Every game</h3>
@@ -5761,7 +5770,7 @@ function simJoint(G, c){
 // ── Near-exact calls (game lines from sim_days, prop projections from near_record.py → track.json near_days) ─────────────────────────
 // A game margin or total is NEAR when the pre-tip number lands within NEAR_GAME points of the final; a prop projection when it lands within
 // track.json near_prop (1) of the box score. Every number here was stored before tip; nothing is rebuilt from today's model.
-const nearRec = {limit: 15};
+const nearRec = {limit: 15, day: null, stat: 'all', plimit: 25};
 const NEAR_GAME = 3, NEAR_ENVS = [['vault', 'Vault line', 'The game model (Game Picks): team ratings, home court, rest and who is out'], ['players', "Players' own sum", "The simulation built from each player's projection, added up"], ['market', 'The books', "The sportsbook spread and total, simulated the same way. The yardstick, not ours"]];
 function renderNearRecord(){
   const d = TR && TR.data, np = (d && d.near_prop) || 1;
@@ -5791,7 +5800,7 @@ function renderNearRecord(){
   const mk = ok => ok ? ' <b class="pos">✓</b>' : '';
   const rows = G.slice(0, nearRec.limit).map(g => { const [away, home] = String(g.matchup).split(' @ '), x = g.env.vault, p = byG.get(String(g.game));
     const pa = p ? SIMS.reduce((a, s) => p.s[s] ? [a[0] + p.s[s][0], a[1] + p.s[s][1]] : a, [0, 0]) : null;
-    const hits = p && p.hits && p.hits.length ? p.hits.slice(0, 3).map(h => `${esc(h[0])} ${h[3]} (${h[4]})`).join(' · ') : '';
+    const hits = p && p.hits && p.hits.length ? p.hits.filter(h => h[2] === 'pts').slice(0, 3).map(h => `${esc(h[0])} ${h[3]} (${h[4]})`).join(' · ') : '';
     return `<tr><td class="l num">${etFmt(g.tip, {month: 'short', day: 'numeric'})}</td><td class="l"><b>${esc(g.matchup)}</b><small>final ${esc(away)} ${g.score[0]}, ${esc(home)} ${g.score[1]}</small></td>
       <td class="num">${x ? `${fm(x.m[1], away, home)}${mk(Math.abs(x.m[1] - x.am) <= NEAR_GAME)}<small>${fm(x.am, away, home)}</small>` : '<span class="muted">none</span>'}</td>
       <td class="num">${x ? `${x.t[1].toFixed(1)}${mk(Math.abs(x.t[1] - x.at) <= NEAR_GAME)}<small>${x.at}</small>` : '<span class="muted">none</span>'}</td>
@@ -5799,9 +5808,65 @@ function renderNearRecord(){
   $('tnearl').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="The Vault line's margin before tip, and the final margin below it">Vault margin</th><th scope="col" title="The Vault line's total before tip, and the final total below it">Vault total</th><th scope="col" title="Prop projections within ${np} of the box score">Props within ${np}</th><th class="l" scope="col" title="Points projections within ${np}: projection (actual)">Points nailed</th></tr></thead><tbody>${rows}</tbody>`;
   $('tnearmore').hidden = G.length <= nearRec.limit;
   $('tnearmore').innerHTML = `<button class="btn" id="tnearmorebtn" type="button">Show all ${G.length.toLocaleString()}</button>`;
+  renderNearNight(d, np, byG);
+  renderNearMatrix(P, np);
   $('tnearnote').textContent = `Regular season only, newest first; ✓ marks a number within ${NEAR_GAME} points. Game lines use the last pre-tip simulation of each number. Props are each prop's last projection before tip, on players who played; props on teams the roster guard held are left out, since their minutes were not trusted. The line is a fair yardstick for the average miss; its hit rate is close but not identical, because a line always sits on a half point. No goal is set: this tracks how close the numbers come, not whether they beat the market.`;
 }
-$('tnearcard').addEventListener('click', ev => { if (ev.target.closest('#tnearmorebtn')){ nearRec.limit = 1e6; renderNearRecord(); } });
+// Season matrix: stat x where the line came from x which side of it the projection sat. Cell = share within near_prop, count, average miss.
+// In green: the cell with NEAR_X_MIN+ props where the projection's rate beats the line's by the most (a raw best rate would point at pick'em
+// lines on low-volume players, where any number lands within 1). A description, not a bet signal.
+const NEAR_X_MIN = 30, NEAR_XCOLS = [['books|o', 'Over', 'Sportsbooks'], ['books|u', 'Under', 'Sportsbooks'], ['pickem|o', 'Over', "Pick'em"], ['pickem|u', 'Under', "Pick'em"]];
+function renderNearMatrix(P, np){
+  const cell = (s, k) => P.reduce((a, g) => { const c = g.x && g.x[s] && g.x[s][k]; return c ? [a[0] + c[0], a[1] + c[1], a[2] + c[2], a[3] + (c[3] || 0)] : a; }, [0, 0, 0, 0]);
+  const rows = SIMS.map(s => [s, NEAR_XCOLS.map(([k]) => cell(s, k))]);
+  if (!rows.some(([, cs]) => cs.some(c => c[0]))){ $('tnearx').innerHTML = `<tbody><tr><td class="l"><p class="empty">Fills in once the next settle stores the split by line and side.</p></td></tr></tbody>`; $('tnearxsub').textContent = ''; return; }
+  const tot = NEAR_XCOLS.map((_, i) => rows.reduce((a, [, cs]) => a.map((v, j) => v + cs[i][j]), [0, 0, 0, 0]));
+  const lift = c => (c[1] - c[3]) / c[0], best = Math.max(...rows.flatMap(([, cs]) => cs.filter(c => c[0] >= NEAR_X_MIN).map(lift)));
+  const td = (c, mark) => { const top = mark && c[0] >= NEAR_X_MIN && best > 0 && lift(c) === best; return c[0] ? `<td class="num"><b${top ? ' class="pos"' : ''}>${pc(c[1] / c[0], 0)}</b>${top ? '<small class="pos">beats the line most</small>' : ''}<small>${c[1].toLocaleString()} of ${c[0].toLocaleString()} · miss ${(c[2] / c[0]).toFixed(2)}</small><small>line ${pc(c[3] / c[0], 0)}</small></td>` : `<td class="num"><span class="muted">none</span><small>0 props</small></td>`; };
+  $('tnearx').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th>${NEAR_XCOLS.map(([, side, src]) => `<th scope="col">${side}<br><small>${src}</small></th>`).join('')}</tr></thead><tbody>${rows.map(([s, cs]) => `<tr><td class="l"><b>${PS_LBL[s]}</b></td>${cs.map(c => td(c, true)).join('')}</tr>`).join('')}<tr class="tot"><td class="l"><b>All four</b></td>${tot.map(c => td(c, false)).join('')}</tr></tbody>`;
+  $('tnearxsub').textContent = `Share of projections within ${np} of the box score, all season. Columns: where the main line came from (sportsbooks, or a pick'em app when no book posted one), and whether our projection sat over or under it. Under each cell, the line's own rate on the same props: beating it is what counts. Pick'em apps post lines on low-volume players (0.5 threes, 1.5 assists), where landing within ${np} is easy for any number, so their columns read high for both. In green: the cell with ${NEAR_X_MIN}+ props where our projection beats the line by the most. Small cells move a lot from night to night.`;
+}
+// One night: every game line (Vault line, players' sum) within NEAR_GAME of the final, and every prop projection within near_prop, closest first.
+function renderNearNight(d, np, byG){
+  const days = [...new Set([...Object.keys((d && d.sim_days) || {}), ...Object.keys((d && d.near_days) || {})])].sort().reverse();
+  if (!days.length){ $('tnearday').innerHTML = ''; $('tnightsub').textContent = ''; $('tnightg').innerHTML = ''; $('tnightp').innerHTML = ''; $('tnightmore').hidden = true; return; }
+  if (!days.includes(nearRec.day)) nearRec.day = days[0];
+  const day = nearRec.day, nice = k => new Date(k + 'T12:00:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'});
+  $('tnearday').innerHTML = days.map((k, i) => `<option value="${k}"${k === day ? ' selected' : ''}>${nice(k)}${i === 0 ? ' (latest night)' : ''}</option>`).join('');
+  $('tnearsf').value = nearRec.stat;
+  const games = ((d.sim_days || {})[day] || []).slice().sort((a, b) => a.tip - b.tip), props = (d.near_days || {})[day] || [];
+  const fm = (m, away, home) => m === 0 ? 'tie' : m > 0 ? `${esc(home)} by ${(+m.toFixed(1))}` : `${esc(away)} by ${(+(-m).toFixed(1))}`;
+  const gh = [];
+  for (const g of games){
+    const [away, home] = String(g.matchup).split(' @ ');
+    for (const [env, l] of [['vault', 'Vault line'], ['players', "Players' own sum"]]){
+      const x = g.env[env]; if (!x) continue;
+      if (Math.abs(x.m[1] - x.am) <= NEAR_GAME) gh.push([g, l, 'Margin', fm(x.m[1], away, home), fm(x.am, away, home), Math.abs(x.m[1] - x.am)]);
+      if (Math.abs(x.t[1] - x.at) <= NEAR_GAME) gh.push([g, l, 'Total', x.t[1].toFixed(1), x.at, Math.abs(x.t[1] - x.at)]);
+    }
+  }
+  const H = props.flatMap(p => (p.hits || []).map(h => ({h, p}))).filter(x => nearRec.stat === 'all' || x.h[2] === nearRec.stat).sort((a, b) => Math.abs(a.h[3] - a.h[4]) - Math.abs(b.h[3] - b.h[4]));
+  const pn = props.reduce((a, p) => SIMS.reduce((b, s) => p.s[s] && (nearRec.stat === 'all' || s === nearRec.stat) ? [b[0] + p.s[s][0], b[1] + p.s[s][1]] : b, a), [0, 0]);
+  const vg = games.filter(g => g.env.vault && (Math.abs(g.env.vault.m[1] - g.env.vault.am) <= NEAR_GAME || Math.abs(g.env.vault.t[1] - g.env.vault.at) <= NEAR_GAME)).length;
+  $('tnightsub').textContent = `${nice(day)}: the Vault line had the margin or total within ${NEAR_GAME} in ${vg} of ${games.length} ${games.length === 1 ? 'game' : 'games'}; ${pn[0] ? `${pn[1]} of ${pn[0]} ${nearRec.stat === 'all' ? '' : PS_LBL[nearRec.stat].toLowerCase() + ' '}prop projections landed within ${np}` : 'no props scored that night'}.`;
+  $('tnightg').innerHTML = gh.length
+    ? `<thead><tr><th class="l" scope="col">Game</th><th class="l" scope="col">Number</th><th class="l" scope="col">Line</th><th scope="col">Before tip</th><th scope="col">Final</th><th scope="col">Miss</th></tr></thead><tbody>${gh.map(([g, l, k, pre, fin, miss]) => `<tr><td class="l"><b>${esc(g.matchup)}</b><small>final ${esc(String(g.matchup).split(' @ ')[0])} ${g.score[0]}, ${esc(String(g.matchup).split(' @ ')[1])} ${g.score[1]}</small></td><td class="l">${l}</td><td class="l">${k}</td><td class="num">${pre}</td><td class="num">${fin}</td><td class="num"><b class="pos">${miss.toFixed(1)}</b></td></tr>`).join('')}</tbody>`
+    : `<tbody><tr><td class="l"><p class="empty">No game line landed within ${NEAR_GAME} points that night.</p></td></tr></tbody>`;
+  const shown = H.slice(0, nearRec.plimit);
+  $('tnightp').innerHTML = H.length
+    ? `<thead><tr><th class="l" scope="col">Player</th><th class="l" scope="col">Stat</th><th scope="col">Projection</th><th scope="col">Actual</th><th scope="col">Miss</th><th scope="col" title="The main line before tip">Line</th></tr></thead><tbody>${shown.map(({h, p}) => `<tr><td class="l"><b>${esc(h[0])}</b><small>${esc(h[1])} · ${esc(p.matchup)}</small></td><td class="l">${PS_LBL[h[2]] || h[2]}</td><td class="num">${h[3]}</td><td class="num">${h[4]}</td><td class="num"><b class="pos">${Math.abs(h[3] - h[4]).toFixed(1)}</b></td><td class="num">${h[5] ?? ''}</td></tr>`).join('')}</tbody>`
+    : `<tbody><tr><td class="l"><p class="empty">${props.length ? `No ${nearRec.stat === 'all' ? '' : PS_LBL[nearRec.stat].toLowerCase() + ' '}projection landed within ${np} that night.` : 'No props scored that night yet.'}</p></td></tr></tbody>`;
+  $('tnightmore').hidden = H.length <= nearRec.plimit;
+  $('tnightmore').innerHTML = `<button class="btn" id="tnightmorebtn" type="button">Show all ${H.length.toLocaleString()}</button>`;
+}
+$('tnearcard').addEventListener('click', ev => {
+  if (ev.target.closest('#tnearmorebtn')){ nearRec.limit = 1e6; renderNearRecord(); }
+  if (ev.target.closest('#tnightmorebtn')){ nearRec.plimit = 1e6; renderNearRecord(); }
+});
+$('tnearcard').addEventListener('change', ev => {
+  if (ev.target.id === 'tnearday'){ nearRec.day = ev.target.value; nearRec.plimit = 25; renderNearRecord(); }
+  if (ev.target.id === 'tnearsf'){ nearRec.stat = ev.target.value; nearRec.plimit = 25; renderNearRecord(); }
+});
 // ── Novig paper trading (novig_paper.py → track.json novig_days) ───────────────────────────────────────────────────
 // A simulator: resting orders at our price on Novig's prop books, filled only when the public tape shows the market trading at or through us, settled
 // from the box score. Fill assumptions are kept apart (touch / thru) and never mixed. Fee is a placeholder until Novig's schedule is confirmed.
