@@ -179,6 +179,9 @@ function Budget({ rows, total, onFit, note }) {
 function LabView(p) {
   const pal = usePal(THEME); const w = useWidth(); const narrow = w < 900;
   const [more, setMore] = useState(false);
+  // The budget note belongs to the game-day minutes the Lab started from. Keep it through edits so the first
+  // stepper click does not pull a line out of the box and snap everything below it up 26px.
+  const base = useRef(null); if (p.mode === 'tonight' || p.mode === 'season') base.current = p.mode;
   const L = p.lineup, byId = new Map(p.rows.map(r => [r.id, r]));
   const starters = (L ? L.ids.map(id => byId.get(id)).filter(Boolean) : p.rows.slice(0, Math.min(5, p.nAct))).sort((a, b) => b.base - a.base || b.min - a.min);
   const sid = new Set(starters.map(r => r.id));
@@ -203,7 +206,7 @@ function LabView(p) {
           </div>
           <span className="ml-modet">{p.mode === 'tonight' ? <>Game-day minutes for <b>{p.tonightLabel}</b>: injuries, lineup, rest and blowout risk applied.</> : p.mode === 'season' ? <>The usual season-start projection, with no game-day news.</> : <>Your edits. Pick a button to start over from it.</>}</span>
         </div>}
-        <Budget rows={p.rows} total={total} onFit={p.onFit} note={p.mode === 'tonight' ? "The model's expected minutes add up to more than 240 because every player who might play is counted. Trim to 240 for one game's worth." : ''} />
+        <Budget rows={p.rows} total={total} onFit={p.onFit} note={p.mode === 'tonight' || (p.mode === 'edited' && base.current === 'tonight') ? "The model's expected minutes add up to more than 240 because every player who might play is counted. Trim to 240 for one game's worth." : ''} />
         <div className="ml-kp">
           <div><small>Team points per 240</small><b>{pts.val}</b>{pts.delta != null && Math.abs(pts.delta) >= .05 ? <i className={pts.delta > 0 ? 'pos' : 'neg'}>{pts.delta > 0 ? '+' : ''}{pts.delta.toFixed(1)}</i> : <i>vs projection: same</i>}</div>
           <div><small>Top scorer</small><b>{top.val}</b><i>{top.hint}</i></div>
