@@ -2610,6 +2610,13 @@ th{font-weight:500}
           <h3 class="sim-h">Where it lands: by stat, line and side</h3>
           <p class="hint" id="tnearxsub"></p>
           <div class="tablewrap"><table class="ht tsim" id="tnearx"></table></div>
+          <h3 class="sim-h">Where our side wins</h3>
+          <div class="filters"><select class="sel" id="tnearedim" aria-label="Split"><option value="ss">By line and side</option><option value="gap">By how far we sat off the line</option><option value="role">Starters and bench</option><option value="min">Minutes we got right or wrong</option><option value="pe">Model chance over the price</option></select><select class="sel" id="tnearestat" aria-label="Stat"><option value="all">All four stats</option><option value="pts">Points</option><option value="reb">Rebounds</option><option value="ast">Assists</option><option value="3pm">3-pointers</option></select></div>
+          <p class="hint" id="tnearesub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tneare"></table></div>
+          <h3 class="sim-h">Forward test: four pockets, frozen Nov 2</h3>
+          <p class="hint" id="tnearfwsub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tnearfw"></table></div>
           <h3 class="sim-h">Prop projections, within 1</h3>
           <div class="tablewrap"><table class="ht tsim" id="tnearp"></table></div>
           <h3 class="sim-h">Every game</h3>
@@ -5321,7 +5328,7 @@ function simJoint(G, c){
 // ── Near-exact calls (game lines from sim_days, prop projections from near_record.py → track.json near_days) ─────────────────────────
 // A game margin or total is NEAR when the pre-tip number lands within NEAR_GAME points of the final; a prop projection when it lands within
 // track.json near_prop (1) of the box score. Every number here was stored before tip; nothing is rebuilt from today's model.
-const nearRec = {limit: 15, day: null, stat: 'all', plimit: 25};
+const nearRec = {limit: 15, day: null, stat: 'all', plimit: 25, edim: 'ss', estat: 'all'};
 const NEAR_GAME = 3, NEAR_ENVS = [['vault', 'Vault line', 'The game model (Game Picks): team ratings, home court, rest and who is out'], ['players', "Players' own sum", "The simulation built from each player's projection, added up"], ['market', 'The books', "The sportsbook spread and total, simulated the same way. The yardstick, not ours"]];
 function renderNearRecord(){
   const d = TR && TR.data, np = (d && d.near_prop) || 1;
@@ -5362,6 +5369,7 @@ function renderNearRecord(){
   $('tnearmore').innerHTML = `<button class="btn" id="tnearmorebtn" type="button">Show all ${G.length.toLocaleString()}</button>`;
   renderNearNight(d, np, byG);
   renderNearMatrix(P, np);
+  renderNearEdge(P, np);
   $('tnearnote').textContent = `Regular season only, newest first; ✓ marks a number within ${NEAR_GAME} points. Game lines use the last pre-tip simulation of each number. Props are each prop's last projection before tip, on players who played; props on teams the roster guard held are left out, since their minutes were not trusted. The line is a fair yardstick for the average miss; its hit rate is close but not identical, because a line always sits on a half point. No goal is set: this tracks how close the numbers come, not whether they beat the market.`;
 }
 // Season matrix: stat x where the line came from x which side of it the projection sat. Cell = share within near_prop, count, average miss.
@@ -5377,6 +5385,55 @@ function renderNearMatrix(P, np){
   const td = (c, mark) => { const top = mark && c[0] >= NEAR_X_MIN && best > 0 && lift(c) === best; return c[0] ? `<td class="num"><b${top ? ' class="pos"' : ''}>${pc(c[1] / c[0], 0)}</b>${top ? '<small class="pos">beats the line most</small>' : ''}<small>${c[1].toLocaleString()} of ${c[0].toLocaleString()} · miss ${(c[2] / c[0]).toFixed(2)}</small><small>line ${pc(c[3] / c[0], 0)}</small></td>` : `<td class="num"><span class="muted">none</span><small>0 props</small></td>`; };
   $('tnearx').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th>${NEAR_XCOLS.map(([, side, src]) => `<th scope="col">${side}<br><small>${src}</small></th>`).join('')}</tr></thead><tbody>${rows.map(([s, cs]) => `<tr><td class="l"><b>${PS_LBL[s]}</b></td>${cs.map(c => td(c, true)).join('')}</tr>`).join('')}<tr class="tot"><td class="l"><b>All four</b></td>${tot.map(c => td(c, false)).join('')}</tr></tbody>`;
   $('tnearxsub').textContent = `Share of projections within ${np} of the box score, all season. Columns: where the main line came from (sportsbooks, or a pick'em app when no book posted one), and whether our projection sat over or under it. Under each cell, the line's own rate on the same props: beating it is what counts. Pick'em apps post lines on low-volume players (0.5 threes, 1.5 assists), where landing within ${np} is easy for any number, so their columns read high for both. In green: the cell with ${NEAR_X_MIN}+ props where our projection beats the line by the most. Small cells move a lot from night to night.`;
+}
+// Where the projection's side wins (near_record.py 'e'): props with the projection off the line and no push, split one way at a time. Won = the
+// result landed on our side; return = 1 unit at the stored no-vig price, before any book's cut; break-even = the average no-vig chance of our side.
+// Rows under NEAR_E_MIN props stay grey. A description of where the lean has landed, not a bet signal.
+const NEAR_E_MIN = 100;
+const NEAR_E = {
+  ss: {order: ['o|books', 'u|books', 'o|pickem', 'u|pickem'], lbl: k => { const [sd, src] = k.split('|'); return `${sd === 'o' ? 'Over' : 'Under'}<small>${src === 'pickem' ? "Pick'em line" : 'Sportsbook line'}</small>`; },
+    why: 'Whether our projection sat over or under the line, and where the line came from.'},
+  gap: {order: ['0-0.5', '0.5-1', '1-2', '2-3', '3+'], lbl: k => `${k} off the line`,
+    why: 'How far our projection sat from the line. Bigger disagreements have not won more: when we are far off, the line has usually been closer.'},
+  role: {order: ['starter|o', 'starter|u', 'bench|o', 'bench|u'], lbl: k => { const [r, sd] = k.split('|'); return `${r === 'starter' ? 'Starter' : 'Bench'}<small>${sd === 'o' ? 'over' : 'under'}</small>`; },
+    why: 'Starters from the box score; starting lineups post about 30 minutes before tip.'},
+  min: {order: ['right', 'short', 'long'], lbl: k => ({right: 'Minutes within 6<small>of our projection</small>', short: 'Played 6+ fewer<small>than we projected</small>', long: 'Played 6+ more<small>than we projected</small>'})[k],
+    why: 'Known only after the game, so it is a diagnosis, not something to bet on: it shows how much of the record rides on getting the minutes right.'},
+  pe: {order: ['<0', '0-3', '3-6', '6-10', '10+'], lbl: k => k === '<0' ? 'Model below the price<small>on our own side</small>' : `Model ${k} points over<small>the price's no-vig chance</small>`,
+    why: "Our model's chance of our side minus the price's no-vig chance of it. If the model's confidence meant something, the rows would climb."},
+};
+const nearSum = (P, test) => P.reduce((a, g) => Object.entries(g.e || {}).reduce((b, [k, c]) => { const t = test(k); if (t == null) return b; const r = b[t] || (b[t] = [0, 0, 0, 0, 0, 0, 0]); c.forEach((v, i) => r[i] += v); return b; }, a), {});
+const nearCells = (c, grey, short) => { const ret = c[3] ? c[2] / c[3] : null, cls = grey || ret == null ? '' : ret > 0 ? 'pos' : 'neg';
+  return `<td class="num">${c[0].toLocaleString()}</td><td class="num">${pc(c[1] / c[0], 1)}<small>${c[1].toLocaleString()} won</small></td><td class="num">${c[3] ? pc(c[4] / c[3], 1) : ''}</td><td class="num">${ret == null ? '<span class="muted">no price</span>' : `<b${cls ? ` class="${cls}"` : ''}>${ret > 0 ? '+' : ''}${pc(ret, 1)}</b>`}</td>${short ? '' : `<td class="num">${pc(c[5] / c[0], 0)}</td><td class="num">${pc(c[6] / c[0], 0)}</td>`}`; };
+const NEAR_E_HEAD = (np, short) => `<th scope="col">Props</th><th scope="col" title="The result landed on the side of the line our projection sat">Side won</th><th scope="col" title="The average no-vig chance of our side in the stored price: the win rate needed to break even">Break-even</th><th scope="col" title="1 unit on our side at the stored no-vig price, per unit. Before any book's cut, so the best case">No-vig return</th>${short ? '' : `<th scope="col">Projection within ${np}</th><th scope="col">Line within ${np}</th>`}`;
+function renderNearEdge(P, np){
+  const D = NEAR_E[nearRec.edim], st = nearRec.estat;
+  $('tnearedim').value = nearRec.edim; $('tnearestat').value = st;
+  const A = nearSum(P, k => { const [dim, s, ...rest] = k.split('|'); return dim === nearRec.edim && (st === 'all' || s === st) ? rest.join('|') : null; });
+  const rows = D.order.filter(k => A[k] && A[k][0]);
+  const tot = rows.reduce((a, k) => a.map((v, i) => v + A[k][i]), [0, 0, 0, 0, 0, 0, 0]);
+  if (!tot[0]){ $('tneare').innerHTML = `<tbody><tr><td class="l"><p class="empty">Fills in once the next settle stores which side won.</p></td></tr></tbody>`; $('tnearesub').textContent = ''; }
+  else {
+    $('tneare').innerHTML = `<thead><tr><th class="l" scope="col">Split</th>${NEAR_E_HEAD(np)}</tr></thead><tbody>${rows.map(k => `<tr${A[k][0] < NEAR_E_MIN ? ' class="muted"' : ''}><td class="l"><b>${D.lbl(k)}</b></td>${nearCells(A[k], A[k][0] < NEAR_E_MIN)}</tr>`).join('')}<tr class="tot"><td class="l"><b>${st === 'all' ? 'All four stats' : PS_LBL[st]}</b></td>${nearCells(tot, false)}</tr></tbody>`;
+    $('tnearesub').textContent = `${D.why} Side won: the result landed on the side of the line our projection sat (pushes and projections right on the line left out). No-vig return is 1 unit at the stored price with the book's cut taken out, so a real bet does worse: about 4.5 points worse at -110 on both sides. Rows under ${NEAR_E_MIN} props are grey. About 80 splits were looked at to pick the forward-test pockets below, so some of these rows are luck.`;
+  }
+  renderNearForward(P);
+}
+// The four pockets frozen Nov 2, 2026 (near_record.py FORWARD, nba/docs/near-edge-forward-prereg.md). Scored on props that tip on or after
+// NEAR_FW.from only, read on NEAR_FW.read: PASS needs a no-vig return above NEAR_FW.ret and the 90% Wilson low of the win rate above break-even.
+const NEAR_FW = {from: '2026-11-03', read: '2026-12-01', ret: .045, z: 1.645, pockets: [
+  ['ast_u_books', 'Assist unders', 'Sportsbook line', '59.6% won, +11.2% on 280'],
+  ['3pm_o_books', '3-pointer overs', 'Sportsbook line', '56.1% won, +9.4% on 326'],
+  ['reb_gap_1_2', 'Rebounds, 1 to 2 off the line', 'Either side, any line', '61.1% won, +13.1% on 149'],
+  ['starter_u', 'Starter unders', 'Any stat, any line', '57.0% won, +6.2% on 1,208']]};
+function renderNearForward(P){
+  const A = nearSum(P, k => k.startsWith('fw|') ? k.slice(3) : null), read = new Date().toISOString().slice(0, 10) >= NEAR_FW.read;
+  const lo = (k, n) => { if (!n) return 0; const z = NEAR_FW.z, p = k / n, d = 1 + z * z / n; return (p + z * z / (2 * n) - z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / d; };
+  const verdict = c => { if (!c || !c[0]) return '<span class="muted">no props yet</span>'; if (!read) return '<span class="muted">reading Dec 1</span>';
+    return c[3] && c[2] / c[3] > NEAR_FW.ret && lo(c[1], c[0]) > c[4] / c[3] ? '<b class="pos">Pass</b>' : '<b class="neg">Fail</b>'; };
+  $('tnearfw').innerHTML = `<thead><tr><th class="l" scope="col">Pocket</th><th class="l" scope="col" title="Oct 21 to Nov 1, where the pocket was found">Found on</th>${NEAR_E_HEAD(1, true)}<th scope="col">Result</th></tr></thead><tbody>${NEAR_FW.pockets.map(([id, l, sub, was]) => { const c = A[id];
+    return `<tr><td class="l"><b>${l}</b><small>${sub}</small></td><td class="l"><small>${was}</small></td>${c && c[0] ? nearCells(c, true, true) : '<td class="num">0</td><td></td><td></td><td></td>'}<td class="num">${verdict(c)}</td></tr>`; }).join('')}</tbody>`;
+  $('tnearfwsub').textContent = `Four splits that led after the first 12 nights, frozen before any game they score. Only props that tip on or after Nov 3 count, so the nights that picked them cannot flatter them. Read on Dec 1: a pocket passes if its no-vig return is above +4.5% (roughly a book's cut at -110) and its win rate is clearly above break-even (90% lower bound). A pass makes it a candidate for its own test on prices actually offered, not a bet.`;
 }
 // One night: every game line (Vault line, players' sum) within NEAR_GAME of the final, and every prop projection within near_prop, closest first.
 function renderNearNight(d, np, byG){
@@ -5418,6 +5475,7 @@ $('tnearcard').addEventListener('click', ev => {
 $('tnearcard').addEventListener('change', ev => {
   if (ev.target.id === 'tnearday'){ nearRec.day = ev.target.value; nearRec.plimit = 25; renderNearRecord(); }
   if (ev.target.id === 'tnearsf'){ nearRec.stat = ev.target.value; nearRec.plimit = 25; renderNearRecord(); }
+  if (ev.target.id === 'tnearedim' || ev.target.id === 'tnearestat'){ nearRec[ev.target.id === 'tnearedim' ? 'edim' : 'estat'] = ev.target.value; renderNearEdge(TR && TR.data && TR.data.near_days ? Object.values(TR.data.near_days).flat() : [], (TR && TR.data && TR.data.near_prop) || 1); }
 });
 // ── Novig paper trading (novig_paper.py → track.json novig_days) ───────────────────────────────────────────────────
 // A simulator: resting orders at our price on Novig's prop books, filled only when the public tape shows the market trading at or through us, settled
