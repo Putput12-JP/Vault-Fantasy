@@ -2637,7 +2637,7 @@ th{font-weight:500}
     <main id="v-track" hidden>
       <section class="card tscore" id="tscore" aria-label="Season record"></section>
 
-      <details class="card tfold" id="tgamecard" open>
+      <details class="card tfold" id="tgamecard">
         <summary><span class="tf-t"><b>Game picks: spread and winner</b><small id="tgamestat">The Vault line's side on every regular-season game</small></span></summary>
         <div class="card-b">
           <p class="hint tplain" id="tgamesub"></p>
@@ -2659,7 +2659,7 @@ th{font-weight:500}
         </div>
       </details>
 
-      <details class="card tfold" id="tleancard" open>
+      <details class="card tfold" id="tleancard">
         <summary><span class="tf-t"><b>Model side vs the line</b><small id="tleanstat">The side the model prefers on every prop, edge or not</small></span></summary>
         <div class="card-b">
           <p class="hint tplain" id="tleansub"></p>
@@ -2680,7 +2680,7 @@ th{font-weight:500}
         </div>
       </details>
 
-      <details class="card tfold" id="theldcard" open hidden>
+      <details class="card tfold" id="theldcard" hidden>
         <summary><span class="tf-t"><b>Held by the roster guard, not bets</b><small id="theldstat">Props the model priced on teams it does not trust yet, settled anyway</small></span></summary>
         <div class="card-b">
           <p class="hint tplain" id="theldsub"></p>
@@ -2706,10 +2706,10 @@ th{font-weight:500}
         <div class="card-b"><dl class="tgloss" id="tgloss"></dl></div>
       </details>
 
-      <section class="card" id="tplays">
-        <div class="card-h"><div><h2>Plays: GO and WATCH</h2><p id="tplayssub"></p></div></div>
+      <details class="card tfold" id="tplays">
+        <summary><span class="tf-t"><b>Plays: GO and WATCH</b><small id="tplayssub"></small></span></summary>
         <div class="card-b"><div class="tpicks" id="tplaylist"></div><div class="more" id="tplaymore" hidden></div></div>
-      </section>
+      </details>
 
       <details class="card tfold" id="tnogo">
         <summary><span class="tf-t"><b>NO-GO, for the record</b><small id="tnogosub">Picks the model itself says not to bet</small></span></summary>
@@ -2758,6 +2758,21 @@ th{font-weight:500}
       </details>
 
       <div class="tsec"><h2>Model checks</h2><p>These test the models, not bets. They are scored on their own terms and ignore every filter.</p></div>
+
+      <details class="card tfold" id="tnearcard">
+        <summary><span class="tf-t"><b>Near-exact calls</b><small id="tnearstat">How often a game line lands within 3 points and a prop projection within 1</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain">Not a bet record. Before each game we write down the Vault line's margin and total, the simulation's, and every prop projection. After the final we count how often each one landed almost exactly on the result: a game margin or total within 3 points, a prop (points, rebounds, assists, 3-pointers) within 1. The sportsbooks' own numbers sit beside ours as the yardstick, scored the same way.</p>
+          <div class="kpis" id="tneark"></div>
+          <h3 class="sim-h">Game lines, within 3 points</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tnearg"></table></div>
+          <h3 class="sim-h">Prop projections, within 1</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tnearp"></table></div>
+          <h3 class="sim-h">Every game</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tnearl"></table></div>
+          <div class="more" id="tnearmore" hidden></div>
+          <p class="hint" id="tnearnote"></p></div>
+      </details>
 
       <details class="card tfold" id="tsimcard">
         <summary><span class="tf-t"><b>Game simulations</b><small id="tsimstat">Does the real score land inside the simulated range?</small></span></summary>
@@ -5591,7 +5606,6 @@ $('v-track').addEventListener('click', e => {
   const m = e.target.closest('[data-pkmore]'); if (m){ tplim[m.dataset.pkmore] = 1e9; renderTrackTop(TR.data, cubeRows()); return; }
   const g = e.target.closest('[data-go]'); if (g) goView(g.dataset.go);
 });
-$('tsigcard').open = window.innerWidth > 760;
 
 function renderTrack(){
   const d = TR && TR.data, all = cubeRows();
@@ -5706,6 +5720,7 @@ function renderTrack(){
   renderLeans();
   renderHeldRecord();
   renderNovigPaper();
+  renderNearRecord();
 
   $('tfoot').innerHTML = `
     <div><b>What is logged:</b> every price the Props page shows at ${Math.round(((d && d.edge_min) || EDGE_MIN) * 100)}%+ edge, on every venue: Kalshi rungs, sportsbooks, Polymarket and pick'em apps (same projection, minutes with Outs applied, calibration, blend and fees, computed by <code>scripts/pricing.py</code>), for games within 24 hours, from the first recorder poll it reached that edge. Each rung is its own bet, as in the backtest.</div>
@@ -5743,6 +5758,50 @@ function simJoint(G, c){
   const verdict = !enough ? 'collecting' : opp ? (Math.abs(zb) < 2 ? 'OK' : 'NO-GO') : (Math.abs(zb) < 2 && zg >= 2 ? 'GO' : 'NO-GO');
   return {games: rows.length, pairs: n, obs: sum(1), sim: sum(2), ind: sum(3), zb, zg, verdict};
 }
+// ── Near-exact calls (game lines from sim_days, prop projections from near_record.py → track.json near_days) ─────────────────────────
+// A game margin or total is NEAR when the pre-tip number lands within NEAR_GAME points of the final; a prop projection when it lands within
+// track.json near_prop (1) of the box score. Every number here was stored before tip; nothing is rebuilt from today's model.
+const nearRec = {limit: 15};
+const NEAR_GAME = 3, NEAR_ENVS = [['vault', 'Vault line', 'The game model (Game Picks): team ratings, home court, rest and who is out'], ['players', "Players' own sum", "The simulation built from each player's projection, added up"], ['market', 'The books', "The sportsbook spread and total, simulated the same way. The yardstick, not ours"]];
+function renderNearRecord(){
+  const d = TR && TR.data, np = (d && d.near_prop) || 1;
+  const G = simGames(), P = d && d.near_days ? Object.values(d.near_days).flat() : [], byG = new Map(P.map(g => [String(g.game), g]));
+  const gs = env => G.filter(g => g.env[env]).map(g => { const x = g.env[env], em = Math.abs(x.m[1] - x.am), et = Math.abs(x.t[1] - x.at); return {em, et, m: em <= NEAR_GAME, t: et <= NEAR_GAME}; });
+  const sumS = s => P.reduce((a, g) => g.s[s] ? a.map((v, i) => v + g.s[s][i]) : a, [0, 0, 0, 0, 0]);
+  const S = Object.fromEntries(SIMS.map(s => [s, sumS(s)])), all = SIMS.reduce((a, s) => a.map((v, i) => v + S[s][i]), [0, 0, 0, 0, 0]);
+  const V = gs('vault'), B = gs('market'), cnt = (xs, k) => xs.filter(x => x[k]).length;
+  $('tnearstat').textContent = G.length || all[0] ? `${V.length.toLocaleString()} games and ${all[0].toLocaleString()} props scored` : 'Nothing scored yet';
+  if (!G.length && !all[0]){
+    $('tneark').innerHTML = ''; $('tnearg').innerHTML = ''; $('tnearp').innerHTML = ''; $('tnearl').innerHTML = `<tbody><tr><td class="l"><p class="empty">No games scored yet. Each game is scored about 3 hours after tip.</p></td></tr></tbody>`;
+    $('tnearmore').hidden = true; $('tnearnote').textContent = ''; return;
+  }
+  const of = (k, n) => n ? `${k.toLocaleString()} of ${n.toLocaleString()}` : 'none yet', rate = (k, n) => n ? pc(k / n, 0) : 'none';
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('tneark').innerHTML =
+    kpi('Margin within 3', ICON.edit, rate(cnt(V, 'm'), V.length), `Vault line: ${of(cnt(V, 'm'), V.length)} games. The books: ${rate(cnt(B, 'm'), B.length)}.`) +
+    kpi('Total within 3', ICON.pts, rate(cnt(V, 't'), V.length), `Vault line: ${of(cnt(V, 't'), V.length)} games. The books: ${rate(cnt(B, 't'), B.length)}.`) +
+    kpi('Props within 1', ICON.star, rate(all[1], all[0]), `${of(all[1], all[0])} projections, all four stats. The line on the same props: ${rate(all[3], all[0])}.`) +
+    kpi('Points within 1', ICON.clock, rate(S.pts[1], S.pts[0]), `${of(S.pts[1], S.pts[0])} points projections, the hardest stat to nail. The line: ${rate(S.pts[3], S.pts[0])}.`);
+  const avg = (xs, k) => xs.length ? (xs.reduce((a, x) => a + x[k], 0) / xs.length).toFixed(1) : '';
+  $('tnearg').innerHTML = `<thead><tr><th class="l" scope="col">Number</th><th scope="col">Games</th><th scope="col" title="Final home margin within 3 points of the number">Margin within 3</th><th scope="col" title="Final total within 3 points of the number">Total within 3</th><th scope="col">Both</th><th scope="col" title="Average distance from the final margin, points">Avg miss, margin</th><th scope="col" title="Average distance from the final total, points">Avg miss, total</th></tr></thead><tbody>${NEAR_ENVS.map(([env, l, why]) => { const X = gs(env);
+    return `<tr><td class="l"><b>${l}</b><small>${why}</small></td><td class="num">${X.length}</td><td class="num">${rate(cnt(X, 'm'), X.length)}<small>${cnt(X, 'm')}</small></td><td class="num">${rate(cnt(X, 't'), X.length)}<small>${cnt(X, 't')}</small></td><td class="num">${X.filter(x => x.m && x.t).length}</td><td class="num">${avg(X, 'em')}</td><td class="num">${avg(X, 'et')}</td></tr>`; }).join('')}</tbody>`;
+  const prow = (l, a) => `<tr><td class="l"><b>${l}</b></td><td class="num">${a[0].toLocaleString()}</td><td class="num">${rate(a[1], a[0])}<small>${a[1].toLocaleString()}</small></td><td class="num">${a[0] ? (a[2] / a[0]).toFixed(2) : ''}</td><td class="num">${rate(a[3], a[0])}<small>${a[3].toLocaleString()}</small></td><td class="num">${a[0] ? (a[4] / a[0]).toFixed(2) : ''}</td></tr>`;
+  $('tnearp').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="Our projection within ${np} of what he did">Projection within ${np}</th><th scope="col" title="Average distance from what he did">Avg miss</th><th scope="col" title="The main line on the same prop within ${np} of what he did. Lines sit on a half point, so within 1 means landing half a point either side.">Line within ${np}</th><th scope="col">Line avg miss</th></tr></thead><tbody>${SIMS.filter(s => S[s][0]).map(s => prow(PS_LBL[s], S[s])).join('')}${prow('All four', all).replace('<tr>', '<tr class="tot">')}</tbody>`;
+  const fm = (m, away, home) => m === 0 ? 'tie' : m > 0 ? `${esc(home)} by ${(+m.toFixed(1))}` : `${esc(away)} by ${(+(-m).toFixed(1))}`;
+  const mk = ok => ok ? ' <b class="pos">✓</b>' : '';
+  const rows = G.slice(0, nearRec.limit).map(g => { const [away, home] = String(g.matchup).split(' @ '), x = g.env.vault, p = byG.get(String(g.game));
+    const pa = p ? SIMS.reduce((a, s) => p.s[s] ? [a[0] + p.s[s][0], a[1] + p.s[s][1]] : a, [0, 0]) : null;
+    const hits = p && p.hits && p.hits.length ? p.hits.slice(0, 3).map(h => `${esc(h[0])} ${h[3]} (${h[4]})`).join(' · ') : '';
+    return `<tr><td class="l num">${etFmt(g.tip, {month: 'short', day: 'numeric'})}</td><td class="l"><b>${esc(g.matchup)}</b><small>final ${esc(away)} ${g.score[0]}, ${esc(home)} ${g.score[1]}</small></td>
+      <td class="num">${x ? `${fm(x.m[1], away, home)}${mk(Math.abs(x.m[1] - x.am) <= NEAR_GAME)}<small>${fm(x.am, away, home)}</small>` : '<span class="muted">none</span>'}</td>
+      <td class="num">${x ? `${x.t[1].toFixed(1)}${mk(Math.abs(x.t[1] - x.at) <= NEAR_GAME)}<small>${x.at}</small>` : '<span class="muted">none</span>'}</td>
+      <td class="num">${pa && pa[0] ? `${pa[1]} of ${pa[0]}` : '<span class="muted">none</span>'}</td><td class="l">${hits ? `<small>${hits}</small>` : ''}</td></tr>`; }).join('');
+  $('tnearl').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="The Vault line's margin before tip, and the final margin below it">Vault margin</th><th scope="col" title="The Vault line's total before tip, and the final total below it">Vault total</th><th scope="col" title="Prop projections within ${np} of the box score">Props within ${np}</th><th class="l" scope="col" title="Points projections within ${np}: projection (actual)">Points nailed</th></tr></thead><tbody>${rows}</tbody>`;
+  $('tnearmore').hidden = G.length <= nearRec.limit;
+  $('tnearmore').innerHTML = `<button class="btn" id="tnearmorebtn" type="button">Show all ${G.length.toLocaleString()}</button>`;
+  $('tnearnote').textContent = `Regular season only, newest first; ✓ marks a number within ${NEAR_GAME} points. Game lines use the last pre-tip simulation of each number. Props are each prop's last projection before tip, on players who played; props on teams the roster guard held are left out, since their minutes were not trusted. The line is a fair yardstick for the average miss; its hit rate is close but not identical, because a line always sits on a half point. No goal is set: this tracks how close the numbers come, not whether they beat the market.`;
+}
+$('tnearcard').addEventListener('click', ev => { if (ev.target.closest('#tnearmorebtn')){ nearRec.limit = 1e6; renderNearRecord(); } });
 // ── Novig paper trading (novig_paper.py → track.json novig_days) ───────────────────────────────────────────────────
 // A simulator: resting orders at our price on Novig's prop books, filled only when the public tape shows the market trading at or through us, settled
 // from the box score. Fill assumptions are kept apart (touch / thru) and never mixed. Fee is a placeholder until Novig's schedule is confirmed.
