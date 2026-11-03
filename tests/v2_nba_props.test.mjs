@@ -25,18 +25,18 @@ function board(over = {}) {
     outs: [[4, 'BOS', 'Out']],
     novig: { asof: NOW - 30, props: {} },
     props: [
-      /* 1: Kalshi says over 24.5 is 60%, Pinnacle devigs to 58%, DraftKings hangs -125 (55.6%): a play on the over, 7.9% over the exchange */
-      { p: 1, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-150', '+130', 24.5, '-110', NOW - 900]] },
+      /* 1: Kalshi says over 24.5 is 60%, Pinnacle devigs to 60.1%, DraftKings hangs -125 (55.6%): a play on the over, 7.9% over the exchange */
+      { p: 1, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-160', '+140', 24.5, '-110', NOW - 900]] },
       /* 2: the exchange likes the over (55%), Pinnacle prices it the other way (44%) */
       { p: 2, s: 'reb', g: 'g1', kal: [[8.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 8.5, '-125', '-105', 8.5, '+100', NOW - 900], ['Pinnacle', 8.5, '+120', '-140', 8.5, '+120', NOW - 900]] },
       /* 3: a 20-point-wide Kalshi quote is not a price: only Pinnacle is left, so one reference */
       { p: 3, s: 'ast', g: 'g1', kal: [[5.5, 0.40, 0.60, 0.5, 10, 10, NOW - 100]], books: [['DraftKings', 5.5, '-125', '-105', 5.5, '+100', NOW - 900], ['Pinnacle', 5.5, '-150', '+130', 5.5, '-110', NOW - 900]] },
       /* 4: the same price as 1, on a player who is out */
-      { p: 4, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-150', '+130', 24.5, '-110', NOW - 900]] },
+      { p: 4, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-160', '+140', 24.5, '-110', NOW - 900]] },
       /* 5: DraftKings is on 25.5, Pinnacle on 24.5: the exchange has no rung at 25.5, so nothing at this line has a price to beat */
-      { p: 5, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 25.5, '-125', '-105', 25.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-150', '+130', 24.5, '-110', NOW - 900]] },
+      { p: 5, s: 'pts', g: 'g1', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 25.5, '-125', '-105', 25.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-160', '+140', 24.5, '-110', NOW - 900]] },
       /* 6: a play that is also listed Questionable */
-      { p: 6, s: '3pm', g: 'g1', kal: [[2.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 2.5, '-125', '-105', 2.5, '+100', NOW - 900], ['Pinnacle', 2.5, '-150', '+130', 2.5, '-110', NOW - 900]] },
+      { p: 6, s: '3pm', g: 'g1', kal: [[2.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 2.5, '-125', '-105', 2.5, '+100', NOW - 900], ['Pinnacle', 2.5, '-160', '+140', 2.5, '-110', NOW - 900]] },
     ],
   };
   return Object.assign(b, over);
@@ -53,7 +53,8 @@ test('a DraftKings price that beats the exchange, with Pinnacle agreeing, is an 
   assert.ok(Math.abs(ex.p - 0.6) < 1e-9, 'the exchange fair is the Kalshi mid at the exact line');
   assert.ok(ex.edge >= GATES.MIN_EDGE && ex.edge <= GATES.BIG_EDGE && pn.edge >= 0);
   assert.equal(c.worst, ex.edge, 'a prop play is ranked by its edge against the exchange, the anchor');
-  assert.ok(c.cautions.some(x => /no settled Plays record/.test(x)), 'every NBA prop says its gates are untested here');
+  assert.ok(c.cautions.some(x => /rule C/.test(x) && /live test/.test(x)), 'every NBA prop says its rule was found in-sample');
+  assert.equal(c.price.kal, true, 'Kalshi quoted the line, and the row stores it');
   assert.equal(c.row.pid, 'nba:1'); assert.deepEqual(c.matchup, { away: 'DET', home: 'BOS' });
   assert.equal(pick(cands(board()), 'Play Er Under 24.5 Points').tier, 'none', 'the other side of the same market is not a play');
 });
@@ -129,6 +130,52 @@ function box(rows, minutes = 240) {   // ESPN summary: keys list, one stats stri
   return { header: { competitions: [{ status: { type: { completed: true } } }] }, boxscore: { players: [{ statistics: [{ keys, athletes: ath }] }] } };
 }
 
+/* Rule C: NBA props play when Pinnacle and the exchange agree within 1 point and Kalshi quotes the line, with no 55% price floor. */
+const one = (prop, pl = ['Rule Ray', 'BOS', null, 's']) => board({ players: { 7: pl }, outs: [], props: [{ p: 7, g: 'g1', ...prop }] });
+const ray = (b, t) => pick(cands(b), 'Rule Ray ' + t);
+
+test('rule C: a plus-money price is a play when the fairs agree within 1 point and Kalshi quotes the line', () => {
+  /* Kalshi 52%, Pinnacle -120/+100 devigs to 52.2%, DraftKings +105 (48.8%): 6.6% over the exchange, under the old 55% floor */
+  const c = ray(one({ s: 'pts', kal: [[20.5, 0.51, 0.53, 0.52, 10, 10, NOW - 100]], books: [['DraftKings', 20.5, '+105', '-125', 20.5, '+100', NOW - 900], ['Pinnacle', 20.5, '-120', '+100', 20.5, '-110', NOW - 900]] }), 'Over 20.5 Points');
+  assert.ok(c.price.p < GATES.MIN_PRICE);
+  assert.equal(c.tier, 'play', c.reasons.join(' '));
+  assert.equal(c.price.kal, true);
+});
+
+test('rule C: fairs 1 point or more apart, or no Kalshi quote, is a Pass with the reason', () => {
+  /* the old fixture Pinnacle (-150/+130, 58.4%) against Kalshi 60%: 1.6 points apart, inside the old 4-point check */
+  const gap = ray(one({ s: 'pts', kal: [[24.5, 0.59, 0.61, 0.60, 10, 10, NOW - 100]], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-150', '+130', 24.5, '-110', NOW - 900]] }), 'Over 24.5 Points');
+  assert.equal(gap.tier, 'pass'); assert.match(gap.reasons.join(' '), /1\.6 points apart/);
+  /* Novig alone at 60%, Kalshi has no rung at the line: the fairs agree but rule C needs Kalshi */
+  const b = one({ s: 'pts', kal: [], books: [['DraftKings', 24.5, '-125', '-105', 24.5, '+100', NOW - 900], ['Pinnacle', 24.5, '-160', '+140', 24.5, '-110', NOW - 900]] });
+  b.novig.props['7|pts'] = { p: 7, s: 'pts', g: 'g1', lad: [{ k: 24.5, bid: [0.59, 0.39], ask: [0.61, 0.41] }] };
+  const nk = ray(b, 'Over 24.5 Points');
+  assert.equal(nk.price.kal, false); assert.equal(nk.tier, 'pass'); assert.match(nk.reasons.join(' '), /Kalshi is not quoting/);
+  /* an NFL prop is still held by the price floor: rule C is NBA only */
+  assert.equal(gates.judge({ kind: 'prop', sport: 'nfl', price: { p: 0.5 }, hoursOut: 5, cautions: [], refs: [{ n: 'Pinnacle', p: 0.53 }, { n: 'Exchange', p: 0.53 }] }).tier, 'pass');
+});
+
+test('rule C re-scores stored NBA rows: the stored Kalshi flag first, then the Kalshi reads file; Passed rows it would play are promoted', () => {
+  const row = (o = {}) => ({ id: 'n|9|pts|20.5|over|' + TIP, sport: 'nba', kind: 'prop', start: TIP, firstSeen: TIP - 3 * 3600, status: 'won', units: 1.05,
+    first: { price: { p: 0.488, am: 105, book: 'DraftKings', ...(o.price || {}) }, refs: o.refs || [{ n: 'Pinnacle', p: 0.522, edge: 0.07 }, { n: 'Exchange', p: 0.52, edge: 0.066 }] } });
+  try {
+    gates.setKalshiReads(null);
+    assert.deepEqual(gates.heldBack(row({ price: { kal: true } })), [], 'agreeing fairs, Kalshi stored, no price floor');
+    assert.deepEqual(gates.heldBack(row({ price: { kal: false } })), ['kalshi']);
+    assert.deepEqual(gates.heldBack(row()), ['kalshi'], 'no stored flag and no read: Kalshi absent');
+    gates.setKalshiReads({ rows: { ['n|9|pts|20.5|over|' + TIP]: [0.51, 0.53, TIP - 4 * 3600] } });
+    assert.deepEqual(gates.heldBack(row()), [], 'the read at first sight counts');
+    gates.setKalshiReads({ rows: { ['n|9|pts|20.5|over|' + TIP]: [0.40, 0.60, TIP - 4 * 3600] } });
+    assert.deepEqual(gates.heldBack(row()), ['kalshi'], 'a quote wider than MAX_EXCH_SPREAD is not a price');
+    assert.deepEqual(gates.heldBack(row({ price: { kal: true }, refs: [{ n: 'Pinnacle', p: 0.54, edge: 0.107 }, { n: 'Exchange', p: 0.52, edge: 0.066 }] })), ['fairs']);
+    assert.deepEqual(gates.heldBack(row({ price: { kal: true }, refs: [{ n: 'Pinnacle', p: 0.522, edge: 0.07 }, { n: 'Exchange', p: 0.52, edge: 0.15 }] })), ['edge'], 'over BIG_EDGE');
+    assert.equal(gates.promoted(row({ price: { kal: true } })), true);
+    assert.equal(gates.promoted({ ...row({ price: { kal: true } }), sport: 'nfl' }), false, 'only NBA props are promoted');
+    assert.equal(gates.oldGate(row({ price: { kal: true } })), false, 'under 55%: the price floor held it');
+    assert.equal(gates.oldGate({ ...row({ price: { kal: true, p: 0.56 } }), firstSeen: GATES.NBA_FAIR_SINCE + 1 }), false, 'first seen after rule C: not part of the before record');
+  } finally { gates.setKalshiReads(null); }
+});
+
 test('an NBA play is logged once, with the player, game and line it needs to settle', () => {
   const L = { v: 1, plays: {} }, c = playsOf(board())[0];
   const added = logPlays(L, playsOf(board()), NOW, opts);
@@ -137,6 +184,7 @@ test('an NBA play is logged once, with the player, game and line it needs to set
   assert.equal(r.sport, 'nba'); assert.equal(r.start, TIP); assert.equal(r.status, 'open');
   assert.deepEqual({ ...r.prop }, { season: 'nba', week: null, pid: 'nba:1', espnId: 1, gid: 'g1', name: 'Play Er', team: 'BOS', pos: null, mkt: 'pts', label: 'Points', line: 24.5, side: 'over' });
   assert.equal(r.first.price.book, 'DraftKings');
+  assert.equal(r.first.price.kal, true, 'the row stores that Kalshi quoted the line, which rule C re-scores it from');
   assert.equal(logPlays(L, playsOf(board()), NOW + 600, opts).length, 0);
 });
 

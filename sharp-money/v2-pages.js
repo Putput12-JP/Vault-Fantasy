@@ -12,7 +12,7 @@
   var SRC = {
     props: RAW + 'sharp-data/props.json', nba: RAW + 'nba-live/board.json', tape: RAW + 'sharp-data/prop_close_tape.json', plays: RAW + 'sharp-data/v2_plays.json', watchLive: RAW + 'sharp-data/v2_watch.json', passedLive: RAW + 'sharp-data/v2_passed.json',
     edge: MAIN + 'data/exchange_edge_live.json', edgeRec: MAIN + 'data/exchange_edge_record.json', keys: MAIN + 'data/nfl_key_numbers.json',
-    lag: MAIN + 'data/lead_lag.json', age: MAIN + 'data/book_age.json', sb: MAIN + 'data/model_scoreboard.json', backfill: MAIN + 'data/v2_backfill.json', rg: MAIN + 'docs/prop-clv-regrade.json'
+    lag: MAIN + 'data/lead_lag.json', age: MAIN + 'data/book_age.json', sb: MAIN + 'data/model_scoreboard.json', backfill: MAIN + 'data/v2_backfill.json', kreads: MAIN + 'data/v2_nba_kalshi_reads.json', rg: MAIN + 'docs/prop-clv-regrade.json'
   };
   var CT = { timeZone: 'America/Chicago' };
   var SPORT = { all: 'All', nfl: 'NFL', cfb: 'CFB', nba: 'NBA' };
@@ -28,6 +28,7 @@
     STORE.busy = Promise.all(names.map(function (k) { return get(SRC[k]); })).then(function (vals) {
       var f = {}; names.forEach(function (k, i) { f[k] = vals[i]; });
       STORE.files = f; STORE.ts = Date.now();
+      if (G() && G().setKalshiReads) G().setKalshiReads(f.kreads);      // rule C re-scores NBA prop rows logged before rows stored Kalshi's quote
     }).then(function () { STORE.busy = null; STORE.subs.forEach(function (fn) { fn(); }); }, function () { STORE.busy = null; });
     return STORE.busy;
   }
@@ -182,9 +183,9 @@
         h(k.T, { key: 3, size: 'sm' }, '3. Props are anchored on the exchange: the price must beat the exchange by ' + pct(gates.MIN_EDGE, 0) + ' or more, Pinnacle must sit within ' + gates.AGREE * 100 + ' points and must not price it the other way. Games must beat both by ' + pct(gates.MIN_EDGE, 0) + '.'),
         h(k.T, { key: 4, size: 'sm' }, '4. The edge is not over ' + pct(gates.BIG_EDGE, 0) + ': calls that big have lost money (21-32, ROI -15%).'),
         h(k.T, { key: 5, size: 'sm' }, '5. Both sides of the same market are not flagged at once.'),
-        h(k.T, { key: 'g1', size: 'sm' }, '6. The price is ' + Math.round(gates.MIN_PRICE * 100) + '% or better: plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(gates.MIN_PRICE * 100) + '% and up they went 33-11 (ROI +26%).'),
+        h(k.T, { key: 'g1', size: 'sm' }, '6. Games and NFL props: the price is ' + Math.round(gates.MIN_PRICE * 100) + '% or better: plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(gates.MIN_PRICE * 100) + '% and up they went 33-11 (ROI +26%).'),
         h(k.T, { key: 'g2', size: 'sm' }, '7. The game is under ' + gates.EARLY_H + ' hours away: calls made ' + gates.EARLY_H + 'h or more out went 18-27 (ROI -22%) on 45 settled live plays.'),
-        h(k.T, { key: 7, size: 'sm' }, 'NBA props use the same gates and the same references (DraftKings as the book price, Kalshi and Novig, Pinnacle). They have no settled record yet, so the gates are not tuned to NBA and each NBA prop says so. Pick the NBA filter to see its record on its own.'),
+        h(k.T, { key: 7, size: 'sm' }, 'NBA props use rule C in place of step 6: Pinnacle and the exchange must agree within ' + Math.round(gates.NBA_FAIR_AGREE * 100) + ' point (not ' + gates.AGREE * 100 + ') and Kalshi must be quoting the line. There is no price floor: rebuilt on 114 settled NBA props it went 69-45 (ROI +13.6%), against 48-26 (ROI +9.1%) under the price floor. The rule was found on that same data, so its record from Nov 3 is the real test. Pick the NBA filter to see its record on its own.'),
         h(k.T, { key: 6, size: 'sm' }, 'A play is a better price than the market, not a prediction. Sharp-account money is context only and never ranks a play.')]),
       h(k.je, { hint: 'Every prop on the board against both references' }, 'Prop prices'), table);
   }
@@ -233,11 +234,18 @@
   /* The strict gates (a price under 55%, a call 48h or more out) re-score the stored record from each play's first-sight fields. A stored play that fails one is
      held back: out of the Play record, in the Passed record, with its row in the log untouched. */
   function held(r) { return !!(G() && G().heldBack(r.p).length); }
+  /* Rule C (NBA props) works the other way too: a Passed NBA prop it would have played counts in the Play record and leaves Passed. Rows first seen
+     before GATES.NBA_FAIR_SINCE are rebuilt from stored fields, in-sample for the search that found the rule. */
+  function promo(r) { return !!(G() && G().promoted && G().promoted(r.p)); }
+  function promotedRows(F) {
+    var ids = {}; rowsRaw(F, 'play').forEach(function (r) { ids[r.p.id] = 1; });
+    return rowsRaw(F, 'pass').filter(function (r) { return promo(r) && !ids[r.p.id]; }).map(function (r) { r.promoted = true; return r; });
+  }
   function rowsAll(F, tier) {
     tier = tier || 'play';
     var rows = rowsRaw(F, tier);
-    if (tier === 'play') return rows.filter(function (r) { return !held(r); });
-    if (tier === 'pass') { var seen = {}; rows.forEach(function (r) { seen[r.p.id] = 1; }); return rows.concat(rowsRaw(F, 'play').filter(function (r) { return held(r) && !seen[r.p.id]; })); }
+    if (tier === 'play') return rows.filter(function (r) { return !held(r); }).concat(promotedRows(F));
+    if (tier === 'pass') { var seen = {}; rows = rows.filter(function (r) { return !promo(r); }); rows.forEach(function (r) { seen[r.p.id] = 1; }); return rows.concat(rowsRaw(F, 'play').filter(function (r) { return held(r) && !seen[r.p.id]; })); }
     return rows;
   }
   function heldRows(F) { return rowsRaw(F, 'play').filter(held); }
@@ -468,7 +476,7 @@
   /* The V2 record: count and units of every logged play, then the latest results. */
   function recordHtml(F, pal, tier, sport) { return recordCore(F, pal, tier || 'play', sport); }
   var TIERNAME = { play: 'V2 play record', watch: 'Watch record', pass: 'Passed record' };
-  var TIERNOTE = { play: '', watch: 'Prices that beat one fair price but had no second price to confirm them. Not plays.', pass: 'Prices that looked good against one price and failed a gate, or were at an exchange or pick\u2019em app. If this record is losing, the gates are doing their job. It includes the earlier plays the strict gates now hold back (a price under 55%, or a call 48h or more out).' };
+  var TIERNOTE = { play: '', watch: 'Prices that beat one fair price but had no second price to confirm them. Not plays.', pass: 'Prices that looked good against one price and failed a gate, or were at an exchange or pick\u2019em app. If this record is losing, the gates are doing their job. It includes the earlier plays the strict gates now hold back (a price under 55%, or a call 48h or more out, or for NBA props a play rule C would not make), and leaves out the NBA props rule C would have played.' };
   function recordCore(F, pal, tier, sport) {
     var PL = F[TIERKEY[tier][0]], rows = rowsAll(F, tier).filter(function (r) { return !sport || sport === 'all' || r.p.sport === sport; }), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
@@ -492,7 +500,19 @@
     var hbNote = '';
     if (tier === 'play') {
       var hb = heldRows(F).filter(function (r) { return !sport || sport === 'all' || r.p.sport === sport; }), hs = stat(hb), hsu = hs.units == null ? '+0.0u' : su(hs.units);
-      if (hb.length) hbNote = ' Held back by the strict gates (a price under ' + Math.round(G().GATES.MIN_PRICE * 100) + '% or a call ' + G().GATES.EARLY_H + 'h+ out): ' + hb.length + ' earlier play' + (hb.length === 1 ? '' : 's') + (hs.n ? ', ' + hs.w + '-' + hs.l + ' ' + hsu : '') + '. They now sit in Passed.';
+      /* split: the strict gates, then rule C on NBA props (held back, then promoted from Passed), then the NBA prop record as the price floor scored it */
+      var line = function (rs, noun) { var t = stat(rs); return rs.length + ' ' + noun + (rs.length === 1 ? '' : 's') + (t.n ? ', ' + t.w + '-' + t.l + ' ' + (t.units == null ? '+0.0u' : su(t.units)) : ''); };
+      var isNbaP = function (r) { return r.p.sport === 'nba' && r.p.kind === 'prop'; }, hbS = hb.filter(function (r) { return !isNbaP(r); }), hbC = hb.filter(isNbaP);
+      var pr = rows.filter(function (r) { return r.promoted; }), nbaOn = !sport || sport === 'all' || sport === 'nba';
+      if (hbS.length) hbNote += ' Held back by the strict gates (a price under ' + Math.round(G().GATES.MIN_PRICE * 100) + '% or a call ' + G().GATES.EARLY_H + 'h+ out): ' + line(hbS, 'earlier play') + '.';
+      if (hbC.length) hbNote += ' Held back by NBA rule C (fair prices ' + Math.round(G().GATES.NBA_FAIR_AGREE * 100) + ' point or more apart, or Kalshi not quoting): ' + line(hbC, 'earlier NBA prop play') + '.';
+      if (hb.length) hbNote += ' They now sit in Passed.';
+      if (pr.length) hbNote += ' Added by rule C from Passed: ' + line(pr, 'NBA prop') + ', rebuilt from stored prices.';
+      if (nbaOn && (hbC.length || pr.length)) {
+        var old = stat(rowsRaw(F, 'play').filter(function (r) { return G().oldGate(r.p); })), since = G().GATES.NBA_FAIR_SINCE;
+        var cl = stat(rows.filter(function (r) { return isNbaP(r) && r.p.firstSeen < since; })), cn = stat(rows.filter(function (r) { return isNbaP(r) && r.p.firstSeen >= since; }));
+        hbNote += ' NBA props before rule C (price 55%+): ' + old.w + '-' + old.l + ' ' + (old.units == null ? '+0.0u' : su(old.units)) + '. Rule C rebuilt on the same days: ' + cl.w + '-' + cl.l + ' ' + (cl.units == null ? '+0.0u' : su(cl.units)) + ', in-sample (the rule was found on these rows). Rule C live since Nov 3: ' + (cn.n ? cn.w + '-' + cn.l + ' ' + su(cn.units || 0) : 'none settled yet') + '.';
+      }
     }
     var lsu = ls.units == null ? '+0.0u' : su(ls.units);
     if (bfn) note = (TIERNOTE[tier] ? TIERNOTE[tier] + ' ' : '') + (live.length ? live.length + ' live ' + noun + (live.length === 1 ? '' : 's') + ' since ' + started + ' (' + (ls.n ? ls.w + '-' + ls.l + ', ' + lsu : '0 settled') + '), plus ' : 'No live ' + noun + 's settled yet, only ') + bfn + ' settled ' + noun + 's backfilled from the ' + ESC((F.backfill || {}).date || '') + ' slate. ' + (tier === 'play' ? 'The backfilled props were chosen with hindsight on the exchange close, so the totals read better than live play will.' : 'Rebuilt after the fact from stored prices.');
