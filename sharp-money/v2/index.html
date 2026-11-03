@@ -74,7 +74,7 @@ table.t td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line)}
   <nav class="tabs" id="tabs" aria-label="Sections"><a href="#plays" data-t="plays">Plays</a><a href="#board" data-t="board">Board</a><a href="#props" data-t="props">Props</a><a href="#models" data-t="models">Models</a><a href="#signals" data-t="signals">Signals</a><a href="#record" data-t="record">Record</a></nav>
 </header>
 <main class="wrap" id="scr" aria-live="polite"></main>
-<script src="gates.js?v=fc1"></script>
+<script src="gates.js?v=fc2"></script>
 <script>
 /* Sharp Money V2. One plain page, no build step. Sharp-account money is context only: it never ranks a play and never counts toward an agree total.
    Evidence behind every gate: docs/retro/sharp-v2-evidence.md (PR 133) and docs/retro/sharp-v2-data.md (PR 134). */
@@ -140,7 +140,7 @@ function how(){return `<details class="how"><summary>How a play qualifies</summa
  <li>The edge is not over ${pct(GATES.BIG_EDGE,0)}: calls that big have lost money (21-32, ROI -15%).</li>
  <li>Both sides of the same market are not flagged at once.</li>
  <li>Games and NFL props: the price is ${pct(GATES.MIN_PRICE,0)} or better: plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ${pct(GATES.MIN_PRICE,0)} and up they went 33-11 (ROI +26%).</li>
- <li>NBA props use rule C instead of the price floor: Pinnacle and the exchange agree within ${Math.round(GATES.NBA_FAIR_AGREE*100)} point and Kalshi quotes the line. Rebuilt on 114 settled NBA props: 69-45 (ROI +13.6%), against 48-26 (ROI +9.1%) under the price floor. The rule was found on that data, so its live record from Nov 3 is the real test.</li>
+ <li>NBA props use rule C instead of the price floor: Pinnacle and the exchange agree within ${Math.round(GATES.NBA_FAIR_AGREE*100)} point, Kalshi quotes the line, and the price beats the exchange by ${Math.round(GATES.NBA_MIN_EDGE*100)}% or more. Rebuilt: 32-16 (ROI +29.1%) on 48 settled NBA props, against 48-26 (ROI +9.1%) on 74 under the price floor. The rule was found on that data, so its live record from Nov 3 is the real test.</li>
  <li>The game is under ${GATES.EARLY_H} hours away: calls made ${GATES.EARLY_H}h or more out went 18-27 (ROI -22%) on 45 settled live plays.</li></ol>
  <p class="sub">Ranked by the <b>worst-case</b> edge, not the best one. A play is a better price than the market, not a prediction: the stored record is 8 days old and no signal has cleared the 100-decision bar. Sharp-account money is context only. <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/133">Evidence</a> · <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/134">Independent close</a></p></details>`}
 
@@ -369,7 +369,7 @@ function heldNote(){
   const hb=Object.values((PL&&PL.plays)||{}).filter(p=>V2Gates.heldBack(p).length),pr=promotedV2();if(!hb.length&&!pr.length)return '';
   const rec=(xs,noun)=>{const set=xs.filter(p=>p.status==='won'||p.status==='lost'),w=set.filter(p=>p.status==='won').length,u=set.reduce((a,p)=>a+(p.units||0),0);return `${xs.length} ${noun}${xs.length===1?'':'s'}, ${w}-${set.length-w} ${sgn(+u.toFixed(1))}u`};
   const nba=p=>p.sport==='nba'&&p.kind==='prop',hbS=hb.filter(p=>!nba(p)),hbC=hb.filter(nba),old=Object.values((PL&&PL.plays)||{}).filter(V2Gates.oldGate);
-  return `<p class="sub">${hbS.length?`Held back by the strict gates (a price under ${pct(GATES.MIN_PRICE,0)}, or a call ${GATES.EARLY_H}h or more out): ${rec(hbS,'earlier play')}. `:''}${hbC.length?`Held back by NBA rule C (fair prices ${Math.round(GATES.NBA_FAIR_AGREE*100)} point or more apart, or Kalshi not quoting): ${rec(hbC,'earlier NBA prop play')}. `:''}${hb.length?'They are not counted above. ':''}${pr.length?`Added by rule C from Passed: ${rec(pr,'NBA prop')}, rebuilt from stored prices and in-sample (the rule was found on these rows). `:''}${hbC.length||pr.length?`NBA props before rule C (price ${pct(GATES.MIN_PRICE,0)}+): ${rec(old,'play')}.`:''}</p>`}
+  return `<p class="sub">${hbS.length?`Held back by the strict gates (a price under ${pct(GATES.MIN_PRICE,0)}, or a call ${GATES.EARLY_H}h or more out): ${rec(hbS,'earlier play')}. `:''}${hbC.length?`Held back by NBA rule C (fair prices ${Math.round(GATES.NBA_FAIR_AGREE*100)} point or more apart, Kalshi not quoting, or under ${Math.round(GATES.NBA_MIN_EDGE*100)}% over the exchange): ${rec(hbC,'earlier NBA prop play')}. `:''}${hb.length?'They are not counted above. ':''}${pr.length?`Added by rule C from Passed: ${rec(pr,'NBA prop')}, rebuilt from stored prices and in-sample (the rule was found on these rows). `:''}${hbC.length||pr.length?`NBA props before rule C (price ${pct(GATES.MIN_PRICE,0)}+): ${rec(old,'play')}.`:''}</p>`}
 function v2Section(){
   let h=`<div class="sec"><span>V2 plays</span><span>forward log</span></div>`;
   if(!PL||!PL.plays)return h+`<div class="card"><div class="gtop"><span>Forward log</span><span class="badge warn">Not started</span></div><div class="sub" style="margin:0">The log of V2 plays has not been published yet. Every Play on the Plays page will be written here once, at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.</div></div>`;

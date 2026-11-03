@@ -155,6 +155,16 @@ test('rule C: fairs 1 point or more apart, or no Kalshi quote, is a Pass with th
   assert.equal(gates.judge({ kind: 'prop', sport: 'nfl', price: { p: 0.5 }, hoursOut: 5, cautions: [], refs: [{ n: 'Pinnacle', p: 0.53 }, { n: 'Exchange', p: 0.53 }] }).tier, 'pass');
 });
 
+test('rule C: under 3% over the exchange is a Pass for NBA props, stored or live', () => {
+  /* Kalshi 52%, DraftKings -103 (50.7%): 2.5% over the exchange, enough for NFL props (2%) but under the NBA floor */
+  const c = ray(one({ s: 'pts', kal: [[20.5, 0.51, 0.53, 0.52, 10, 10, NOW - 100]], books: [['DraftKings', 20.5, '-103', '-117', 20.5, '+100', NOW - 900], ['Pinnacle', 20.5, '-120', '+100', 20.5, '-110', NOW - 900]] }), 'Over 20.5 Points');
+  assert.equal(GATES.NBA_MIN_EDGE, 0.03);
+  assert.equal(c.tier, 'pass'); assert.match(c.reasons.join(' '), /need 3% or more/);
+  const row = { id: 'x', sport: 'nba', kind: 'prop', start: TIP, firstSeen: TIP - 3600, first: { price: { p: 0.507, kal: true }, refs: [{ n: 'Pinnacle', p: 0.522, edge: 0.03 }, { n: 'Exchange', p: 0.52, edge: 0.025 }] } };
+  assert.deepEqual(gates.heldBack(row), ['edge']);
+  row.first.refs[1].edge = 0.031; assert.deepEqual(gates.heldBack(row), []);
+});
+
 test('rule C re-scores stored NBA rows: the stored Kalshi flag first, then the Kalshi reads file; Passed rows it would play are promoted', () => {
   const row = (o = {}) => ({ id: 'n|9|pts|20.5|over|' + TIP, sport: 'nba', kind: 'prop', start: TIP, firstSeen: TIP - 3 * 3600, status: 'won', units: 1.05,
     first: { price: { p: 0.488, am: 105, book: 'DraftKings', ...(o.price || {}) }, refs: o.refs || [{ n: 'Pinnacle', p: 0.522, edge: 0.07 }, { n: 'Exchange', p: 0.52, edge: 0.066 }] } });

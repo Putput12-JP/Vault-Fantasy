@@ -8,7 +8,7 @@ An NBA prop is a Play when all of these hold at first sight:
 
 - Pinnacle's fair price and the exchange fair price sit **under 1 point apart**. The old check allowed 4.
 - **Kalshi is quoting the line**: a two-sided quote no wider than 6 points (`MAX_EXCH_SPREAD`).
-- The anchor gates still apply. The price beats the exchange by 2% to 10%, and Pinnacle does not price the side the other way.
+- The price beats the exchange by **3% to 10%** (`GATES.NBA_MIN_EDGE`, added Nov 3, the same day). Pinnacle does not price the side the other way.
 - The game is under 48 hours away.
 
 There is **no 55% price floor** for NBA props. This rule's wins sit mostly at prices under 55%, which the floor threw away.
@@ -75,3 +75,23 @@ Rule C's record by gap between the two fair prices, with Kalshi quoting:
   - added from Passed
   - the NBA prop record before rule C, then rule C rebuilt (in-sample) and rule C live
 - **New rows** store `first.price.kal`.
+
+## Edge floor of 3% (added Nov 3, same day)
+
+Inside rule C, the edge over the exchange separated winners from break-even plays:
+
+| Edge over the exchange | Record | Units | ROI (±95%) | n |
+|---|---|---|---|---|
+| 3% and up | 32-16 | +14.0u | +29.1% ±26 | 48 |
+| 2% to 3% | 37-29 | +1.5u | +2.3% | 66 |
+| 3% and up, Oct 20-27 | 12-4 | +6.7u | +41.8% | 16 |
+| 3% and up, Oct 28 on | 20-12 | +7.3u | +22.7% | 32 |
+
+**A daily cap does nothing by itself.** A random 5 plays a day kept the same ROI as all of rule C (median +14.3%). It was also not shippable: the top 5 of a night can't be known when a play is first seen.
+
+**Read this before trusting it:**
+- **This floor is in-sample too.** It was picked on the same rows after rule C itself.
+- **It does not hold for every play type.** On NFL props with the same anchor gates, bigger edges did worse (5%+ went -9.2% on 31). On NBA props outside rule C, no edge bucket made money.
+- **The edge quarters were not smooth:** +15%, +3%, -3%, +39%.
+
+**Expect about 3 to 4 NBA prop plays a night.**

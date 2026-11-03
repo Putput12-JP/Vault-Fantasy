@@ -74,12 +74,12 @@ test('re-scored on the stored ledger: 108-96 (+1.8u) becomes 33-11 (+11.2u) and 
   assert.equal(kept.length + held.length, rows.length);
 });
 
-test('with rule C on the NBA props: 41-18 (+14.4u), the NBA props alone 19-7 (+5.9u) under the price floor and 27-14 (+9.0u) under rule C', () => {
+test('with rule C on the NBA props: 24-7 (+11.4u), the NBA props alone 19-7 (+5.9u) under the price floor and 10-3 (+6.0u) under rule C with the 3% edge floor', () => {
   const rows = Object.values(LEDGER.plays), kept = rows.filter(r => !gates.heldBack(r).length), held = rows.filter(r => gates.heldBack(r).length);
-  assert.deepEqual(rec(kept), { w: 41, l: 18, u: 14.4 });
-  assert.deepEqual(rec(held), { w: 67, l: 78, u: -12.6 });
+  assert.deepEqual(rec(kept), { w: 24, l: 7, u: 11.4 });                // 41-18 (+14.4u) under rule C before the 3% edge floor
+  assert.deepEqual(rec(held), { w: 84, l: 89, u: -9.6 });
   assert.deepEqual(rec(rows.filter(r => nbaProp(r) && gates.oldGate(r))), { w: 19, l: 7, u: 5.9 });
-  assert.deepEqual(rec(kept.filter(nbaProp)), { w: 27, l: 14, u: 9 });
+  assert.deepEqual(rec(kept.filter(nbaProp)), { w: 10, l: 3, u: 6 });
 });
 
 test('each gate on its own, on the same ledger', () => {
@@ -90,7 +90,7 @@ test('each gate on its own, on the same ledger', () => {
 
 test('the ledger summary counts held-back plays and changes nothing else', () => {
   const s = summary(LEDGER);
-  assert.equal(s.held, 162);                               // 176 before rule C; the summary reads the same gates module, so the Kalshi reads count
+  assert.equal(s.held, 190);                               // 176 before rule C, 162 before its 3% edge floor; the summary reads the same gates module, so the Kalshi reads count
   assert.equal(s.w, 108); assert.equal(s.l, 96); assert.equal(s.n, 222);
 });
 
@@ -102,9 +102,9 @@ test('the standalone page counts only plays that pass, and says how many it held
   const fx = loadFixtures(); fx.plays = LEDGER; fx.kreads = KREADS;
   const page = await runPage({ html: path.join(ROOT, 'sharp-money', 'v2', 'index.html'), fixtures: fx, now: fx.data.ts + 60, pages: ['record'] });
   const html = page.pages.record;
-  assert.match(html, /41-18/);
+  assert.match(html, /24-7/);
   assert.match(html, /Held back by the strict gates[^<]*49-52/);
-  assert.match(html, /Held back by NBA rule C[^<]*18-26/);
+  assert.match(html, /Held back by NBA rule C[^<]*35-37/);
   assert.match(html, /NBA props before rule C[^<]*19-7/);
   assert.doesNotMatch(html, /108-96/);
 });

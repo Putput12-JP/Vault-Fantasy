@@ -185,7 +185,7 @@
         h(k.T, { key: 5, size: 'sm' }, '5. Both sides of the same market are not flagged at once.'),
         h(k.T, { key: 'g1', size: 'sm' }, '6. Games and NFL props: the price is ' + Math.round(gates.MIN_PRICE * 100) + '% or better: plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(gates.MIN_PRICE * 100) + '% and up they went 33-11 (ROI +26%).'),
         h(k.T, { key: 'g2', size: 'sm' }, '7. The game is under ' + gates.EARLY_H + ' hours away: calls made ' + gates.EARLY_H + 'h or more out went 18-27 (ROI -22%) on 45 settled live plays.'),
-        h(k.T, { key: 7, size: 'sm' }, 'NBA props use rule C in place of step 6: Pinnacle and the exchange must agree within ' + Math.round(gates.NBA_FAIR_AGREE * 100) + ' point (not ' + gates.AGREE * 100 + ') and Kalshi must be quoting the line. There is no price floor: rebuilt on 114 settled NBA props it went 69-45 (ROI +13.6%), against 48-26 (ROI +9.1%) under the price floor. The rule was found on that same data, so its record from Nov 3 is the real test. Pick the NBA filter to see its record on its own.'),
+        h(k.T, { key: 7, size: 'sm' }, 'NBA props use rule C in place of step 6: Pinnacle and the exchange must agree within ' + Math.round(gates.NBA_FAIR_AGREE * 100) + ' point (not ' + gates.AGREE * 100 + '), Kalshi must be quoting the line, and the price must beat the exchange by ' + Math.round(gates.NBA_MIN_EDGE * 100) + '% or more. There is no price floor: rebuilt it went 32-16 (ROI +29.1%) on 48 settled NBA props, against 48-26 (ROI +9.1%) on 74 under the price floor. The rule was found on that same data, so its record from Nov 3 is the real test. Pick the NBA filter to see its record on its own.'),
         h(k.T, { key: 6, size: 'sm' }, 'A play is a better price than the market, not a prediction. Sharp-account money is context only and never ranks a play.')]),
       h(k.je, { hint: 'Every prop on the board against both references' }, 'Prop prices'), table);
   }
@@ -505,7 +505,7 @@
       var isNbaP = function (r) { return r.p.sport === 'nba' && r.p.kind === 'prop'; }, hbS = hb.filter(function (r) { return !isNbaP(r); }), hbC = hb.filter(isNbaP);
       var pr = rows.filter(function (r) { return r.promoted; }), nbaOn = !sport || sport === 'all' || sport === 'nba';
       if (hbS.length) hbNote += ' Held back by the strict gates (a price under ' + Math.round(G().GATES.MIN_PRICE * 100) + '% or a call ' + G().GATES.EARLY_H + 'h+ out): ' + line(hbS, 'earlier play') + '.';
-      if (hbC.length) hbNote += ' Held back by NBA rule C (fair prices ' + Math.round(G().GATES.NBA_FAIR_AGREE * 100) + ' point or more apart, or Kalshi not quoting): ' + line(hbC, 'earlier NBA prop play') + '.';
+      if (hbC.length) hbNote += ' Held back by NBA rule C (fair prices ' + Math.round(G().GATES.NBA_FAIR_AGREE * 100) + ' point or more apart, Kalshi not quoting, or under ' + Math.round(G().GATES.NBA_MIN_EDGE * 100) + '% over the exchange): ' + line(hbC, 'earlier NBA prop play') + '.';
       if (hb.length) hbNote += ' They now sit in Passed.';
       if (pr.length) hbNote += ' Added by rule C from Passed: ' + line(pr, 'NBA prop') + ', rebuilt from stored prices.';
       if (nbaOn && (hbC.length || pr.length)) {
