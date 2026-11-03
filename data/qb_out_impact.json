@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-02T15:00:40.928581+00:00",
+ "generated": "2026-11-03T13:48:06.225749+00:00",
  "since": 2007,
  "min_events": 40,
  "note": "median teammate market multiplier when the team's primary QB is out; measured from nflverse weekly stats, sign- and stability-gated",
@@ -9,11 +9,11 @@
    "n": 616,
    "iqr": [
     0.671,
-    1.184
+    1.185
    ]
   },
   "WR|rec_yd": {
-   "mult": 0.833,
+   "mult": 0.839,
    "n": 223,
    "iqr": [
     0.397,
@@ -46,14 +46,14 @@
   },
   "RB|rec": {
    "mult": 1.0,
-   "n": 628,
+   "n": 629,
    "iqr": [
     0.5,
     1.5
    ],
-   "even": 0.845,
+   "even": 0.833,
    "odd": 1.0,
-   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.155>0.1"
+   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.167>0.1"
   },
   "RB|rec_yd": {
    "mult": 0.566,
@@ -68,7 +68,7 @@
   },
   "RB|rush_att": {
    "mult": 1.0,
-   "n": 925,
+   "n": 926,
    "iqr": [
     0.615,
     1.368
@@ -78,15 +78,15 @@
    "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding"
   },
   "RB|rush_yd": {
-   "mult": 0.935,
-   "n": 867,
+   "mult": 0.94,
+   "n": 868,
    "iqr": [
-    0.46,
+    0.463,
     1.481
    ],
-   "even": 0.933,
+   "even": 0.935,
    "odd": 0.944,
-   "rejected": "median 0.935<1 (expected up)"
+   "rejected": "median 0.94<1 (expected up)"
   },
   "TE|rec": {
    "mult": 1.0,
@@ -111,15 +111,15 @@
    "rejected": "n=6<40; unstable |\u0394|=0.500>0.1"
   },
   "TE|rec_yd": {
-   "mult": 0.978,
-   "n": 77,
+   "mult": 0.949,
+   "n": 78,
    "iqr": [
-    0.549,
+    0.506,
     1.4
    ],
-   "even": 0.727,
+   "even": 0.693,
    "odd": 1.139,
-   "rejected": "no material effect (|0.978-1|<0.05) \u2014 keep withholding; unstable sign even=0.727 odd=1.139"
+   "rejected": "unstable sign even=0.693 odd=1.139"
   },
   "WR|rec": {
    "mult": 1.0,
