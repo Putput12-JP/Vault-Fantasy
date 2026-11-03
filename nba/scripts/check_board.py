@@ -38,6 +38,8 @@ def main(argv):
             venues['book:' + r[0]] += 1
         for r in e.get('pk') or []:
             venues['pick:' + r[0]] += 1
+        for r in e.get('shop') or []:                  # Action Network books, read only by the Sharp Plays gate
+            venues['shop:' + r[0]] += 1
     print('venues         ' + (', '.join(f'{k} {v}' for k, v in sorted(venues.items())) or 'none'))
     pl = b.get('players') or {}
     lu = Counter((v[3] or '-') for v in pl.values())

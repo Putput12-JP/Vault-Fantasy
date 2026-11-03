@@ -77,7 +77,7 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
     if (L.plays[id]) continue;
     const refs = c.refs.map(r => ({ n: r.n, p: r4(r.p), edge: r4(r.edge) }));
     const first = {
-      title: c.title, sub: c.sub, market: c.market, price: { am: c.price.am, p: r4(c.price.p), book: c.price.book },
+      title: c.title, sub: c.sub, market: c.market, price: { am: c.price.am, p: r4(c.price.p), book: c.price.book, ...(c.price.shop ? { shop: c.price.shop } : {}) },
       refs, worst: r4(c.worst), best: r4(c.best), fairMean: r4(mean(c.refs.map(r => r.p))), cautions: c.cautions,
       gates: { minEdge: GATES.MIN_EDGE, agree: GATES.AGREE, bigEdge: GATES.BIG_EDGE },
     };
@@ -319,12 +319,25 @@ function readTape(dataDir, sport) {
   return rows;
 }
 
+/* NBA prop rows logged before the board carried the Action Network books were priced against one US book: ESPN's feed is DraftKings only, so all
+   1,958 settled NBA prop rows across the three ledgers have price.book DraftKings. Label them so the record splits "DraftKings only" from
+   "best of several" on the stored field, not on a date. A row that already says, or names another book, is left alone. Returns how many it labelled. */
+export function tagNbaShop(L) {
+  let n = 0;
+  for (const r of Object.values(L.plays)) {
+    const px = r && r.sport === 'nba' && r.kind === 'prop' && r.first && r.first.price;
+    if (px && px.shop == null && px.book === 'DraftKings') { px.shop = ['DraftKings']; n++; }
+  }
+  return n;
+}
+
 export const ledgerFile = tier => tier === 'play' ? 'v2_plays.json' : tier === 'watch' ? 'v2_watch.json' : 'v2_passed.json';
 
 export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {}, nflSnaps = {} }) {
   const D = rj(resolve(dir, 'data.json')), P = rj(resolve(dir, 'props.json')), T = rj(resolve(dir, 'prop_close_tape.json')), E = rj(resolve(dataDir, 'exchange_edge_live.json')), N = rj(resolve(dir, 'nba_board.json'));
   if (!D) throw new Error('no data.json in ' + dir);
   const file = resolve(dir, ledgerFile(tier)), L = loadLedger(file);
+  tagNbaShop(L);
   // An exchange list older than a reference may be is not a price (gates.js MAX_AGE); the page has no such check, so a play off a stale list is not logged.
   const eg = E && E.generated ? Date.parse(E.generated) / 1000 : null;
   const Eok = E && eg != null && nowS - eg <= GATES.MAX_AGE ? E : null;

@@ -141,7 +141,7 @@
   const mid = (bid, ask) => bid != null && ask != null && bid > 0 && ask > 0 && ask >= bid && ask - bid <= GATES.MAX_EXCH_SPREAD ? (bid + ask) / 2 : null;
   function nbaFresh(N, NOW) {
     const ok = k => N && N.src_ok && N.src_ok[k] && N.src_ok[k].ok != null && NOW - N.src_ok[k].ok <= GATES.MAX_AGE;
-    return { kalshi: ok('kalshi'), novig: !!(N && N.novig && N.novig.props && N.novig.asof != null && NOW - N.novig.asof <= GATES.MAX_AGE), pin: ok('pinnacle'), book: ok('espn') };
+    return { kalshi: ok('kalshi'), novig: !!(N && N.novig && N.novig.props && N.novig.asof != null && NOW - N.novig.asof <= GATES.MAX_AGE), pin: ok('pinnacle'), book: ok('espn'), shop: ok('actionprops') };
   }
   /* The exchange's P(over) for one player and stat at one exact line right now, or null: the ledger keeps the last of these before tip as the close. */
   function nbaExchangeNow(X, pid, stat, line) {
@@ -163,13 +163,16 @@
     if (!N || !Array.isArray(N.props) || !N.games) return out;
     /* each source answers on its own clock: a row's own time only says when its price last changed, so freshness comes from src_ok */
     const fresh = nbaFresh(N, NOW);
-    if (!fresh.book || !(fresh.kalshi || fresh.novig)) return out;
+    if (!(fresh.book || fresh.shop) || !(fresh.kalshi || fresh.novig)) return out;
     const games = Object.fromEntries((N.games || []).map(g => [String(g.id), g])), outs = new Set((N.outs || []).map(o => String(o[0])));
     for (const row of N.props) {
       const g = games[String(row.g)], pl = (N.players || {})[String(row.p)];
       if (!g || !pl || !NBA_STAT[row.s] || g.tip <= NOW || outs.has(String(row.p))) continue;
-      const books = (row.books || []).map(b => ({ src: b[0], line: num(b[1]), over: num(b[2]), under: num(b[3]) })).filter(b => b.line != null);
-      const pin = fresh.pin ? books.find(b => b.src === 'Pinnacle') : null, us = books.filter(b => US.has(b.src) && b.over != null && b.under != null);
+      /* row.books: DraftKings (ESPN), Pinnacle, Polymarket. row.shop: FanDuel, BetMGM, BetRivers, bet365, Caesars, Fanatics (Action Network). Each US book
+         counts only while its own feed is answering, and the play takes the best US price at a line. */
+      const rd = rs => (rs || []).map(b => ({ src: b[0], line: num(b[1]), over: num(b[2]), under: num(b[3]) })).filter(b => b.line != null);
+      const books = rd(row.books), pin = fresh.pin ? books.find(b => b.src === 'Pinnacle') : null;
+      const us = [...(fresh.book ? books : []), ...(fresh.shop ? rd(row.shop) : [])].filter(b => US.has(b.src) && b.over != null && b.under != null);
       for (const line of [...new Set(us.map(b => b.line))]) {
         const ex = nbaExchange(N, row, line, fresh), pp = pin && sameLine(pin.line, line) ? devig(pin.over, pin.under) : null;
         for (const side of ['over', 'under']) {
@@ -184,7 +187,7 @@
           const label = NBA_STAT[row.s];
           out.push({ id: 'n|' + row.p + '|' + row.s + '|' + line + '|' + side + '|' + g.tip, kind: 'prop', sport: 'nba', start: g.tip,
             title: pl[0] + ' ' + (side === 'over' ? 'Over' : 'Under') + ' ' + line + ' ' + label, sub: pl[1],
-            price: { am: side === 'over' ? v.b.over : v.b.under, p: v.p, book: v.b.src, dfs: false, exch: false }, refs: rl, cautions: cx, market: label, rec: null,
+            price: { am: side === 'over' ? v.b.over : v.b.under, p: v.p, book: v.b.src, dfs: false, exch: false, shop: [...new Set(us.filter(b => sameLine(b.line, line)).map(b => b.src))].sort() }, refs: rl, cautions: cx, market: label, rec: null,
             row: { pid: 'nba:' + row.p, espnId: row.p, name: pl[0], team: pl[1], pos: null, mkt: row.s, label, line, game: String(row.g) }, matchup: { away: g.away, home: g.home }, side });
         }
       }

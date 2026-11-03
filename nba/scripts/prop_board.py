@@ -170,7 +170,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     def entry(pid, stat, g):
         name, team = R.info[pid]
         players[pid] = [name, team, None, None]
-        return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': g['id'], 'kal': [], 'books': [], 'pk': []})
+        return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': g['id'], 'kal': [], 'books': [], 'pk': [], 'shop': []})
 
     also = defaultdict(list)
 
@@ -289,6 +289,28 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
             qk[(R.info[pid][1], str(g['id']))].append(('Polymarket', 'polymarket', k))
         if pid:
             pkeys['polymarket'][k] = [pid, stat, float(m['line']), str(g['id'])]
+
+    # Action Network books (FanDuel, BetMGM, BetRivers, bet365, Caesars, Fanatics) -> e['shop'], same row shape as e['books'].
+    # Kept out of e['books'] on purpose: the consensus, the market-implied mean and the prop close all read e['books'] and weigh an
+    # unnamed book at 1.5, so six more soft books there would move every one of them. Only the Sharp Plays gate reads 'shop', for the best price.
+    an = defaultdict(dict)
+    for k, v in (last.get('actionprops') or {}).items():
+        m = meta.get('actionprops', {}).get(k)
+        if m and v and v[0] is not None and v[1] is not None:
+            an[k.rsplit('|', 1)[0]][m['side']] = (v, m, (first.get('actionprops') or {}).get(k), k)
+    for sides in an.values():
+        if 'over' not in sides or 'under' not in sides:
+            continue
+        (ov, m, fo, ko), (uv, _, _, ku) = sides['over'], sides['under']
+        if num(ov[0]) != num(uv[0]):
+            continue                                      # one main line quotes both sides at the same number
+        g = team_game(TEAM.get(m.get('team') or '', m.get('team')), m.get('start'))
+        pid = g and R.find(m.get('player') or '', (g['away'], g['home']))
+        if not pid:
+            unmapped['action'] += 1
+            continue
+        entry(pid, m['stat'], g)['shop'].append([m['book'], num(ov[0]), fmt_am(ov[1]), fmt_am(uv[1]),
+                                                 num(fo[0]) if fo else None, fmt_am(fo[1]) if fo else None, W('actionprops', ko, ku)])
 
     # pick'em apps -> e['pk'] = [app, line, over price, under price, first line today]. PrizePicks standard lines only
     # (demon / goblin are alternate lines at other payouts) and it pays flat, so its prices are None.

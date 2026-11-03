@@ -9,7 +9,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { loadFixtures, runPage } from './v2_page_harness.mjs';
-import { logPlays, settlePlays, noteNbaReads, nbaClose, parseNbaBox, nbaActual, fetchNbaBoxes, ledgerKey, payout } from '../scripts/track-v2-plays.mjs';
+import { tagNbaShop, logPlays, settlePlays, noteNbaReads, nbaClose, parseNbaBox, nbaActual, fetchNbaBoxes, ledgerKey, payout } from '../scripts/track-v2-plays.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const gates = createRequire(import.meta.url)(path.join(ROOT, 'sharp-money', 'v2', 'gates.js'));
@@ -85,6 +85,26 @@ test('Novig at the exact line is a second exchange read, and the two are average
   assert.ok(Math.abs(ex.p - (0.6 + 0.62) / 2) < 1e-9);
   const r = gates.nbaExchangeNow({ N: b, now: NOW }, 1, 'pts', 24.5); assert.equal(r.n, 2); assert.equal(r.src, 'Kalshi+Novig');
   assert.equal(gates.nbaExchangeNow({ N: b, now: NOW }, 1, 'pts', 23.5), null);
+});
+
+test('the other US books (Action Network, row.shop) are shopped for the best price, each only while its own feed answers', () => {
+  const ok = { kalshi: { ok: NOW - 60 }, pinnacle: { ok: NOW - 60 }, espn: { ok: NOW - 60 }, actionprops: { ok: NOW - 60 } };
+  const b = board({ src_ok: ok });
+  b.props[0].shop = [['FanDuel', 24.5, '-123', '-104', 24.5, '-123', NOW - 600], ['bet365', 24.5, '-124', '+100', null, null, NOW - 600], ['BetMGM', 25.5, '+105', '-125', null, null, NOW - 600]];
+  const c = pick(cands(b), 'Play Er Over 24.5 Points');
+  assert.equal(c.tier, 'play'); assert.equal(c.price.book, 'FanDuel'); assert.equal(c.price.am, -123, 'the best over at 24.5 across DraftKings and the shop rows');
+  assert.deepEqual(c.price.shop, ['DraftKings', 'FanDuel', 'bet365'], 'every US book quoting this line, so the record can tell one book from many');
+  assert.equal(pick(cands(board({ src_ok: ok })), 'Play Er Over 24.5 Points').price.shop.length, 1, 'DraftKings only when no shop row exists');
+
+  const quietShop = board({ src_ok: { ...ok, actionprops: { ok: NOW - GATES.MAX_AGE - 5 } } }); quietShop.props[0].shop = b.props[0].shop;
+  assert.equal(pick(cands(quietShop), 'Play Er Over 24.5 Points').price.book, 'DraftKings', 'a quiet Action Network feed is not a price');
+
+  const quietEspn = board({ src_ok: { ...ok, espn: { ok: NOW - GATES.MAX_AGE - 5 } } }); quietEspn.props[0].shop = b.props[0].shop;
+  const q = pick(cands(quietEspn), 'Play Er Over 24.5 Points');
+  assert.equal(q.price.book, 'FanDuel'); assert.deepEqual(q.price.shop, ['FanDuel', 'bet365'], 'a quiet ESPN feed drops DraftKings, not the other books');
+
+  const L = { v: 1, plays: {} }; logPlays(L, [c], NOW, opts);
+  assert.deepEqual(L.plays[ledgerKey(c)].first.price.shop, ['DraftKings', 'FanDuel', 'bet365'], 'the ledger keeps the books checked at first sight');
 });
 
 test('the page and the headless module decide the NBA props identically', async () => {
@@ -173,4 +193,17 @@ test('only plays that are open, NBA and 3+ hours past tip are looked up', async 
   assert.deepEqual(await fetchNbaBoxes(L, TIP + 3600, f), {}); assert.equal(seen.length, 0);
   const got = await fetchNbaBoxes(L, TIP + 4 * 3600, f); assert.deepEqual(Object.keys(got), ['g1']); assert.equal(seen.length, 1, 'one call per game, not per play');
   assert.deepEqual(await fetchNbaBoxes(L, TIP + 4 * 3600, async () => { throw new Error('espn down'); }), {});
+});
+
+test('older NBA prop rows are labelled DraftKings only, once, and nothing else is touched', () => {
+  const L = { v: 1, plays: {
+    a: { sport: 'nba', kind: 'prop', first: { price: { book: 'DraftKings', am: -125 } } },
+    b: { sport: 'nba', kind: 'prop', first: { price: { book: 'FanDuel', am: -120, shop: ['DraftKings', 'FanDuel'] } } },
+    c: { sport: 'nfl', kind: 'prop', first: { price: { book: 'DraftKings' } } },
+    d: { sport: 'nba', kind: 'book', first: { price: { book: 'DraftKings' } } } } };
+  assert.equal(tagNbaShop(L), 1);
+  assert.deepEqual(L.plays.a.first.price.shop, ['DraftKings']);
+  assert.deepEqual(L.plays.b.first.price.shop, ['DraftKings', 'FanDuel']);
+  assert.equal(L.plays.c.first.price.shop, undefined); assert.equal(L.plays.d.first.price.shop, undefined);
+  assert.equal(tagNbaShop(L), 0, 'a second run changes nothing');
 });
