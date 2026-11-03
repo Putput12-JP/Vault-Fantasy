@@ -11,6 +11,7 @@ appends ONLY what changed since the last poll:
   espn        ESPN core odds per upcoming game (DraftKings etc.): game line + every player prop
   pinnacle    guest API: main lines, team totals, player props, with bet limits
   action      Action Network scoreboard: 7 books + bets % / money % splits
+  actionprops Action Network player props: FanDuel, BetMGM, BetRivers, bet365, Caesars, Fanatics main lines (ESPN's props are DraftKings only)
   polymarket  NBA events (game markets and player props): best bid / ask / last per market, fee rate in meta
   injuries    official NBA injury report, parsed; one row per player status change
   prizepicks  PrizePicks NBA board (partner API; the public host 403s servers): line per projection, with its
@@ -55,6 +56,13 @@ PIN_HDR = ['X-API-Key: CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R', 'Referer: https://www.
 PIN_LEAGUES = (487, 5270)           # NBA, NBA Preseason (Pinnacle lists preseason games in their own league)
 SCORE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard'
 AN_BOOKS = '15,30,68,69,75,71,79'   # consensus, open, DK, FD, MGM, BetRivers, bet365
+# Action Network player props: the books ESPN does not carry (ESPN's feed is DraftKings only). DraftKings (68) is left out so the board
+# never holds two DraftKings rows; consensus and open are averages, not prices you can bet.
+AN_PROP_BOOKS = {69: 'FanDuel', 71: 'BetRivers', 75: 'BetMGM', 79: 'bet365', 123: 'Caesars', 2988: 'Fanatics'}
+AN_PROP_TYPES = {'core_bet_type_27_points': 'pts', 'core_bet_type_23_rebounds': 'reb', 'core_bet_type_26_assists': 'ast',
+                 'core_bet_type_21_3fgm': '3pm', 'core_bet_type_85_points_rebounds_assists': 'pra', 'core_bet_type_86_points_rebounds': 'pr',
+                 'core_bet_type_87_points_assists': 'pa', 'core_bet_type_88_rebounds_assists': 'ra', 'core_bet_type_24_steals': 'stl',
+                 'core_bet_type_25_blocks': 'blk'}
 PM_SERIES = 10345
 PM_GAME_TYPES = {'moneyline', 'spreads', 'totals', 'basketball_team_to_score_first', 'basketball_odd_even'}
 TEAM = {**KTEAM, 'GSW': 'GS', 'NYK': 'NY', 'SAS': 'SA', 'NOP': 'NO', 'UTA': 'UTAH', 'WAS': 'WSH', 'PHO': 'PHX', 'BRK': 'BKN'}
@@ -346,6 +354,42 @@ def src_action(slate):
                         meta[k] = {'game': g['id'], 'book': int(book), 'type': mtype, 'side': side, 'start': start,
                                    'away': teams.get(g.get('away_team_id')), 'home': teams.get(g.get('home_team_id')),
                                    'v': 'line,odds,bets_pct,money_pct'}
+    return rows, meta
+
+
+def src_actionprops(slate):
+    """Main-line player props per book from Action Network's markets endpoint (keyless, one call per game day). One row per
+    game|book|stat|player|side: [line, odds]. Alternate lines are skipped: a main market is what the book is pricing."""
+    rows, meta = {}, {}
+    days = sorted({g['day'] for g in slate.games if g['pre']})
+    books = ','.join(str(b) for b in AN_PROP_BOOKS)
+    for day in days:
+        d = curl(f"https://api.actionnetwork.com/web/v2/scoreboard/nba/markets?bookIds={books}&date={day.replace('-', '')}"
+                 f"&customPickTypes={','.join(AN_PROP_TYPES)}", ['User-Agent: Mozilla/5.0'])
+        games, teams = {}, {}
+        for g in d.get('games', []):
+            start = iso(g.get('start_time'))
+            if g.get('status') == 'scheduled' and start and start > slate.now:
+                games[g['id']] = start
+            for t in (g.get('away_team'), g.get('home_team')):
+                if t:
+                    teams[t['id']] = t.get('abbr')
+        players = {p['id']: p for p in d.get('players', [])}
+        for book, per in (d.get('markets') or {}).items():
+            name = AN_PROP_BOOKS.get(int(book)) if str(book).isdigit() else None
+            for mtype, outs in ((per or {}).get('event') or {}).items():
+                stat = AN_PROP_TYPES.get(mtype)
+                if not name or not stat:
+                    continue
+                for o in outs or []:
+                    p = players.get(o.get('player_id'))
+                    if o.get('is_alt_market') or o.get('is_live') or o.get('side') not in ('over', 'under') or not p or o.get('event_id') not in games:
+                        continue
+                    k = f"{o['event_id']}|{book}|{stat}|{o['player_id']}|{o['side']}"
+                    rows[k] = [o.get('value'), o.get('odds')]
+                    meta[k] = {'game': o['event_id'], 'book': name, 'stat': stat, 'side': o['side'], 'player': p.get('full_name'),
+                               'team': TEAM.get(teams.get(p.get('team_id')) or '', teams.get(p.get('team_id'))), 'start': games[o['event_id']],
+                               'v': 'line,odds'}
     return rows, meta
 
 
@@ -641,7 +685,7 @@ def poll(root):
     slate = Slate(now)
     day = Day(root, dt.datetime.fromtimestamp(now, ET).date().isoformat())
     save_season_types(root, slate)
-    sources = [('kalshi', src_kalshi), ('espn', src_espn), ('pinnacle', src_pinnacle), ('action', src_action),
+    sources = [('kalshi', src_kalshi), ('espn', src_espn), ('pinnacle', src_pinnacle), ('action', src_action), ('actionprops', src_actionprops),
                ('polymarket', src_polymarket), ('injuries', Injuries(day.dir)), ('lineups', src_lineups),
                ('prizepicks', src_prizepicks), ('underdog', src_underdog), ('sleeper', src_sleeper)]
     metas = {}
