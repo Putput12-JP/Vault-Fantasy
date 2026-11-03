@@ -19,6 +19,10 @@
     MAX_EXCH_SPREAD: 0.06, // an exchange quote wider than 6 points says where it is for sale, not where the market is (the same cut the ledger uses for a close)
     EARLY_H: 48,         // calls 48h+ out: 110-159, ROI -16.3% on 269 settled. Since the strict gates a play must also be inside this window (18-27, ROI -21.7% on 45 settled live plays)
     MIN_PRICE: 0.55,     // strict gate: ROI rises with price (-26% under 50%, +2% at 50-55%, +16% at 55-60%, +24% at 60-65%) and it repeats in the Watch and Passed ledgers. 33-11 (75%) once this and the 48h gate are applied (docs/retro/sharp-v2-strict-gates.md)
+    /* Rule C, NBA props only, in place of MIN_PRICE (docs/retro/nba-fair-agreement-rule.md). Found by searching NBA prop rows Oct 20 - Nov 2, 2026, so the
+       rebuilt record before NBA_FAIR_SINCE is in-sample: 1,958 settled rows, rules picked on Oct 20-27 and checked once on Oct 28 - Nov 2. */
+    NBA_FAIR_AGREE: 0.01,  // Pinnacle and the exchange fair under 1 point apart (not 4) and Kalshi quoting the line. Rebuilt: 69-45, ROI +13.6% on 114; first seen before Oct 28 +20.7% (49), Oct 28 on +8.2% (65)
+    NBA_FAIR_SINCE: 1793750400, // Nov 3, 2026 6:00 PM Central: NBA prop rows first seen before this are re-scored from stored fields, after it they were judged live
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
   const EXCH = ['Kalshi', 'Novig'];
@@ -55,19 +59,49 @@
   const EARLY_WHY = 'Called ' + GATES.EARLY_H + ' hours or more before the game. Early calls decay: 18-27 (ROI -22%) on 45 settled live plays, 110-159 (ROI -16%) on 269 before that.';
   const PRICE_WHY = 'The price is under ' + Math.round(GATES.MIN_PRICE * 100) + '%. Plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(GATES.MIN_PRICE * 100) + '% and up inside ' + GATES.EARLY_H + ' hours they went 33-11 (ROI +26%).';
   const hoursOut = x => x == null ? null : x.hoursOut != null ? x.hoursOut : x.start != null && x.firstSeen != null ? (x.start - x.firstSeen) / 3600 : x.hoursEarly != null ? x.hoursEarly : null;
+  const FAIR_WHY = gap => 'Pinnacle and the exchange are ' + (gap * 100).toFixed(1) + ' points apart. NBA props need them under ' + Math.round(GATES.NBA_FAIR_AGREE * 100) + ' point apart: rebuilt, those went 69-45 (ROI +13.6%) on 114 settled, and 1 point or more apart went 37-52 (ROI -21.7%) on 89.';
+  const KAL_WHY = 'Kalshi is not quoting this line. NBA props need Kalshi as one of the two exchange prices behind the fair.';
+  const nbaProp = c => c && c.sport === 'nba' && c.kind === 'prop';
   function held(c) {
     const out = [];
-    if (c.price && c.price.p != null && c.price.p < GATES.MIN_PRICE) out.push(PRICE_WHY);
+    if (nbaProp(c)) {
+      /* rule C: the fairs agree within 1 point and Kalshi quotes the line. The price floor does not apply: this rule's wins sit under 55%. */
+      const ex = (c.refs || []).find(r => r.n === 'Exchange'), pn = (c.refs || []).find(r => r.n === 'Pinnacle');
+      const gap = ex && pn ? Math.abs(ex.p - pn.p) : null;
+      if (gap == null || gap >= GATES.NBA_FAIR_AGREE) out.push(FAIR_WHY(gap == null ? 1 : gap));
+      if (!c.price || !c.price.kal) out.push(KAL_WHY);
+    } else if (c.price && c.price.p != null && c.price.p < GATES.MIN_PRICE) out.push(PRICE_WHY);
     if (c.hoursOut != null && c.hoursOut >= GATES.EARLY_H) out.push(EARLY_WHY);
     return out;
   }
-  /* A stored ledger row (live or backfilled) judged by the strict gates at its first sight: [] if it still qualifies, else the gates it fails ('price', 'early'). */
+  /* Kalshi at first sight for NBA prop rows logged before rows stored it (data/v2_nba_kalshi_reads.json, scripts/build_v2_nba_kalshi_reads.py):
+     { rows: { id: [bid, ask, read time] | null } }. A row with no stored flag and no read counts as Kalshi absent. */
+  let KAL_READS = null;
+  function setKalshiReads(x) { KAL_READS = x && x.rows ? x : null; }
+  function kalshiAt(p) {
+    const px = p.first && p.first.price;
+    if (px && px.kal != null) return !!px.kal;
+    const r = KAL_READS && KAL_READS.rows[p.id];
+    return !!(r && r[0] != null && r[1] != null && r[0] > 0 && r[1] >= r[0] && r[1] - r[0] <= GATES.MAX_EXCH_SPREAD);
+  }
+  /* A stored ledger row (live or backfilled) judged by the current gates at its first sight: [] if it still qualifies, else the gates it fails.
+     Games and NFL props: 'price', 'early'. NBA props: rule C, 'fairs' (gap 1 point or more), 'kalshi' (not quoting), 'edge' (exchange edge outside
+     2-10% or Pinnacle the other way, which a row from the Passed ledger can fail), 'early'. */
   function heldBack(p) {
-    const px = (p && p.first && p.first.price) || {}, h = hoursOut(p), out = [];
-    if (px.p != null && px.p < GATES.MIN_PRICE) out.push('price');
+    const f = (p && p.first) || {}, px = f.price || {}, h = hoursOut(p), out = [];
+    if (p && p.sport === 'nba' && p.kind === 'prop') {
+      const ex = (f.refs || []).find(r => r.n === 'Exchange'), pn = (f.refs || []).find(r => r.n === 'Pinnacle');
+      if (!ex || !pn || Math.abs(ex.p - pn.p) >= GATES.NBA_FAIR_AGREE) out.push('fairs');
+      if (!kalshiAt(p)) out.push('kalshi');
+      if (!ex || !pn || ex.edge < GATES.MIN_EDGE || ex.edge > GATES.BIG_EDGE || pn.edge < 0 || px.dfs || px.exch) out.push('edge');
+    } else if (px.p != null && px.p < GATES.MIN_PRICE) out.push('price');
     if (h != null && h >= GATES.EARLY_H) out.push('early');
     return out;
   }
+  /* A Passed-ledger NBA prop that rule C would have played: it counts in the Play record (rebuilt, in-sample before NBA_FAIR_SINCE) and leaves Passed. */
+  const promoted = p => !!(p && p.sport === 'nba' && p.kind === 'prop' && !heldBack(p).length);
+  /* The NBA prop Play record as the strict gates scored it before rule C: Play-ledger rows first seen before NBA_FAIR_SINCE, price 55%+, under 48h. */
+  const oldGate = p => !!(p && p.sport === 'nba' && p.kind === 'prop' && p.firstSeen < GATES.NBA_FAIR_SINCE && p.first && p.first.price && p.first.price.p >= GATES.MIN_PRICE && !(hoursOut(p) >= GATES.EARLY_H));
   function judge(c) {
     /* c.refs: [{n,p}] fair chance of THIS side from each independent reference. Returns tier + reasons. */
     const rs = c.refs; c.refs.forEach(r => r.edge = r.p / c.price.p - 1);
@@ -134,7 +168,7 @@
      exact line) is the anchor and Pinnacle at the exact line is the check. Nothing is borrowed from NFL data, but the gates themselves are the NFL ones:
      there is no settled NBA Plays record yet to tune them on, so every NBA prop carries that caution until there is. */
   const NBA_STAT = { pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-Pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks' };
-  const NBA_CAUTION = 'New: NBA props have no settled Plays record yet. The gates are the NFL ones, not tuned to NBA.';
+  const NBA_CAUTION = 'NBA props play on rule C (fairs within 1 point, Kalshi quoting), found on Oct 20 - Nov 2 data. Its record from Nov 3 is the live test.';
   const num = v => { const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : null };
   const sameLine = (a, b) => a != null && b != null && Math.abs(a - b) < 1e-9;
   /* P(over) at one exact line from an exchange ladder, only from a two-sided quote tighter than MAX_EXCH_SPREAD. */
@@ -154,9 +188,9 @@
   }
   function nbaExchange(N, row, line, fresh) {
     const got = [];
-    if (fresh.kalshi) { const r = (row.kal || []).find(x => sameLine(x[0], line)); const m = r && mid(num(r[1]), num(r[2])); if (m != null) got.push(m) }
-    if (fresh.novig) { const e = N.novig.props[row.p + '|' + row.s], l = e && (e.lad || []).find(x => sameLine(x.k, line)); const m = l && l.bid && l.ask && mid(num(l.bid[0]), num(l.ask[0])); if (m != null) got.push(m) }
-    return got.length ? mean(got) : null;
+    if (fresh.kalshi) { const r = (row.kal || []).find(x => sameLine(x[0], line)); const m = r && mid(num(r[1]), num(r[2])); if (m != null) got.push(['Kalshi', m]) }
+    if (fresh.novig) { const e = N.novig.props[row.p + '|' + row.s], l = e && (e.lad || []).find(x => sameLine(x.k, line)); const m = l && l.bid && l.ask && mid(num(l.bid[0]), num(l.ask[0])); if (m != null) got.push(['Novig', m]) }
+    return got.length ? { p: mean(got.map(x => x[1])), kal: got.some(x => x[0] === 'Kalshi') } : null;
   }
   function nbaPropCands(X) {
     const { N, now: NOW } = X, out = [];
@@ -174,7 +208,7 @@
       const books = rd(row.books), pin = fresh.pin ? books.find(b => b.src === 'Pinnacle') : null;
       const us = [...(fresh.book ? books : []), ...(fresh.shop ? rd(row.shop) : [])].filter(b => US.has(b.src) && b.over != null && b.under != null);
       for (const line of [...new Set(us.map(b => b.line))]) {
-        const ex = nbaExchange(N, row, line, fresh), pp = pin && sameLine(pin.line, line) ? devig(pin.over, pin.under) : null;
+        const xr = nbaExchange(N, row, line, fresh), ex = xr && xr.p, pp = pin && sameLine(pin.line, line) ? devig(pin.over, pin.under) : null;
         for (const side of ['over', 'under']) {
           const v = us.filter(b => sameLine(b.line, line)).map(b => ({ b, p: imp(b[side]) })).filter(x => x.p != null).sort((a, b) => a.p - b.p)[0];
           if (!v) continue;
@@ -187,7 +221,7 @@
           const label = NBA_STAT[row.s];
           out.push({ id: 'n|' + row.p + '|' + row.s + '|' + line + '|' + side + '|' + g.tip, kind: 'prop', sport: 'nba', start: g.tip,
             title: pl[0] + ' ' + (side === 'over' ? 'Over' : 'Under') + ' ' + line + ' ' + label, sub: pl[1],
-            price: { am: side === 'over' ? v.b.over : v.b.under, p: v.p, book: v.b.src, dfs: false, exch: false, shop: [...new Set(us.filter(b => sameLine(b.line, line)).map(b => b.src))].sort() }, refs: rl, cautions: cx, market: label, rec: null,
+            price: { am: side === 'over' ? v.b.over : v.b.under, p: v.p, book: v.b.src, dfs: false, exch: false, kal: !!(xr && xr.kal), shop: [...new Set(us.filter(b => sameLine(b.line, line)).map(b => b.src))].sort() }, refs: rl, cautions: cx, market: label, rec: null,
             row: { pid: 'nba:' + row.p, espnId: row.p, name: pl[0], team: pl[1], pos: null, mkt: row.s, label, line, game: String(row.g) }, matchup: { away: g.away, home: g.home }, side });
         }
       }
@@ -247,5 +281,5 @@
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, held, heldBack, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
+  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });

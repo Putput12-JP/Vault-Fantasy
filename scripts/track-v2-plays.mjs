@@ -77,7 +77,7 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
     if (L.plays[id]) continue;
     const refs = c.refs.map(r => ({ n: r.n, p: r4(r.p), edge: r4(r.edge) }));
     const first = {
-      title: c.title, sub: c.sub, market: c.market, price: { am: c.price.am, p: r4(c.price.p), book: c.price.book, ...(c.price.shop ? { shop: c.price.shop } : {}) },
+      title: c.title, sub: c.sub, market: c.market, price: { am: c.price.am, p: r4(c.price.p), book: c.price.book, ...(c.price.shop ? { shop: c.price.shop } : {}), ...(c.sport === 'nba' && c.kind === 'prop' ? { kal: !!c.price.kal } : {}) },
       refs, worst: r4(c.worst), best: r4(c.best), fairMean: r4(mean(c.refs.map(r => r.p))), cautions: c.cautions,
       gates: { minEdge: GATES.MIN_EDGE, agree: GATES.AGREE, bigEdge: GATES.BIG_EDGE },
     };
