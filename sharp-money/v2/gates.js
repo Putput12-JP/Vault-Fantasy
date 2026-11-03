@@ -22,6 +22,7 @@
     /* Rule C, NBA props only, in place of MIN_PRICE (docs/retro/nba-fair-agreement-rule.md). Found by searching NBA prop rows Oct 20 - Nov 2, 2026, so the
        rebuilt record before NBA_FAIR_SINCE is in-sample: 1,958 settled rows, rules picked on Oct 20-27 and checked once on Oct 28 - Nov 2. */
     NBA_FAIR_AGREE: 0.01,  // Pinnacle and the exchange fair under 1 point apart (not 4) and Kalshi quoting the line. Rebuilt: 69-45, ROI +13.6% on 114; first seen before Oct 28 +20.7% (49), Oct 28 on +8.2% (65)
+    NBA_MIN_EDGE: 0.03,  // and the price beats the exchange by 3%+, not 2%. Rebuilt under rule C: 3%+ went 32-16 (ROI +29.1%) on 48, 2-3% went 37-29 (+2.3%) on 66. In-sample, picked Nov 3
     NBA_FAIR_SINCE: 1793750400, // Nov 3, 2026 6:00 PM Central: NBA prop rows first seen before this are re-scored from stored fields, after it they were judged live
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
@@ -60,6 +61,7 @@
   const PRICE_WHY = 'The price is under ' + Math.round(GATES.MIN_PRICE * 100) + '%. Plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(GATES.MIN_PRICE * 100) + '% and up inside ' + GATES.EARLY_H + ' hours they went 33-11 (ROI +26%).';
   const hoursOut = x => x == null ? null : x.hoursOut != null ? x.hoursOut : x.start != null && x.firstSeen != null ? (x.start - x.firstSeen) / 3600 : x.hoursEarly != null ? x.hoursEarly : null;
   const FAIR_WHY = gap => 'Pinnacle and the exchange are ' + (gap * 100).toFixed(1) + ' points apart. NBA props need them under ' + Math.round(GATES.NBA_FAIR_AGREE * 100) + ' point apart: rebuilt, those went 69-45 (ROI +13.6%) on 114 settled, and 1 point or more apart went 37-52 (ROI -21.7%) on 89.';
+  const NBA_EDGE_WHY = e => 'The price beats the exchange by ' + spct(e) + '. NBA props need ' + Math.round(GATES.NBA_MIN_EDGE * 100) + '% or more: rebuilt, 3%+ went 32-16 (ROI +29%) on 48 settled and 2-3% went 37-29 (ROI +2%) on 66.';
   const KAL_WHY = 'Kalshi is not quoting this line. NBA props need Kalshi as one of the two exchange prices behind the fair.';
   const nbaProp = c => c && c.sport === 'nba' && c.kind === 'prop';
   function held(c) {
@@ -70,6 +72,7 @@
       const gap = ex && pn ? Math.abs(ex.p - pn.p) : null;
       if (gap == null || gap >= GATES.NBA_FAIR_AGREE) out.push(FAIR_WHY(gap == null ? 1 : gap));
       if (!c.price || !c.price.kal) out.push(KAL_WHY);
+      if (ex && ex.edge < GATES.NBA_MIN_EDGE) out.push(NBA_EDGE_WHY(ex.edge));
     } else if (c.price && c.price.p != null && c.price.p < GATES.MIN_PRICE) out.push(PRICE_WHY);
     if (c.hoursOut != null && c.hoursOut >= GATES.EARLY_H) out.push(EARLY_WHY);
     return out;
@@ -86,14 +89,14 @@
   }
   /* A stored ledger row (live or backfilled) judged by the current gates at its first sight: [] if it still qualifies, else the gates it fails.
      Games and NFL props: 'price', 'early'. NBA props: rule C, 'fairs' (gap 1 point or more), 'kalshi' (not quoting), 'edge' (exchange edge outside
-     2-10% or Pinnacle the other way, which a row from the Passed ledger can fail), 'early'. */
+     3-10% (NBA_MIN_EDGE) or Pinnacle the other way, which a row from the Passed ledger can fail), 'early'. */
   function heldBack(p) {
     const f = (p && p.first) || {}, px = f.price || {}, h = hoursOut(p), out = [];
     if (p && p.sport === 'nba' && p.kind === 'prop') {
       const ex = (f.refs || []).find(r => r.n === 'Exchange'), pn = (f.refs || []).find(r => r.n === 'Pinnacle');
       if (!ex || !pn || Math.abs(ex.p - pn.p) >= GATES.NBA_FAIR_AGREE) out.push('fairs');
       if (!kalshiAt(p)) out.push('kalshi');
-      if (!ex || !pn || ex.edge < GATES.MIN_EDGE || ex.edge > GATES.BIG_EDGE || pn.edge < 0 || px.dfs || px.exch) out.push('edge');
+      if (!ex || !pn || ex.edge < GATES.NBA_MIN_EDGE || ex.edge > GATES.BIG_EDGE || pn.edge < 0 || px.dfs || px.exch) out.push('edge');
     } else if (px.p != null && px.p < GATES.MIN_PRICE) out.push('price');
     if (h != null && h >= GATES.EARLY_H) out.push('early');
     return out;
@@ -168,7 +171,7 @@
      exact line) is the anchor and Pinnacle at the exact line is the check. Nothing is borrowed from NFL data, but the gates themselves are the NFL ones:
      there is no settled NBA Plays record yet to tune them on, so every NBA prop carries that caution until there is. */
   const NBA_STAT = { pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-Pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks' };
-  const NBA_CAUTION = 'NBA props play on rule C (fairs within 1 point, Kalshi quoting), found on Oct 20 - Nov 2 data. Its record from Nov 3 is the live test.';
+  const NBA_CAUTION = 'NBA props play on rule C (fairs within 1 point, Kalshi quoting, 3%+ over the exchange), found on Oct 20 - Nov 2 data. Its record from Nov 3 is the live test.';
   const num = v => { const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : null };
   const sameLine = (a, b) => a != null && b != null && Math.abs(a - b) < 1e-9;
   /* P(over) at one exact line from an exchange ladder, only from a two-sided quote tighter than MAX_EXCH_SPREAD. */
