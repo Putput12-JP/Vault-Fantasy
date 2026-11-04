@@ -10375,7 +10375,8 @@ function plPidFrom(el){
   const c = el.closest('[data-ph]'); if (c) return +c.dataset.ph;
   const im = el.closest('img'); if (!im || !im.src) return null;
   const m = /\/players\/full\/(\d+)\./.exec(im.src); if (m) return +m[1];
-  if (!plHeads){ plHeads = new Map(); for (const [id, uri] of Object.entries((PH && PH.heads) || {})) plHeads.set(uri, +id); }
+  // im.src is always absolute, so a headshot stored as a file path (img/heads/<id>.png on the website page) is keyed by its absolute URL
+  if (!plHeads){ plHeads = new Map(); for (const [id, uri] of Object.entries((PH && PH.heads) || {})) plHeads.set(new URL(uri, location.href).href, +id); }
   return plHeads.get(im.src) ?? null;
 }
 function plOpen(pid){

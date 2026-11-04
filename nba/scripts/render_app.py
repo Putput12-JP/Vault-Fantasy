@@ -4,10 +4,10 @@ Render the app page (nba/projections.html) from ui/projections.template.html wit
 since an artifact page cannot fetch local files. Called by build_player_projections.py and
 build_data_health.py; run it alone to re-render after a template change.
 
-  python3 nba/scripts/render_app.py          # the website page: the track-record snapshot stays a file (data/track.json) beside it
+  python3 nba/scripts/render_app.py          # the website page: the track-record snapshot (data/track.json) and the photos (img/) stay files beside it
   python3 nba/scripts/render_app.py --full   # self-contained copy for an artifact (nba/projections.full.html, not committed)
 """
-import json, os, sys
+import base64, json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
@@ -149,6 +149,27 @@ def control():
                         {'name': "Correlated pick'em pairs", 'verdict': (pickem() or {}).get('verdict'), 'note': 'two families passed', 'doc': 'nba/docs/pickem-correlation-results.md'}]}
 
 
+def slim_photos():
+    """photos.json for the website: each embedded headshot and logo is written once to nba/img/ and the page gets its path instead of
+    a data URI, so the browser fetches only the photos on screen and caches them (the inline copy was 3.2 MB of every page load)."""
+    d = load('photos.json')
+    if not d:
+        return d
+    img = os.path.join(HERE, '..', 'img')
+    for kind in ('heads', 'logos'):
+        os.makedirs(os.path.join(img, kind), exist_ok=True)
+        for k, uri in list(d.get(kind, {}).items()):
+            head, _, b64 = uri.partition(',')
+            if not head.startswith('data:image/png;base64'):
+                continue
+            path = os.path.join(img, kind, f'{k}.png')
+            raw = base64.b64decode(b64)
+            if not os.path.exists(path) or open(path, 'rb').read() != raw:
+                open(path, 'wb').write(raw)
+            d[kind][k] = f'img/{kind}/{k}.png'
+    return d
+
+
 def render(full=False):
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
     hk = os.path.join(HERE, '..', 'ui', 'halaska', 'dist.js')
@@ -182,7 +203,7 @@ def render(full=False):
                .replace('/*DIETDEF*/null', json.dumps(load('diet_defense.json'), separators=(',', ':')))
                .replace('/*MATCHUP*/null', json.dumps(load('matchup_terms.json'), separators=(',', ':')))
                .replace('/*TEAMALLOW*/null', json.dumps(load('team_allowance.json'), separators=(',', ':')))
-               .replace('/*PHOTOS*/null', json.dumps(load('photos.json'), separators=(',', ':'))))
+               .replace('/*PHOTOS*/null', json.dumps(load('photos.json') if full else slim_photos(), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.full.html' if full else 'projections.html')
     open(out, 'w').write(html)
     print(f'rendered {os.path.relpath(out)} ({os.path.getsize(out) // 1000} KB)')
