@@ -4,9 +4,10 @@ Render the app page (nba/projections.html) from ui/projections.template.html wit
 since an artifact page cannot fetch local files. Called by build_player_projections.py and
 build_data_health.py; run it alone to re-render after a template change.
 
-  python3 nba/scripts/render_app.py
+  python3 nba/scripts/render_app.py          # the website page: the track-record snapshot stays a file (data/track.json) beside it
+  python3 nba/scripts/render_app.py --full   # self-contained copy for an artifact (nba/projections.full.html, not committed)
 """
-import json, os
+import json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
@@ -148,7 +149,7 @@ def control():
                         {'name': "Correlated pick'em pairs", 'verdict': (pickem() or {}).get('verdict'), 'note': 'two families passed', 'doc': 'nba/docs/pickem-correlation-results.md'}]}
 
 
-def render():
+def render(full=False):
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
     hk = os.path.join(HERE, '..', 'ui', 'halaska', 'dist.js')
     # Halaska UI bundle (ui/halaska/dist.js, built by `node build.mjs` there); the page degrades to no kit if it is absent
@@ -158,12 +159,14 @@ def render():
     tpl = tpl.replace('/*VAULT_APPEARANCE*/', open(os.path.join(HERE, '..', '..', 'src', 'vault-appearance.js')).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*MINUTES_GBM_JS*/', open(gj).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*ROTATION_MINUTES_JS*/', open(rj).read().replace('</script', '<\\/script'))
+    tpl = tpl.replace('<!--PRELOAD-->', '' if full else '<link rel="preload" href="data/track.json" as="fetch" crossorigin="anonymous">')   # starts the snapshot download while the page itself is still arriving
     html = (tpl.replace('/*DATA*/null', json.dumps(projections(), separators=(',', ':')))
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))
                .replace('/*BOARD*/null', json.dumps(load('prop_board.json'), separators=(',', ':')))
                .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
-               .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')))
+               .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')) if full else 'null')
+               .replace('/*TRACKFILE*/null', 'null' if full else "'data/track.json'")
                .replace('/*GPICKS*/null', json.dumps(load('game_picks.json'), separators=(',', ':')))
                .replace('/*LIVESEASON*/null', json.dumps(load('live_season.json'), separators=(',', ':')))
                .replace('/*GBMMODEL*/null', json.dumps(load('minutes_gbm.json'), separators=(',', ':')))
@@ -180,10 +183,10 @@ def render():
                .replace('/*MATCHUP*/null', json.dumps(load('matchup_terms.json'), separators=(',', ':')))
                .replace('/*TEAMALLOW*/null', json.dumps(load('team_allowance.json'), separators=(',', ':')))
                .replace('/*PHOTOS*/null', json.dumps(load('photos.json'), separators=(',', ':'))))
-    out = os.path.join(HERE, '..', 'projections.html')
+    out = os.path.join(HERE, '..', 'projections.full.html' if full else 'projections.html')
     open(out, 'w').write(html)
     print(f'rendered {os.path.relpath(out)} ({os.path.getsize(out) // 1000} KB)')
 
 
 if __name__ == '__main__':
-    render()
+    render(full='--full' in sys.argv)

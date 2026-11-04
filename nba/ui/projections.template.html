@@ -3,6 +3,7 @@
 <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <title>Vault NBA</title>
+<!--PRELOAD-->
 <script>try{var __t=JSON.parse(localStorage.getItem("nba-theme"));if(__t==="light"||__t==="dark")document.documentElement.dataset.theme=__t;if(localStorage.getItem("nba-side")==="1")document.documentElement.dataset.side="1"}catch(e){}</script>
 <script>/*VAULT_APPEARANCE*/</script>
 <script>
@@ -3049,6 +3050,7 @@ const LEANBT = /*LEANBT*/null, LEANBF = /*LEANBF*/null;   // lean backtest serie
 const SIMCH = /*SIMCH*/null;      // simulation challenger results (build_sim_challenger.py), for Props Simulation
 const CTL = /*CONTROL*/null;       // Control Room: frozen models, dated tests, past verdicts (render_app.control)
 const TR0 = /*TRACK*/null;      // shadow ledger summary + recent bets (ledger.py via build_data_health.py)
+const TRACK_FILE = /*TRACKFILE*/null;   // the website page leaves the snapshot out (7.6 MB and growing) and fetches data/track.json; the --full artifact copy inlines it
 const GBM_MODEL = /*GBMMODEL*/null;   // minutes GBM trees (data/minutes_gbm.json): the conditional minutes inside GP
 const ROT_MODEL = /*ROTMODEL*/null;   // rotation model (data/rotation_minutes_model.json): P(plays) inside GP
 /*MINUTES_GBM_JS*/
@@ -5086,6 +5088,8 @@ $('prows').addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, ren
 // cube (one row per tip day x stat x venue x book x side x gate x edge bucket) so every market can be sliced, plus the
 // latest bets. Snapshot baked in (TR0); live from nba-data/track.json on the site.
 let TR = TR0 ? {data: TR0, live: false} : null, trackTried = false, trackTimer = null;
+const trackSnap = TRACK_FILE && !TR0 ? fetch(TRACK_FILE).then(r => r.ok ? r.json() : null).catch(() => null) : null;   // started now so it downloads while the rest of the script runs
+function useSnap(d){ if (d && d.cube && !TR){ TR = {data: d, live: false}; priceVer++; } return !!(TR && TR.data); }
 const TF0 = {venue: 'all', stat: 'all', side: 'all', gate: 'all', ebin: 'all', etype: 'all', book: 'all', day: 'all', clock: 'entry'};
 const ETYPE = {model: 'Model edge', gap: 'Consensus edge', both: 'Both'};
 let tf = {...TF0, status: 'all', limit: 150};
@@ -11181,6 +11185,13 @@ $('v-summary').addEventListener('click', e => {
     document.querySelectorAll('#v-summary [data-smjump]').forEach(b => b.setAttribute('aria-pressed', b === document.querySelector(`#v-summary [data-smjump="${j.dataset.smjump}"]`))); }
 });
 
-show(view);
-pvSettle();
+// The track-record snapshot is a file on the website, and Props prices against it, so the first draw waits for it (2.5 s at most).
+// If it is late the page draws without it and draws again when it lands, rather than showing ungraded rows.
+if (trackSnap){
+  Promise.race([trackSnap, new Promise(r => setTimeout(r, 2500, 'late'))]).then(d => {
+    const ok = d !== 'late' && useSnap(d);
+    show(view); pvSettle();
+    if (!ok && d === 'late') trackSnap.then(x => { if (useSnap(x)) show(view); });
+  });
+} else { show(view); pvSettle(); }
 </script>
