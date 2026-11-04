@@ -14,7 +14,7 @@ import { tagNbaShop, logPlays, settlePlays, noteNbaReads, nbaClose, parseNbaBox,
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const gates = createRequire(import.meta.url)(path.join(ROOT, 'sharp-money', 'v2', 'gates.js'));
 const { GATES } = gates;
-const NOW = 1_800_000_000, TIP = NOW + 3 * 3600;
+const NOW = 1_800_000_000, TIP = NOW + 1800;   // half an hour to tip: past the nightly NBA cap's lock (GATES.NBA_LOCK_MIN), so plays log
 
 /* One game, DET @ BOS. Each prop below is one case. Kalshi rung: [line, bid, ask, open mid, bid size, ask size, changed]. Book row: [book, line, over, under, ...]. */
 function board(over = {}) {
@@ -184,6 +184,45 @@ test('rule C re-scores stored NBA rows: the stored Kalshi flag first, then the K
     assert.equal(gates.oldGate(row({ price: { kal: true } })), false, 'under 55%: the price floor held it');
     assert.equal(gates.oldGate({ ...row({ price: { kal: true, p: 0.56 } }), firstSeen: GATES.NBA_FAIR_SINCE + 1 }), false, 'first seen after rule C: not part of the before record');
   } finally { gates.setKalshiReads(null); }
+});
+
+/* The nightly cap: 7 NBA plays on one night, edges 4% to 9.2% over the exchange (Kalshi 52%, Pinnacle 52.2%), DraftKings over +100 to +110. */
+const PRICES = ['+110', '+108', '+106', '+105', '+104', '+102', '+100'];
+const seven = (tip = TIP) => board({ games: [{ id: 'g1', tip, away: 'DET', home: 'BOS' }], outs: [], players: Object.fromEntries(PRICES.map((_, i) => [10 + i, ['Cap ' + i, 'BOS', null, 's']])),
+  props: PRICES.map((am, i) => ({ p: 10 + i, s: 'pts', g: 'g1', kal: [[20.5, 0.51, 0.53, 0.52, 10, 10, NOW - 100]], books: [['DraftKings', 20.5, am, '-130', 20.5, '+100', NOW - 900], ['Pinnacle', 20.5, '-120', '+100', 20.5, '-110', NOW - 900]] })) });
+const capPlays = (N, now, L) => gates.build({ N, now, L, D: { games: [] }, P: null, T: null, E: null }).all.filter(c => c.sport === 'nba' && c.title.endsWith('Over 20.5 Points'));
+
+test('nightly cap: before the lock the top 5 by edge show as Plays not yet locked, the rest Pass, and nothing is logged', () => {
+  const tip = NOW + 3 * 3600, l = capPlays(seven(tip), NOW);
+  const pl = l.filter(c => c.tier === 'play'), ps = l.filter(c => c.tier === 'pass');
+  assert.equal(GATES.NBA_CAP, 5); assert.equal(pl.length, 5); assert.equal(ps.length, 2);
+  assert.deepEqual(pl.map(c => c.title).sort(), ['Cap 0', 'Cap 1', 'Cap 2', 'Cap 3', 'Cap 4'].map(n => n + ' Over 20.5 Points'), 'the five biggest edges');
+  assert.ok(pl.every(c => c.capPending && /Not locked yet/.test(c.cautions[0])));
+  assert.match(ps[0].reasons[0], /Outside tonight.s top 5/);
+  const L = { v: 1, plays: {} }; assert.equal(logPlays(L, pl, NOW, opts).length, 0, 'the ledger waits for the lock');
+});
+
+test('nightly cap: after the lock the top 5 log, and a later play only fills a slot left open', () => {
+  const L = { v: 1, plays: {} }, l = capPlays(seven(), NOW, L);
+  assert.equal(l.filter(c => c.tier === 'play' && !c.capPending).length, 5);
+  assert.equal(logPlays(L, l, NOW, opts).length, 5);
+  const again = capPlays(seven(), NOW + 300, L);
+  assert.equal(again.filter(c => c.tier === 'play').length, 5, 'the logged five stay Plays');
+  assert.equal(logPlays(L, again, NOW + 300, opts).length, 0, 'no slot left');
+  delete L.plays[Object.keys(L.plays)[0]];
+  assert.equal(capPlays(seven(), NOW + 600, L).filter(c => c.tier === 'play').length, 5, 'with 4 logged, one open slot goes to the next best');
+});
+
+test('nightly cap on the stored record: the top 5 by first-sight edge seen by the lock, then later rows by time', () => {
+  const row = (i, edge, seen) => ({ id: 'r' + i, sport: 'nba', kind: 'prop', status: 'won', start: TIP, firstSeen: seen, first: { worst: edge } });
+  const lock = TIP - GATES.NBA_LOCK_MIN * 60;
+  /* six seen by the lock: the five best edges stay, the smallest (r1, 3%) and both later rows are held */
+  const six = [row(1, .03, lock - 9000), row(2, .09, lock - 9000), row(3, .05, lock - 60), row(4, .04, lock - 60), row(6, .07, lock - 9000), row(8, .045, lock - 10), row(5, .08, lock + 60), row(7, .06, lock + 30)];
+  assert.deepEqual([...gates.capOut(six)].sort(), ['r1', 'r5', 'r7']);
+  /* three seen by the lock: two slots left, filled by the later rows in time order, not by edge */
+  const three = [row(1, .03, lock - 9000), row(2, .09, lock - 60), row(3, .05, lock - 60), row(5, .08, lock + 600), row(6, .04, lock + 30), row(7, .06, lock + 300)];
+  assert.deepEqual([...gates.capOut(three)].sort(), ['r5']);
+  assert.equal(gates.capOut([{ ...row(9, .05, 0), sport: 'nfl' }]).size, 0, 'NBA props only');
 });
 
 test('an NBA play is logged once, with the player, game and line it needs to settle', () => {

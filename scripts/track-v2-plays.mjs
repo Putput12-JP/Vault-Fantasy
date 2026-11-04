@@ -73,6 +73,7 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
   const added = [];
   for (const c of cands) {
     if (c.tier !== tier || !c.start || c.start <= nowS) continue;
+    if (c.capPending) continue;                                  // an NBA prop in tonight's top 5 before the lock (gates.js NBA_CAP): logged at the lock, not now
     const id = ledgerKey(c);
     if (L.plays[id]) continue;
     const refs = c.refs.map(r => ({ n: r.n, p: r4(r.p), edge: r4(r.edge) }));
@@ -341,7 +342,8 @@ export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {}, nflSnaps
   // An exchange list older than a reference may be is not a price (gates.js MAX_AGE); the page has no such check, so a play off a stale list is not logged.
   const eg = E && E.generated ? Date.parse(E.generated) / 1000 : null;
   const Eok = E && eg != null && nowS - eg <= GATES.MAX_AGE ? E : null;
-  const built = gates.build({ D, P, T, E: Eok, N, now: nowS });
+  const Lp = tier === 'play' ? L : loadLedger(resolve(dir, ledgerFile('play')));   // the nightly NBA cap counts the plays already logged
+  const built = gates.build({ D, P, T, E: Eok, N, now: nowS, L: Lp });
   const cand = tier === 'play' ? built.cand : gates.stance(built.cand);        // Watch and Passed keep one side per market, so a bet is never logged as both Over and Under
   const season = P && P.props ? P.props.season : null, week = P && P.props ? P.props.week : null;
   const added = logPlays(L, cand, nowS, { edgeGenerated: eg, season, week, tier });
