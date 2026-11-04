@@ -23,6 +23,9 @@
        rebuilt record before NBA_FAIR_SINCE is in-sample: 1,958 settled rows, rules picked on Oct 20-27 and checked once on Oct 28 - Nov 2. */
     NBA_FAIR_AGREE: 0.01,  // Pinnacle and the exchange fair under 1 point apart (not 4) and Kalshi quoting the line. Rebuilt: 69-45, ROI +13.6% on 114; first seen before Oct 28 +20.7% (49), Oct 28 on +8.2% (65)
     NBA_MIN_EDGE: 0.03,  // and the price beats the exchange by 3%+, not 2%. Rebuilt under rule C: 3%+ went 32-16 (ROI +29.1%) on 48, 2-3% went 37-29 (+2.3%) on 66. In-sample, picked Nov 3
+    NBA_CAP: 5,          // at most 5 NBA prop plays a night: the top 5 by edge over the exchange an hour before the night's first tip, later plays fill open slots.
+                         // Rebuilt under rule C at 3%: 29-12 (ROI +34.9%) on 41 vs 32-16 (+29.1%) uncapped; the first 5 seen instead went 27-14 (+25.9%). In-sample, picked Nov 4
+    NBA_LOCK_MIN: 60,    // minutes before the night's first NBA tip when the top plays lock
     NBA_FAIR_SINCE: 1793750400, // Nov 3, 2026 6:00 PM Central: NBA prop rows first seen before this are re-scored from stored fields, after it they were judged live
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
@@ -262,13 +265,54 @@
     out.forEach(c => { if (c.kind !== 'book') return; const k = c.gk + '|' + c.m + '|' + c.side + '|' + (c.line == null ? '' : c.line) + c.title; if (!best[k] || c.price.p < best[k].price.p) best[k] = c });
     return out.filter(c => c.kind !== 'book' || best[c.gk + '|' + c.m + '|' + c.side + '|' + (c.line == null ? '' : c.line) + c.title] === c);
   }
-  /* Every candidate with its tier, and the ones that are not 'none' ranked by worst-case edge. */
+  /* ---- the nightly NBA prop cap (GATES.NBA_CAP) ----
+     A night is the Central-time date of the tip. Plays are logged once, at first sight, so the night's best can't be known as each one arrives:
+     instead they lock NBA_LOCK_MIN before the night's first tip. Before the lock the top open slots show as Plays marked not locked (capPending;
+     the ledger does not log them); at the lock the top slots by edge are logged; after it a new play fills a slot left open. The rest are Passes. */
+  const nightOf = t => new Date(t * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const ctTime = t => new Date(t * 1000).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+  const nbaKey = c => ['p', c.start, c.row.pid, c.row.mkt, c.row.line, c.side].join('|');      // scripts/track-v2-plays.mjs ledgerKey for a prop
+  const CAP_WHY = n => 'Outside tonight\u2019s top ' + n + ' NBA props by edge over the exchange. Capped at ' + n + ' a night: rebuilt, the top ' + n + ' went 29-12 (ROI +35%) on 41 against 32-16 (+29%) uncapped.';
+  function capNba(all, X) {
+    const N = X.N, plays = all.filter(c => c.sport === 'nba' && c.kind === 'prop' && c.tier === 'play');
+    if (!plays.length) return;
+    const tips = {}; for (const g of (N && N.games) || []) if (g.tip) { const k = nightOf(g.tip); tips[k] = Math.min(tips[k] || Infinity, g.tip) }
+    const logged = {}; for (const r of Object.values((X.L && X.L.plays) || {})) if (r.sport === 'nba' && r.kind === 'prop' && r.status !== 'void' && !heldBack(r).length) (logged[nightOf(r.start)] || (logged[nightOf(r.start)] = new Set())).add(r.id);
+    const by = {}; plays.forEach(c => (by[nightOf(c.start)] || (by[nightOf(c.start)] = [])).push(c));
+    for (const [k, cs] of Object.entries(by)) {
+      const done = logged[k] || new Set(), lock = (tips[k] || Math.min(...cs.map(c => c.start))) - GATES.NBA_LOCK_MIN * 60;
+      const open = cs.filter(c => !done.has(nbaKey(c))).sort((a, b) => b.worst - a.worst);
+      const slots = Math.max(0, GATES.NBA_CAP - done.size);
+      open.forEach((c, i) => {
+        c.capLock = lock;
+        if (i >= slots) { c.tier = 'pass'; c.reasons = [CAP_WHY(GATES.NBA_CAP)]; return }
+        if (X.now < lock) { c.capPending = true; c.cautions = ['Not locked yet: tonight\u2019s top ' + GATES.NBA_CAP + ' by edge lock at ' + ctTime(lock) + ' CT.', ...c.cautions] }
+      });
+    }
+  }
+  /* The stored record through the same cap: per night, the top NBA_CAP rows by first-sight edge among those seen by the lock (an hour before the
+     night's first tip in the record), then later rows by time into the slots left. Returns the ids the cap holds back. Pass rows that already
+     clear heldBack (and promoted Passed rows), so the count is the plays the record would otherwise show. */
+  function capOut(rows) {
+    const by = {}, out = new Set();
+    rows.filter(p => p && p.sport === 'nba' && p.kind === 'prop' && p.status !== 'void').forEach(p => (by[nightOf(p.start)] || (by[nightOf(p.start)] = [])).push(p));
+    for (const rs of Object.values(by)) {
+      const lock = Math.min(...rs.map(p => p.start)) - GATES.NBA_LOCK_MIN * 60, w = p => (p.first && p.first.worst) != null ? p.first.worst : -9;
+      const early = rs.filter(p => p.firstSeen <= lock).sort((a, b) => w(b) - w(a)), late = rs.filter(p => p.firstSeen > lock).sort((a, b) => a.firstSeen - b.firstSeen);
+      [...early, ...late].forEach((p, i) => { if (i >= GATES.NBA_CAP) out.add(p.id) });
+    }
+    return out;
+  }
+
+  /* Every candidate with its tier, and the ones that are not 'none' ranked by worst-case edge. X.L, the Play ledger, is optional: it tells the
+     nightly NBA cap how many slots are already logged. */
   function build(X) {
     const all = [...propCands(X), ...nbaPropCands(X), ...gameCands(X)];
     /* contradictions: both sides of one market clearing any reference at once */
     const seen = {};
     all.forEach(c => { if (c.refs.some(r => r.p / c.price.p - 1 >= GATES.MIN_EDGE)) { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; (seen[k] || (seen[k] = new Set())).add(c.side) } });
     all.forEach(c => { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; c.contradicted = (seen[k] && seen[k].size > 1) || false; c.hoursOut = c.start ? (c.start - X.now) / 3600 : null; judge(c) });
+    capNba(all, X);
     const cand = all.filter(c => c.tier !== 'none').sort((a, b) => (b.worst == null ? -9 : b.worst) - (a.worst == null ? -9 : a.worst));
     cand.noneCount = all.length - cand.length;
     return { all, cand };
@@ -284,5 +328,5 @@
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
+  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });

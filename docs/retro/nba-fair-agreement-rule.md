@@ -94,4 +94,28 @@ Inside rule C, the edge over the exchange separated winners from break-even play
 - **It does not hold for every play type.** On NFL props with the same anchor gates, bigger edges did worse (5%+ went -9.2% on 31). On NBA props outside rule C, no edge bucket made money.
 - **The edge quarters were not smooth:** +15%, +3%, -3%, +39%.
 
-**Expect about 3 to 4 NBA prop plays a night.**
+**Expect about 3 to 4 NBA prop plays a night** on DraftKings prices. Book shopping (PR 330) raised that: Nov 4's board showed 13.
+
+## Nightly cap of 5 (added Nov 4)
+
+**How it works:** at most `GATES.NBA_CAP` (5) NBA prop plays a night, where a night is the Central-time date of the tip.
+- **Before the lock:** the top open slots by edge show as Plays marked not locked, and the ledger does not log them.
+- **At the lock:** `NBA_LOCK_MIN` (60) minutes before the night's first tip, the top slots by edge are logged at the prices then.
+- **After the lock:** a new play only fills a slot left open.
+- **Everything else** is a Pass with the reason "Outside tonight's top 5".
+
+The record is re-scored the same way (`capOut`): per night, the top 5 by first-sight edge among rows seen by the lock, then later rows by time.
+
+| Rule C at 3% | Record | Units | ROI | n |
+|---|---|---|---|---|
+| Uncapped | 32-16 | +14.0u | +29.1% | 48 |
+| **Capped at 5, ranked at the lock** | **29-12** | **+14.3u** | **+34.9%** | **41** |
+| The 7 the cap holds back | 3-4 | -0.3u | -5.0% | 7 |
+| Capped at 5, first 5 seen instead | 27-14 | +10.6u | +25.9% | 41 |
+
+**Read this before trusting it:**
+- **Arrival order loses ROI.** Taking the first 5 seen does worse than no cap, so the ranking is what helps.
+- **The backtest used the edge at first sight, not at the lock.** Live prices at the lock will differ.
+- **The cap rarely bound before book shopping.** Only 3 past nights had more than 5 plays, so its effect on history is small.
+- **On the wider 2% set the same ranking lifted ROI** from +13.6% to +25.6% on 57.
+
