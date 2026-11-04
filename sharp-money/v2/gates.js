@@ -106,8 +106,10 @@
     if (h != null && h >= GATES.EARLY_H) out.push('early');
     return out;
   }
-  /* A Passed-ledger NBA prop that rule C would have played: it counts in the Play record (rebuilt, in-sample before NBA_FAIR_SINCE) and leaves Passed. */
-  const promoted = p => !!(p && p.sport === 'nba' && p.kind === 'prop' && !heldBack(p).length);
+  /* A Passed-ledger NBA prop that rule C would have played: it counts in the Play record (rebuilt, in-sample) and leaves Passed. Only rows first seen
+     before NBA_FAIR_SINCE: after it the ledger judges with rule C itself, so a Passed row was passed on purpose (outside the night's top 5, the other
+     side of a prop already played). Promoting those let them outrank the plays the lock actually logged. */
+  const promoted = p => !!(p && p.sport === 'nba' && p.kind === 'prop' && p.firstSeen < GATES.NBA_FAIR_SINCE && !heldBack(p).length);
   /* The NBA prop Play record as the strict gates scored it before rule C: Play-ledger rows first seen before NBA_FAIR_SINCE, price 55%+, under 48h. */
   const oldGate = p => !!(p && p.sport === 'nba' && p.kind === 'prop' && p.firstSeen < GATES.NBA_FAIR_SINCE && p.first && p.first.price && p.first.price.p >= GATES.MIN_PRICE && !(hoursOut(p) >= GATES.EARLY_H));
   function judge(c) {
