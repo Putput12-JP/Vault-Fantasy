@@ -25,7 +25,9 @@
     NBA_MIN_EDGE: 0.03,  // and the price beats the exchange by 3%+, not 2%. Rebuilt under rule C: 3%+ went 32-16 (ROI +29.1%) on 48, 2-3% went 37-29 (+2.3%) on 66. In-sample, picked Nov 3
     NBA_CAP: 5,          // at most 5 NBA prop plays a night: the top 5 by edge over the exchange an hour before the night's first tip, later plays fill open slots.
                          // Rebuilt under rule C at 3%: 29-12 (ROI +34.9%) on 41 vs 32-16 (+29.1%) uncapped; the first 5 seen instead went 27-14 (+25.9%). In-sample, picked Nov 4
-    NBA_LOCK_MIN: 60,    // minutes before the night's first NBA tip when the top plays lock
+    NBA_LOCK_MIN: 60,
+    NBA_CAP_SINCE: 1793795408, // the cap shipped Nov 4, 2026 6:30 AM Central. NBA props logged before it for a night that locks after it compete at the lock like any other
+                         // candidate: the ledger stamps each capPick or capOut then (capStamp), instead of letting them hold the night's slots    // minutes before the night's first NBA tip when the top plays lock
     NBA_FAIR_SINCE: 1793750400, // Nov 3, 2026 6:00 PM Central: NBA prop rows first seen before this are re-scored from stored fields, after it they were judged live
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
@@ -273,11 +275,29 @@
   const ctTime = t => new Date(t * 1000).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
   const nbaKey = c => ['p', c.start, c.row.pid, c.row.mkt, c.row.line, c.side].join('|');      // scripts/track-v2-plays.mjs ledgerKey for a prop
   const CAP_WHY = n => 'Outside tonight\u2019s top ' + n + ' NBA props by edge over the exchange. Capped at ' + n + ' a night: rebuilt, the top ' + n + ' went 29-12 (ROI +35%) on 41 against 32-16 (+29%) uncapped.';
+  /* A row logged before the cap shipped, for a night whose lock comes after it, not yet decided: it does not hold a slot, it competes for one. */
+  const lockOf = (r, tips) => (tips[nightOf(r.start)] || r.start) - GATES.NBA_LOCK_MIN * 60;
+  const preCap = (r, tips) => r.firstSeen < GATES.NBA_CAP_SINCE && r.capPick == null && r.capOut == null && lockOf(r, tips) > GATES.NBA_CAP_SINCE;
+  const nightTips = N => { const t = {}; for (const g of (N && N.games) || []) if (g.tip) { const k = nightOf(g.tip); t[k] = Math.min(t[k] || Infinity, g.tip) } return t };
+  /* The Play ledger, after a night locks: each pre-cap row is stamped capPick (still among the plays the cap keeps) or capOut (not). Stamps are
+     added fields, like lastRead and close; the first-sight record is not touched. Returns how many rows were stamped. */
+  function capStamp(L, all, X) {
+    const f = nbaFresh(X.N, X.now);
+    if (!(f.book || f.shop) || !(f.kalshi || f.novig)) return 0;      // no live NBA prices this run: decide on the next one, not on an empty board
+    const tips = nightTips(X.N), keep = new Set(all.filter(c => c.sport === 'nba' && c.kind === 'prop' && c.tier === 'play' && !c.capPending && c.capLock != null && X.now >= c.capLock).map(nbaKey));
+    let n = 0;
+    for (const r of Object.values((L && L.plays) || {})) {
+      if (!(r.sport === 'nba' && r.kind === 'prop' && preCap(r, tips)) || X.now < lockOf(r, tips) || X.now >= r.start) continue;
+      if (keep.has(r.id)) r.capPick = true; else r.capOut = true;
+      n++;
+    }
+    return n;
+  }
   function capNba(all, X) {
     const N = X.N, plays = all.filter(c => c.sport === 'nba' && c.kind === 'prop' && c.tier === 'play');
     if (!plays.length) return;
-    const tips = {}; for (const g of (N && N.games) || []) if (g.tip) { const k = nightOf(g.tip); tips[k] = Math.min(tips[k] || Infinity, g.tip) }
-    const logged = {}; for (const r of Object.values((X.L && X.L.plays) || {})) if (r.sport === 'nba' && r.kind === 'prop' && r.status !== 'void' && !heldBack(r).length) (logged[nightOf(r.start)] || (logged[nightOf(r.start)] = new Set())).add(r.id);
+    const tips = nightTips(N);
+    const logged = {}; for (const r of Object.values((X.L && X.L.plays) || {})) if (r.sport === 'nba' && r.kind === 'prop' && r.status !== 'void' && !heldBack(r).length && !r.capOut && !preCap(r, tips)) (logged[nightOf(r.start)] || (logged[nightOf(r.start)] = new Set())).add(r.id);
     const by = {}; plays.forEach(c => (by[nightOf(c.start)] || (by[nightOf(c.start)] = [])).push(c));
     for (const [k, cs] of Object.entries(by)) {
       const done = logged[k] || new Set(), lock = (tips[k] || Math.min(...cs.map(c => c.start))) - GATES.NBA_LOCK_MIN * 60;
@@ -295,7 +315,8 @@
      clear heldBack (and promoted Passed rows), so the count is the plays the record would otherwise show. */
   function capOut(rows) {
     const by = {}, out = new Set();
-    rows.filter(p => p && p.sport === 'nba' && p.kind === 'prop' && p.status !== 'void').forEach(p => (by[nightOf(p.start)] || (by[nightOf(p.start)] = [])).push(p));
+    rows.forEach(p => { if (p && p.capOut) out.add(p.id) });      // a pre-cap row the lock passed over (capStamp)
+    rows.filter(p => p && p.sport === 'nba' && p.kind === 'prop' && p.status !== 'void' && !p.capOut).forEach(p => (by[nightOf(p.start)] || (by[nightOf(p.start)] = [])).push(p));
     for (const rs of Object.values(by)) {
       const lock = Math.min(...rs.map(p => p.start)) - GATES.NBA_LOCK_MIN * 60, w = p => (p.first && p.first.worst) != null ? p.first.worst : -9;
       const early = rs.filter(p => p.firstSeen <= lock).sort((a, b) => w(b) - w(a)), late = rs.filter(p => p.firstSeen > lock).sort((a, b) => a.firstSeen - b.firstSeen);
@@ -328,5 +349,5 @@
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
+  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, capStamp, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });

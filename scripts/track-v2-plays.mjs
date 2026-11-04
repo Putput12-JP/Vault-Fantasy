@@ -347,6 +347,7 @@ export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {}, nflSnaps
   const cand = tier === 'play' ? built.cand : gates.stance(built.cand);        // Watch and Passed keep one side per market, so a bet is never logged as both Over and Under
   const season = P && P.props ? P.props.season : null, week = P && P.props ? P.props.week : null;
   const added = logPlays(L, cand, nowS, { edgeGenerated: eg, season, week, tier });
+  if (tier === 'play') gates.capStamp(L, built.all, { N, now: nowS });      // NBA props logged before the nightly cap shipped: picked or capped at their night's lock
   const seasons = [...new Set(Object.values(L.plays).filter(x => x.kind === 'prop' && x.sport !== 'nba').map(x => x.prop.season))];
   const stats = {};
   for (const s of seasons) stats[s] = overlayEspn(rj(resolve(dataDir, `nflverse_stats_${s}.json`)), rj(resolve(dataDir, `espn_player_stats_${s}.json`)));

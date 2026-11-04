@@ -213,6 +213,27 @@ test('nightly cap: after the lock the top 5 log, and a later play only fills a s
   assert.equal(capPlays(seven(), NOW + 600, L).filter(c => c.tier === 'play').length, 5, 'with 4 logged, one open slot goes to the next best');
 });
 
+test('nightly cap: plays logged before the cap shipped compete at the lock, and the ledger stamps each picked or capped', () => {
+  /* Cap 4, 5 and 6 (the 5th to 7th biggest edges) were logged before NBA_CAP_SINCE, for a night that locks after it */
+  const pre = i => { const c = capPlays(seven(), NOW).find(x => x.title === 'Cap ' + i + ' Over 20.5 Points'); return { id: ['p', c.start, c.row.pid, c.row.mkt, c.row.line, c.side].join('|'), sport: 'nba', kind: 'prop', status: 'open', start: c.start, firstSeen: GATES.NBA_CAP_SINCE - 100, first: { worst: c.worst, price: { p: c.price.p, kal: true }, refs: c.refs.map(r => ({ n: r.n, p: r.p, edge: r.edge })) } } };
+  const L = { v: 1, plays: Object.fromEntries([4, 5, 6].map(i => { const r = pre(i); return [r.id, r] })) };
+  /* before the lock they hold no slot: the top 5 are Cap 0 to 4, pending, and 5 and 6 are Passes */
+  const tip = NOW + 3 * 3600, before = capPlays(seven(tip), NOW, { v: 1, plays: Object.fromEntries(Object.values(L.plays).map(r => [r.id.replace('|' + TIP + '|', '|' + tip + '|'), { ...r, id: r.id.replace('|' + TIP + '|', '|' + tip + '|'), start: tip }])) });
+  assert.deepEqual(before.filter(c => c.tier === 'play').map(c => c.title.split(' ')[1]).sort(), ['0', '1', '2', '3', '4']);
+  assert.ok(before.filter(c => c.tier === 'play').every(c => c.capPending));
+  /* at the lock: Cap 0 to 3 log, Cap 4 is already there, and the stamps decide 4, 5 and 6 */
+  const all = gates.build({ N: seven(), now: NOW, L, D: { games: [] }, P: null, T: null, E: null }).all;
+  assert.equal(logPlays(L, all.filter(c => c.tier === 'play'), NOW, opts).length, 4);
+  const stale = seven(); stale.src_ok = { kalshi: { ok: NOW - GATES.MAX_AGE - 5 }, pinnacle: { ok: NOW - 60 }, espn: { ok: NOW - GATES.MAX_AGE - 5 } }; stale.novig.asof = NOW - GATES.MAX_AGE - 5;
+  assert.equal(gates.capStamp(L, all, { N: stale, now: NOW }), 0, 'no live prices: no stamps this run');
+  assert.equal(gates.capStamp(L, all, { N: seven(), now: NOW }), 3);
+  const by = i => L.plays[pre(i).id];
+  assert.equal(by(4).capPick, true); assert.equal(by(5).capOut, true); assert.equal(by(6).capOut, true);
+  assert.deepEqual([...gates.capOut(Object.values(L.plays))].sort(), [pre(5).id, pre(6).id].sort(), 'the record keeps the five the lock picked');
+  assert.equal(gates.capStamp(L, all, { N: seven(), now: NOW + 600 }), 0, 'stamped once');
+  assert.equal(capPlays(seven(), NOW + 600, L).filter(c => c.tier === 'play').length, 5);
+});
+
 test('nightly cap on the stored record: the top 5 by first-sight edge seen by the lock, then later rows by time', () => {
   const row = (i, edge, seen) => ({ id: 'r' + i, sport: 'nba', kind: 'prop', status: 'won', start: TIP, firstSeen: seen, first: { worst: edge } });
   const lock = TIP - GATES.NBA_LOCK_MIN * 60;
