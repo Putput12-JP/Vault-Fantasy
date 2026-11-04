@@ -179,8 +179,11 @@ test('rule C re-scores stored NBA rows: the stored Kalshi flag first, then the K
     assert.deepEqual(gates.heldBack(row()), ['kalshi'], 'a quote wider than MAX_EXCH_SPREAD is not a price');
     assert.deepEqual(gates.heldBack(row({ price: { kal: true }, refs: [{ n: 'Pinnacle', p: 0.54, edge: 0.107 }, { n: 'Exchange', p: 0.52, edge: 0.066 }] })), ['fairs']);
     assert.deepEqual(gates.heldBack(row({ price: { kal: true }, refs: [{ n: 'Pinnacle', p: 0.522, edge: 0.07 }, { n: 'Exchange', p: 0.52, edge: 0.15 }] })), ['edge'], 'over BIG_EDGE');
-    assert.equal(gates.promoted(row({ price: { kal: true } })), true);
-    assert.equal(gates.promoted({ ...row({ price: { kal: true } }), sport: 'nfl' }), false, 'only NBA props are promoted');
+    const before = { firstSeen: GATES.NBA_FAIR_SINCE - 3600, start: GATES.NBA_FAIR_SINCE + 3600 };
+    assert.equal(gates.promoted({ ...row({ price: { kal: true } }), ...before }), true);
+    assert.equal(gates.promoted({ ...row({ price: { kal: true } }), ...before, sport: 'nfl' }), false, 'only NBA props are promoted');
+    assert.equal(gates.promoted({ ...row({ price: { kal: true } }), firstSeen: GATES.NBA_FAIR_SINCE + 1 }), false,
+      'first seen after rule C: the ledger passed it on purpose (e.g. outside the night\'s top 5), so it stays a Pass');
     assert.equal(gates.oldGate(row({ price: { kal: true } })), false, 'under 55%: the price floor held it');
     assert.equal(gates.oldGate({ ...row({ price: { kal: true, p: 0.56 } }), firstSeen: GATES.NBA_FAIR_SINCE + 1 }), false, 'first seen after rule C: not part of the before record');
   } finally { gates.setKalshiReads(null); }
