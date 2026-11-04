@@ -3035,6 +3035,7 @@ th{font-weight:500}
 </div>
 
 <script src="../sharp-money/line-chart.js?v=2" defer></script>
+<script src="../sharp-money/v2/gates.js?v=cap2" defer></script>
 <script>/*HALASKA*/</script>
 <script>
 const D = /*DATA*/null;
@@ -10963,20 +10964,33 @@ document.addEventListener('mouseover', e => { const h = e.target.closest && e.ta
 // Your team's game (or the next tip) with the book against the Vault line on one gauge, tonight's three best things, a time scrubber over
 // uniform game tiles, then bets, records and news. Nothing here is computed fresh: the Vault line and picks come from gpUse / gpPickOf (Game
 // Picks), the starting five from labLineup (NBA.com), bets from My Bets, and the Sharp Plays from the Sharp Money ledger
-// (sharp-data/v2_plays.json, written by scripts/track-v2-plays.mjs).
-const SMP = {rows: null, tried: false, at: 0, timer: null};
-// The two strict gates as sharp-money/v2/gates.js applies them to a stored ledger row (heldBack): priced 55%+ and called inside 48 hours.
-// Change them there and here together.
-const SM_GATE = {minPrice: 0.55, earlyH: 48};
+// (sharp-data/v2_plays.json and v2_passed.json, written by scripts/track-v2-plays.mjs).
+// Which rows are Sharp Plays comes from sharp-money/v2/gates.js, the same rules file Sharp Money and the ledger read, so the two pages cannot disagree:
+// the strict gates for games and NFL props, rule C and the nightly top-5 cap for NBA props (docs/retro/nba-fair-agreement-rule.md).
+const SMP = {rows: null, play: null, tried: false, at: 0, timer: null};
 const SM_AB = {WAS: 'WSH', NOP: 'NO', NYK: 'NY', GSW: 'GS', SAS: 'SA', UTA: 'UTAH', PHO: 'PHX', BRK: 'BKN'};
 const smAb = t => SM_AB[t] || t;
-const smStrict = p => { const px = p.first && p.first.price, h = p.start != null && p.firstSeen != null ? (p.start - p.firstSeen) / 3600 : null; return !(px && px.p != null && px.p < SM_GATE.minPrice) && !(h != null && h >= SM_GATE.earlyH); };
+const SM_RAW = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/';
+// The Play set exactly as Sharp Money builds it (sharp-money/v2-pages.js capSplit): Plays the rules still pass, plus Passed NBA props rule C
+// would play, minus each night's NBA props past the top 5.
+function smPlaySet(plays, passed){
+  const G = window.V2Gates; if (!G) return null;
+  const ok = p => !G.heldBack(p).length, ids = new Set(plays.map(p => p.id));
+  const base = plays.filter(ok).concat(passed.filter(p => !ids.has(p.id) && G.promoted(p)));
+  const out = G.capOut(base);
+  return base.filter(p => !out.has(p.id));
+}
 async function smLoadPlays(){
   SMP.tried = true;
   if (!/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
   try {
-    const j = await fetch('https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/sharp-data/v2_plays.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
-    SMP.rows = Object.values(j.plays || {}).filter(p => p.sport === 'nba'); SMP.at = Date.now() / 1000;
+    const get = u => fetch(u, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    const [j, q, k] = await Promise.all([get(SM_RAW + 'sharp-data/v2_plays.json'), get(SM_RAW + 'sharp-data/v2_passed.json').catch(() => null),
+      get(SM_RAW + 'main/data/v2_nba_kalshi_reads.json').catch(() => null)]);
+    for (let i = 0; !window.V2Gates && i < 50; i++) await new Promise(r => setTimeout(r, 100));     // the deferred rules file
+    if (window.V2Gates && window.V2Gates.setKalshiReads) window.V2Gates.setKalshiReads(k);
+    const nba = L => Object.values((L && L.plays) || {}).filter(p => p.sport === 'nba');
+    SMP.rows = nba(j); SMP.play = smPlaySet(SMP.rows, nba(q)); SMP.at = Date.now() / 1000;
     if (view === 'summary') renderSummary();
   } catch (e) { /* the page works without them */ }
   clearTimeout(SMP.timer); SMP.timer = setTimeout(() => { if (view === 'summary') smLoadPlays(); else SMP.tried = false; }, 5 * 60 * 1000);
@@ -10984,12 +10998,12 @@ async function smLoadPlays(){
 const smName = p => p.kind === 'prop' ? `${p.prop.name} ${p.prop.side === 'over' ? 'Over' : 'Under'} ${p.prop.line} ${p.prop.label}` : (p.first && p.first.title) || '';
 const smShort = {Points: 'pts', Rebounds: 'reb', Assists: 'ast', '3-Pointers': '3PM', 'Pts + Reb + Ast': 'PRA', 'Pts + Reb': 'P+R', 'Pts + Ast': 'P+A', 'Reb + Ast': 'R+A', Steals: 'stl', Blocks: 'blk'};
 const smTitle = p => p.kind === 'prop' ? `${last(p.prop.name)} ${p.prop.side === 'over' ? 'O' : 'U'}${p.prop.line} ${smShort[p.prop.label] || p.prop.label}` : (p.first && p.first.title) || '';
-function smPlaysFor(g){                     // the strict-gate Sharp Plays still open on one game
-  return (SMP.rows || []).filter(p => p.status === 'open' && smStrict(p) && (p.kind === 'prop' ? String(p.prop.gid) === String(g.id)
+function smPlaysFor(g){                     // the Sharp Plays still open on one game
+  return (SMP.play || []).filter(p => p.status === 'open' && (p.kind === 'prop' ? String(p.prop.gid) === String(g.id)
     : p.game && smAb(p.game.away) === g.away && smAb(p.game.home) === g.home && Math.abs(p.start - g.tip) < 6 * 3600));
 }
 function smRecord(){
-  const S = (SMP.rows || []).filter(p => (p.status === 'won' || p.status === 'lost') && smStrict(p));
+  const S = (SMP.play || []).filter(p => p.status === 'won' || p.status === 'lost');
   const w = S.filter(p => p.status === 'won').length, u = S.reduce((a, p) => a + (p.units || 0), 0);
   return {n: S.length, w, l: S.length - w, units: u, roi: S.length ? u / S.length : null};
 }
@@ -11115,14 +11129,14 @@ function smLow(X, B, now){
   const R = smRecord(), items = gpItems(), A = gpStats(items, 'ats'), M = gpStats(items, 'ml');
   const row = (l, sub, rec, u) => `<div class="sm-li"><div class="m"><b>${l}</b><span>${sub}</span></div><div class="r">${rec}<span class="${u == null ? 'muted' : u >= 0 ? 'pos' : 'neg'}">${u == null ? '' : gpS(u, 1) + 'u'}</span></div></div>`;
   const recs = `<section class="sm-mod"><div class="sm-mh"><h2>Records</h2><span class="muted">flat 1 unit</span><a class="act" href="#track" data-go="track">Track Record</a></div>
-    ${row('Sharp Plays', SMP.rows ? (R.n ? `strict gates · ${R.roi >= 0 ? '+' : MINUS}${Math.abs(R.roi * 100).toFixed(1)}% ROI · n=${R.n}${R.n < 100 ? ', small sample' : ''}` : 'no settled NBA plays yet') : 'loading the ledger', R.n ? `${R.w}${DASH}${R.l}` : DASH, R.n ? R.units : null)}
+    ${row('Sharp Plays', SMP.rows ? (R.n ? `same rules as Sharp Money · ${R.roi >= 0 ? '+' : MINUS}${Math.abs(R.roi * 100).toFixed(1)}% ROI · n=${R.n}${R.n < 100 ? ', small sample' : ''}` : 'no settled NBA plays yet') : 'loading the ledger', R.n ? `${R.w}${DASH}${R.l}` : DASH, R.n ? R.units : null)}
     ${(() => { const F = fuRecord(), f = F.fwd, b = F.bt, pc = r => `${r >= 0 ? '+' : MINUS}${Math.abs(r * 100).toFixed(1)}%`;
       const sub = `not a bet · ${f.tg ? `${f.tg} team-game${f.tg > 1 ? 's' : ''} since ${etFmt(Date.parse(((fuT().favu_cfg || {}).fwd || '2026-11-04') + 'T12:00:00Z') / 1000, {month: 'short', day: 'numeric'})}${f.roi != null ? ` · ${pc(f.roi)} ROI` : ''}` : 'forward test starts tonight'}${b.w + b.l ? ` · found on ${b.w}${DASH}${b.l}, ${pc(b.roi)} (in-sample, ${b.tg} team-games)` : ''}`;
       return row('Favorite unders<span class="sm-tag fu">Watch list</span>', sub, f.w + f.l ? `${f.w}${DASH}${f.l}` : DASH, f.w + f.l ? f.u : null); })()}
     ${row('Game Picks spread', `${A.n} graded`, A.n ? gpRec(A) : DASH, A.nu ? A.units : null)}
     ${row('Game Picks winner', `${M.n} graded`, M.n ? gpRec(M) : DASH, M.nu ? M.units : null)}</section>`;
   const teams = new Set(X.flatMap(x => [x.g.away, x.g.home])), mine = new Set(pvBets.filter(b => !b.res).map(b => String(b.p)));
-  const play = new Set((SMP.rows || []).filter(p => p.status === 'open' && p.kind === 'prop').map(p => String(p.prop.espnId)));
+  const play = new Set((SMP.play || []).filter(p => p.status === 'open' && p.kind === 'prop').map(p => String(p.prop.espnId)));
   const N = (B.news || []).filter(n => teams.has(n[3]) && n[0] > now - 24 * 3600).sort((a, b) => b[0] - a[0]).slice(0, 5);
   const news = `<section class="sm-mod"><div class="sm-mh"><h2>Injury news</h2><span class="muted">tonight's teams</span><a class="act" href="#wire" data-go="wire">Injury Wire</a></div>
     ${N.length ? N.map(n => { const st = String(n[5] || ''), cls = /^out|inactive/i.test(st) ? 'bad' : /questionable|doubtful/i.test(st) ? 'warn' : '', hit = mine.has(String(n[1])) ? 'Your bet' : play.has(String(n[1])) ? 'Sharp Play' : '';
