@@ -2434,6 +2434,11 @@ th{font-weight:500}
 .sm-dot.b{background:rgba(229,185,85,.12);color:var(--warn)}
 .sm-dot.n{background:rgba(236,127,127,.1);color:var(--down)}
 .sm-dot.live{background:rgba(95,207,140,.12);color:var(--up)}
+/* Favorite unders: a watch list, not a bet. Dashed like an unlocked lean so it never reads as a Sharp Play */
+.sm-dot.fu{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg3)}
+.sm-tag.fu{color:var(--fg);border-style:dashed;border-color:var(--fg3);font-weight:600}
+.sm-play.fu .r em{font-style:normal;color:var(--fg3)}
+.sm-li .m .sm-tag.fu{display:inline-flex;height:18px;margin-left:6px;vertical-align:1px;font-size:10px;color:var(--fg)}
 .sm-pl{margin-top:9px;padding-top:8px;border-top:1px dashed var(--border2);display:grid;gap:4px}
 .sm-play{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--fg);text-decoration:none;min-width:0}
 .sm-play b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3609,6 +3614,7 @@ function show(v){
   if (v === 'summary'){
     renderSummary();
     if (!boardTried) loadBoard();
+    if (!trackTried) loadTrack();                 // Favorite unders live in track.json
     if (!gpTried) loadGamePicks();
     if (!SMP.tried) smLoadPlays();
     return;
@@ -5100,6 +5106,7 @@ async function loadTrack(){
     TR = {data: d, live: true, at: Date.now() / 1000};
     loadLeans();
     if (view === 'track') renderTrack();
+    if (view === 'summary') renderSummary();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
@@ -10993,7 +11000,31 @@ const smDur = s => { s = Math.max(0, Math.round(s / 60)); return s >= 60 ? `${Ma
 const smStat = s => ({'3pm': '3PM', pra: 'PRA', pr: 'P+R', pa: 'P+A', ra: 'R+A'})[s] || s;
 const smSp = x => x == null ? DASH : x === 0 ? 'PK' : gpS(x);
 const smEx = p => (p.first.refs || []).find(r => r.n === 'Exchange') || (p.first.refs || [])[0] || {};
-let smF = null;                              // tile filter: null, 'A', 'plays' or 'bets'
+let smF = null;                              // tile filter: null, 'A', 'plays', 'fu' or 'bets'
+
+// ── Favorite unders (fav_unders.py → track.json favu_locks / favu_days, docs/fav-unders.md) ──────────────────────────
+// A watch list, shadow-tracked, never a bet: the under on a player whose team is favored by 4.5 to 8.5, when the model's under chance is 5+ points
+// above the no-vig price. Fixed an hour before tip. Pick: [pid, player, stat, line, model, market, book, american, decimal, actual, result, units, close].
+const fuT = () => (TR && TR.data) || {};
+function fuFor(g){                           // this game's team-games: tonight's (locks) until settled, then the record
+  const T = fuT(), L = Object.values(T.favu_locks || {}).filter(t => String(t.game) === String(g.id));
+  return L.length ? L : ((T.favu_days || {})[etDay(g.tip)] || []).filter(t => String(t.game) === String(g.id));
+}
+function fuRecord(){                         // per prop and per team-game (the honest sample: one game script moves all of a team's props)
+  const all = Object.values(fuT().favu_days || {}).flat(), out = {};
+  for (const k of ['fwd', 'bt']){
+    const tg = all.filter(t => k === 'fwd' ? t.fwd : !t.fwd), P = tg.flatMap(t => t.p), tu = t => t.p.reduce((a, p) => a + (p[11] || 0), 0);
+    const w = P.filter(p => p[10] === 'W').length, l = P.filter(p => p[10] === 'L').length, u = P.reduce((a, p) => a + (p[11] || 0), 0);
+    out[k] = {tg: tg.length, tgw: tg.filter(t => tu(t) > 0).length, tgl: tg.filter(t => tu(t) < 0).length, w, l, u, roi: w + l ? u / (w + l) : null};
+  }
+  return out;
+}
+function fuRow(t, p){
+  const am = String(p[7]).replace(/^(?=\d)/, '+').replace('-', MINUS), res = p[10];
+  const tip = res ? `${res === 'W' ? 'Won' : res === 'L' ? 'Lost' : res === 'P' ? 'Push' : 'Did not play'}, actual ${p[9] == null ? DASH : p[9]}` : t.live ? `lean, locks ${clock(t.tip - ((fuT().favu_cfg || {}).lock_min || 60) * 60)}` : 'locked';
+  return `<div class="sm-play fu" title="${esc(p[1])} under ${p[3]} ${smStat(p[2])}: model ${leanPct(p[4], 0)} vs price ${leanPct(p[5], 0)} (no vig), best ${esc(p[6])} ${am}. ${t.team} favored by ${t.fav}. Watch list, not a bet. ${tip}.">
+    <span class="sm-tag fu">Fav under</span><b>${esc(last(p[1]))} U${p[3]} ${smStat(p[2])}</b>${res === 'W' ? '<span class="sm-tag up">W</span>' : res === 'L' ? '<span class="sm-tag bad">L</span>' : ''}<span class="r">${am} <em>+${Math.round((p[4] - p[5]) * 100)}</em></span></div>`;
+}
 
 // One game with everything the page shows about it, computed once per render.
 function smGame(g, B, status, now){
@@ -11002,7 +11033,7 @@ function smGame(g, B, status, now){
   const ats = pk.ats ? {team: pk.ats.side === 'H' ? g.home : g.away, line: pk.ats.side === 'H' ? use.spread : -use.spread, edge: pk.ats.edge, gr: gpGrade('ats', pk.ats.edge)} : null;
   const ml = pk.ml ? {team: pk.ml.side === 'H' ? g.home : g.away, p: pk.ml.p, gr: gpGrade('ml', pk.ml.p)} : null;
   return {g, locked, use, sp, vl: use ? +(-use.margin).toFixed(1) : null, ats, ml, moved: opn && opn.s && sp != null && opn.s.l !== sp ? +(sp - opn.s.l).toFixed(1) : 0,
-    open: opn && opn.s ? opn.s.l : null, openT: opn && opn.t ? opn.t.l : null, plays: smPlaysFor(g), bets: pvBets.filter(b => !b.res && !b.ex && String(b.gid) === String(g.id)),
+    open: opn && opn.s ? opn.s.l : null, openT: opn && opn.t ? opn.t.l : null, plays: smPlaysFor(g), fu: fuFor(g), bets: pvBets.filter(b => !b.res && !b.ex && String(b.gid) === String(g.id)),
     news: (B.news || []).filter(n => (n[3] === g.away || n[3] === g.home) && n[0] > now - 6 * 3600).length, started: g.tip <= now,
     fav: !!PRO.team && (g.away === PRO.team || g.home === PRO.team)};
 }
@@ -11056,6 +11087,8 @@ function smTile(x, now){
   const g = x.g, tc = x.fav ? teamWash(PRO.team) : '', dots = [];
   if (x.started) dots.push('<span class="sm-dot live">In progress</span>');
   if (x.plays.length) dots.push(`<span class="sm-dot p">● ${x.plays.length} Sharp Play${x.plays.length > 1 ? 's' : ''}</span>`);
+  const fuP = x.fu.flatMap(t => t.p.map(p => ({t, p})));
+  if (fuP.length) dots.push(`<span class="sm-dot fu" title="Favorite unders: a watch list, shadow-tracked, not a bet">${fuP.length} fav under${fuP.length > 1 ? 's' : ''} · watch</span>`);
   if (x.bets.length) dots.push(`<span class="sm-dot b">● ${x.bets.length} bet${x.bets.length > 1 ? 's' : ''}</span>`);
   if (x.moved) dots.push(`<span class="sm-dot" title="Spread at open ${g.home} ${smSp(x.open)}, now ${smSp(x.sp)}">moved ${Math.abs(x.moved)}</span>`);
   if (x.news) dots.push(`<span class="sm-dot n" title="Injury report updates in the last 6 hours">${x.news} injury update${x.news > 1 ? 's' : ''}</span>`);
@@ -11068,7 +11101,7 @@ function smTile(x, now){
     <div class="pks"><div class="${x.locked ? '' : 'lean'}" title="${x.locked ? 'Locked 4 hours before tip' : 'Live lean: locks 4 hours before tip'}"><span class="sm-k">Spread${x.locked ? '' : ' · lean'}</span>${x.ats ? `<b>${x.ats.team} ${smSp(x.ats.line)}${gpBadge('ats', x.ats.edge, null, `edge ${x.ats.edge.toFixed(1)} points`)}</b>` : `<b class="dim">${x.sp == null ? 'No line' : 'No pick'}</b>`}</div>
       <div class="${x.locked ? '' : 'lean'}"><span class="sm-k">Winner</span>${x.ml ? `<b>${x.ml.team} ${leanPct(x.ml.p, 0)}${gpBadge('ml', x.ml.p, null, `${leanPct(x.ml.p, 0)} chance`)}</b>` : '<b class="dim">Even</b>'}</div></div>
     <div class="sm-sg">${dots.join('')}</div>
-    ${x.plays.length || x.bets.length ? `<div class="sm-pl">${x.plays.slice(0, 3).map(p => `<a class="sm-play" href="https://vaultfantasy.com/sharp-money/#plays" target="_blank" rel="noopener" title="${esc(smName(p))}"><b>${esc(smTitle(p))}</b>${on(p) ? '<span class="sm-tag warn">On it</span>' : ''}<span class="r">${smAm(p.first.price.am)} <span class="pos">+${((smEx(p).edge || 0) * 100).toFixed(1)}%</span></span></a>`).join('')}${x.plays.length > 3 ? `<span class="muted" style="font-size:11.5px">+${x.plays.length - 3} more on Sharp Money</span>` : ''}
+    ${x.plays.length || x.bets.length || fuP.length ? `<div class="sm-pl">${fuP.slice(0, 4).map(({t, p}) => fuRow(t, p)).join('')}${fuP.length > 4 ? `<span class="muted" style="font-size:11.5px">+${fuP.length - 4} more fav unders</span>` : ''}${x.plays.slice(0, 3).map(p => `<a class="sm-play" href="https://vaultfantasy.com/sharp-money/#plays" target="_blank" rel="noopener" title="${esc(smName(p))}"><b>${esc(smTitle(p))}</b>${on(p) ? '<span class="sm-tag warn">On it</span>' : ''}<span class="r">${smAm(p.first.price.am)} <span class="pos">+${((smEx(p).edge || 0) * 100).toFixed(1)}%</span></span></a>`).join('')}${x.plays.length > 3 ? `<span class="muted" style="font-size:11.5px">+${x.plays.length - 3} more on Sharp Money</span>` : ''}
       ${x.bets.filter(b => !x.plays.some(p => smBetOn(b, p))).map(b => `<a class="sm-play" href="#mybets" data-go="mybets"><span class="sm-tag warn">My bet</span><b>${esc(last(b.name))} ${esc(b.side)} ${b.line} ${smStat(b.s)}</b><span class="r">${esc(String(b.price).replace('-', MINUS))}</span></a>`).join('')}</div>` : ''}
   </article>`;
 }
@@ -11083,6 +11116,9 @@ function smLow(X, B, now){
   const row = (l, sub, rec, u) => `<div class="sm-li"><div class="m"><b>${l}</b><span>${sub}</span></div><div class="r">${rec}<span class="${u == null ? 'muted' : u >= 0 ? 'pos' : 'neg'}">${u == null ? '' : gpS(u, 1) + 'u'}</span></div></div>`;
   const recs = `<section class="sm-mod"><div class="sm-mh"><h2>Records</h2><span class="muted">flat 1 unit</span><a class="act" href="#track" data-go="track">Track Record</a></div>
     ${row('Sharp Plays', SMP.rows ? (R.n ? `strict gates · ${R.roi >= 0 ? '+' : MINUS}${Math.abs(R.roi * 100).toFixed(1)}% ROI · n=${R.n}${R.n < 100 ? ', small sample' : ''}` : 'no settled NBA plays yet') : 'loading the ledger', R.n ? `${R.w}${DASH}${R.l}` : DASH, R.n ? R.units : null)}
+    ${(() => { const F = fuRecord(), f = F.fwd, b = F.bt, pc = r => `${r >= 0 ? '+' : MINUS}${Math.abs(r * 100).toFixed(1)}%`;
+      const sub = `not a bet · ${f.tg ? `${f.tg} team-game${f.tg > 1 ? 's' : ''} since ${etFmt(Date.parse(((fuT().favu_cfg || {}).fwd || '2026-11-04') + 'T12:00:00Z') / 1000, {month: 'short', day: 'numeric'})}${f.roi != null ? ` · ${pc(f.roi)} ROI` : ''}` : 'forward test starts tonight'}${b.w + b.l ? ` · found on ${b.w}${DASH}${b.l}, ${pc(b.roi)} (in-sample, ${b.tg} team-games)` : ''}`;
+      return row('Favorite unders<span class="sm-tag fu">Watch list</span>', sub, f.w + f.l ? `${f.w}${DASH}${f.l}` : DASH, f.w + f.l ? f.u : null); })()}
     ${row('Game Picks spread', `${A.n} graded`, A.n ? gpRec(A) : DASH, A.nu ? A.units : null)}
     ${row('Game Picks winner', `${M.n} graded`, M.n ? gpRec(M) : DASH, M.nu ? M.units : null)}</section>`;
   const teams = new Set(X.flatMap(x => [x.g.away, x.g.home])), mine = new Set(pvBets.filter(b => !b.res).map(b => String(b.p)));
@@ -11105,7 +11141,8 @@ function renderSummary(){
   const X = games.map(g => smGame(g, B, status, now));
   // the favorite team's game may be tomorrow: the hero looks across everything on the board, the tiles show tonight
   const favX = PRO.team && !X.some(x => x.fav) ? all.filter(g => g.away === PRO.team || g.home === PRO.team).slice(0, 1).map(g => smGame(g, B, status, now)) : [];
-  const keep = x => smF === 'A' ? (x.ats && x.ats.gr === 'A') || (x.ml && x.ml.gr === 'A') : smF === 'plays' ? x.plays.length > 0 : smF === 'bets' ? x.bets.length > 0 : true;
+  const keep = x => smF === 'A' ? (x.ats && x.ats.gr === 'A') || (x.ml && x.ml.gr === 'A') : smF === 'plays' ? x.plays.length > 0 : smF === 'fu' ? x.fu.length > 0 : smF === 'bets' ? x.bets.length > 0 : true;
+  const nF = X.reduce((a, x) => a + x.fu.reduce((b, t) => b + t.p.length, 0), 0);
   const nA = X.filter(x => (x.ats && x.ats.gr === 'A') || (x.ml && x.ml.gr === 'A')).length, nP = X.reduce((a, x) => a + x.plays.length, 0), nB = X.filter(x => x.bets.length).length;
   const slots = [...new Set(X.map(x => clock(x.g.tip)))], nxt = (X.find(x => !x.started) || X[0]).g.tip;
   const shown = X.filter(keep);
@@ -11114,10 +11151,11 @@ function renderSummary(){
       ${slots.map(t => `<button type="button" class="sm-chip" data-smjump="${t}" aria-pressed="${t === clock(nxt) && !smF}">${t.replace(/ ?[AP]M$/, '')}<i>${X.filter(x => clock(x.g.tip) === t).length}</i></button>`).join('')}
       <button type="button" class="sm-chip sep" data-smf="A" aria-pressed="${smF === 'A'}">Graded A<i>${nA}</i></button>
       <button type="button" class="sm-chip" data-smf="plays" aria-pressed="${smF === 'plays'}">Sharp Plays<i>${nP}</i></button>
+      ${nF ? `<button type="button" class="sm-chip" data-smf="fu" aria-pressed="${smF === 'fu'}">Fav unders<i>${nF}</i></button>` : ''}
       ${nB ? `<button type="button" class="sm-chip" data-smf="bets" aria-pressed="${smF === 'bets'}">My bets<i>${nB}</i></button>` : ''}</div>
     <div class="sm-tiles">${shown.length ? shown.map(x => smTile(x, now)).join('') : '<section class="sm-mod sm-empty"><b>No games match.</b><p>Clear the filter to see every game.</p></section>'}</div>
     ${smLow(X, B, now)}`;
-  $('smfoot').innerHTML = `<div><b>How to read it.</b> Book is DraftKings' spread for each team; Vault is the Vault line from the Slate page. Spread and Winner are the Game Picks, locked 4 hours before tip (dashed until then). A, B and C are their shadow grades, labels fixed in advance, not recommendations. Sharp Plays are logged on Sharp Money and pass its strict price and timing gates; sharp-account money is context only and never counts toward a play.</div>`;
+  $('smfoot').innerHTML = `<div><b>How to read it.</b> Book is DraftKings' spread for each team; Vault is the Vault line from the Slate page. Spread and Winner are the Game Picks, locked 4 hours before tip (dashed until then). A, B and C are their shadow grades, labels fixed in advance, not recommendations. Sharp Plays are logged on Sharp Money and pass its strict price and timing gates; sharp-account money is context only and never counts toward a play. <span class="sm-tag fu">Fav under</span> marks a watch list, not a bet: the under on a player whose team is favored by 4.5 to 8.5, when the model gives the under 5+ points more than the price (the small number after the price). Fixed an hour before tip at the best DraftKings or Pinnacle price and tracked from Nov 4. It was found by searching many splits of 13 nights, so expect it to fade; a team's unders win or lose together.</div>`;
 }
 $('v-summary').addEventListener('change', e => { const s = e.target.closest('[data-smfav]'); if (!s || !s.value) return; PRO.team = s.value; proSave(); renderNav(); renderSummary(); });
 $('v-summary').addEventListener('click', e => {

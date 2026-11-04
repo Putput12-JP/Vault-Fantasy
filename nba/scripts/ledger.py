@@ -949,6 +949,15 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         psim_days, psim_pre = track.get('psim_days'), (track.get('preseason') or {}).get('psim_days')
         gap_days, gap_pre = track.get('gap_days'), (track.get('preseason') or {}).get('gap_days')
         gap_locks = track.get('gap_locks')
+    try:                                          # Favorite unders: a watch list, shadow-tracked, never a bet (fav_unders.py, docs/fav-unders.md); the first run scans every stored day
+        import fav_unders as FU
+        favu_locks = {}
+        favu_days = FU.record(root, now, track.get('favu_days') if track.get('favu_v') == FU.VERSION else None, rescan_days, season, me, locks=favu_locks)
+        favu_cfg = {'v': FU.VERSION, 'spread': list(FU.SPREAD), 'gap': FU.GAP, 'lock_min': FU.LOCK_MIN, 'fwd': FU.FORWARD_FROM, 'books': list(FU.BOOKS)}
+    except Exception as e:
+        SETTLE_ERR['favorite unders record'] = f'{type(e).__name__}: {e}'[:120]
+        print('favorite unders record failed:', e, flush=True)
+        favu_days, favu_locks, favu_cfg = track.get('favu_days'), track.get('favu_locks'), track.get('favu_cfg')
     try:                                          # Pick'em of the Night: every slip of every size, settled from the box score (pickem_record.py)
         import pickem_record as PKR
         pkn_days = PKR.record(root, now, track.get('pkn_days'), rescan_days, season, me)
@@ -1027,7 +1036,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = track.get('signals')
     box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
     STUCK[:] = stuck_games(root, now, tips, changed)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'near_v': getattr(sys.modules.get('near_record'), 'VERSION', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'near_v': getattr(sys.modules.get('near_record'), 'VERSION', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'favu_days': favu_days, 'favu_locks': favu_locks, 'favu_cfg': favu_cfg, 'favu_v': (favu_cfg or {}).get('v'),'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:
