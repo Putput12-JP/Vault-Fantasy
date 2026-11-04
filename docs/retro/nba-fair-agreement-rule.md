@@ -119,3 +119,12 @@ The record is re-scored the same way (`capOut`): per night, the top 5 by first-s
 - **The cap rarely bound before book shopping.** Only 3 past nights had more than 5 plays, so its effect on history is small.
 - **On the wider 2% set the same ranking lifted ROI** from +13.6% to +25.6% on 57.
 
+
+### Plays logged before the cap shipped (Nov 4)
+
+On Nov 4, 5 NBA props had been logged at 11:36 PM Central, before the cap shipped at 6:30 AM (`GATES.NBA_CAP_SINCE`).
+- **They don't hold the night's slots.** They compete at the lock like any other candidate.
+- **At the first ledger run after the lock,** each one is stamped `capPick` (still in the top 5) or `capOut` (not). The first-sight fields are untouched.
+- **The record drops `capOut` rows.**
+- **No stamps on a stale board.** If the board has no live prices that run, nothing is stamped until a run that does.
+- **Rows are never deleted.** The ledger snapshot job refuses a vanished id.
