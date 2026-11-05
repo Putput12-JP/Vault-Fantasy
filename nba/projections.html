@@ -3804,6 +3804,7 @@ const PAGES = [
     ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Every game: the Vault line next to the market, injuries in points, back-to-backs, betting splits.", 'slate'],
     ['Matchups', SVG('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/>'), "Where each defense gives shots up and where each starter takes his, on a half-court map for every game.", 'matchups'],
     ['Game Simulation', SVG('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>'), 'Play a game 10,000 times: the score, every player\'s stat range and how often two legs hit together.', 'sim'],
+    ['Props Simulation', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/><circle cx="6" cy="6" r="1.2"/><circle cx="15" cy="15" r="1.2"/>'), 'Simulate one prop 10,000 and 50 times against the exact probability, and see what 50 simulated games cost.', 'propsim'],
     ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report and lineup change as it posts, and how fast each venue repriced the props it should move.', 'wire'],
   ]],
   ['Markets', [
@@ -3834,7 +3835,7 @@ const FAMILIES = [
   ['sharp', [['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser']]],
   ['pairs', [['pairs', 'Tonight\'s slip'], ['pickrec', 'Record']]],
   ['track', [['track', 'Record'], ['backtests', 'What Works']]],
-  ['btlab', [['btlab', 'Backtest Lab'], ['checks', 'Model checks'], ['finder', 'Edge Finder'], ['propsim', 'Props Simulation']]],
+  ['btlab', [['btlab', 'Backtest Lab'], ['checks', 'Model checks'], ['finder', 'Edge Finder']]],
   ['health', [['health', 'Data Health'], ['control', 'Control Room']]],
 ];
 const pageFam = v => (FAMILIES.find(f => f[1].some(x => x[0] === v)) || [v])[0];
