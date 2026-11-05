@@ -54,7 +54,8 @@ COUNT = {'reb', 'ast', '3pm'}
 N_BIG, N_SMALL = 10000, 50
 SHOWN = 5                             # the page lists each team's five highest-minute players, and picks the biggest gap among them
 NCOL = 13                             # per game per stat: n, ll x3, brier x3, then the priced subset: n, market ll, ll x3, Vault chance ll
-VERSION = 2                           # 2 (2026-11-05): Vault chance column + gap tiers + Vault chance on Biggest gap picks. ledger.py rescans every stored day on a change
+VERSION = 3                           # 2 (2026-11-05): Vault chance column + gap tiers + Vault chance on Biggest gap picks. 3 (2026-11-05): confidence levels and challengers
+                                      # (conf_ladder.py, per game 'c'). ledger.py rescans every stored day on a change
 VAULT_W = 0.15                        # see the module doc: the model's share of the Vault chance, on the log-odds scale
 GAP_TIERS = (0, .03, .07, .12)        # tier 0 = model behind the price (gap < 0), then under 3, 3 to 7, 7 to 12, 12+ points
 
@@ -315,6 +316,15 @@ def record_all(root, now, prev, prev_gap, rescan_days, games, L, locks=None):
     since = L.tip_day(now - rescan_days * 86400)
     frozen = {g['game']: g for gs in (prev_gap or {}).values() for g in gs if g.get('lock')}
     per_day, gap_per_day = {}, {}
+    try:                                                                  # confidence levels (conf_ladder.py): game logs are only needed by two challengers
+        import conf_ladder as CL
+        try:
+            logs = CL.Logs()
+        except Exception as ex_:
+            logs = None
+            print('conf ladder: no game logs, minutes and combined challengers skipped:', ex_, flush=True)
+    except Exception:
+        CL = None
     for gid, e in _games(root, now, since, L, games).items():
         m = e['meta']
         pick = {k: frozen[gid][k] for k in PICK_KEYS if k in frozen[gid]} if gid in frozen else locked_pick(e) if now >= lock_t(m['tip']) else None
@@ -335,8 +345,9 @@ def record_all(root, now, prev, prev_gap, rescan_days, games, L, locks=None):
         if not any(v[0] for v in per.values()):
             continue
         tt = tiers(clean, bx)
+        cl = CL.score_game(clean, bx, logs, STAT_BOX) if CL else None
         entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]},
-                 't': {s: [[a[0], a[1], round(a[2], 3), round(a[3], 3)] for a in v] for s, v in tt.items() if any(a[0] for a in v)}, **({'replay': 1} if m.get('replay') else {})}   # replay: filled in after the fact (replay_polls.py)
+                 't': {s: [[a[0], a[1], round(a[2], 3), round(a[3], 3)] for a in v] for s, v in tt.items() if any(a[0] for a in v)}, **({'c': cl} if cl else {}), **({'replay': 1} if m.get('replay') else {})}   # replay: filled in after the fact (replay_polls.py)
         per_day.setdefault(L.tip_day(m['tip']), []).append(entry)
     for d, gs in per_day.items():
         days[d] = sorted(gs, key=lambda g: g['tip'])
