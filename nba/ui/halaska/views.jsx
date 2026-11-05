@@ -48,14 +48,14 @@ export function Sidebar({ pages, view, season, pvCount, onGo, collapsed, onToggl
       </div>
       <nav aria-label="Pages">
         {pages.map(([sec, items]) => (
-          <div key={sec} className="sb-sec" style={{ marginBottom: 10 }}>
-            <div className="sb-secl" style={{ padding: '8px 10px 6px' }}><Mono>{sec}</Mono></div>
+          <div key={sec} className="sb-sec" style={{ marginBottom: 4 }}>
+            <div className="sb-secl" style={{ padding: '6px 10px 4px' }}><Mono>{sec}</Mono></div>
             {items.map(([name, icon, what, live]) => {
               if (!live) return <div key={name} title={what} aria-disabled="true" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', opacity: .5, ...tokens.type.base, color: pal.textTertiary }}><Ico html={icon} />{name}<Badge style={{ marginLeft: 'auto' }}>Soon</Badge></div>;
               const on = view === live;
               return (
                 <a key={live} href={'#' + live} className="sb-a" data-tip={name} title={collapsed ? undefined : what} aria-current={on ? 'page' : undefined} aria-label={collapsed ? name : undefined} onClick={e => { e.preventDefault(); onGo(live); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', borderRadius: tokens.radius.sm, textDecoration: 'none', ...tokens.type.base, color: on ? pal.text : pal.textSecondary, fontWeight: on ? tokens.weight.medium : tokens.weight.regular, transition: `background ${motion.fast || '120ms'} ease, color ${motion.fast || '120ms'} ease` }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 10px', borderRadius: tokens.radius.sm, textDecoration: 'none', ...tokens.type.base, color: on ? pal.text : pal.textSecondary, fontWeight: on ? tokens.weight.medium : tokens.weight.regular, transition: `background ${motion.fast || '120ms'} ease, color ${motion.fast || '120ms'} ease` }}>
                   <span style={{ display: 'inline-flex', color: on ? pal.text : pal.textTertiary, flex: 'none' }}><Ico html={icon} /></span><span className="sb-l">{name}</span>
                   {live === 'props' && pvCount ? <><span className="sb-l" style={{ marginLeft: 'auto' }}><Badge variant="accent">{pvCount}</Badge></span><i className="sb-dot" aria-hidden="true" /></> : null}
                 </a>
