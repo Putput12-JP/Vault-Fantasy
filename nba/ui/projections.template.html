@@ -3360,7 +3360,7 @@ const PAGES = [
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
     ['Game Picks', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 10.5 12 7l3.5 3.5"/>'), 'The Vault line\'s side against the spread and straight up, written 4 hours before tip and graded in public.', 'games'],
-    ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'props'],
+    ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'propboard'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
   ]],
   ['Betting', [
@@ -3380,7 +3380,7 @@ const PAGES = [
 // Pages folded into another page: a sub-tab strip under the header joins them, and the sidebar lights the parent.
 // Every old link (#edges, #propboard, #follow ...) still opens its page.
 const FAMILIES = [
-  ['props', [['props', 'Player Props'], ['propboard', 'Table'], ['edges', 'All edges']]],
+  ['propboard', [['propboard', 'Table'], ['props', 'Picks'], ['edges', 'All edges']]],
   ['lab', [['lab', 'Minutes Lab'], ['tonight', 'Tonight']]],
   ['sharp', [['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser']]],
   ['pairs', [['pairs', 'Tonight\'s slip'], ['pickrec', 'Record']]],
@@ -3405,7 +3405,7 @@ function aboutSrc(){
   const extra = [...document.querySelectorAll('main:not([hidden]) [data-about]')].filter(x => x.textContent.trim());
   return f || extra.length ? {f, extra} : null;
 }
-function renderAbout(){ $('aboutbtn').hidden = !aboutSrc(); }
+function renderAbout(){ const h = !aboutSrc(); if ($('aboutbtn').hidden !== h) $('aboutbtn').hidden = h; }   // write only on change: re-setting hidden queues a mutation and would loop the observer
 $('aboutbtn').addEventListener('click', () => {
   const a = aboutSrc(), d = $('aboutsheet'); if (!a) return;
   $('aboutbody').innerHTML = `<h2>About ${esc($('tname').textContent)}</h2>` + a.extra.map(x => `<div class="ab-sec">${x.querySelector('.card-b') ? x.querySelector('.card-b').innerHTML : x.innerHTML}</div>`).join('') + (a.f ? `<div class="ab-sec">${a.f.innerHTML}</div>` : '');
@@ -3571,7 +3571,7 @@ $('teamlist').addEventListener('keydown', e => {
 // Phone tab bar: the four jobs people open most; More opens the full page list.
 $('tabbar').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; const t = b.dataset.tab;
   if (t === 'more'){ $('app').classList.toggle('open'); return; }
-  navGo(t); window.scrollTo(0, 0); });
+  navGo(t === 'props' ? 'propboard' : t); window.scrollTo(0, 0); });
 function paintTabs(){ const on = ['summary', 'lines', 'props', 'lab'].includes(view) ? view : isTrack(view) || view === 'backtests' ? 'track' : view === 'tonight' ? 'lab' : (view === 'slate' || view === 'matchups' ? 'lines' : ['mybets', 'propboard', 'edges'].includes(view) ? 'props' : 'more');
   document.querySelectorAll('#tabbar [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === on)); }
 function navGo(v){   // sidebar link
@@ -3713,7 +3713,7 @@ function show(v){
   }
   if (v === 'props' || v === 'mybets' || v === 'propboard'){
     pv.tab = {props: 'v2', mybets: 'bets', propboard: 'full'}[v];
-    $('tname').textContent = {props: 'Player Props', mybets: 'My Bets', propboard: 'Props Table'}[v];
+    $('tname').textContent = {props: 'Player Props', mybets: 'My Bets', propboard: 'Player Props'}[v];
     $('tsub').textContent = {props: 'ONE DECISION PER PROP · WHERE TO BET IT · WHY', mybets: 'YOUR BETS · RESULTS · CLOSING-LINE VALUE', propboard: 'EVERY LINE · EVERY VENUE · ONE TABLE'}[v];
     renderProps();
     if (v === 'props' && pvNavCount()){ $('pv-alerts').hidden = false; pvRenderAlerts(); }    // new alerts open on arrival, not behind a button
