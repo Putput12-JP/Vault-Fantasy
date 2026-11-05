@@ -28,6 +28,16 @@ same props or the headline pick goes unrecorded (that happened on opening night:
 The guard still decides what counts as a model comparison: held props are left out of the log-loss and Brier sums (`score`) and are only used to choose and
 settle the Biggest gap pick, which carries 'held' so the page can mark it. A held pick is where-to-look, never a bet.
 
+Vault chance (added 2026-11-05, VERSION 2): the price's over chance moved VAULT_W of the way toward the model's, on the log-odds scale. The Nov 5
+audit (4,561 regular-season props, Oct 21 to Nov 4) found the price beat the model alone (log loss 0.683 vs 0.693) and that the model's 60%+ calls landed
+well short. Weight fitted on Oct 21 to 29 and checked on Oct 30 to Nov 4: the fit half's best weight was 0 (price alone), the check half's 0.2 to 0.4.
+0.15 costs +0.0002 log loss on the fit half and saves 0.0007 on the check half, so it is a small, forward-tested nudge, not a claimed edge. A prop with no
+price has no Vault chance (None): there is nothing to anchor to. It is scored live as column 12 of the per-stat sums, on the priced props.
+
+Gap tiers (VERSION 2): per stat, the priced props split by the gap between the model's chance of its side and the price's chance of that side
+(GAP_TIERS: behind the price, under 3, 3 to 7, 7 to 12, 12+ points), each [n, model side won, wins the price expected, sum p(1-p)], so the page can show
+"calls like this" with the price's expectation beside it. Held props are left out, as in `score`.
+
 Scoring: a prop is void when the player did not play or the stat lands exactly on the line. Sums are kept per game so the page can cluster the
 standard error by game, as the backtest did. A row is scored from the last pre-tip record, so a prop that moved is judged on its final price.
 """
@@ -43,7 +53,26 @@ STAT_BOX = {'pts': 'points', 'reb': 'rebounds', 'ast': 'assists', '3pm': 'threeP
 COUNT = {'reb', 'ast', '3pm'}
 N_BIG, N_SMALL = 10000, 50
 SHOWN = 5                             # the page lists each team's five highest-minute players, and picks the biggest gap among them
-NCOL = 12                             # per game per stat: n, ll x3, brier x3, then the priced subset: n, market ll, ll x3
+NCOL = 13                             # per game per stat: n, ll x3, brier x3, then the priced subset: n, market ll, ll x3, Vault chance ll
+VERSION = 2                           # 2 (2026-11-05): Vault chance column + gap tiers + Vault chance on Biggest gap picks. ledger.py rescans every stored day on a change
+VAULT_W = 0.15                        # see the module doc: the model's share of the Vault chance, on the log-odds scale
+GAP_TIERS = (0, .03, .07, .12)        # tier 0 = model behind the price (gap < 0), then under 3, 3 to 7, 7 to 12, 12+ points
+
+
+def _lg(p):
+    p = min(max(p, 1e-4), 1 - 1e-4)
+    return math.log(p / (1 - p))
+
+
+def vault(p_model, p_price):
+    """The Vault chance of the same side both are quoted for: the price moved VAULT_W of the way toward the model, in log odds. None without a price."""
+    if p_price is None or p_model is None:
+        return None
+    return 1 / (1 + math.exp(-((1 - VAULT_W) * _lg(p_price) + VAULT_W * _lg(p_model))))
+
+
+def gap_tier(gap):
+    return sum(gap >= c for c in GAP_TIERS)
 
 
 NOT_A_LINE = {'Polymarket'}           # Polymarket lists a ladder of thresholds (every 5 points, every 2 rebounds), not one line; its rungs are never the main line
@@ -178,6 +207,28 @@ def score(rows, bx):
             a[8] += _ll(pm, over)
             for i, p in enumerate((pe, p10, p50)):
                 a[9 + i] += _ll(p, over)
+            a[12] += _ll(vault(pe, pm), over)
+    return per
+
+
+def tiers(rows, bx):
+    """Per stat, per gap tier (GAP_TIERS): [n, model side won, wins the price expected, sum p(1-p)] over the priced props. Void props are skipped."""
+    per = {s: [[0, 0, 0.0, 0.0] for _ in range(len(GAP_TIERS) + 1)] for s in STATS}
+    for (pid, s), (row, m) in rows.items():
+        line, mu, pe, p10, p50, pm, src = row
+        st = bx.get(int(pid))
+        if pm is None or not st:
+            continue
+        y = st.get(STAT_BOX[s], 0)
+        if y == line:
+            continue
+        over = pe >= .5
+        p_side, q = (pe, pm) if over else (1 - pe, 1 - pm)
+        t = per[s][gap_tier(p_side - q)]
+        t[0] += 1
+        t[1] += (y > line) == over
+        t[2] += q
+        t[3] += q * (1 - q)
     return per
 
 
@@ -200,7 +251,7 @@ def gap_pick(rows):
         key = (p_side - p_mkt, -STATS.index(s), -m['pid'])
         if best is None or key > best[0]:
             best = (key, {'pid': m['pid'], 'player': m['player'], 'team': m['team'], 'stat': s, 'side': 'over' if over else 'under', 'line': line,
-                          'mu': mu, 'p': round(p_side, 4), 'pm': round(p_mkt, 4), **({'held': m['held']} if m.get('held') else {})})
+                          'mu': mu, 'p': round(p_side, 4), 'pm': round(p_mkt, 4), 'v': round(vault(p_side, p_mkt), 4), **({'held': m['held']} if m.get('held') else {})})
     return best[1] if best else None
 
 
@@ -216,7 +267,7 @@ def settle_gap(pick, bx):
 
 
 LOCK_MIN = 90                         # the Biggest gap pick of a game is fixed this many minutes before tip, from the rows recorded up to then
-PICK_KEYS = ('pid', 'player', 'team', 'stat', 'side', 'line', 'mu', 'p', 'pm', 'held', 'lock', 'late')
+PICK_KEYS = ('pid', 'player', 'team', 'stat', 'side', 'line', 'mu', 'p', 'pm', 'v', 'held', 'lock', 'late')
 
 
 def lock_t(tip):
@@ -267,6 +318,8 @@ def record_all(root, now, prev, prev_gap, rescan_days, games, L, locks=None):
     for gid, e in _games(root, now, since, L, games).items():
         m = e['meta']
         pick = {k: frozen[gid][k] for k in PICK_KEYS if k in frozen[gid]} if gid in frozen else locked_pick(e) if now >= lock_t(m['tip']) else None
+        if pick and 'v' not in pick and pick.get('pm') is not None:       # a pick locked before VERSION 2: its Vault chance from its own stored p and pm
+            pick['v'] = round(vault(pick['p'], pick['pm']), 4)
         if locks is not None and pick:
             locks[gid] = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick}
         if now < m['tip'] + L.SETTLE_AFTER_S:
@@ -277,10 +330,13 @@ def record_all(root, now, prev, prev_gap, rescan_days, games, L, locks=None):
         if pick:
             res, y = settle_gap(pick, bx)
             gap_per_day.setdefault(L.tip_day(m['tip']), []).append({'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick, 'y': y, 'r': res, **({'replay': 1} if m.get('replay') else {})})
-        per = score({k: v for k, v in e['last'].items() if not v[1].get('held')}, bx)      # the minutes-model comparison keeps to props the roster guard trusts
+        clean = {k: v for k, v in e['last'].items() if not v[1].get('held')}      # the minutes-model comparison keeps to props the roster guard trusts
+        per = score(clean, bx)
         if not any(v[0] for v in per.values()):
             continue
-        entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]}, **({'replay': 1} if m.get('replay') else {})}   # replay: filled in after the fact (replay_polls.py)
+        tt = tiers(clean, bx)
+        entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]},
+                 't': {s: [[a[0], a[1], round(a[2], 3), round(a[3], 3)] for a in v] for s, v in tt.items() if any(a[0] for a in v)}, **({'replay': 1} if m.get('replay') else {})}   # replay: filled in after the fact (replay_polls.py)
         per_day.setdefault(L.tip_day(m['tip']), []).append(entry)
     for d, gs in per_day.items():
         days[d] = sorted(gs, key=lambda g: g['tip'])
