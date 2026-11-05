@@ -939,10 +939,13 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     psim_rescan = max(rescan_days, (dt.date.fromisoformat(tip_day(now)) - dt.date.fromisoformat(mend[0])).days + 1) if mend else rescan_days   # a repaired day (repair_main_line.py) is re-recorded once, however old
     try:                                          # single-prop simulations vs the minutes model, settled from the box score (prop_sim_record.py)
         import prop_sim_record as PSR
+        if track.get('psim_v') != PSR.VERSION:    # a new record version (prop_sim_record.VERSION) rebuilds every stored day once, so history matches the new columns
+            first = min([d for d in (track.get('psim_days') or {})] + [d for d in ((track.get('preseason') or {}).get('psim_days') or {})] or [tip_day(now)])
+            psim_rescan = max(psim_rescan, (dt.date.fromisoformat(tip_day(now)) - dt.date.fromisoformat(first)).days + 1)
         gap_locks = {}
         psim_days, gap_days = PSR.record_all(root, now, track.get('psim_days'), {d: v for d, v in (track.get('gap_days') or {}).items() if d not in mend}, psim_rescan, season, me, locks=gap_locks)   # a repaired day's locked picks are chosen again
         gap_locks = {g: v for g, v in gap_locks.items() if v['tip'] > now - 6 * 3600}      # the page reads these only until the game is long over; settled picks live in gap_days
-        psim_pre, gap_pre = PSR.record_all(root, now, (track.get('preseason') or {}).get('psim_days'), (track.get('preseason') or {}).get('gap_days'), rescan_days, lambda g: not season(g), me)
+        psim_pre, gap_pre = PSR.record_all(root, now, (track.get('preseason') or {}).get('psim_days'), (track.get('preseason') or {}).get('gap_days'), psim_rescan if track.get('psim_v') != PSR.VERSION else rescan_days, lambda g: not season(g), me)
     except Exception as e:
         SETTLE_ERR['props simulation record'] = f'{type(e).__name__}: {e}'[:120]
         print('prop sim record failed:', e, flush=True)
@@ -1036,7 +1039,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = track.get('signals')
     box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
     STUCK[:] = stuck_games(root, now, tips, changed)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'near_v': getattr(sys.modules.get('near_record'), 'VERSION', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'favu_days': favu_days, 'favu_locks': favu_locks, 'favu_cfg': favu_cfg, 'favu_v': (favu_cfg or {}).get('v'),'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'near_v': getattr(sys.modules.get('near_record'), 'VERSION', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'favu_days': favu_days, 'favu_locks': favu_locks, 'favu_cfg': favu_cfg, 'favu_v': (favu_cfg or {}).get('v'),'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_v': getattr(sys.modules.get('prop_sim_record'), 'VERSION', None) if 'props simulation record' not in SETTLE_ERR else track.get('psim_v'), 'vault_w': getattr(sys.modules.get('prop_sim_record'), 'VAULT_W', None), 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:
