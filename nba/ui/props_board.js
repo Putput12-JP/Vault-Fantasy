@@ -1,8 +1,9 @@
 // Props Table, Outlier layout (render_app.py inlines this at /*PROPS_BOARD_JS*/).
 // One row per prop AND side, colored hit-rate tiles, opponent rank by position, Vault's projection, fair and edge,
-// and a Filters panel whose venue switches re-pick the best price. Every number comes from the page's own pricing
-// (priceRow, scOf, windowGames, hitRate): nothing here prices a prop. A row opens the existing detail drawer
-// (scDetail), so the Kalshi ladder, every book and Log bet work exactly as before.
+// and a Filters panel whose venue switches re-pick the best price. A row opens the prop's own page
+// (#propboard/<player>/<stat>/<o|u>): game-log chart against the line and Vault's projection, the Vault model card,
+// every price, and a bet tracker that saves through pvMkBet into My Bets. Every number comes from the page's own
+// pricing (priceRow, scOf, logsOf, hitRate): nothing here prices a prop.
 window.PBX = (() => {
   const LS = 'nba-pbx-f', LSC = 'nba-pbx-classic';
   const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any'};
@@ -159,13 +160,243 @@ window.PBX = (() => {
       <div class="ft"><span class="muted">${n.toLocaleString()} props match. Venues change which price counts as best.</span><button type="button" class="btn" data-freset="1">Reset</button><button type="button" class="btn primary" data-fdone="1">Done</button></div></div>`;
   }
 
+  // ── prop detail page (#propboard/<player id>/<stat>/<o|u>) ──
+  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null};
+  const MIN_I = 5;
+  const routeOf = () => { const m = /^#propboard\/(\d+)\/([a-z0-9]+)\/([ou])$/i.exec(location.hash); return m ? {pid: +m[1], s: m[2].toLowerCase(), side: m[3].toLowerCase()} : null; };
+  const goProp = (pid, s, side) => { location.hash = `#propboard/${pid}/${s}/${side}`; };
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const med = a => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+  const f1 = v => v == null ? '-' : fmt(v);
+  function winGl(all, w, opp){
+    const SEA = GL.current_season;
+    return w === 'L5' ? all.slice(0, 5) : w === 'L10' ? all.slice(0, 10) : w === 'L20' ? all.slice(0, 20) : w === 'H2H' ? all.filter(g => GL.teams[g[2]] === opp)
+      : w === 'S0' ? all.filter(g => g[1] === SEA) : all.filter(g => g[1] === SEA - 1);
+  }
+  function chart(gl, s, line, mu){
+    gl = gl.slice(0, 30).reverse();
+    if (!gl.length) return '<p class="empty" style="padding:24px">No games in this window.</p>';
+    const W = innerWidth < 760 ? 440 : 860, H = innerWidth < 760 ? 230 : 260, padL = 42, padB = 40, padT = 18, n = gl.length, parts = COMBO[s] || [s];
+    const vals = gl.map(g => gval(g, s)), max = Math.max(...vals, line, mu || 0) * 1.15 || 1, y = v => padT + (H - padT - padB) * (1 - v / max);
+    const bw = Math.min(56, (W - padL) / n * .72), step = (W - padL) / n;
+    let o = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${SLABEL[s]} by game against the line of ${line}">`;
+    for (let i = 0; i <= 4; i++){ const v = max / 1.15 * i / 4; o += `<line class="gl" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/>` + (Math.abs(y(v) - y(line)) > 12 ? `<text class="ax" x="${padL - 8}" y="${y(v) + 3}" text-anchor="end">${+v.toFixed(1)}</text>` : ''); }
+    gl.forEach((g, i) => {
+      const v = vals[i], x = padL + step * i + (step - bw) / 2, cls = v > line ? 'o' : 'u', opp = GL.teams[g[2]];
+      o += `<g><title>${gdate(g[0])} ${g[3] ? 'vs' : '@'} ${opp}: ${v} ${SLABEL[s]} in ${g[MIN_I]} min</title>`;
+      if (parts.length > 1){ let acc = 0; parts.forEach((k, j) => { const pv = g[GI[k]]; if (!pv) return; o += `<rect class="b ${cls}${j}" x="${x}" y="${y(acc + pv)}" width="${bw}" height="${Math.max(0, y(acc) - y(acc + pv))}"/>`; acc += pv; }); }
+      else o += `<rect class="b ${cls}0" x="${x}" y="${y(v)}" width="${bw}" height="${Math.max(2, y(0) - y(v))}" rx="3"/>`;
+      o += `<text class="lb" x="${x + bw / 2}" y="${y(v) - 5}" text-anchor="middle">${v}</text><text class="ax" x="${x + bw / 2}" y="${H - padB + 15}" text-anchor="middle">${gdate(g[0])}</text><text class="ax" x="${x + bw / 2}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? 'vs' : '@'} ${opp}</text></g>`;
+    });
+    o += `<line class="ln" x1="${padL}" x2="${W}" y1="${y(line)}" y2="${y(line)}"/><rect class="tg" x="0" y="${y(line) - 9}" width="38" height="18" rx="4"/><text class="tt" x="19" y="${y(line) + 4}" text-anchor="middle">${line}</text>`;
+    if (mu != null) o += `<line class="vl" x1="${padL}" x2="${W}" y1="${y(mu)}" y2="${y(mu)}"/><rect class="vtg" x="${W - 76}" y="${y(mu) - 9}" width="76" height="18" rx="4"/><text class="vtt" x="${W - 38}" y="${y(mu) + 4}" text-anchor="middle">Vault ${fmt(mu)}</text>`;
+    return o + '</svg>';
+  }
+  // tracker: every candidate on this side (any line) plus "Other book" at the main line
+  function trkOpts(x){
+    const r = x.r, sideW = x.side === 'o' ? 'Over' : 'Under', kSide = x.side === 'o' ? 'YES' : 'NO';
+    const c = (r.all || []).filter(c => c.side === sideW || c.side === kSide).sort((a, b) => (b.line === r.line) - (a.line === r.line) || b.edge - a.edge);
+    c.push({venue: 'book', bk: 'Other book', side: sideW, line: r.line, price: '-110', fair: x.fair, edge: null, g: null, other: true});
+    return c;
+  }
+  const isFlat = c => c.venue === 'pickem' && c.price == null;
+  const optLbl = c => `${PKN[c.bk] || c.bk} · ${c.venue === 'kalshi' ? `${c.line + .5}+` : c.line}${c.other ? '' : ` · ${isFlat(c) ? 'flat' : c.venue === 'kalshi' ? Math.round(c.price * 100) + '¢' : c.price}`}`;
+  const priceStr = (c, unit) => isFlat(c) ? 'flat' : c.venue === 'kalshi' ? (unit === 'am' ? fmtAm(pToAm(c.price)) : String(Math.round(c.price * 100))) : unit === 'am' ? String(c.price) : String(Math.round(amP(c.price) * 1000) / 10);
+  function trkInit(x){
+    const key = `${x.r.e.p}|${x.r.e.s}|${x.side}`; if (DS.T && DS.T.key === key) return;
+    const opts = trkOpts(x); let i = x.best ? opts.indexOf(x.best) : 0; if (i < 0) i = 0;
+    const c = opts[i], unit = c.venue === 'kalshi' ? 'pct' : 'am';
+    DS.T = {key, i, unit, price: priceStr(c, unit), stake: null};
+  }
+  function trkCalc(x){
+    const T = DS.T, c = trkOpts(x)[T.i], raw = String(T.price).trim();
+    let p = null;
+    if (isFlat(c)) p = 'flat';
+    else if (T.unit === 'pct' || /%|¢/.test(raw)){ const n = parseFloat(raw.replace(/[^0-9.]/g, '')); if (n > 0 && n < 100) p = n / 100; }
+    else { const n = amNum(raw.replace(/\s/g, '')); if (n != null && Math.abs(n) >= 100) p = amP(n); }
+    if (p == null) return {c, err: T.unit === 'am' ? 'Enter American odds, like -110 or +125.' : 'Enter a chance, like 55.'};
+    const cost = p === 'flat' ? PK_BE : c.venue === 'kalshi' ? p + kFee(p) : p, fair = c.fair, edge = fair == null ? null : fair - cost;
+    const call = edge == null ? null : x.r.hold ? 'pass' : edge >= EDGE_MIN ? (c.g === 'go' ? 'bet' : 'lean') : 'pass';
+    const stake = T.stake != null ? T.stake : call === 'bet' ? Math.max(1, Math.round(pvStakeFor(fair, cost, c))) : 10;
+    const inStr = p === 'flat' ? 'flat' : T.unit === 'pct' ? raw.replace(/[^0-9.]/g, '') + '%' : raw;
+    return {c, cost, fair, edge, call, stake, inStr, flat: p === 'flat'};
+  }
+  function trkReadout(x){
+    const k = trkCalc(x); if (k.err) return `<p class="muted">${k.err}</p>`;
+    const win = k.stake > 0 ? k.stake * (1 - k.cost) / k.cost : null;
+    return `<div class="pbx-tro">
+      <div><small>Break-even</small><b>${(k.cost * 100).toFixed(1)}%</b><i>${k.flat ? 'flat flex' : fmtAm(pToAm(k.cost))}${k.c.venue === 'kalshi' ? ' with fee' : ''}</i></div>
+      <div><small>Vault fair here</small><b class="v">${k.fair == null ? '-' : pc(k.fair)}</b></div>
+      <div><small>Edge</small><b class="${k.edge > 0 ? 'pos' : k.edge != null ? 'neg' : ''}">${k.edge == null ? '-' : sgn(k.edge * 100) + '%'}</b></div>
+      <div><small>$${k.stake} wins</small><b>${win == null ? '-' : '$' + win.toFixed(2)}</b></div>
+      <div><small>Call at your price</small><b>${k.call ? `<span class="pbx-call ${k.call}">${k.call.toUpperCase()}</span>` : '-'}</b></div></div>`;
+  }
+  function tracker(x){
+    trkInit(x); const T = DS.T, r = x.r, opts = trkOpts(x), k = trkCalc(x), mine = pvBets.filter(b => b.k === pvKey(r));
+    return `<section class="pbx-card2" id="pbx-trk"><header><h3>Track a bet</h3><small>Saved to My Bets with Vault's fair chance, settled after the game with its closing-line value</small></header>
+      <div class="pbx-trk">
+        <div class="row">
+          <label>Side<span class="seg"><button type="button" data-tside="o" aria-pressed="${x.side === 'o'}">Over</button><button type="button" data-tside="u" aria-pressed="${x.side === 'u'}">Under</button></span></label>
+          <label>Where<select id="pbx-tven">${opts.map((c, i) => `<option value="${i}"${i === T.i ? ' selected' : ''}>${esc(optLbl(c))}</option>`).join('')}</select></label>
+          <label>Price you got<span class="pr"><input id="pbx-tprice" inputmode="decimal" value="${esc(T.price)}" ${isFlat(opts[T.i]) ? 'readonly' : ''}><span class="seg"><button type="button" data-tunit="am" aria-pressed="${T.unit === 'am'}">-110</button><button type="button" data-tunit="pct" aria-pressed="${T.unit === 'pct'}">55%</button></span></span></label>
+          <label>Stake $<input id="pbx-tstake" type="number" min="1" step="1" value="${k.stake || 10}"></label>
+        </div>
+        <div id="pbx-tro">${trkReadout(x)}</div>
+        <div class="act"><span class="muted">American odds as the book showed them (-110, +125) or the chance they imply (55%). Kalshi is in cents and its fee is added for you. Suggested stake follows your Kelly settings on Edges.</span><button type="button" class="btn primary" data-tsave="1">Save to My Bets</button></div>
+      </div>
+      ${mine.length ? `<div class="pbx-mine">${mine.map(b => `<div><span><b>${esc(b.side)} ${b.venue === 'kalshi' ? (b.line + .5) + '+' : b.line}</b> ${esc(PKN[b.bk] || b.bk)} ${esc(b.price)}</span><span>$${b.stake}</span><span class="${b.edge > 0 ? 'pos' : 'neg'}">${sgn(b.edge * 100)}%</span><span class="pbx-call ${b.call}">${b.call.toUpperCase()}</span><span class="muted">${b.res ? esc(String(b.res.r || b.res)) : 'Open'}</span></div>`).join('')}<a class="linkbtn" href="#mybets" data-go="mybets">All my bets</a></div>` : ''}
+    </section>`;
+  }
+  function detail(B, rt){
+    const root = $('pbx-root'), all = build(B);
+    all.forEach(pick);
+    const x = all.find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side) || all.find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s);
+    if (!x){ root.innerHTML = `<button type="button" class="pbx-back" data-back="1">← Props</button><section class="pbx-card2"><p class="empty" style="padding:24px">This prop is not on the board now. The game may have tipped, or the line was pulled.</p></section>`; return; }
+    const r = x.r, side = x.side, g = x.g, s = r.e.s, X = PIDX[r.e.p], logs = (r._logs || (r._logs = logsOf(r))).all, h = hits(x);
+    pf.rows = [r];                                    // Watch in the header goes through the shared handler, which looks rows up here
+    const stats = STATS.map(z => z[0]).filter(k => all.some(z => z.r.e.p === r.e.p && z.r.e.s === k));
+    const wg = winGl(logs, DS.win, x.opp), sv = i => { const a = wg.map(z => z[i]); return DS.med ? med(a) : avg(a); };
+    const fgp = (() => { const m = wg.reduce((a, z) => a + z[GI.fgm], 0), A = wg.reduce((a, z) => a + z[GI.fga], 0); return A ? m / A : null; })();
+    const hw = h[DS.win], wl = Object.fromEntries(WIN);
+    const pmS = r.pm == null ? null : side === 'o' ? r.pm : 1 - r.pm, mkS = r.mkt == null ? null : side === 'o' ? r.mkt : 1 - r.mkt;
+    const other = all.find(z => z.r === r && z.side !== side);
+    const best = x.best, bestTxt = best ? `${PKN[best.bk] || best.bk} ${priceTxt(best)}` : x.pk ? `${PKN[x.pk.bk] || x.pk.bk} ${priceTxt(x.pk)}` : null;
+    const verdict = r.hold ? `<b>Held.</b> ${esc(r.hold.why || r.hold.label || '')}`
+      : x.gate === 'go' ? `<b>Passes the gates.</b> ${esc(bestTxt)} beats Vault's fair ${pc(x.fair)} by ${sgn(x.edge * 100)} points after fees.`
+      : x.edge != null && x.edge > 0 ? `<b>Thin edge, not a play.</b> ${esc(bestTxt)} is ${sgn(x.edge * 100)} points over fair but does not clear every gate.`
+      : x.edge != null ? `<b>No edge on the ${side === 'o' ? 'over' : 'under'}.</b> The best price, ${esc(bestTxt)}, costs more than Vault's fair ${pc(x.fair)}.${other && other.edge > 0 ? ` The ${side === 'o' ? 'under' : 'over'} shows ${sgn(other.edge * 100)}.` : ''}`
+      : '<b>No priced market on this side.</b>';
+    const bld = r.build, adj = bld && r.min > 0 ? PARTS.concat('bias').filter(k => bld[k] != null && Math.abs(bld[k]) >= .005) : [], amax = Math.max(.5, ...adj.map(k => Math.abs(bld[k])));
+    const ev = x.sc.ev;
+    const main = r.books.find(b => b.bk === r.lineFrom) || r.books[0];
+    const rk = ranks(), oppRows = ['pts', 'reb', 'ast', '3pm', 'pra', 'stl', 'blk'].map(k => [k, rk && x.grp ? rk[`${x.opp}|${x.grp}|${k}`] : null]).filter(z => z[1]);
+    const stB = statusFromBoard(B), injs = Object.entries(stB).filter(([pid, st]) => /out|doubt|quest|inactive/i.test(st) && PIDX[pid] && g && (PIDX[pid].t === g.away || PIDX[pid].t === g.home))
+      .map(([pid, st]) => [PIDX[pid].p.name, PIDX[pid].t, st]).sort((a, b) => a[1].localeCompare(b[1]));
+    const grpW = x.grp === 'G' ? 'guards' : x.grp === 'C' ? 'centers' : 'forwards';
+    const pkey = pvKey(r), watching = !!pvW[pkey];
+    const kw = g && g.mk && g.mk.kalshi && g.mk.kalshi.win;
+    root.innerHTML = `
+    <button type="button" class="pbx-back" data-back="1">← Props</button>
+    <div class="pbx-detail"><div class="pbx-main">
+      <section class="pbx-card2">
+        <div class="pbx-dh">${face(x)}
+          <div class="id">${g ? `<span class="pbx-mchip">${lgImg(g.away, 14)}${g.away} @ ${g.home}${lgImg(g.home, 14)}${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span>` : ''}
+            <h2>${esc(r.name)} <small>${esc(r.team)}${x.grp ? ` · ${x.grp === 'G' ? 'Guard' : x.grp === 'C' ? 'Center' : 'Forward'}` : ''}${r.lu === 's' ? ' · Starter' : ''}</small> ${injTag(r)}</h2></div>
+          <div class="acts">
+            <span class="seg"><button type="button" data-dside="o" aria-pressed="${side === 'o'}">Over</button><button type="button" data-dside="u" aria-pressed="${side === 'u'}">Under</button></span>
+            <span class="pbx-sel ${side}">${side === 'o' ? 'Over' : 'Under'} ${r.line} ${best ? bkChip(best.bk) + `<b>${esc(priceTxt(best))}</b>` : ''}</span>
+            ${r.kal.length > 1 ? `<select class="pbx-alt" aria-label="Kalshi alt lines"><option>Alt lines (${r.kal.length})</option>${r.kal.map(k => `<option>${k.line + .5}+: Kalshi ${Math.round(k.ask * 100)}¢ · fair ${pc(k.fair)}</option>`).join('')}</select>` : ''}
+            <button class="pv-star" type="button" data-pbstar="${esc(pkey)}" aria-pressed="${watching}">${watching ? '★ Watching' : '☆ Watch'}</button>
+            <button type="button" class="btn primary" data-totrk="1">Track a bet ↓</button>
+          </div></div>
+        <div class="pbx-tabs" id="pbx-stabs">${stats.map(k => `<button type="button" data-ds="${k}" class="${k === s ? 'on' : ''}">${esc(SLABEL[k])}</button>`).join('')}<span class="pbx-ul"></span></div>
+        <div class="pbx-wins"><span class="seg">${WIN.map(([k, l]) => `<button type="button" data-win="${k}" aria-pressed="${DS.win === k}">${l}</button>`).join('')}</span></div>
+        <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
+          ${WIN.filter(w => w[0] !== DS.win).map(([k, l]) => `<div class="w"><small>${l}</small><b class="${h[k] && h[k].pct > .5 ? 'pos' : h[k] && h[k].pct < .5 ? 'neg' : ''}">${h[k] ? Math.round(h[k].pct * 100) + '%' : '-'}</b></div>`).join('')}</div>
+        <div class="pbx-chart">${chart(wg, s, r.line, r.mu)}</div>
+        <div class="pbx-ck"><span><i class="ln"></i>Tonight's line ${r.line}</span>${r.mu != null ? `<span><i class="vl"></i>Vault projection ${fmt(r.mu)}</span>` : ''}<span><i class="sq o"></i>Over</span><span><i class="sq u"></i>Under</span>${COMBO[s] ? `<span>Segments: ${COMBO[s].map(k => SLABEL[k]).join(' / ')}</span>` : ''}</div>
+        <div class="pbx-suph"><h4>Supporting stats <small>${wg.length} games</small></h4><span class="seg"><button type="button" data-med="0" aria-pressed="${!DS.med}">Average</button><button type="button" data-med="1" aria-pressed="${DS.med}">Median</button></span></div>
+        <div class="pbx-sup">
+          <div><small>Minutes</small><b>${f1(sv(MIN_I))}${r.min ? ` <i>proj ${fmt(r.min)}</i>` : ''}</b></div>
+          <div><small>${esc(SLABEL[s])}</small><b>${f1(DS.med ? med(wg.map(z => gval(z, s))) : avg(wg.map(z => gval(z, s))))}</b></div>
+          <div><small>Field goals</small><b>${f1(sv(GI.fgm))}/${f1(sv(GI.fga))} <i>${fgp == null ? '' : Math.round(fgp * 100) + '%'}</i></b></div>
+          <div><small>3PT att.</small><b>${f1(sv(GI.tpa))} <i>${f1(sv(GI['3pm']))} made</i></b></div>
+          <div><small>Free throws</small><b>${f1(sv(GI.ftm))}/${f1(sv(GI.fta))}</b></div>
+          <div><small>Fouls</small><b>${f1(sv(GI.pf))}</b></div>
+        </div>
+      </section>
+
+      <section class="pbx-card2 vault"><header><h3>Vault model</h3><small>Only Vault has this</small></header>
+        <div class="pbx-vg"><div>
+          <small>Projection, ${esc(SLABEL[s])}</small>
+          <div class="big"><b>${r.mu == null ? '-' : fmt(r.mu)}</b>${r.mu != null ? `<span class="${(side === 'o' ? r.mu > r.line : r.mu < r.line) ? 'pos' : 'neg'}">${sgn(r.mu - r.line)} vs line</span>` : ''}</div>
+          <small>${r.min ? `On ${fmt(r.min)} projected minutes` : ''}${r.fair != null ? ` · leans ${r.fair > .5 ? 'over' : 'under'}` : ''}${X && D.teams[r.team] ? ` · <button type="button" class="linkbtn" data-lab="${esc(r.team)}">Change minutes</button>` : ''}</small>
+          <div class="probs"><div><small>Model</small><b>${pc(pmS) || '-'}</b></div><div><small>Market, no vig</small><b>${pc(mkS) || '-'}</b></div><div class="fair"><small>Vault fair</small><b>${pc(x.fair) || '-'}</b></div></div>
+          <div class="verdict">${r.hold ? '<span class="pbx-gate hold">HOLD</span>' : x.gate === 'go' ? '<span class="pbx-gate go">GO</span>' : x.gate === 'watch' ? '<span class="pbx-gate watch">WATCH</span>' : ''}<p>${verdict}</p></div>
+          ${ev && ev.v != null ? `<p class="note">Pinnacle no-vig check: ${esc(ev.bk)} ${esc(ev.side)} ${ev.px > 0 ? '+' : ''}${ev.px} is ${sgn(ev.v * 100)}% EV against Pinnacle's fair. This does not use the model.</p>` : ''}
+        </div><div>
+          <small>How the projection is built</small>
+          ${bld && r.min > 0 ? `<div class="wf"><div class="base"><span>${PART_LABEL.base}</span><b>${fmt(bld.base, 2)}</b></div>${adj.map(k => { const v = bld[k], w = Math.abs(v) / amax * 50;
+            return `<div class="wr"><span>${esc(PART_LABEL[k] || k)}</span><span class="trk"><i style="${v >= 0 ? `left:50%;width:${w}%` : `left:${50 - w}%;width:${w}%`}" class="${v >= 0 ? 'p' : 'n'}"></i></span><b class="${v > 0 ? 'pos' : 'neg'}">${sgn(v, 2)}</b></div>`; }).join('')}
+            <div class="base tot"><span>Projection</span><b>${fmt(r.mu, 2)}</b></div></div>` : '<p class="muted">Minutes × rate only for this prop.</p>'}
+          <p class="note">Fair blends the model and the no-vig market with weights fit on held-out games. Edge is fair minus the break-even of the price, after fees.</p>
+        </div></div>
+      </section>
+
+      <section class="pbx-card2"><header><h3>Every price</h3><small>${side === 'o' ? 'Over' : 'Under'} side · best in green</small></header>
+        <div class="pbx-scroll"><table class="pbx-pt"><thead><tr><th>Venue</th><th>Line</th><th>Over</th><th>Under</th><th>Fair (over)</th><th>Opened</th></tr></thead><tbody>
+          <tr class="grp"><td colspan="6">Sportsbooks</td></tr>
+          ${r.books.filter(b => b.bk !== 'Polymarket').map(b => { const isB = best && best.bk === b.bk && best.line === b.line;
+            return `<tr><td><span class="bkn">${bkChip(b.bk)}${esc(b.bk)}</span></td><td>${b.line}</td><td class="${isB && side === 'o' ? 'best' : ''}">${b.o}</td><td class="${isB && side === 'u' ? 'best' : ''}">${b.u}</td><td class="v">${pc(b.fair) || '-'}</td><td class="muted">${b.l0 != null ? `${b.l0} ${b.o0 || ''}` : '-'}</td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">No sportsbook line.</td></tr>'}
+          ${r.books.some(b => b.bk === 'Polymarket') ? `<tr class="grp"><td colspan="6">Polymarket · ask to buy, fee included</td></tr>` + r.books.filter(b => b.bk === 'Polymarket').map(b => `<tr><td><span class="bkn">${bkChip('Polymarket')}Polymarket</span></td><td>${b.line}</td><td>Yes ${Math.round(amP(b.o) * 100)}¢</td><td>No ${Math.round(amP(b.u) * 100)}¢</td><td class="v">${pc(b.fair) || '-'}</td><td class="muted">-</td></tr>`).join('') : ''}
+          ${r.kal.length ? `<tr class="grp"><td colspan="6">Kalshi ladder · YES pays if he reaches the rung</td></tr>` + r.kal.map(k => `<tr${k.line === r.line ? ' class="main"' : ''}><td><span class="bkn">${bkChip('Kalshi')}Kalshi</span></td><td>${k.line + .5}+</td><td>Yes ${Math.round(k.ask * 100)}¢</td><td>No ${Math.round((1 - k.bid) * 100)}¢</td><td class="v">${pc(k.fair)}</td><td class="muted">-</td></tr>`).join('') : ''}
+          ${r.pk.length ? `<tr class="grp"><td colspan="6">Pick'em apps · flat lines judged against the ${pc(PK_BE, 1)} flex break-even</td></tr>` + r.pk.map(k => `<tr><td><span class="bkn">${bkChip(k.app)}${esc(PKN[k.app] || k.app)}</span></td><td>${k.line}</td><td>${k.o ?? 'flat'}</td><td>${k.u ?? 'flat'}</td><td class="v">${pc(k.fair) || '-'}</td><td class="muted">${k.l0 ?? '-'}</td></tr>`).join('') : ''}
+        </tbody></table></div>
+      </section>
+      ${tracker(x)}
+    </div>
+
+    <aside class="pbx-rail">
+      <section class="pbx-card2"><header><h3>Line movement</h3><small>${esc(r.lineFrom || '')}</small></header>
+        <table class="pbx-lm"><thead><tr><th>When</th><th>Line</th><th>Over</th></tr></thead><tbody>
+          <tr><td>Now</td><td><b>${r.line}</b></td><td>${main ? main.o : '-'}</td></tr>
+          <tr><td class="muted">Open</td><td>${main && main.l0 != null ? main.l0 : x.sc.dm != null ? r.line - x.sc.dm : '-'}</td><td>${main && main.o0 ? main.o0 : '-'}</td></tr></tbody></table>
+        <p class="note">${x.sc.dm ? `Moved ${x.sc.dm > 0 ? 'up' : 'down'} ${Math.abs(x.sc.dm)} since it opened.` : 'No line move since it opened.'} The full move-by-move chart comes in the next update.</p>
+      </section>
+      <section class="pbx-card2"><div class="pbx-rt">${[['matchup', 'Matchup'], ['inj', 'Injuries'], ['game', 'Game']].map(([k, l]) => `<button type="button" data-rtab="${k}" class="${DS.rtab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+        <div class="pbx-rb">
+        ${DS.rtab === 'matchup' ? (oppRows.length ? `<h5>${esc(x.opp)} defense vs ${grpW}</h5><table class="pbx-dt"><thead><tr><th>Stat</th><th>Per game</th><th>Rank</th></tr></thead><tbody>
+            ${oppRows.map(([k, v]) => { const gd = oppGood(v[0], side); return `<tr class="${k === s ? 'on' : ''}"><td>${esc(SLABEL[k])}</td><td>${fmt(v[1])}</td><td><span class="pbx-opp ${gd > 0 ? 'h1' : gd < 0 ? 'l1' : ''}">${ord(v[0])}</span></td></tr>`; }).join('')}</tbody></table>
+            <p class="note">This season, ${oppRows[0][1][2]} games. 1st allows the fewest, 30th the most. Green favors the ${side === 'o' ? 'over' : 'under'}.</p>` : '<p class="muted">No position ranks yet.</p>') : ''}
+        ${DS.rtab === 'inj' ? (injs.length ? injs.map(([n, t, st]) => `<div class="pbx-inj"><span>${esc(n)} <small>${t}</small></span><b class="${/out|inactive/i.test(st) ? 'neg' : 'warn'}">${esc(st)}</b></div>`).join('') : '<p class="muted">No one listed for either team.</p>') : ''}
+        ${DS.rtab === 'game' && g ? `<div class="pbx-gc"><div><small>Tip</small><b>${clock(g.tip)} ${TZL}</b></div><div><small>Spread</small><b>${g.spread != null ? `${g.home} ${sgn(g.spread)}` : '-'}</b></div><div><small>Total</small><b>${g.total ?? '-'}</b></div><div><small>Kalshi, ${g.home} win</small><b>${kw != null ? pc(kw) : '-'}</b></div></div><p class="note">Game lines are context for the prop, not part of its edge.</p>` : ''}
+        </div></section>
+    </aside></div>`;
+    placeBar();
+  }
+  function placeBar(){
+    const st = $('pbx-stabs'); if (!st) return; const on = st.querySelector('button.on'), bar = st.querySelector('.pbx-ul'); if (!on) return;
+    if (DS.bar){ bar.style.transition = 'none'; bar.style.left = DS.bar[0]; bar.style.width = DS.bar[1]; void bar.offsetWidth; bar.style.transition = ''; DS.bar = null; }
+    bar.style.left = on.offsetLeft + 'px'; bar.style.width = on.offsetWidth + 'px';
+  }
+  function trkUpdate(){ const rt = routeOf(); if (!rt) return; const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (x && $('pbx-tro')) $('pbx-tro').innerHTML = trkReadout(x); }
+  function detailClick(e){
+    const t = e.target, b = t.closest('[data-back],[data-dside],[data-ds],[data-win],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
+    const d = b.dataset, rt = routeOf(); if (!rt && !d.back) return false;
+    if (d.back){ history.length > 1 && /#propboard\//.test(location.hash) ? (location.hash = '#propboard') : goView('propboard'); return true; }
+    if (d.totrk){ $('pbx-trk').scrollIntoView({behavior: 'smooth', block: 'center'}); return true; }
+    if (d.dside || d.tside){ DS.T = null; goProp(rt.pid, rt.s, d.dside || d.tside); return true; }
+    if (d.ds){ const bar = document.querySelector('#pbx-stabs .pbx-ul'); DS.bar = bar ? [bar.style.left, bar.style.width] : null; DS.T = null; goProp(rt.pid, d.ds, rt.side); return true; }
+    if (d.win){ DS.win = d.win; rerender(); return true; }
+    if (d.med){ DS.med = d.med === '1'; rerender(); return true; }
+    if (d.rtab){ DS.rtab = d.rtab; rerender(); return true; }
+    const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (!x) return true;
+    if (d.tunit){ const u = d.tunit; if (u !== DS.T.unit){ const k = trkCalc(x); if (!k.err && !k.flat){ const raw = k.c.venue === 'kalshi' ? k.cost - kFee(k.cost) : k.cost; DS.T.price = u === 'am' ? fmtAm(pToAm(raw)) : String(Math.round(raw * 1000) / 10); } DS.T.unit = u; }
+      $('pbx-tprice').value = DS.T.price; document.querySelectorAll('[data-tunit]').forEach(z => z.setAttribute('aria-pressed', z.dataset.tunit === u)); trkUpdate(); return true; }
+    if (d.tsave){ const k = trkCalc(x); if (k.err){ pvToast(k.err); return true; }
+      const bet = pvMkBet(x.r, k.c, k.inStr, k.stake);
+      if (!bet){ pvToast('Enter a price and a stake.'); return true; }
+      pvBets.unshift(bet); pvSave(); pvSettle(); DS.T = null; rerender(); pvToast(bet.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.'); return true; }
+    return true;
+  }
+  function detailInput(e){
+    const t = e.target; if (!DS.T) return;
+    if (t.id === 'pbx-tprice'){ DS.T.price = t.value; trkUpdate(); }
+    else if (t.id === 'pbx-tstake'){ DS.T.stake = +t.value || null; trkUpdate(); }
+    else if (t.id === 'pbx-tven'){ const rt = routeOf(), x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side), c = trkOpts(x)[+t.value];
+      DS.T.i = +t.value; DS.T.unit = c.venue === 'kalshi' ? 'pct' : 'am'; DS.T.price = priceStr(c, DS.T.unit); DS.T.stake = null; rerender(); $('pbx-trk').scrollIntoView({block: 'center'}); }
+  }
+
   function render(B){
     css();
+    WIN[4][1] = szn(GL.current_season); WIN[5][1] = szn(GL.current_season - 1);
+    const rt = routeOf(), rk = rt ? `${rt.pid}|${rt.s}|${rt.side}` : null;
+    if (rt){ const fresh = DS.at !== rk; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
+    if (DS.at){ DS.at = null; const y = S.scroll || 0; setTimeout(() => window.scrollTo(0, y), 0); }
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
     const all = build(B), rows = filtered(all), show = rows.slice(0, S.limit);
     pf.rows = show.map(x => x.r);                    // the shared drawer's Log and Watch buttons look rows up here
-    WIN[4][1] = szn(GL.current_season); WIN[5][1] = szn(GL.current_season - 1);
     const statsOn = STATS.filter(([k]) => k === 'all' || all.some(x => x.r.e.s === k));
     const th = (k, l, c, v) => `<button type="button" class="${c ? 'c ' : ''}${v ? 'v ' : ''}${S.sort === k ? 'on' : ''}" data-sort="${k}" aria-sort="${S.sort === k ? (S.dir > 0 ? 'ascending' : 'descending') : 'none'}">${l}${S.sort === k ? `<i>${S.dir > 0 ? '▲' : '▼'}</i>` : ''}</button>`;
     const act = fActive();
@@ -185,7 +416,7 @@ window.PBX = (() => {
           <span class="q"><span><small>Proj</small><b>${r.mu == null ? '-' : fmt(r.mu)}</b></span><span><small>Fair</small><b>${pc0(x.fair)}</b></span><span><small>Edge</small><b class="${x.edge > 0 ? 'pos' : x.edge != null ? 'neg' : ''}">${x.edge == null ? '-' : sgn(x.edge * 100) + '%'}</b></span><span><small>Opp</small><b>${x.orank ? ord(x.orank[0]) : '-'}</b></span></span>
           <span class="hh">${WIN.map(([k, l]) => `<span><small>${l}</small>${hcell(h[k])}</span>`).join('')}</span>
         </button>
-        ${open ? `<div class="sc-dt">${scDetail(r, scFacts(r), [LU_PLAIN[r.lu], r.inj].filter(Boolean).join(' · '))}</div>` : ''}</article>`; };
+        </article>`; };
     root.innerHTML = `
       <div class="pbx-games">
         <button type="button" class="pbx-g all${S.game === 'all' ? ' on' : ''}" data-game="all">All games</button>
@@ -214,7 +445,8 @@ window.PBX = (() => {
   function wire(){
     const root = $('pbx-root');
     root.addEventListener('click', e => {
-      if (pbClick(e, rerender)) return;                                   // Log / Watch inside the shared drawer
+      if (pbClick(e, rerender)) return;                                   // Watch (and Log in any shared drawer)
+      if (detailClick(e)) return;
       const t = e.target, b = t.closest('[data-game],[data-stat],[data-side],[data-sort],[data-f],[data-fclear],[data-fopen],[data-freset],[data-fdone],[data-more],[data-classic],[data-w],[data-lab]');
       if (b){
         const d = b.dataset;
@@ -238,12 +470,12 @@ window.PBX = (() => {
         rerender(); return;
       }
       const tr = t.closest('.pbx-tr, .pbx-card');
-      if (tr){ const x = root._show[+tr.closest('.pbx-row').dataset.i], k = `${x.r.e.p}|${x.r.e.s}|${x.side}`; S.open = S.open === k ? null : k; pf.logKey = pf.logIdx = null; rerender(); }
+      if (tr){ const x = root._show[+tr.closest('.pbx-row').dataset.i]; DS.T = null; S.scroll = scrollY; goProp(x.r.e.p, x.r.e.s, x.side); }
     });
     root.addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, rerender); });
-    root.addEventListener('change', e => { const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
+    root.addEventListener('change', e => { if (e.target.id === 'pbx-tven'){ detailInput(e); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
     let qT = null;
-    root.addEventListener('input', e => { if (e.target.id !== 'pbx-q') return; S.q = e.target.value; clearTimeout(qT);
+    root.addEventListener('input', e => { if (e.target.id === 'pbx-tprice' || e.target.id === 'pbx-tstake'){ detailInput(e); return; } if (e.target.id !== 'pbx-q') return; S.q = e.target.value; clearTimeout(qT);
       qT = setTimeout(() => { const at = e.target.selectionStart; rerender(); const n = $('pbx-q'); if (n){ n.focus(); n.setSelectionRange(at, at); } }, 150); });
   }
 
@@ -341,7 +573,141 @@ window.PBX = (() => {
 .pbx-row .sc-dt{padding:0 12px 12px;background:var(--surface2)}
 .pbx-card{display:none}
 .pbx-more{display:flex;justify-content:center;padding:12px}
+
+#pbx-root table.pbx-lm,#pbx-root table.pbx-dt,#pbx-root table.pbx-pt{min-width:0}
+#pbx-root .seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--fg)}
+.pbx-back{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;background:none;border:0;color:var(--fg2);font-weight:600;font-size:13px;padding:0}
+.pbx-back:hover{color:var(--fg)}
+.pbx-detail{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+.pbx-main,.pbx-rail{display:flex;flex-direction:column;gap:16px;min-width:0}
+.pbx-card2{background:var(--surface);border:1px solid rgb(var(--ink) / .06);border-radius:20px;overflow:hidden}
+.pbx-card2 > header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgb(var(--ink) / .06)}
+.pbx-card2 > header h3{margin:0;font-size:13.5px;font-weight:600}
+.pbx-card2 > header small{color:var(--fg3);font-size:11.5px;text-align:right}
+.pbx-card2.vault{border-color:color-mix(in srgb,var(--pbx-v) 35%,transparent)}
+.pbx-card2.vault > header{background:linear-gradient(90deg,var(--pbx-vbg),transparent)}
+.pbx-card2.vault > header h3{color:var(--pbx-v)}
+.pbx-dh{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 16px}
+.pbx-dh .pbx-face,.pbx-dh .pbx-face .hs{width:56px;height:56px}
+.pbx-dh .pbx-face .lo{width:22px;height:22px}.pbx-dh .pbx-face .lo img{width:16px;height:16px}
+.pbx-dh h2{margin:5px 0 0;font-size:20px;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pbx-dh h2 small{font-size:12px;color:var(--fg3);font-weight:500}
+.pbx-mchip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--fg2);font-weight:600;background:var(--surface2);border-radius:var(--r-pill);padding:3px 10px}
+.pbx-dh .acts{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pbx-sel{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:var(--r-pill);font-weight:700;background:color-mix(in srgb,var(--pbx-g) 14%,transparent);color:var(--pbx-g)}
+.pbx-sel.u{background:color-mix(in srgb,var(--pbx-r) 14%,transparent);color:var(--pbx-r)}
+.pbx-sel b{color:var(--fg)}
+.pbx-alt,.pbx-trk select{height:34px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);font:500 12.5px var(--font-sans);padding:0 12px}
+.pbx-tabs{position:relative;display:flex;gap:2px;padding:0 12px;border-bottom:1px solid rgb(var(--ink) / .06);overflow-x:auto;scrollbar-width:none}
+.pbx-tabs::-webkit-scrollbar{display:none}
+.pbx-tabs button{flex:none;padding:11px 10px;background:none;border:0;color:var(--fg3);font-weight:600;font-size:12px}
+.pbx-tabs button:hover,.pbx-tabs button.on{color:var(--fg)}
+.pbx-tabs .pbx-ul{position:absolute;bottom:0;height:2px;border-radius:2px;background:var(--pbx-g);transition:left 400ms var(--ease-rail,cubic-bezier(.65,0,.35,1)),width 400ms var(--ease-rail,cubic-bezier(.65,0,.35,1))}
+.pbx-wins{padding:12px 16px 4px}
+.pbx-hs{display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap;padding:6px 16px}
+.pbx-hs small{display:block;color:var(--fg3);font-size:11px;font-weight:600;margin-bottom:3px}
+.pbx-hs > div:first-child b{font-size:30px;font-weight:700;letter-spacing:-.02em}
+.pbx-hs > div:first-child b i{font-style:normal;font-size:12px;color:var(--fg3);margin-left:6px;font-weight:500}
+.pbx-hs .w b{font:600 13px var(--font-mono)}
+.pbx-chart{padding:8px 12px 4px}
+.pbx-chart svg{display:block;width:100%;height:auto}
+.pbx-chart .gl{stroke:rgb(var(--ink) / .07)}
+.pbx-chart .ax{font:500 10px var(--font-sans);fill:var(--fg3)}
+.pbx-chart .lb{font:600 11px var(--font-sans);fill:var(--fg)}
+.pbx-chart .o0{fill:var(--pbx-g)}.pbx-chart .o1{fill:color-mix(in srgb,var(--pbx-g) 72%,#000)}.pbx-chart .o2{fill:color-mix(in srgb,var(--pbx-g) 52%,#000)}
+.pbx-chart .u0{fill:var(--pbx-r)}.pbx-chart .u1{fill:color-mix(in srgb,var(--pbx-r) 72%,#000)}.pbx-chart .u2{fill:color-mix(in srgb,var(--pbx-r) 52%,#000)}
+.pbx-chart .ln{stroke:var(--fg);stroke-width:1.5;stroke-dasharray:5 4;opacity:.85}
+.pbx-chart .vl{stroke:var(--pbx-v);stroke-width:1.5;stroke-dasharray:2 3}
+.pbx-chart .tg{fill:var(--fg)}.pbx-chart .tt{font:700 10.5px var(--font-mono);fill:var(--bg)}
+.pbx-chart .vtg{fill:var(--pbx-v)}.pbx-chart .vtt{font:700 10.5px var(--font-mono);fill:var(--bg)}
+.pbx-ck{display:flex;gap:14px;flex-wrap:wrap;padding:0 16px 10px;color:var(--fg3);font-size:11px}
+.pbx-ck span{display:inline-flex;align-items:center;gap:5px}
+.pbx-ck i{display:inline-block;width:14px;border-top:1.5px dashed var(--fg)}.pbx-ck i.vl{border-top:1.5px dotted var(--pbx-v)}
+.pbx-ck i.sq{width:9px;height:9px;border:0;border-radius:2px}.pbx-ck i.o{background:var(--pbx-g)}.pbx-ck i.u{background:var(--pbx-r)}
+.pbx-suph{display:flex;justify-content:space-between;align-items:center;padding:10px 16px 0}
+.pbx-suph h4{margin:0;font-size:12.5px}.pbx-suph small{color:var(--fg3);font-weight:500}
+.pbx-sup{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin-top:10px;border-top:1px solid rgb(var(--ink) / .06)}
+.pbx-sup > div{padding:12px 16px;border-right:1px solid rgb(var(--ink) / .06)}
+.pbx-sup > div:last-child{border-right:0}
+.pbx-sup small,.pbx-tro small,.probs small,.pbx-gc small{display:block;color:var(--fg3);font-size:11px;font-weight:600}
+.pbx-sup b{display:block;font:600 15px var(--font-mono);margin-top:3px}
+.pbx-sup i,.pbx-tro i{font-style:normal;font-size:11px;color:var(--fg3);font-weight:500}
+.pbx-vg{display:grid;grid-template-columns:1.1fr 1fr}
+.pbx-vg > div{padding:14px 16px}
+.pbx-vg > div + div{border-left:1px solid rgb(var(--ink) / .06)}
+.pbx-vg > div > small{color:var(--fg3);font-size:11.5px}
+.pbx-vg .big{display:flex;align-items:baseline;gap:10px;margin:2px 0}
+.pbx-vg .big b{font-size:34px;font-weight:700;letter-spacing:-.03em}
+.pbx-vg .big span{font-weight:600}
+.probs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.probs > div{background:var(--surface2);border-radius:10px;padding:8px 10px}
+.probs b{display:block;font-size:16px;font-weight:600;margin-top:2px}
+.probs .fair{background:var(--pbx-vbg);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-v) 35%,transparent)}
+.probs .fair b,.pbx-tro b.v,.pbx-pt td.v{color:var(--pbx-v)}
+.pbx-vg .verdict{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface2);display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--fg2)}
+.pbx-vg .verdict p{margin:0}.pbx-vg .verdict b{color:var(--fg)}
+#pbx-root .note{color:var(--fg3);font-size:11px;line-height:1.45;margin:10px 0 0}
+.pbx-card2 > .note{padding:0 16px 12px}
+.wf{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.wf .base{display:flex;justify-content:space-between;font-size:12px;padding-bottom:6px;border-bottom:1px solid rgb(var(--ink) / .06)}
+.wf .base.tot{border-bottom:0;border-top:1px solid rgb(var(--ink) / .06);padding:6px 0 0}
+.wf .wr{display:grid;grid-template-columns:110px 1fr 48px;gap:8px;align-items:center;font-size:11.5px;color:var(--fg2)}
+.wf .wr b{text-align:right;font:600 11.5px var(--font-mono)}
+.wf .trk{position:relative;height:8px;border-radius:4px;background:var(--surface2)}
+.wf .trk:before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:rgb(var(--ink) / .15)}
+.wf .trk i{position:absolute;top:0;height:8px;border-radius:4px}.wf .trk i.p{background:var(--pbx-g)}.wf .trk i.n{background:var(--pbx-r)}
+.pbx-pt,.pbx-lm,.pbx-dt{width:100%;min-width:0;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.pbx-pt th,.pbx-lm th{color:var(--fg3);font-weight:600;font-size:11px;text-align:right;padding:8px 16px;background:var(--surface2);white-space:nowrap}
+.pbx-pt td,.pbx-lm td{padding:8px 16px;text-align:right;border-top:1px solid rgb(var(--ink) / .06);white-space:nowrap}
+.pbx-pt th:first-child,.pbx-pt td:first-child,.pbx-lm th:first-child,.pbx-lm td:first-child{text-align:left}
+.pbx-pt tr.grp td{background:var(--surface2);color:var(--fg3);font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:6px 16px}
+.pbx-pt tr.main td{background:var(--pbx-vbg)}
+.pbx-pt td.best{color:var(--pbx-g);font-weight:700}
+.pbx-pt .bkn{display:inline-flex;align-items:center;gap:8px;font-weight:600}
+.pbx-trk{display:flex;flex-direction:column;gap:12px;padding:14px 16px 16px}
+.pbx-trk .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.pbx-trk label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:600;color:var(--fg3)}
+.pbx-trk input{height:34px;width:96px;border-radius:8px;border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);font:600 13px var(--font-mono);padding:0 10px}
+.pbx-trk input:focus,.pbx-trk select:focus{outline:2px solid color-mix(in srgb,var(--pbx-g) 60%,transparent);outline-offset:1px}
+.pbx-trk .pr{display:flex;gap:6px;align-items:center}
+.pbx-trk .act{display:flex;gap:12px;align-items:center}.pbx-trk .act .muted{flex:1;font-size:11.5px}
+.pbx-tro{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid rgb(var(--ink) / .08);border-radius:12px;overflow:hidden}
+.pbx-tro > div{padding:9px 12px;border-right:1px solid rgb(var(--ink) / .08)}
+.pbx-tro > div:last-child{border-right:0}
+.pbx-tro b{display:block;font-size:14px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+.pbx-call{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:5px}
+.pbx-call.bet{background:color-mix(in srgb,var(--pbx-g) 22%,transparent);color:var(--pbx-g)}.pbx-call.lean{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}.pbx-call.pass{background:var(--surface2);color:var(--fg3)}
+.pbx-mine{border-top:1px solid rgb(var(--ink) / .06);padding:4px 16px 12px}
+.pbx-mine > div{display:grid;grid-template-columns:1fr auto auto auto auto;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid rgb(var(--ink) / .06);font-size:12px}
+.pbx-mine .linkbtn{display:inline-block;margin-top:8px}
+.pbx-rt{display:flex;gap:4px;padding:10px 12px 0}
+.pbx-rt button{flex:1;padding:7px;border-radius:10px;background:none;border:0;color:var(--fg3);font-weight:600;font-size:12px}
+.pbx-rt button.on{background:var(--nav-on);color:var(--fg)}
+.pbx-rb{padding:12px 16px 16px}
+.pbx-rb h5{margin:0 0 8px;font-size:12px}
+.pbx-dt th{color:var(--fg3);font-weight:600;font-size:11px;text-align:right;padding:6px 0}
+.pbx-dt td{text-align:right;padding:7px 0;border-top:1px solid rgb(var(--ink) / .06)}
+.pbx-dt th:first-child,.pbx-dt td:first-child{text-align:left}
+.pbx-dt tr.on td{font-weight:700}
+.pbx-inj{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid rgb(var(--ink) / .06);font-size:12px}
+.pbx-inj:first-child{border-top:0}.pbx-inj small{color:var(--fg3)}
+.pbx-inj b.neg{color:var(--pbx-r)}.pbx-inj b.warn{color:var(--warn)}
+.pbx-gc{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pbx-gc > div{background:var(--surface2);border-radius:10px;padding:9px 10px}
+.pbx-gc b{display:block;font-size:14px;font-weight:600;margin-top:2px}
+.pbx-card2 > .pbx-lm + .note{padding:0 16px 12px}
 @media (max-width:760px){
+  .pbx-detail{grid-template-columns:minmax(0,1fr)}
+  .pbx-dh .acts{margin-left:0;width:100%}
+  .pbx-sup{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pbx-sup > div:nth-child(3){border-right:0}
+  .pbx-sup > div:nth-child(-n+3){border-bottom:1px solid rgb(var(--ink) / .06)}
+  .pbx-vg{grid-template-columns:1fr}
+  .pbx-vg > div + div{border-left:0;border-top:1px solid rgb(var(--ink) / .06)}
+  .pbx-tro{grid-template-columns:repeat(2,1fr)}
+  .pbx-tro > div{border-bottom:1px solid rgb(var(--ink) / .08)}
+  .pbx-trk .act{flex-direction:column;align-items:stretch}
+  .pbx-pt th,.pbx-pt td{padding:8px 10px}
   .pbx-fpanel{grid-template-columns:1fr;gap:12px}
   .pbx-n{margin-left:0;width:100%}
   .pbx-fb.q{flex:1}.pbx-fb.q input{width:100%}
@@ -364,7 +730,7 @@ window.PBX = (() => {
   .pbx-card .hh .pbx-hc{width:100%;height:24px}
   .pbx-row .sc-dt{padding:0 8px 8px}
 }
-@media (prefers-reduced-motion:reduce){.pbx-g,.pbx-tr{transition:none}}`;
+@media (prefers-reduced-motion:reduce){.pbx-g,.pbx-tr,.pbx-tabs .pbx-ul{transition:none}}`;
     document.head.appendChild(st);
   }
 

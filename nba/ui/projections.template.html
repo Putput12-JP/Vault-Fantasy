@@ -3157,7 +3157,7 @@ const hashT = location.hash.slice(1).toUpperCase();
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
 const VIEWS = ['summary', 'combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'steam', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile', 'checks', 'pickrec'];
 const isTrack = v => v === 'track' || v === 'checks' || v === 'pickrec';
-const viewOf = h => h === 'WORKS' ? 'backtests' : h === 'COMBO' ? 'bankroll' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
+const viewOf = h => h === 'WORKS' ? 'backtests' : h === 'COMBO' ? 'bankroll' : /^PLAYER\/\d+$/.test(h) ? 'player' : /^PROPBOARD\/\d+\/[A-Z0-9]+\/[OU]$/.test(h) ? 'propboard' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || (hashT ? 'lab' : 'summary');   // no hash: the Summary is home; a team hash (#okc) is that team's Lab
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
