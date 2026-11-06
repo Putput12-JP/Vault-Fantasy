@@ -5535,6 +5535,15 @@ async function ssPublished(){
     window.__altsState = /permission|insufficient/i.test(String((e && (e.code || e.message)) || '')) ? 'denied' : 'none'; return null;
   }
 }
+// ss-alt-fresh:start  Sportsbook alt prices are used only while they are fresh. The publish job on the owner's Mac writes them every 5
+// minutes and the Combo Check credit line already warns past 15, so past that same 15 minutes they are left out of every combo and leg
+// (the exchange prices still count). Without this, a stopped job (SmartStake's free key ends Nov 9, 2026) would leave the last prices in
+// Firestore pricing combos as if they were current. No as-of time means no proof they are fresh, so they are left out too.
+const SS_ALT_FRESH_MIN = 15;
+const ssAltsAgeMin = (now = Date.now()) => window.__ssAsof ? Math.max(0, (now - window.__ssAsof) / 60000) : null;
+const ssAltsFresh = (now = Date.now()) => { const m = ssAltsAgeMin(now); return m != null && m <= SS_ALT_FRESH_MIN; };
+const ccAlts = e => ssAltsFresh() ? (e.alts || []) : [];
+// ss-alt-fresh:end
 const ssNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
 function ssApply(b, j, ja){
   priceVer++;
@@ -11495,10 +11504,11 @@ const ccDec = am => am > 0 ? 1 + am / 100 : 1 + 100 / -am;
 const ccPM = (s, side) => side === 'over' ? s : 1 - s;
 const ccV = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 function ccRows(){
-  if (cc.rows && cc.rows.t === PS.board.t && cc.rows.mode === PS.mode) return cc.rows.list;
+  const fr = ssAltsFresh();   // alt prices going stale (or fresh again) changes the legs, so the combo caches rebuild
+  if (cc.rows && cc.rows.t === PS.board.t && cc.rows.mode === PS.mode){ if (cc.rows.fr !== fr){ cc.rows.fr = fr; cc.all = null; cc.sug = null; } return cc.rows.list; }
   const list = pvRows().rows.filter(r => PP_CORE.includes(r.e.s) && r.game && !r.hold && (r.tm || r.team));
   for (const r of list){ const qs = quotesOf(r.e).map(([, L, p, w]) => [L, p, w]); r._mm = qs.length ? impliedMean(r.e.s, qs, r.extra) : null; r._mx = {}; }
-  cc.rows = {t: PS.board.t, mode: PS.mode, list}; cc.all = null; cc.sug = null;
+  cc.rows = {t: PS.board.t, mode: PS.mode, list, fr}; cc.all = null; cc.sug = null;
   return list;
 }
 const ccRow = (pid, s) => ccRows().find(r => +r.e.p === +pid && r.e.s === s);
@@ -11530,7 +11540,7 @@ function ccQuotes(r, side, L){
   const e = r.e, out = {}, over = side === 'over';
   const add = (venue, p) => { if (p == null || !(p > .02 && p < .98)) return; const key = ccV(venue); if (!out[key] || p < out[key].cost) out[key] = {venue, key, exch: CC_EXCH.has(key), cost: p, am: ccAm(p), dec: 1 / p}; };
   for (const b of e.books || []) if (b[1] != null && Math.abs(b[1] - L) < .01){ const am = over ? b[2] : b[3]; if (am != null) add(b[0], amP(am)); }
-  for (const a of e.alts || []) if (Math.abs(a[1] - L) < .01){ const am = over ? a[2] : a[3]; if (am != null) add(a[0], amP(am)); }
+  for (const a of ccAlts(e)) if (Math.abs(a[1] - L) < .01){ const am = over ? a[2] : a[3]; if (am != null) add(a[0], amP(am)); }
   for (const k of e.kal || []){ if (Math.abs(k[0] - L) > .01) continue; if (over && k[2] != null && k[2] > 0 && k[2] < 1) add('Kalshi', k[2] + kFee(k[2])); if (!over && k[1] != null && k[1] > 0 && k[1] < 1) add('Kalshi', 1 - k[1] + kFee(1 - k[1])); }
   const nv = PS.board.novig && PS.board.novig.props && PS.board.novig.props[`${e.p}|${e.s}`];
   for (const x of (nv && nv.lad) || []){ if (Math.abs(x.k - L) > .01 || !x.ask) continue; add('Novig', over ? x.ask[0] : x.ask[1]); }
@@ -11562,7 +11572,7 @@ function ccAll(){
   for (const r of ccRows()){
     if (r.min < 15) continue;
     const e = r.e, main = ccMain(r); if (main == null) continue;
-    const lines = new Set(); for (const b of e.books || []) if (b[1] != null) lines.add(b[1]); for (const a of e.alts || []) lines.add(a[1]); for (const k of e.kal || []) lines.add(k[0]);
+    const lines = new Set(); for (const b of e.books || []) if (b[1] != null) lines.add(b[1]); for (const a of ccAlts(e)) lines.add(a[1]); for (const k of e.kal || []) lines.add(k[0]);
     const nv = PS.board.novig && PS.board.novig.props && PS.board.novig.props[`${e.p}|${e.s}`]; for (const x of (nv && nv.lad) || []) lines.add(x.k);
     for (const L of lines){
       if (Math.abs(L - main) < 1 || L % 1 !== .5) continue;
@@ -11769,7 +11779,7 @@ function renderCombo(){
   $('cc-root').innerHTML = `
     <section class="card pp-read"><p class="big">Combo Check</p>
       <p>Alt-line combos priced from <b>real quotes</b>: every leg is an alt line (at least a point off the main line) that a book or exchange is posting right now, at its own price, between <b>-140 and +200</b>. Nothing to type in. A combo is priced at one sportsbook as the product of its leg prices and compared with the market's fair price, with the quoting book left out of the fair price. Legs can be any players on any teams; the pick'em apps' one-player-per-team rule does not apply here.</p>
-      <p>${nBooks ? `Sportsbook alt-line prices (${nBooks} books) via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>${window.__ssAsof ? (() => { const m = Math.max(0, Math.round((Date.now() - window.__ssAsof) / 60000)), age = m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; return m > 15 ? `, <span class="warnt" title="The refresh job on the owner's Mac publishes every 5 minutes; it may be off or asleep. Alt prices move, so check the book before betting.">as of ${clock(Math.floor(window.__ssAsof / 1000))} ${TZL}, ${age} old</span>` : `, as of ${clock(Math.floor(window.__ssAsof / 1000))} ${TZL}`; })() : ''}, plus exchange prices from Kalshi, Novig and Polymarket.` : 'No sportsbook alt-line prices are loaded, so only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.'} Everything is a Lean at most.</p>
+      <p>${window.__ssAsof && !ssAltsFresh() ? (() => { const m = Math.round(ssAltsAgeMin()), age = m >= 1440 ? `${Math.floor(m / 1440)} d ${Math.floor(m % 1440 / 60)} h` : m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; return `<span class="warnt" title="The refresh job on the owner's Mac publishes every 5 minutes; it may be off or asleep, or SmartStake may have stopped answering. Old alt prices are not used, because alt prices move.">Sportsbook alt-line prices from <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a> are unavailable: the last ones are as of ${clock(Math.floor(window.__ssAsof / 1000))} ${TZL}, ${age} old, so they are left out.</span> Only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.`; })() : nBooks ? `Sportsbook alt-line prices (${nBooks} books) via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>${window.__ssAsof ? `, as of ${clock(Math.floor(window.__ssAsof / 1000))} ${TZL}` : ''}, plus exchange prices from Kalshi, Novig and Polymarket.` : 'No sportsbook alt-line prices are loaded, so only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.'} Everything is a Lean at most.</p>
       ${window.__altsState === 'signin' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><button class="pv-ghost" type="button" data-ccsignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>` : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-ccsignin="1">Use another account</button></div>` : ''}</section>
     ${ccStraightHtml(S.straight)}
     ${ccRecordHtml()}
