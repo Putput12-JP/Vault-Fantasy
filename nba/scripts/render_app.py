@@ -53,6 +53,13 @@ def extra():
     return load('prop_model_extra.json')
 
 
+def copula():
+    """Same-game combos on the prop page: each tested prop pair's correlation and whether it was kept (build_copula_fit.py)."""
+    c = load('copula_corr.json')
+    return c and {'verdict': c['verdict'], 'games': (c.get('test') or {}).get('games'),
+                  'fam': [[f['rel'], f['a'], f['b'], f['rho'], f['n'], f['keep'], f.get('lift50')] for f in c['families']]}
+
+
 def with_extra(d):
     st = extra()
     if d and st:
@@ -217,6 +224,7 @@ def render(full=False):
                .replace('/*DIETDEF*/null', json.dumps(load('diet_defense.json'), separators=(',', ':')))
                .replace('/*MATCHUP*/null', json.dumps(load('matchup_terms.json'), separators=(',', ':')))
                .replace('/*TEAMALLOW*/null', json.dumps(load('team_allowance.json'), separators=(',', ':')))
+               .replace('/*COPULA*/null', json.dumps(copula(), separators=(',', ':')))
                .replace('/*PHOTOS*/null', json.dumps(load('photos.json') if full else slim_photos(), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.full.html' if full else 'projections.html')
     open(out, 'w').write(html)

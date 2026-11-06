@@ -1130,6 +1130,7 @@ def shadow(root, day, board, now, polls):
         rec.update(ok=False, err='; '.join(f'{k}: {v}' for k, v in fails.items())[:240])
     day.append('polls.jsonl', [rec])
     stage('flags', lambda: write_flags(root, day, board, now, rec, counts))
+    stage('prophist', lambda: __import__('prop_hist').write(day.dir, now))   # DraftKings line history per prop for the Props page's chart (prop_hist.py)
     print(f"  ledger     {'ok ' if rec['ok'] else 'ERR'} tracked={rec.get('n', '-')} chg={rec.get('chg', '-')} bets={rec.get('bets', '-')}"
           f"{(' skipped=' + str(rec['row_err'])) if rec.get('row_err') else ''} {rec.get('err', '')}", flush=True)
 

@@ -3831,12 +3831,100 @@ window.PBX = (() => {
       ${mine.length ? `<div class="pbx-mine">${mine.map(b => `<div><span><b>${esc(b.side)} ${b.venue === 'kalshi' ? (b.line + .5) + '+' : b.line}</b> ${esc(PKN[b.bk] || b.bk)} ${esc(b.price)}</span><span>$${b.stake}</span><span class="${b.edge > 0 ? 'pos' : 'neg'}">${sgn(b.edge * 100)}%</span><span class="pbx-call ${b.call}">${b.call.toUpperCase()}</span><span class="muted">${b.res ? esc(String(b.res.r || b.res)) : 'Open'}</span></div>`).join('')}<a class="linkbtn" href="#mybets" data-go="mybets">All my bets</a></div>` : ''}
     </section>`;
   }
+  // ── research cards: teammates, alt lines, opportunity, situations, same-game combos, line history ──
+  const CORR = {"verdict":"NO-GO","games":393,"fam":[["self","pts","reb",0.26116,2292,true,1.1682],["self","pts","3pm",0.45,1354,false,1.2972],["self","reb","ast",0.22773,1432,false,1.1463],["team","pts","pts",-0.05727,9492,true,0.9635],["self","pts","ast",0.12837,1794,false,1.082],["team","ast","3pm",0.08018,4446,true,1.0511],["team","pts","ast",0.05143,10548,true,1.0328],["opp","reb","reb",0.04769,6234,true,1.0304],["self","reb","3pm",0.11341,984,false,1.0724],["team","pts","3pm",-0.03826,7531,true,0.9756],["self","ast","3pm",0.1087,874,false,1.0693],["opp","pts","3pm",0.02524,8336,false,1.0161],["team","reb","3pm",0.03221,5913,false,1.0205],["team","pts","reb",0.01895,14535,false,1.0121],["opp","ast","ast",0.02897,3428,false,1.0184],["team","ast","ast",-0.02337,3082,false,0.9851],["opp","3pm","3pm",0.02908,1741,false,1.0185],["opp","pts","reb",-0.00824,16065,false,0.9948],["opp","ast","3pm",0.0135,4938,false,1.0086],["opp","pts","ast",0.00494,11810,false,1.0031],["team","reb","reb",-0.0069,5688,false,0.9956],["team","3pm","3pm",0.00869,1560,false,1.0055],["opp","pts","pts",-0.0025,10485,false,0.9984],["opp","reb","ast",0.00136,9164,false,1.0009],["opp","reb","3pm",-0.00143,6438,false,0.9991],["team","reb","ast",0.00076,8313,false,1.0005]]};                       // copula_corr.json families (render_app.py): which prop pairs move together
+  const HIST = {};                                    // 'YYYY-MM-DD' -> {p: {...}} | 'loading' | null (prop_hist.py on nba-data)
+  const IDX = {fga: 14, ftm: 15, fta: 16, tpa: 17};
+  function histFor(g, pid, s){
+    if (!g || !g.day || typeof H0 === 'undefined' || !H0 || !H0.repo) return {state: 'none'};
+    const d0 = g.day, d1 = new Date(Date.parse(d0 + 'T12:00Z') - 864e5).toISOString().slice(0, 10), days = [d1, d0];
+    let wait = false;
+    for (const d of days) if (!(d in HIST)){
+      HIST[d] = 'loading'; wait = true;
+      fetch(`${window.PBX_HIST_BASE || `https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/`}snapshots/${d}/prophist.json`, {cache: 'no-store'})
+        .then(r => r.ok ? r.json() : null).catch(() => null).then(j => { HIST[d] = j; if (routeOf()) rerender(); });
+    } else if (HIST[d] === 'loading') wait = true;
+    if (wait) return {state: 'loading'};
+    const ser = days.flatMap(d => (HIST[d] && HIST[d].p && HIST[d].p[`${pid}|${s}`]) || []).filter(z => z[0] <= Date.now() / 1000);
+    return ser.length ? {state: 'ok', ser} : {state: 'none'};
+  }
+  function lineChart(ser){
+    const W = 300, H = 130, padL = 34, padB = 18, padT = 22, now = Date.now() / 1000;
+    const t0 = ser[0][0], t1 = Math.max(Math.min(now, ser[ser.length - 1][0] + 6 * 3600), ser[ser.length - 1][0] + 1);
+    const ls = ser.map(z => z[1]), lo = Math.min(...ls) - .5, hi = Math.max(...ls) + .5;
+    const x = t => padL + (W - padL - 8) * ((t - t0) / (t1 - t0)), y = v => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+    let d = `M${x(ser[0][0])},${y(ser[0][1])}`; ser.forEach((z, i) => { if (i) d += ` H${x(z[0])} V${y(z[1])}`; }); d += ` H${x(t1)}`;
+    const ticks = [...new Set(ls)].sort((a, b) => a - b);
+    const lab = ser.length <= 8 ? ser : ser.filter((z, i) => i === 0 || i === ser.length - 1 || z[1] !== ser[i - 1][1]);
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="DraftKings line over time">${ticks.map(v => `<line class="gl" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${padL - 5}" y="${y(v) + 3}" text-anchor="end">${v}</text>`).join('')}
+      <path class="st" d="${d}"/>${ser.map(z => `<circle class="pt" cx="${x(z[0])}" cy="${y(z[1])}" r="2.6"/>`).join('')}${lab.map(z => `<text class="px" x="${x(z[0])}" y="${y(z[1]) - 6}" text-anchor="middle">${esc(z[2] || '')}</text>`).join('')}
+      <text class="ax" x="${padL}" y="${H - 3}">${clock(t0)}</text><text class="ax" x="${W - 4}" y="${H - 3}" text-anchor="end">${clock(t1)} ${TZL}</text></svg>`;
+  }
+  function mates(r, B){
+    const st = statusFromBoard(B);
+    const team = Object.entries(PIDX).filter(([id, v]) => v.t === r.team && +id !== +r.e.p).map(([id, v]) => ({id: +id, name: v.p.name, mpg: v.p.min0 || v.p.last_mpg || 0, st: st[+id] || null}));
+    const out = id => /out|doubt|inactive/i.test(st[id] || '');
+    return team.sort((a, b) => ((out(b.id) && b.mpg >= 15) - (out(a.id) && a.mpg >= 15)) || b.mpg - a.mpg).filter((m, i) => i < 10 || out(m.id));
+  }
+  function mateSplit(all, mid, onTeam){              // his games with and without teammate mid: same day + same opponent = same team game
+    const T = (GL.players[mid] || []).filter(z => !z[4]), td = new Map(T.map(z => [z[0], z[2]]));
+    const w = all.filter(g => td.get(g[0]) === g[2]);
+    const span = {}; w.forEach(g => { const b = span[g[1]] = span[g[1]] || [g[0], g[0]]; b[0] = Math.min(b[0], g[0]); b[1] = Math.max(b[1], g[0]); });
+    const wo = all.filter(g => { const b = span[g[1]]; if (!b || td.has(g[0])) return false; return g[0] >= b[0] && (g[0] <= b[1] || (g[1] === GL.current_season && onTeam)); });
+    return {w, wo};
+  }
+  function hitsFrom(all, s, line, side, opp){
+    const ok = g => side === 'o' ? gval(g, s) > line : gval(g, s) < line;
+    const rate = gl => gl.length ? {n: gl.length, h: gl.filter(ok).length, pct: gl.filter(ok).length / gl.length} : null;
+    return Object.fromEntries(WIN.map(([k]) => [k, rate(winGl(all, k, opp))]));
+  }
+  const pcell = v => v == null ? '<span class="muted">-</span>' : `<span class="pbx-hc ${hcls({pct: v})}">${Math.round(v * 100)}%</span>`;
+  function ladder(r, side, all){
+    const lines = new Set([r.line]); r.kal.forEach(k => lines.add(k.line)); r.books.forEach(b => lines.add(b.line));
+    for (const d of [-2, -1, 1, 2]) if (r.line + d > 0) lines.add(r.line + d);
+    const sW = side === 'o' ? 'Over' : 'Under', kS = side === 'o' ? 'YES' : 'NO';
+    return [...lines].sort((a, b) => a - b).map(L => {
+      const ok = g => side === 'o' ? gval(g, r.e.s) > L : gval(g, r.e.s) < L, rate = a => a.length ? a.filter(ok).length / a.length : null;
+      const c = (r.all || []).filter(c => c.line === L && (c.side === sW || c.side === kS) && c.venue !== 'pickem' && c.edge != null).sort((a, b) => b.edge - a.edge)[0] || null;
+      return {L, l10: rate(all.slice(0, 10)), l20: rate(all.slice(0, 20)), s0: rate(all.filter(g => g[1] === GL.current_season)), both: rate(all), c};
+    });
+  }
+  function spark(vals, n5){
+    const W = 160, H = 44, n = vals.length; if (!n) return ''; const mx = Math.max(...vals, 1), bw = W / n;
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${vals.map((v, i) => `<rect class="${i >= n - n5 ? 'r5' : ''}" x="${i * bw + 1}" y="${H - v / mx * (H - 2)}" width="${Math.max(1, bw - 2)}" height="${v / mx * (H - 2)}" rx="1.5"/>`).join('')}</svg>`;
+  }
+  const BASE4 = ['pts', 'reb', 'ast', '3pm'];
+  function combos(x, all){
+    if (!CORR || !BASE4.includes(x.r.e.s)) return null;
+    const r = x.r, out = [];
+    for (const z of all){
+      if (z.side !== 'o' || String(z.r.e.g) !== String(r.e.g) || z.r === r || !BASE4.includes(z.r.e.s)) continue;
+      const rel = z.r.e.p === r.e.p ? 'self' : z.r.team === r.team ? 'team' : 'opp';
+      const f = CORR.fam.find(f => f[0] === rel && ((f[1] === r.e.s && f[2] === z.r.e.s) || (f[1] === z.r.e.s && f[2] === r.e.s)));
+      if (!f || !f[5]) continue;
+      const qs = f[3] > 0 ? x.side : x.side === 'o' ? 'u' : 'o', fb = z.r.fair == null ? null : qs === 'o' ? z.r.fair : 1 - z.r.fair;
+      out.push({z, rel, f, qs, fa: x.fair, fb});
+    }
+    return out.sort((a, b) => Math.abs(b.f[3]) - Math.abs(a.f[3]) || (b.fb || 0) - (a.fb || 0)).slice(0, 6);
+  }
   function detail(B, rt){
     const root = $('pbx-root'), all = build(B);
     all.forEach(pick);
     const x = all.find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side) || all.find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s);
     if (!x){ root.innerHTML = `<button type="button" class="pbx-back" data-back="1">← Props</button><section class="pbx-card2"><p class="empty" style="padding:24px">This prop is not on the board now. The game may have tipped, or the line was pulled.</p></section>`; return; }
-    const r = x.r, side = x.side, g = x.g, s = r.e.s, X = PIDX[r.e.p], logs = (r._logs || (r._logs = logsOf(r))).all, h = hits(x);
+    const r = x.r, side = x.side, g = x.g, s = r.e.s, X = PIDX[r.e.p], all0 = (r._logs || (r._logs = logsOf(r))).all.filter(z => !z[4]);
+    const ms = mates(r, B); if (DS.mate && !ms.some(m => m.id === DS.mate.id)) DS.mate = null;
+    const logs = DS.mate ? mateSplit(all0, DS.mate.id, true)[DS.mate.mode] : all0, h = hitsFrom(logs, s, r.line, side, x.opp);
+    const mrows = ms.map(m => { const sp = mateSplit(all0, m.id, true), ok = g2 => side === 'o' ? gval(g2, s) > r.line : gval(g2, s) < r.line, rt2 = a => a.length ? a.filter(ok).length / a.length : null;
+      return {m, nw: sp.w.length, nwo: sp.wo.length, aw: avg(sp.w.map(z => gval(z, s))), awo: avg(sp.wo.map(z => gval(z, s))), hw: rt2(sp.w), hwo: rt2(sp.wo), mw: avg(sp.w.map(z => z[MIN_I])), mwo: avg(sp.wo.map(z => z[MIN_I]))}; })
+      .filter(z => z.nwo > 0 || /out|doubt|inactive/i.test(z.m.st || ''));
+    const lad = ladder(r, side, all0), g15 = all0.slice(0, 15).reverse();
+    const tday = g ? Math.floor(Date.parse(g.day + 'T00:00Z') / 864e5) : null, restT = tday != null && all0[0] ? tday - all0[0][0] - 1 : null, homeT = g ? r.team === g.home : null;
+    const okS = g2 => side === 'o' ? gval(g2, s) > r.line : gval(g2, s) < r.line, restOf = i => { const n = all0[i + 1]; return n && n[1] === all0[i][1] ? all0[i][0] - n[0] - 1 : null; };
+    const sit = (lbl, f, now) => { const a = all0.filter(f); return {lbl, n: a.length, min: avg(a.map(z => z[MIN_I])), avg: avg(a.map(z => gval(z, s))), hit: a.length ? a.filter(okS).length / a.length : null, now}; };
+    const sits = [sit('Home', z => z[3] === 1, homeT === true), sit('Away', z => z[3] === 0, homeT === false),
+      sit('Back-to-back (0 days rest)', z => restOf(all0.indexOf(z)) === 0, restT === 0), sit('1 day rest', z => restOf(all0.indexOf(z)) === 1, restT === 1), sit('2+ days rest', z => restOf(all0.indexOf(z)) >= 2, restT != null && restT >= 2)];
+    const cmb = combos(x, all), hist = histFor(g, r.e.p, s);
     pf.rows = [r];                                    // Watch in the header goes through the shared handler, which looks rows up here
     const stats = STATS.map(z => z[0]).filter(k => all.some(z => z.r.e.p === r.e.p && z.r.e.s === k));
     const wg = winGl(logs, DS.win, x.opp), sv = i => { const a = wg.map(z => z[i]); return DS.med ? med(a) : avg(a); };
@@ -3874,8 +3962,9 @@ window.PBX = (() => {
             <button type="button" class="btn primary" data-totrk="1">Track a bet ↓</button>
           </div></div>
         <div class="pbx-tabs" id="pbx-stabs">${stats.map(k => `<button type="button" data-ds="${k}" class="${k === s ? 'on' : ''}">${esc(SLABEL[k])}</button>`).join('')}<span class="pbx-ul"></span></div>
-        <div class="pbx-wins"><span class="seg">${WIN.map(([k, l]) => `<button type="button" data-win="${k}" aria-pressed="${DS.win === k}">${l}</button>`).join('')}</span></div>
-        <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
+        <div class="pbx-wins"><span class="seg">${WIN.map(([k, l]) => `<button type="button" data-win="${k}" aria-pressed="${DS.win === k}">${l}</button>`).join('')}</span>
+          <select id="pbx-mate" class="pbx-alt" aria-label="Teammate filter"><option value="">All games</option>${ms.map(m => `<option value="w|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'w' ? ' selected' : ''}>With ${esc(m.name)}</option><option value="wo|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'wo' ? ' selected' : ''}>Without ${esc(m.name)}${m.st ? ` (${esc(m.st.toLowerCase())} tonight)` : ''}</option>`).join('')}</select></div>
+        <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}${DS.mate ? `<span class="pbx-mf">${DS.mate.mode === 'w' ? 'With' : 'Without'} ${esc((ms.find(m => m.id === DS.mate.id) || {}).name || '')}<button type="button" data-mclear="1" aria-label="Clear teammate filter">×</button></span>` : ''}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
           ${WIN.filter(w => w[0] !== DS.win).map(([k, l]) => `<div class="w"><small>${l}</small><b class="${h[k] && h[k].pct > .5 ? 'pos' : h[k] && h[k].pct < .5 ? 'neg' : ''}">${h[k] ? Math.round(h[k].pct * 100) + '%' : '-'}</b></div>`).join('')}</div>
         <div class="pbx-chart">${chart(wg, s, r.line, r.mu)}</div>
         <div class="pbx-ck"><span><i class="ln"></i>Tonight's line ${r.line}</span>${r.mu != null ? `<span><i class="vl"></i>Vault projection ${fmt(r.mu)}</span>` : ''}<span><i class="sq o"></i>Over</span><span><i class="sq u"></i>Under</span>${COMBO[s] ? `<span>Segments: ${COMBO[s].map(k => SLABEL[k]).join(' / ')}</span>` : ''}</div>
@@ -3907,6 +3996,35 @@ window.PBX = (() => {
         </div></div>
       </section>
 
+      <section class="pbx-card2"><header><h3>With and without teammates</h3><small>${esc(SLABEL[s])}, ${side === 'o' ? 'over' : 'under'} ${r.line} · tap a row to filter the chart</small></header>
+        ${mrows.length ? `<div class="pbx-scroll"><table class="pbx-pt pbx-st"><thead><tr><th>Teammate</th><th>Without: games</th><th>Avg</th><th>Hit</th><th>Min</th><th>With: games</th><th>Avg</th><th>Hit</th></tr></thead><tbody>
+          ${mrows.map(z => `<tr class="cl${DS.mate && DS.mate.id === z.m.id ? ' main' : ''}" data-mate="${z.m.id}"><td>${esc(z.m.name)}${z.m.st && /out|doubt|quest|inactive/i.test(z.m.st) ? `<span class="pbx-otag${/quest/i.test(z.m.st) ? ' q' : ''}">${esc(z.m.st.toUpperCase())} TONIGHT</span>` : ''}</td>
+            <td>${z.nwo}</td><td><b>${z.awo == null ? '-' : fmt(z.awo)}</b>${z.aw != null && z.awo != null ? ` <small class="${z.awo > z.aw ? 'pos' : 'neg'}">${sgn(z.awo - z.aw)}</small>` : ''}</td><td>${pcell(z.hwo)}</td>
+            <td>${z.mwo == null ? '-' : fmt(z.mwo)}${z.mw != null && z.mwo != null ? ` <small>${sgn(z.mwo - z.mw)}</small>` : ''}</td><td class="muted">${z.nw}</td><td class="muted">${z.aw == null ? '-' : fmt(z.aw)}</td><td>${pcell(z.hw)}</td></tr>`).join('')}
+        </tbody></table></div><p class="note">Last two seasons, only games where both were on the same team. Small samples swing hard; check the game count.</p>` : '<p class="note">No teammate has missed a game alongside him yet.</p>'}
+      </section>
+
+      <section class="pbx-card2"><header><h3>Alt lines</h3><small>Hit rate at every line, the best price there and Vault's fair where it prices one</small></header>
+        <div class="pbx-scroll"><table class="pbx-pt pbx-st"><thead><tr><th>${side === 'o' ? 'Over' : 'Under'}</th><th>L10</th><th>L20</th><th>${WIN[4][1]}</th><th>2 seasons</th><th>Best price</th><th>Vault fair</th><th>Edge</th></tr></thead><tbody>
+          ${lad.map(z => `<tr class="${z.L === r.line ? 'main' : ''}"><td><b>${z.L}</b>${z.L === r.line ? ' <small>main</small>' : ''}</td><td>${pcell(z.l10)}</td><td>${pcell(z.l20)}</td><td>${pcell(z.s0)}</td><td>${pcell(z.both)}</td>
+            <td>${z.c ? `<span class="pbx-odds" style="justify-content:flex-end">${bkChip(z.c.bk)}<b>${esc(priceTxt(z.c))}</b></span>` : '<span class="muted">-</span>'}</td><td class="v">${z.c ? pc(z.c.fair) : '-'}</td><td class="${z.c && z.c.edge > 0 ? 'pos' : z.c ? 'neg' : ''}">${z.c ? sgn(z.c.edge * 100) + '%' : '-'}</td></tr>`).join('')}
+        </tbody></table></div><p class="note">Lines with no price show hit rates only. Kalshi prices include its fee; a Kalshi line of 19.5 is the 20+ rung.</p>
+      </section>
+
+      <section class="pbx-card2"><header><h3>Opportunity</h3><small>Last 15 games · darker bars are the last 5</small></header>
+        <div class="pbx-o4">${[[MIN_I, 'Minutes'], [IDX.fga, 'Shots (FGA)'], [IDX.tpa, '3PT attempts'], [IDX.fta, 'Free throw att.']].map(([i, l]) => {
+          const v = g15.map(z => z[i]), l5 = avg(all0.slice(0, 5).map(z => z[i])), sz = avg(all0.filter(z => z[1] === GL.current_season).map(z => z[i])), dd = l5 != null && sz != null ? l5 - sz : null;
+          return `<div><small><span>${l}</span><span>L5 vs ${WIN[4][1]}</span></small><b>${l5 == null ? '-' : fmt(l5)}<i class="${dd > 0 ? 'pos' : dd < 0 ? 'neg' : ''}">${dd == null ? '' : sgn(dd)}</i></b>${spark(v, Math.min(5, v.length))}</div>`; }).join('')}</div>
+        ${r.min ? `<p class="note">Vault projects ${fmt(r.min)} minutes tonight.</p>` : ''}
+      </section>
+
+      <section class="pbx-card2"><header><h3>Situations</h3><small>Last two seasons · tonight is highlighted</small></header>
+        <div class="pbx-scroll"><table class="pbx-pt pbx-st"><thead><tr><th>Split</th><th>Games</th><th>Minutes</th><th>${esc(SLABEL[s])} avg</th><th>${side === 'o' ? 'Over' : 'Under'} ${r.line}</th></tr></thead><tbody>
+          ${sits.map(z => `<tr class="${z.now ? 'main' : ''}"><td>${z.lbl}${z.now ? ' <small>tonight</small>' : ''}</td><td>${z.n}</td><td>${z.min == null ? '-' : fmt(z.min)}</td><td>${z.avg == null ? '-' : fmt(z.avg)}</td><td>${pcell(z.hit)}</td></tr>`).join('')}
+        </tbody></table></div>
+        <p class="note">Tonight: ${homeT == null ? '' : homeT ? 'home' : 'away'}${restT == null ? '' : restT === 0 ? ', second night of a back-to-back' : `, ${restT} day${restT === 1 ? '' : 's'} of rest`}. Rest counts days between his own games, so a missed game reads as extra rest.</p>
+      </section>
+
       <section class="pbx-card2"><header><h3>Every price</h3><small>${side === 'o' ? 'Over' : 'Under'} side · best in green</small></header>
         <div class="pbx-scroll"><table class="pbx-pt"><thead><tr><th>Venue</th><th>Line</th><th>Over</th><th>Under</th><th>Fair (over)</th><th>Opened</th></tr></thead><tbody>
           <tr class="grp"><td colspan="6">Sportsbooks</td></tr>
@@ -3921,11 +4039,22 @@ window.PBX = (() => {
     </div>
 
     <aside class="pbx-rail">
-      <section class="pbx-card2"><header><h3>Line movement</h3><small>${esc(r.lineFrom || '')}</small></header>
-        <table class="pbx-lm"><thead><tr><th>When</th><th>Line</th><th>Over</th></tr></thead><tbody>
+      <section class="pbx-card2"><header><h3>Line movement</h3><small>${hist.state === 'ok' ? 'DraftKings · over price at each point' : esc(r.lineFrom || '')}</small></header>
+        ${hist.state === 'ok' ? `<div class="pbx-lc">${lineChart(hist.ser)}</div>
+          <table class="pbx-lm"><thead><tr><th>When (${TZL})</th><th>Line</th><th>Over</th><th>Under</th></tr></thead><tbody>
+          ${hist.ser.slice().reverse().slice(0, 6).map((z, i, a) => `<tr><td${i ? ' class="muted"' : ''}>${clock(z[0])}${i === 0 ? ' · latest' : i === a.length - 1 && hist.ser.length <= 6 ? ' · open' : ''}</td><td>${i === 0 ? `<b>${z[1]}</b>` : z[1]}</td><td>${esc(z[2] || '-')}</td><td>${esc(z[3] || '-')}</td></tr>`).join('')}</tbody></table>
+          <p class="note">${hist.ser.length} price change${hist.ser.length === 1 ? '' : 's'} since DraftKings posted it${hist.ser.length > 6 ? '; the latest 6 are listed' : ''}, from the recorder's polls. The table's line can come from another book.</p>`
+        : `<table class="pbx-lm"><thead><tr><th>When</th><th>Line</th><th>Over</th></tr></thead><tbody>
           <tr><td>Now</td><td><b>${r.line}</b></td><td>${main ? main.o : '-'}</td></tr>
           <tr><td class="muted">Open</td><td>${main && main.l0 != null ? main.l0 : x.sc.dm != null ? r.line - x.sc.dm : '-'}</td><td>${main && main.o0 ? main.o0 : '-'}</td></tr></tbody></table>
-        <p class="note">${x.sc.dm ? `Moved ${x.sc.dm > 0 ? 'up' : 'down'} ${Math.abs(x.sc.dm)} since it opened.` : 'No line move since it opened.'} The full move-by-move chart comes in the next update.</p>
+          <p class="note">${hist.state === 'loading' ? 'Loading the move-by-move history...' : 'No DraftKings history recorded for this prop, so only open and now are shown.'}</p>`}
+      </section>
+      <section class="pbx-card2"><header><h3>Same-game combos</h3><small>Props that move with this one</small></header>
+        ${cmb && cmb.length ? `<div class="pbx-cmb">${cmb.map(c => `<div><p class="t"><span>${esc(c.z.r.name)} <small>${c.rel === 'self' ? 'Same player' : c.rel === 'team' ? 'Teammate' : 'Opponent'}</small></span><span class="rho ${c.f[3] > 0 ? 'p' : 'n'}" title="Correlation across ${c.f[4].toLocaleString()} paired games">r ${c.f[3] > 0 ? '+' : '−'}${Math.abs(c.f[3]).toFixed(2)}</span></p>
+            <p class="l"><b>${side === 'o' ? 'Over' : 'Under'} ${r.line} ${esc(SLABEL[s])}</b> + <a href="#propboard/${c.z.r.e.p}/${c.z.r.e.s}/${c.qs}">${c.qs === 'o' ? 'Over' : 'Under'} ${c.z.r.line} ${esc(SLABEL[c.z.r.e.s])}</a></p>
+            <p class="j"><span>Fairs <b>${pc(c.fa) || '-'}</b> · <b>${pc(c.fb) || '-'}</b></span><span>Both if independent <b>${c.fa != null && c.fb != null ? pc(c.fa * c.fb) : '-'}</b></span>${c.f[6] ? `<span>Together <b>${c.f[6].toFixed(2)}×</b> at 50/50</span>` : ''}</p></div>`).join('')}</div>
+          <p class="note">Correlations from ${CORR.games} games of box scores. Pricing them did not beat the closing line in testing (${esc(CORR.verdict)}), so they are context, not an edge. <a class="linkbtn" href="#bankroll" data-go="bankroll">Price a combo in Combo Check</a></p>`
+          : `<p class="note">${!CORR ? 'Correlation data is not in this build.' : BASE4.includes(s) ? 'No tested correlation links this prop to another prop in this game.' : 'Correlations are measured for points, rebounds, assists and threes only.'}</p>`}
       </section>
       <section class="pbx-card2"><div class="pbx-rt">${[['matchup', 'Matchup'], ['inj', 'Injuries'], ['game', 'Game']].map(([k, l]) => `<button type="button" data-rtab="${k}" class="${DS.rtab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
         <div class="pbx-rb">
@@ -3945,13 +4074,15 @@ window.PBX = (() => {
   }
   function trkUpdate(){ const rt = routeOf(); if (!rt) return; const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (x && $('pbx-tro')) $('pbx-tro').innerHTML = trkReadout(x); }
   function detailClick(e){
-    const t = e.target, b = t.closest('[data-back],[data-dside],[data-ds],[data-win],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
+    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
     const d = b.dataset, rt = routeOf(); if (!rt && !d.back) return false;
     if (d.back){ history.length > 1 && /#propboard\//.test(location.hash) ? (location.hash = '#propboard') : goView('propboard'); return true; }
     if (d.totrk){ $('pbx-trk').scrollIntoView({behavior: 'smooth', block: 'center'}); return true; }
     if (d.dside || d.tside){ DS.T = null; goProp(rt.pid, rt.s, d.dside || d.tside); return true; }
     if (d.ds){ const bar = document.querySelector('#pbx-stabs .pbx-ul'); DS.bar = bar ? [bar.style.left, bar.style.width] : null; DS.T = null; goProp(rt.pid, d.ds, rt.side); return true; }
     if (d.win){ DS.win = d.win; rerender(); return true; }
+    if (d.mate){ const id = +d.mate; DS.mate = DS.mate && DS.mate.id === id ? null : {mode: 'wo', id}; rerender(); window.scrollTo({top: 0, behavior: 'smooth'}); return true; }
+    if (d.mclear){ DS.mate = null; rerender(); return true; }
     if (d.med){ DS.med = d.med === '1'; rerender(); return true; }
     if (d.rtab){ DS.rtab = d.rtab; rerender(); return true; }
     const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (!x) return true;
@@ -3975,7 +4106,7 @@ window.PBX = (() => {
     css();
     WIN[4][1] = szn(GL.current_season); WIN[5][1] = szn(GL.current_season - 1);
     const rt = routeOf(), rk = rt ? `${rt.pid}|${rt.s}|${rt.side}` : null;
-    if (rt){ const fresh = DS.at !== rk; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
+    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = null; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
     if (DS.at){ DS.at = null; const y = S.scroll || 0; setTimeout(() => window.scrollTo(0, y), 0); }
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
@@ -4057,7 +4188,7 @@ window.PBX = (() => {
       if (tr){ const x = root._show[+tr.closest('.pbx-row').dataset.i]; DS.T = null; S.scroll = scrollY; goProp(x.r.e.p, x.r.e.s, x.side); }
     });
     root.addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, rerender); });
-    root.addEventListener('change', e => { if (e.target.id === 'pbx-tven'){ detailInput(e); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
+    root.addEventListener('change', e => { if (e.target.id === 'pbx-tven'){ detailInput(e); return; } if (e.target.id === 'pbx-mate'){ const v = e.target.value; DS.mate = v ? {mode: v.split('|')[0], id: +v.split('|')[1]} : null; rerender(); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
     let qT = null;
     root.addEventListener('input', e => { if (e.target.id === 'pbx-tprice' || e.target.id === 'pbx-tstake'){ detailInput(e); return; } if (e.target.id !== 'pbx-q') return; S.q = e.target.value; clearTimeout(qT);
       qT = setTimeout(() => { const at = e.target.selectionStart; rerender(); const n = $('pbx-q'); if (n){ n.focus(); n.setSelectionRange(at, at); } }, 150); });
@@ -4280,7 +4411,40 @@ window.PBX = (() => {
 .pbx-gc > div{background:var(--surface2);border-radius:10px;padding:9px 10px}
 .pbx-gc b{display:block;font-size:14px;font-weight:600;margin-top:2px}
 .pbx-card2 > .pbx-lm + .note{padding:0 16px 12px}
+
+.pbx-wins{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pbx-wins .pbx-alt{margin-left:auto;max-width:280px}
+.pbx-mf{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:1px 4px 1px 9px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);font-weight:700}
+.pbx-mf button{background:none;border:0;color:inherit;font-size:13px;padding:0 3px}
+.pbx-st td small{color:var(--fg3);font-weight:500}
+.pbx-st tr.cl{cursor:pointer}.pbx-st tr.cl:hover td{background:var(--surface2)}
+.pbx-st .pbx-hc{height:24px}
+.pbx-otag{font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:4px;margin-left:6px;background:color-mix(in srgb,var(--pbx-r) 16%,transparent);color:var(--pbx-r)}
+.pbx-otag.q{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.pbx-o4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.pbx-o4 > div{padding:12px 16px;border-right:1px solid rgb(var(--ink) / .06)}
+.pbx-o4 > div:last-child{border-right:0}
+.pbx-o4 small{display:flex;justify-content:space-between;color:var(--fg3);font-size:11px;font-weight:600}
+.pbx-o4 b{display:block;font:600 18px var(--font-mono);margin:2px 0 6px}
+.pbx-o4 b i{font-style:normal;font-size:11px;margin-left:5px}
+.pbx-o4 svg{display:block;width:100%;height:44px}
+.pbx-o4 rect{fill:var(--raised)}.pbx-o4 rect.r5{fill:var(--fg3)}
+.pbx-lc{padding:8px 12px 0}.pbx-lc svg{display:block;width:100%;height:auto}
+.pbx-lc .gl{stroke:rgb(var(--ink) / .07)}.pbx-lc .ax{font:500 9.5px var(--font-sans);fill:var(--fg3)}
+.pbx-lc .st{stroke:var(--pbx-g);stroke-width:2;fill:none}.pbx-lc .pt{fill:var(--pbx-g)}.pbx-lc .px{font:600 9px var(--font-mono);fill:var(--fg2)}
+.pbx-cmb > div{padding:10px 16px;border-bottom:1px solid rgb(var(--ink) / .06)}
+.pbx-cmb p{margin:0}
+.pbx-cmb .t{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600}
+.pbx-cmb .t small{color:var(--fg3);font-weight:500}
+.pbx-cmb .rho{font:600 11px var(--font-mono);padding:1px 6px;border-radius:5px}
+.pbx-cmb .rho.p{background:color-mix(in srgb,var(--pbx-g) 14%,transparent);color:var(--pbx-g)}.pbx-cmb .rho.n{background:color-mix(in srgb,var(--pbx-r) 14%,transparent);color:var(--pbx-r)}
+.pbx-cmb .l{font-size:11.5px;color:var(--fg2);margin-top:3px}.pbx-cmb .l b{color:var(--fg)}.pbx-cmb .l a{color:var(--fg);font-weight:600}
+.pbx-cmb .j{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:11px;color:var(--fg3);margin-top:4px}.pbx-cmb .j span{white-space:nowrap}.pbx-cmb .j b{color:var(--fg);font-family:var(--font-mono)}
 @media (max-width:760px){
+  .pbx-o4{grid-template-columns:1fr 1fr}
+  .pbx-o4 > div:nth-child(2){border-right:0}
+  .pbx-o4 > div:nth-child(-n+2){border-bottom:1px solid rgb(var(--ink) / .06)}
+  .pbx-wins .pbx-alt{margin-left:0;max-width:none;width:100%}
   .pbx-detail{grid-template-columns:minmax(0,1fr)}
   .pbx-dh .acts{margin-left:0;width:100%}
   .pbx-sup{grid-template-columns:repeat(3,minmax(0,1fr))}
