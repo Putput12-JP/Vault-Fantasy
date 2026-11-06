@@ -57,6 +57,44 @@ export function ledgerKey(c) {
   return ['b', c.gk, c.m, c.side, c.title].join('|');
 }
 
+/* ---- one row per pick, even when the start time drifts ----
+   A prop id carries the start second, and the feeds do not always agree on it: the Nov 5 2026 Thursday game read 7:15 PM from one poll and 7:16 PM
+   from the next, so the same pick was logged twice (65 rows across the three ledgers, every one exactly 60 seconds apart). A prop is the same pick
+   as a stored one when player, market, line and side match and the starts are within SAME_GAME of each other; no player has two games that close. */
+export const SAME_GAME = 6 * 3600;
+const pickOf = r => [r.pid, r.mkt, r.line, r.side].join('|');
+function pickIndex(L) {
+  const ix = new Map();
+  for (const r of Object.values(L.plays)) if (r && r.kind === 'prop' && r.prop) {
+    const k = pickOf(r.prop); if (!ix.has(k)) ix.set(k, []); ix.get(k).push(r);
+  }
+  return ix;
+}
+const sameGame = (rows, start) => (rows || []).find(r => Math.abs(r.start - start) <= SAME_GAME);
+
+/* Rows already logged twice for one pick: the first sight stays (the earliest firstSeen), the later row is removed and its id is kept in
+   L.merged {removed id: kept id}, which scripts/snapshot_sharp_ledgers.py reads so a merged id is not taken for lost history. If the kept row found
+   no close only because its start missed the tape's kickoff by the drift, the removed row's stored close is the same exchange read at the same line
+   and side, so it moves over and CLV is recomputed on the kept row's own price. Returns how many rows it merged. */
+export function mergeDupPicks(L) {
+  let n = 0;
+  for (const rows of pickIndex(L).values()) {
+    if (rows.length < 2) continue;
+    rows.sort((a, b) => a.firstSeen - b.firstSeen || a.start - b.start);
+    const kept = [];
+    for (const r of rows) {
+      const k = kept.find(x => Math.abs(x.start - r.start) <= SAME_GAME);
+      if (!k) { kept.push(r); continue; }
+      if (!(k.close && k.close.p != null) && r.close && r.close.p != null && k.first && k.first.price && k.first.price.p) {
+        k.close = r.close; k.clv = r4(r.close.p / k.first.price.p - 1); k.closeFrom = r.id;
+      }
+      (L.merged || (L.merged = {}))[r.id] = k.id;
+      delete L.plays[r.id]; n++;
+    }
+  }
+  return n;
+}
+
 /* What a settled game pick needs, in one shape for both game kinds: m (ml | sp | tot), side (home | away | over | under), hline (the HOME line,
    as the board stores it) or line (the total). */
 function gamePick(c) {
@@ -70,12 +108,13 @@ function gamePick(c) {
 
 /* ---- log ---- */
 export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, week = null, tier = 'play' } = {}) {
-  const added = [];
+  const added = [], ix = pickIndex(L);
   for (const c of cands) {
     if (c.tier !== tier || !c.start || c.start <= nowS) continue;
     if (c.capPending) continue;                                  // an NBA prop in tonight's top 5 before the lock (gates.js NBA_CAP): logged at the lock, not now
     const id = ledgerKey(c);
     if (L.plays[id]) continue;
+    if (c.kind === 'prop' && sameGame(ix.get(pickOf({ pid: c.row.pid, mkt: c.row.mkt, line: c.row.line, side: c.side })), c.start)) continue;   // already logged under a drifted start
     const refs = c.refs.map(r => ({ n: r.n, p: r4(r.p), edge: r4(r.edge) }));
     const first = {
       title: c.title, sub: c.sub, market: c.market, price: { am: c.price.am, p: r4(c.price.p), book: c.price.book, ...(c.price.shop ? { shop: c.price.shop } : {}), ...(c.sport === 'nba' && c.kind === 'prop' ? { kal: !!c.price.kal } : {}) },
@@ -93,6 +132,7 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
       if (c.kind === 'exch') first.edgeGenerated = edgeGenerated;
     }
     L.plays[id] = row; added.push(id);
+    if (row.prop) { const k = pickOf(row.prop); if (!ix.has(k)) ix.set(k, []); ix.get(k).push(row); }
   }
   return added;
 }
@@ -101,11 +141,13 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
 // Props: prop_close_tape.json, the entry for this game, Kalshi and Novig P(over) at the exact line.
 export function propClose(T, play) {
   const p = play.prop, list = (tapeIndex(T)[p.season + '|' + p.pid + '|' + p.mkt]) || [];
-  const entry = list.find(v => Date.parse(v.commence) / 1000 === play.start);
+  // the tape's kickoff can differ from the stored start by a feed's drift (SAME_GAME): take the nearest entry, and judge "before kickoff" by the earlier time
+  const entry = list.filter(v => Math.abs(Date.parse(v.commence) / 1000 - play.start) <= SAME_GAME)
+    .sort((a, b) => Math.abs(Date.parse(a.commence) / 1000 - play.start) - Math.abs(Date.parse(b.commence) / 1000 - play.start))[0];
   if (!entry || !entry.books) return null;
-  const got = [];
+  const ko = Math.min(play.start, Date.parse(entry.commence) / 1000), got = [];
   for (const b of ['Kalshi', 'Novig']) {
-    const e = entry.books[b]; if (!e || e.t == null || e.t >= play.start || play.start - e.t > CLOSE_AGE) continue;
+    const e = entry.books[b]; if (!e || e.t == null || e.t >= ko || ko - e.t > CLOSE_AGE) continue;
     const v = bookP(e, p.line); if (v != null) got.push([b, v, e.t]);
   }
   if (!got.length) return null;
@@ -339,6 +381,7 @@ export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {}, nflSnaps
   if (!D) throw new Error('no data.json in ' + dir);
   const file = resolve(dir, ledgerFile(tier)), L = loadLedger(file);
   tagNbaShop(L);
+  const merged = mergeDupPicks(L);
   // An exchange list older than a reference may be is not a price (gates.js MAX_AGE); the page has no such check, so a play off a stale list is not logged.
   const eg = E && E.generated ? Date.parse(E.generated) / 1000 : null;
   const Eok = E && eg != null && nowS - eg <= GATES.MAX_AGE ? E : null;
@@ -357,7 +400,7 @@ export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {}, nflSnaps
     statsFor: P => stats[P.prop.season], finals: makeFinals(D, results), T, nowS,
     exch: sport => tapes[sport] ||= exchIndex(readTape(dataDir, sport)),
   });
-  return { L, added, out, skippedExch: E && !Eok, file };
+  return { L, added, out, merged, skippedExch: E && !Eok, file };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
@@ -367,9 +410,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   if (!['play', 'watch', 'pass'].includes(tier)) throw new Error('--tier must be play, watch or pass');
   const prev = loadLedger(resolve(dir, ledgerFile(tier)));      // plays logged in an earlier run; one logged this run has not started
   const nbaBoxes = await fetchNbaBoxes(prev, nowS), nflSnaps = await fetchNflSnaps(prev, nowS);
-  const { L, added, out, skippedExch, file } = run({ dir, dataDir, nowS, tier, nbaBoxes, nflSnaps });
+  const { L, added, out, merged, skippedExch, file } = run({ dir, dataDir, nowS, tier, nbaBoxes, nflSnaps });
   L.updated = nowS;
   writeFileSync(file + '.tmp', JSON.stringify(L)); renameSync(file + '.tmp', file);
   const s = summary(L);
-  console.log(`v2 plays: ${added.length} new, ${out.settled} settled, ${out.void} void, ${out.regraded} old voids regraded, ${out.closed} closes frozen; ledger ${s.n} plays (${s.open} open, ${s.w}-${s.l}, ${s.push} push, ${s.void} void, ${s.units}u, CLV on ${s.clvN}${s.held ? `, ${s.held} held back by the strict gates` : ''})${skippedExch ? '; exchange list too old, game plays off it not logged this run' : ''}`);
+  console.log(`v2 plays: ${added.length} new, ${merged} repeat rows merged, ${out.settled} settled, ${out.void} void, ${out.regraded} old voids regraded, ${out.closed} closes frozen; ledger ${s.n} plays (${s.open} open, ${s.w}-${s.l}, ${s.push} push, ${s.void} void, ${s.units}u, CLV on ${s.clvN}${s.held ? `, ${s.held} held back by the strict gates` : ''})${skippedExch ? '; exchange list too old, game plays off it not logged this run' : ''}`);
 }

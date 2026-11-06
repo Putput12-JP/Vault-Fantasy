@@ -70,7 +70,10 @@ def check(name, old, new, today):
     """Problems moving from the previous snapshot to this one (empty list = safe to write)."""
     a, b = ids_of(name, old), ids_of(name, new)
     bad = []
-    lost = [k for k in a if k not in b and not (name == 'prop_close_tape.json' and tape_old(k, today))]
+    # A V2 row folded into an earlier row for the same pick (track-v2-plays.mjs mergeDupPicks) is listed in `merged`; it is not lost if the row it
+    # went into is still there.
+    merged = (new.get('merged') or {}) if name in V2 else {}
+    lost = [k for k in a if k not in b and not (name == 'prop_close_tape.json' and tape_old(k, today)) and not (merged.get(k) in b)]
     if lost:
         bad.append(f'{name}: {len(lost)} ids in the previous snapshot are missing now, e.g. {lost[:3]}')
     back = [k for k in a if a[k] and k in b and not b[k]]

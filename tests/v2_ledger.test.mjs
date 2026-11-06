@@ -243,3 +243,33 @@ test('a ledger that exists but does not parse stops the run instead of starting 
   assert.deepEqual(loadLedger(f), { v: 1, plays: {} });
   fs.writeFileSync(f, '{"plays":'); assert.throws(() => loadLedger(f));
 });
+
+/* A start that drifts between feeds (Nov 5 2026: 7:15 PM, then 7:16 PM) must not log the same pick twice, and rows already doubled fold into the first. */
+test('a pick is logged once even when its start drifts', async () => {
+  const { mergeDupPicks } = await import('../scripts/track-v2-plays.mjs');
+  const L = fresh(), c = build().find(x => x.tier === 'play' && x.kind === 'prop');
+  assert.ok(c);
+  assert.equal(logPlays(L, [c], TS, opts).length, 1);
+  assert.equal(logPlays(L, [{ ...c, start: c.start + 60 }], TS + 600, opts).length, 0, 'same pick, start 60s later');
+  assert.equal(logPlays(L, [{ ...c, start: c.start + 7 * 86400 }], TS + 600, opts).length, 1, 'next week is a new pick');
+
+  const D = fresh(), base = { kind: 'prop', sport: 'nfl', status: 'lost', first: { price: { p: 0.5918 }, worst: 0.03 }, prop: { pid: '5947', mkt: 'rec', line: 3.5, side: 'under' } };
+  D.plays.a = { ...base, id: 'a', start: 1793927760, firstSeen: 100, close: false };
+  D.plays.b = { ...base, id: 'b', start: 1793927700, firstSeen: 200, first: { price: { p: 0.5833 }, worst: 0.02 }, close: { p: 0.5885, src: 'Kalshi' }, clv: 0.0089 };
+  D.plays.c = { ...base, id: 'c', start: 1793927700 + 7 * 86400, firstSeen: 300 };
+  assert.equal(mergeDupPicks(D), 1);
+  assert.deepEqual(Object.keys(D.plays).sort(), ['a', 'c']);
+  assert.deepEqual(D.merged, { b: 'a' });
+  assert.equal(D.plays.a.close.p, 0.5885);
+  assert.equal(D.plays.a.clv, +(0.5885 / 0.5918 - 1).toFixed(4));
+  assert.equal(mergeDupPicks(D), 0, 'idempotent');
+});
+
+test('the prop close is found when the stored start is off the tape kickoff by a drift', () => {
+  const ko = 1793927700, play = { start: ko + 60, prop: { season: '2026', pid: '5947', mkt: 'rec', line: 3.5, side: 'under' } };
+  const T = { props: { '2026|5947|rec|2026-11-06': { season: '2026', pid: '5947', market: 'rec', commence: new Date(ko * 1000).toISOString(), books: { Kalshi: { t: ko - 300, ladder: [[3.5, 0.4, 100, 0.01]] } } } } };
+  const cl = propClose(T, play);
+  assert.equal(cl.src, 'Kalshi');
+  assert.equal(cl.p, 0.6, 'under = 1 - P(over)');
+  assert.equal(propClose(T, { ...play, start: ko + 7 * 3600 }), null, 'a start 7h off is another game');
+});
