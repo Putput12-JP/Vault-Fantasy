@@ -25,6 +25,12 @@ class V2Ledger(unittest.TestCase):
         self.assertTrue(S.check("v2_plays.json", {"plays": {"a": play()}}, {"plays": {}}, TODAY))
         self.assertTrue(S.check("v2_plays.json", {"plays": {"a": play("won")}}, {"plays": {"a": play("open")}}, TODAY))
 
+    def test_a_merged_repeat_may_leave_only_into_a_row_that_stays(self):
+        old = {"plays": {"a": play("won"), "b": play("won")}}
+        self.assertEqual(S.check("v2_plays.json", old, {"plays": {"a": play("won")}, "merged": {"b": "a"}}, TODAY), [])
+        self.assertTrue(S.check("v2_plays.json", old, {"plays": {"a": play("won")}, "merged": {"b": "gone"}}, TODAY))
+        self.assertTrue(S.check("v2_plays.json", old, {"plays": {"a": play("won")}}, TODAY))
+
     def test_the_first_sight_record_is_frozen(self):
         old = {"plays": {"a": play()}}
         self.assertTrue(S.check("v2_plays.json", old, {"plays": {"a": play(price=0.45)}}, TODAY), "price")
