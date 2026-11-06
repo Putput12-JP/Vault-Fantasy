@@ -3590,7 +3590,7 @@ if (typeof module !== 'undefined') module.exports = {rmErf, rmScorePool, rotMinu
 window.PBX = (() => {
   const LS = 'nba-pbx-f';
   try{ localStorage.removeItem('nba-pbx-classic'); }catch(e){}   // the classic table is gone; forget a saved choice of it
-  const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any'};
+  const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any', watch: false};
   const load = () => { try{ const f = JSON.parse(localStorage.getItem(LS)); return f ? {...FDEF, ...f, ven: {...FDEF.ven, ...(f.ven || {})}} : JSON.parse(JSON.stringify(FDEF)); }catch(e){ return JSON.parse(JSON.stringify(FDEF)); } };
   const S = {stat: 'all', side: 'all', game: 'all', q: '', sort: 'edge', dir: -1, limit: 60, fOpen: false, f: load(), open: null};
   const save = () => { try{ localStorage.setItem(LS, JSON.stringify(S.f)); }catch(e){} };
@@ -3678,6 +3678,7 @@ window.PBX = (() => {
     if (f.oMin !== '' || f.oMax !== '') o.push(['odds', `Odds ${f.oMin || 'any'} to ${f.oMax || 'any'}`]);
     if (f.healthy) o.push(['healthy', 'No injury tag']);
     if (f.starters) o.push(['starters', 'Starters only']);
+    if (f.watch) o.push(['watch', 'Watching only']);
     if (f.moved !== 'any') o.push(['moved', f.moved === 'with' ? 'Line moved toward side' : 'Line moved against side']);
     return o;
   }
@@ -3704,6 +3705,7 @@ window.PBX = (() => {
       if (oMin != null || oMax != null){ const a = amOf(x.best); if (a == null) return false; if (oMin != null && amP(a) > amP(oMin) + 1e-9) return false; if (oMax != null && amP(a) < amP(oMax) - 1e-9) return false; }
       if (f.healthy && r.inj && !/^available$/i.test(r.inj)) return false;
       if (f.starters && r.lu !== 's') return false;
+      if (f.watch && !pvW[pvKey(r)]) return false;
       if (f.moved !== 'any'){ const d = x.sc.dm; if (!d) return false; if ((f.moved === 'with') !== (x.side === 'o' ? d < 0 : d > 0)) return false; }   // a falling line makes the over easier
       return true;
     });
@@ -3738,7 +3740,7 @@ window.PBX = (() => {
       <div><h6>L10 hit rate</h6><div>${o('minL10', 'null', 'Any', f.minL10 == null)}${[50, 60, 70, 80].map(v => o('minL10', v, v + '%+', f.minL10 === v)).join('')}</div></div>
       <div><h6>Best odds (American)</h6><div class="rng"><input data-fodds="oMin" placeholder="-200" value="${esc(f.oMin)}" aria-label="Shortest price">to<input data-fodds="oMax" placeholder="+200" value="${esc(f.oMax)}" aria-label="Longest price"></div></div>
       <div><h6>Line move since open</h6><div>${o('moved', 'any', 'Any', f.moved === 'any')}${o('moved', 'with', 'Toward side', f.moved === 'with')}${o('moved', 'against', 'Against side', f.moved === 'against')}</div></div>
-      <div><h6>Player and matchup</h6><div>${o('oppFav', 1, 'Soft matchup', f.oppFav)}${o('healthy', 1, 'No injury tag', f.healthy)}${o('starters', 1, 'Starters only', f.starters)}</div></div>
+      <div><h6>Player and matchup</h6><div>${o('oppFav', 1, 'Soft matchup', f.oppFav)}${o('healthy', 1, 'No injury tag', f.healthy)}${o('starters', 1, 'Starters only', f.starters)}${o('watch', 1, '★ Watching only', f.watch)}</div></div>
       <div class="ft"><span class="muted">${n.toLocaleString()} props match. Venues change which price counts as best.</span><button type="button" class="btn" data-freset="1">Reset</button><button type="button" class="btn primary" data-fdone="1">Done</button></div></div>`;
   }
 
@@ -4109,6 +4111,7 @@ window.PBX = (() => {
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
     const all = build(B), rows = filtered(all), show = rows.slice(0, S.limit);
+    const nWatch = new Set(all.filter(x => pvW[pvKey(x.r)]).map(x => pvKey(x.r))).size;   // props watched (each counted once, not per side) that are still on the board
     pf.rows = show.map(x => x.r);                    // the shared drawer's Log and Watch buttons look rows up here
     const statsOn = STATS.filter(([k]) => k === 'all' || all.some(x => x.r.e.s === k));
     const th = (k, l, c, v) => `<button type="button" class="${c ? 'c ' : ''}${v ? 'v ' : ''}${S.sort === k ? 'on' : ''}" data-sort="${k}" aria-sort="${S.sort === k ? (S.dir > 0 ? 'ascending' : 'descending') : 'none'}">${l}${S.sort === k ? `<i>${S.dir > 0 ? '▲' : '▼'}</i>` : ''}</button>`;
@@ -4140,6 +4143,7 @@ window.PBX = (() => {
         <button type="button" class="pbx-fb${S.fOpen ? ' on' : ''}" data-fopen="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18M6 12h12M10 19h4"/></svg>Filters${act.length ? `<i>${act.length}</i>` : ''}</button>
         <label class="pbx-fb q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="pbx-q" type="search" placeholder="Players" autocomplete="off" value="${esc(S.q)}" aria-label="Filter players"></label>
         <div class="seg" role="group" aria-label="Side">${[['all', 'Over / Under'], ['o', 'Over'], ['u', 'Under']].map(([k, l]) => `<button type="button" data-side="${k}" aria-pressed="${S.side === k}">${l}</button>`).join('')}</div>
+        <button type="button" class="pbx-fb pbx-wf${S.f.watch ? ' on' : ''}" data-f="watch" data-v="1" aria-pressed="${S.f.watch}" title="Show only the props you watch">★ Watching${nWatch ? `<i>${nWatch}</i>` : ''}</button>
         <span class="pbx-n">${rows.length.toLocaleString()} / ${all.length.toLocaleString()} props</span>
       </div>
       ${S.fOpen ? filterPanel(rows.length) : ''}
@@ -4147,7 +4151,7 @@ window.PBX = (() => {
       <p class="pbx-key"><span class="v">Vault model columns</span><span>Hit rates: share of games over (or under) tonight's line</span><span>Opp rank: 1st allows the fewest to his position, 30th the most</span></p>
       <div class="pbx-tbl"><div class="pbx-scroll">
         <div class="pbx-th"><span></span>${th('prop', 'Proposition')}${th('line', 'Line', 1)}${th('odds', 'Best odds')}${th('proj', 'Vault proj', 1, 1)}${th('fair', 'Fair', 1, 1)}${th('edge', 'Edge', 1, 1)}${th('opp', 'Opp rank', 1)}${WIN.map(([k, l]) => th(k, l, 1)).join('')}</div>
-        ${show.map(row).join('') || `<p class="empty" style="padding:24px">${all.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p>`}
+        ${show.map(row).join('') || `<p class="empty" style="padding:24px">${!all.length ? 'Nothing on the board yet.' : S.f.watch && !nWatch ? 'Nothing on your watch list. Open a prop and tap Watch to add it here.' : 'No props match these filters.'}</p>`}
       </div></div>
       ${rows.length > S.limit ? `<div class="pbx-more"><button type="button" class="btn" data-more="1">Show ${Math.min(60, rows.length - S.limit)} more</button></div>` : ''}`;
     root._show = show;
@@ -4175,7 +4179,7 @@ window.PBX = (() => {
         else if (d.more){ S.limit += 60; }
         else if (d.f){ const k = d.f, f = S.f;
           if (k === 'ven'){ f.ven[d.v] = f.ven[d.v] ? 0 : 1; if (!Object.values(f.ven).some(Boolean)) f.ven[d.v] = 1; }
-          else if (k === 'oppFav' || k === 'healthy' || k === 'starters') f[k] = !f[k];
+          else if (k === 'oppFav' || k === 'healthy' || k === 'starters' || k === 'watch') f[k] = !f[k];
           else { const v = d.v === 'null' ? null : isNaN(+d.v) ? d.v : +d.v; f[k] = v; }
           save(); S.limit = 60; }
         rerender(); return;
@@ -4213,6 +4217,7 @@ window.PBX = (() => {
 .pbx-fb{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:var(--r-pill);background:var(--chip);border:1px solid transparent;color:var(--fg2);font-weight:600;font-size:12.5px}
 .pbx-fb:hover,.pbx-fb.on{color:var(--fg);border-color:rgb(var(--ink) / .15)}
 .pbx-fb svg{width:14px;height:14px}
+.pbx-wf.on{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
 .pbx-fb i{font-style:normal;background:var(--fg);color:var(--bg);border-radius:6px;font-size:11px;padding:0 6px}
 .pbx-fb.q input{background:none;border:0;outline:none;color:var(--fg);font:inherit;width:140px}
 .pbx-n{margin-left:auto;color:var(--fg3);font-size:12px}
