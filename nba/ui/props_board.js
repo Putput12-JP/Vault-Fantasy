@@ -672,7 +672,7 @@ window.PBX = (() => {
 .pbx-face .hs img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 12%}
 .pbx-face .lo{position:absolute;right:-4px;bottom:-3px;width:17px;height:17px;border-radius:50%;background:var(--surface);border:1px solid rgb(var(--ink) / .12);display:grid;place-items:center}
 .pbx-face .lo img{width:13px;height:13px}
-.pbx-prop .who{display:flex;flex-direction:column;min-width:0}
+.pbx-prop .who{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-width:0}
 .pbx-prop .who > b{font-weight:600;font-size:13px;display:flex;gap:6px;align-items:center;overflow:hidden;text-overflow:ellipsis}
 .pbx-prop .who small{display:inline;font-weight:400;color:var(--fg3);font-size:11.5px;white-space:nowrap}
 .pbx-prop .who > b{flex-wrap:nowrap;white-space:nowrap}
