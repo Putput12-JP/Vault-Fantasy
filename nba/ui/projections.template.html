@@ -2594,9 +2594,10 @@ th{font-weight:500}
         <div class="pv-main"><div class="pv-list" id="pv-list" aria-label="Props"></div><section class="pv-detail" id="pv-detail"></section></div>
       </div>
       <div id="pv-full" class="pv-wrap" hidden>
+      <div id="pbx-root" hidden></div>
       <div class="kpis" id="pkpis"></div>
       <section class="card pv-games" id="pgames" hidden></section>
-      <section class="card">
+      <section class="card" id="pf-classic">
         <div class="card-h">
           <div><h2>Props board <span class="pupd" id="pupd" hidden></span></h2><p id="psub">Every listed prop next to our projection. Click a row for the Kalshi ladder and each book.</p></div>
           <div class="filters">
@@ -2605,6 +2606,7 @@ th{font-weight:500}
             <input class="pfind" id="pq" type="search" placeholder="Filter players" autocomplete="off" aria-label="Filter players">
             <label class="switch" for="pgated"><input type="checkbox" id="pgated" role="switch"> Passing gates only</label>
             <label class="switch" for="pwatch"><input type="checkbox" id="pwatch" role="switch"> <span id="pwatchl">Watching only</span></label>
+            <button class="linkbtn" id="pbx-new" type="button">New table</button>
           </div>
         </div>
         <div class="card-b">
@@ -3131,6 +3133,7 @@ const GBM_MODEL = /*GBMMODEL*/null;   // minutes GBM trees (data/minutes_gbm.jso
 const ROT_MODEL = /*ROTMODEL*/null;   // rotation model (data/rotation_minutes_model.json): P(plays) inside GP
 /*MINUTES_GBM_JS*/
 /*ROTATION_MINUTES_JS*/
+/*PROPS_BOARD_JS*/
 const MS = /*STATE*/null;       // prop model v2 state: team defense / pace / scoring, player shooting / minutes swing (build_model_state.py)
 const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NY','ORL','PHI','TOR','WSH'];
 const NB = D.rebalance.same / D.rebalance.other;  // same-position teammates absorb this many times more (minutes model)
@@ -4834,6 +4837,10 @@ function renderProps(){
   }
   $('pex')?.addEventListener('click', () => { showExample = !showExample; pf.open.clear(); renderProps(); });
   if (pv.tab !== 'full'){ propsFoot(); pvShow(); return; }   // the table below is only on the Props Table tab: on the other tabs it is hidden, so pricing and drawing it was wasted work
+  // The Outlier-style table (ui/props_board.js) unless this browser chose the classic one
+  const pbxOn = !!(window.PBX && !PBX.classic());
+  $('pbx-root').hidden = !pbxOn; $('pf-classic').hidden = $('pkpis').hidden = pbxOn;
+  if (pbxOn){ $('pgames').hidden = true; PBX.render(B); propsStamp(); propsFoot(); pvShow(); return; }
 
   // filters
   const games = B.games || [];
@@ -5161,6 +5168,7 @@ $('pq').addEventListener('input', e => { pf.q = e.target.value; clearTimeout(pqT
 $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; renderProps(); });
 $('pwatch').addEventListener('change', e => { pf.watch = e.target.checked; renderProps(); });
 $('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
+$('pbx-new').addEventListener('click', () => { PBX.setClassic(false); renderProps(); });
 const toggleRow = tr => { const k = tr.dataset.k; pf.open.has(k) ? pf.open.delete(k) : pf.open.add(k); renderProps(); };
 // Log and watch from a row's detail (Props Table and the Player profile share these: rows come from pf.rows or pl.rows).
 const pbRow = k => (((view === 'player' || pl.modal) ? pl.rows : pf.rows) || []).find(x => pvKey(x) === k);
