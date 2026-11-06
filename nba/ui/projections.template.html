@@ -1117,6 +1117,17 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .ps-ar{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1.3fr repeat(5,minmax(0,1fr));gap:8px;align-items:center;width:100%;padding:8px 10px;margin-top:4px;border-radius:var(--r-ctl);font-family:var(--font-mono);font-size:12.5px;color:var(--fg2)}
 .ps-ar>span:not(:first-child){text-align:right;white-space:nowrap}.ps-ar>span:first-child{font-family:inherit;color:var(--fg)}
 button.ps-ar{cursor:pointer;border:1px solid transparent}button.ps-ar:hover{background:var(--raised)}button.ps-ar[aria-pressed="true"]{border-color:var(--fg);color:var(--fg)}button.ps-ar:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.ps-wl b{font-weight:600;color:var(--fg)}.ps-wl span{color:var(--fg3);font-size:12px}
+.ps-oh{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ps-chf{margin-top:20px}.ps-chf>summary .ps-lbl{font-weight:400}
+.ps-rl,.ps-rc{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;border-radius:6px;padding:4px 6px;margin:-4px -6px;transition:background-color .12s ease}
+.ps-rc{text-align:right}.ps-rl{color:var(--fg);text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px}
+.ps-rl:hover,.ps-rc:hover{background:var(--raised)}.ps-rl:focus-visible,.ps-rc:focus-visible{outline:2px solid var(--fg);outline-offset:1px}
+.ps-rl[aria-pressed="true"],.ps-rc[aria-pressed="true"]{box-shadow:inset 0 0 0 1px var(--fg)}table.nt.ps-nt tr.on td.l .ps-rl{text-decoration-color:var(--fg)}
+.ps-open{margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-card)}
+.ps-ar.ps-or{grid-template-columns:minmax(0,1.8fr) minmax(0,1.3fr) minmax(0,1fr) repeat(2,minmax(0,.6fr))}.ps-or small{color:var(--fg3);font-size:11px}.ps-or .ps-pips{vertical-align:middle;margin-right:4px}
+@media(max-width:820px){table.nt.ps-nt.ch{min-width:560px}table.nt.ps-nt.ch td.num{white-space:nowrap}table.nt.ps-nt.ch td.l{min-width:130px}}
+@media(max-width:820px){.ps-ar.ps-or{grid-template-columns:minmax(0,1fr) auto 40px 56px;gap:4px 10px}.ps-ar.ps-or>span:first-child{grid-column:1/-1}.ps-ar.h.ps-or>span:first-child{display:none}.ps-ar.ps-or>span:not(:first-child){white-space:nowrap}.ps-or .ps-pips{display:none}}
 .ps-ar.h{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);margin-top:8px;padding-block:2px}.ps-ar .pos{color:var(--up)}.ps-ar .neg{color:var(--down)}
 /* Vault chance (2026-11-05): the price, the model and the Vault chance as three tiles and one over-chance track, price first */
 .ps-l .ps-mv>div.v{padding-left:10px;border-left:2px solid var(--fg)}
@@ -2922,7 +2933,10 @@ th{font-weight:500}
         <section class="card" id="pscards"></section>
         <section class="card" id="psprop"></section>
       </div>
-      <section class="card" id="pstrack"></section>
+      <details class="card tfold" id="pstrack" open>
+        <summary><span class="tf-t"><b id="pstrkt">Does higher confidence win more?</b><small>Every prop is saved before tip and scored after the game.</small></span></summary>
+        <div id="pstrackb"></div>
+      </details>
     </main>
     <footer id="psfoot" hidden></footer>
     <main id="v-control" hidden>
@@ -3108,7 +3122,8 @@ const BT = /*BACKTESTS*/null;   // every test, its rule, result and verdict (bui
 const LS = /*LIVESEASON*/null;   // data/live_season.json: this season's settled bets by market, venue, edge type and size, with player-night standard errors (build_live_season.py)
 const GPICKS = /*GPICKS*/null;   // data/game_picks.json: the game picks, live days and rebuilt days (build_game_picks.py)
 const LEANBT = /*LEANBT*/null, LEANBF = /*LEANBF*/null;   // lean backtest series and psim-derived backfill (build_lean_backtest.py, backfill_leans.py)
-const SIMCH = /*SIMCH*/null;      // simulation challenger results (build_sim_challenger.py), for Props Simulation
+const SIMCH = /*SIMCH*/null;
+const CLAD = /*CLADDER*/null;      // the three frozen challenger rules' constants (conf_ladder.py), so Props Simulation can show which open props each rule calls      // simulation challenger results (build_sim_challenger.py), for Props Simulation
 const CTL = /*CONTROL*/null;       // Control Room: frozen models, dated tests, past verdicts (render_app.control)
 const TR0 = /*TRACK*/null;      // shadow ledger summary + recent bets (ledger.py via build_data_health.py)
 const TRACK_FILE = /*TRACKFILE*/null;   // the website page leaves the snapshot out (7.6 MB and growing) and fetches data/track.json; the --full artifact copy inlines it
@@ -6853,7 +6868,7 @@ $('gsjoint').addEventListener('change', e => { const f = e.target.dataset.f, L =
 // ── Props Simulation (docs/sim-challenger.md) ───────────────────────────────────────────────────────
 // Pick a player, see the line, the model's number and the probability, then 50 simulated games drawn from the same model next to the
 // exact answer, the player's last 5 games, and how the simulation scored on last season's prices. A view, not a bet source.
-const ps2 = {game: null, pid: null, stat: 'pts', side: null, line: null};
+const ps2 = {game: null, pid: null, stat: 'pts', side: null, line: null, rule: null, rlv: null, rall: false, chOpen: true};
 const PS_LBL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers'}, PS_ABB = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM'};
 const PS_PER_TEAM = 5;
 // Vault chance (prop_sim_record.vault, published weight track.json vault_w): the price's chance moved VAULT_W of the way toward the model's on the
@@ -6880,6 +6895,59 @@ function psChRec(rule, fwd){
   const add = v => v.forEach((a, i) => { for (let j = 0; j < 3; j++) out[i][j] += a[j]; });
   for (const [day, gs] of Object.entries(D)){ if ((day >= f) !== fwd) continue; for (const g of gs || []){ const c = g.c; if (!c) continue; if (rule === 'model') Object.values(c.model || {}).forEach(add); else if (c[rule]) add(c[rule]); } }
   return out;
+}
+// The three challengers, applied to props that have not tipped yet. A line-for-line port of conf_ladder.calls (constants from CLAD, injected by
+// render_app.py from conf_ladder.py, never refit here). The record scores each prop from its last read before tip, so a call shown here can still
+// change until then. Returns {rule: [lean, level, distance]} with a rule left out when it makes no call.
+const clLg = p => { p = Math.min(Math.max(p, .02), .98); return Math.log(p / (1 - p)); };
+const clLevel = (c, cuts) => 1 + cuts.filter(x => c >= x).length;
+const clAvg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+function clSeason(day){ const d = new Date(day * 864e5); return d.getUTCMonth() >= 7 ? d.getUTCFullYear() + 1 : d.getUTCFullYear(); }
+function clMinSide(line, mu, pmin, day, H){
+  if (!pmin || !mu || mu <= 0) return 0;
+  const need = line / (mu / pmin), s = clSeason(day);
+  const m3 = H.filter(x => x[1] === s && !x[4]).slice(0, 3).map(x => x[5]), l5 = H.filter(x => !x[4]).slice(0, 5).map(x => x[5]);
+  const v = [pmin, clAvg(m3), clAvg(l5)].filter(x => x != null);
+  return Math.min(...v) > need ? 1 : Math.max(...v) < need ? -1 : 0;
+}
+function clFormSide(stat, line, pmin, H){
+  if (!pmin || pmin <= 0) return 0;
+  const G = H.filter(x => x[5] != null && x[5] >= 8).slice(0, 25);
+  if (G.length < 5) return 0;
+  const v = G.map(x => x[GI[stat]] * pmin / x[5]).sort((a, b) => a - b)[Math.floor(G.length / 2)];
+  return v > line ? 1 : v < line ? -1 : 0;
+}
+function clCalls(pe, pm, mu, pmin, line, stat, pid, tip){
+  const lean = pe >= .5 ? 'over' : 'under', d0 = Math.abs(pe - .5), out = {model: [lean, psLevel(pe), d0]};
+  if (!CLAD) return out;
+  if (pm != null && (pe >= .5) === (pm >= .5)) out.agree = [lean, clLevel(d0, CLAD.cuts.agree), d0];
+  if (!GL) return out;
+  if (pmin && mu > 0){
+    const ph = CLAD.phi[stat], k = Math.floor(line);
+    const p = CLAD.q.reduce((a, q) => { const m = Math.max(mu * Math.min(Math.max(q, 0), 48 / pmin), 1e-3); return a + nbSf(k, m, m * ph); }, 0) / CLAD.q.length;
+    if ((p >= .5) === (pe >= .5)) out.minutes = [lean, clLevel(d0, CLAD.cuts.minutes), d0];
+  }
+  const day = Math.floor((tip - 5 * 3600) / 86400), H = ((GL.players[pid]) || []).filter(x => x[0] < day);
+  const p = 1 / (1 + Math.exp(-(CLAD.b + CLAD.w[0] * clLg(pe) + CLAD.w[1] * clLg(pm != null ? pm : pe)))), sd = p >= CLAD.c ? 1 : -1;
+  const votes = ((pe >= .5) === (sd > 0)) + (clMinSide(line, mu, pmin, day, H) === sd) + (clFormSide(stat, line, pmin, H) === sd);
+  if (votes >= 2) out.combined = [sd > 0 ? 'over' : 'under', clLevel(Math.abs(p - CLAD.c), CLAD.cuts.combined), Math.abs(p - CLAD.c)];
+  return out;
+}
+// every prop on the board whose game has not tipped, with each rule's call. Teams the roster guard holds are counted but left out, as the record does.
+// Cached per board read: it walks every game, so it only runs when a rule is opened.
+function psOpen(B, pick){
+  const key = `${pick.mode}|${B.t}|${Math.floor(Date.now() / 6e4)}`;
+  if (PS.open && PS.open.key === key) return PS.open;
+  const now = Date.now() / 1000, rows = []; let held = 0, games = 0;
+  if (pick.mode === 'live') for (const g of (B.games || []).filter(x => x.tip > now)){
+    games++; const gid = String(g.id);
+    for (const t of simInputs(g, B, pick)) for (const r of t.rows) for (const s of SIM_STATS){
+      const i = psInfo(r, s, null, gid, B); if (i.line == null) continue;
+      if (t.hold){ held++; continue; }
+      rows.push({g, gid, r, team: t.team, s, i, c: clCalls(i.pOver, i.pmOver, i.mu, r.min, i.line, s, r.pid, g.tip)});
+    }
+  }
+  return PS.open = {key, rows, held, games};
 }
 // the main line for one prop: sportsbooks first (the line most books agree on, with the over chance in the price, vig removed), else the
 // pick'em apps (Underdog prices both sides; PrizePicks is a flat line with no price to read a chance from). Same rule as prop_sim_record.main_line:
@@ -6949,7 +7017,7 @@ function renderPropSim(){
     if (!games.some(g => String(g.id) === ps2.game)) ps2.game = String(games[0].id);
     const g = games.find(x => String(x.id) === ps2.game), gid = String(g.id), T = simInputs(g, B, pick);
     gameStripMount($('psgames'), gameStrip(games, ps2.game));
-    const shown = T.flatMap(t => t.rows.slice(0, PS_PER_TEAM).map(r => ({...r, team: t.team})));
+    const shown = T.flatMap(t => t.rows.filter((r, j) => j < PS_PER_TEAM || r.pid === ps2.pid).map(r => ({...r, team: t.team})));
     if (!shown.some(r => r.pid === ps2.pid)){ ps2.pid = shown[0] && shown[0].pid; ps2.side = null; ps2.line = null; }
     // cards: the points line is the headline, as on a prop sheet
     const infos = shown.map(r => ({r, i: psInfo(r, 'pts', null, gid, B)}));
@@ -7013,18 +7081,40 @@ function renderPropSim(){
   const best = Math.min(...L3.map(x => x[1]).filter(x => x != null));
   const LV = psLvRec(stat), LVA = psLvRec('all'), fwdDay = (TR && TR.data && TR.data.conf_cfg && TR.data.conf_cfg.fwd) || '2026-11-05';
   const CH = [['model', 'The model (shown on this page)'], ['agree', 'Model, only when the market agrees'], ['minutes', 'Model, only when a minutes check agrees'], ['combined', 'Market-led, 2 of 3 checks agree']];
-  const cell = a => a[0] ? `${pc(a[1] / a[0])}<small>${a[0].toLocaleString()} · under ${pc(a[2] / a[0])}</small>` : '<span class="muted">&ndash;</span>';
+  // record cell: won-lost in plain numbers first, the rate beside it, and how the under did on the same props underneath
+  const wl = a => `${a[1].toLocaleString()}-${(a[0] - a[1]).toLocaleString()}`;
+  const cell = a => a[0] ? `<span class="ps-wl"><b>${wl(a)}</b> <span>${pc(a[1] / a[0])}</span></span><small>under went ${wl([a[0], a[2]])}</small>` : '<span class="muted">&ndash;</span>';
   const ga = gapStats(gapPicks()), gv = gapPicks().filter(r => (r.r === 'W' || r.r === 'L') && r.pm != null), vex = gv.reduce((a, r) => a + (r.v != null ? r.v : vaultP(r.p, r.pm)), 0);
   const pre = CH.map(([k, l]) => [l, psChRec(k, false)[3]]).filter(([, a]) => a[0]);
-  $('pstrack').innerHTML = `<div class="card-h"><div><h2>Does higher confidence win more? ${PS_LBL[stat]}, this season</h2><p>Every prop is saved before tip and scored after the game. The model's side, by confidence level, next to how often the under landed on the same props.</p></div><button class="btn" id="psrec" type="button">Open Track Record</button></div>
-    <div class="card-b">
+  $('pstrkt').textContent = `Does higher confidence win more? ${PS_LBL[stat]}, this season`;
+  // rule picked in the challengers table: the open props it calls right now (psOpen), highest level first
+  let openHtml = '';
+  if (ps2.rule){
+    const O = psOpen(PS.board || {}, {mode: PS.mode}), lab = (CH.find(([k]) => k === ps2.rule) || [])[1] || ps2.rule;
+    const hit = O.rows.filter(x => x.c[ps2.rule] && (ps2.rlv == null || x.c[ps2.rule][1] === ps2.rlv)).sort((a, b) => b.c[ps2.rule][1] - a.c[ps2.rule][1] || b.c[ps2.rule][2] - a.c[ps2.rule][2] || a.g.tip - b.g.tip);
+    const cap = ps2.rall ? hit.length : 25, games = new Set(hit.map(x => x.gid)).size;
+    const row = x => { const [lean, lv] = x.c[ps2.rule], pS = lean === 'over' ? x.i.pOver : 1 - x.i.pOver, mS = x.i.pmOver == null ? null : lean === 'over' ? x.i.pmOver : 1 - x.i.pmOver;
+      return `<button type="button" class="ps-ar ps-or" data-open="${x.gid}|${x.r.pid}|${x.s}"><span><b>${esc(x.r.name)}</b> <small>${x.team} · ${clock(x.g.tip)}</small></span><span class="${lean === 'over' ? 'pos' : 'neg'}">${lean === 'over' ? 'Over' : 'Under'} ${x.i.line} ${PS_ABB[x.s]}</span><span>${psPips(lv)} L${lv}</span><span>${Math.round(pS * 100)}%</span><span>${mS == null ? 'no price' : Math.round(mS * 100) + '%'}</span></button>`; };
+    openHtml = `<div class="ps-open"><div class="ps-oh"><div class="ps-lbl">Open now · ${esc(lab)}${ps2.rlv ? ` · L${ps2.rlv} only` : ''}</div><button type="button" class="btn sm" data-rule="">Close</button></div>
+      ${PS.mode !== 'live' ? '<p class="ps-note">No live board, so nothing is open right now.</p>'
+        : !hit.length ? `<p class="ps-note">No open prop meets this rule${ps2.rlv ? ` at L${ps2.rlv}` : ''} right now${O.games ? ` (${O.games} games still to tip)` : ', every game on the board has tipped'}.</p>`
+        : `<p class="ps-note" style="margin-top:6px">${hit.length} prop${hit.length === 1 ? '' : 's'} on ${games} game${games === 1 ? '' : 's'}. Tap one to open it above.</p>
+      <div class="ps-ar h ps-or"><span>Player</span><span>Rule's side</span><span>Level</span><span>Model</span><span>Price</span></div>${hit.slice(0, cap).map(row).join('')}
+      ${hit.length > cap ? `<button type="button" class="btn sm" data-rall="1" style="margin-top:8px">Show all ${hit.length}</button>` : ''}`}
+      <p class="ps-note" data-about>Calls come from the live board and can change until tip: the record scores each prop from its last price before tip, not from what shows here. ${O.held ? `${O.held} props on teams the roster guard holds are left out, as they are in the record. ` : ''}Where to look, not a bet.</p></div>`;
+  }
+  $('pstrackb').innerHTML = `<div class="card-b">
+      <div class="ps-oh"><p class="ps-note" style="margin:0">The model's side, by confidence level, won-lost, with how the under did on the same props.</p><button class="btn" id="psrec" type="button">Open Track Record</button></div>
       <div class="nt-tw"><table class="nt ps-nt"><thead><tr><th class="l" scope="col">Confidence</th><th scope="col">${PS_LBL[stat]}</th><th scope="col">All stats</th></tr></thead><tbody>${
         [3, 2, 1, 0].map(k => `<tr><td class="l">${psPips(k + 1)} <b style="margin-left:6px">L${k + 1} ${PS_LVN[k + 1]}</b></td><td class="num">${cell(LV[k])}</td><td class="num">${cell(LVA[k])}</td></tr>`).join('')}</tbody></table></div>
       <p class="ps-note" data-about>Win rate of the model's side; under each, the props and how often the under landed on the same props. Higher confidence should win more, and beat the under at the top. Levels are cut at the Oct 20 to Nov 1 quartiles of the model's distance from 50%. Teams the roster guard held are left out.</p>
-      <div class="ps-sec"><div class="ps-lbl">Challengers, frozen ${fwdDay} and tracked forward · all stats</div>
+      <details class="tsubfold ps-chf" id="pschf"${ps2.chOpen ? ' open' : ''}><summary><span class="ps-lbl">Challengers, frozen ${fwdDay} and tracked forward · all stats</span></summary>
+      <p class="ps-note" style="margin-top:4px">Tap a rule to see the open props it calls tonight, or a cell for one level.</p>
       <div class="nt-tw"><table class="nt ps-nt ch"><thead><tr><th class="l" scope="col">Rule</th>${[4, 3, 2, 1].map(k => `<th scope="col">L${k}</th>`).join('')}</tr></thead><tbody>${
-        CH.map(([k, l]) => { const f = psChRec(k, true); return `<tr><td class="l">${l}</td>${[3, 2, 1, 0].map(j => `<td class="num">${cell(f[j])}</td>`).join('')}</tr>`; }).join('')}</tbody></table></div>
-      <p class="ps-note" data-about>Three rules from the Nov 5 search, frozen exactly as checked and scored only on games from ${fwdDay} on. ${pre.length ? `Before that, on days the search had already seen, the top level won: ${pre.map(([l, a]) => `${l.replace(/ \(.*\)/, '').toLowerCase()} ${pc(a[1] / a[0])} of ${a[0]}`).join('; ')}.` : ''} A challenger replaces the model only if its ladder rises and its top level beats the model's over about 3,000 forward props.</p></div>
+        CH.map(([k, l]) => { const f = psChRec(k, true), on = ps2.rule === k;
+          return `<tr class="${on ? 'on' : ''}"><td class="l"><button type="button" class="ps-rl" data-rule="${k}" aria-pressed="${on && ps2.rlv == null}">${l}</button></td>${[3, 2, 1, 0].map(j => `<td class="num"><button type="button" class="ps-rc" data-rule="${k}" data-rlv="${j + 1}" aria-pressed="${on && ps2.rlv === j + 1}" aria-label="${l}, level ${j + 1}: open props">${cell(f[j])}</button></td>`).join('')}</tr>`; }).join('')}</tbody></table></div>
+      ${openHtml}
+      <p class="ps-note" data-about>Three rules from the Nov 5 search, frozen exactly as checked and scored only on games from ${fwdDay} on. ${pre.length ? `Before that, on days the search had already seen, the top level won: ${pre.map(([l, a]) => `${l.replace(/ \(.*\)/, '').toLowerCase()} ${pc(a[1] / a[0])} of ${a[0]}`).join('; ')}.` : ''} A challenger replaces the model only if its ladder rises and its top level beats the model's over about 3,000 forward props.</p></details>
       ${!N ? '' : `<div class="ps-sec"><div class="ps-lbl">Model, price and Vault chance · log loss, lower is better</div>
       <div class="ps-rec">${L3.map(([l, v, h]) => `<div class="${v != null && v === best ? 'ex' : ''}"><small>${l}</small><b>${v == null ? '&ndash;' : v.toFixed(4)}</b><span>${h}</span></div>`).join('')}</div>
       <p class="ps-note" data-about>${N.toLocaleString()} priced ${PS_LBL[stat].toLowerCase()} props from ${PG.length} games, teams the roster guard held left out.</p></div>`}
@@ -7035,7 +7125,12 @@ function renderPropSim(){
     <div><b>Where simulation does help.</b> Two legs that share minutes and game flow (the Game Simulation page). Nothing here makes a Bet, Lean or Edge.</div>`;
 }
 $('v-propsim').addEventListener('click', e => {
-  const t = e.target, b = t.closest('button[data-g], button[data-pl], button[data-st], button[data-sd], button[data-top], #psrec'); if (!b) return;
+  const t = e.target, b = t.closest('button[data-g], button[data-pl], button[data-st], button[data-sd], button[data-top], button[data-rule], button[data-rall], button[data-open], #psrec'); if (!b) return;
+  if (b.dataset.rule != null){ const k = b.dataset.rule || null, lv = b.dataset.rlv ? +b.dataset.rlv : null;
+    if (k && ps2.rule === k && ps2.rlv === lv){ ps2.rule = null; ps2.rlv = null; } else { ps2.rule = k; ps2.rlv = k ? lv : null; } ps2.rall = false; renderPropSim(); return; }
+  if (b.dataset.rall){ ps2.rall = true; renderPropSim(); return; }
+  if (b.dataset.open){ const [gid, pid, s] = b.dataset.open.split('|'); ps2.game = gid; ps2.pid = +pid; ps2.stat = s; ps2.side = null; ps2.line = null; renderPropSim();
+    const el = $('psprop'); if (el && el.scrollIntoView) el.scrollIntoView({behavior: 'smooth', block: 'start'}); return; }
   if (b.dataset.g){ ps2.game = b.dataset.g; ps2.pid = null; }
   else if (b.dataset.pl){ ps2.pid = +b.dataset.pl; ps2.side = null; ps2.line = null; }
   else if (b.dataset.st){ ps2.stat = b.dataset.st; ps2.side = null; ps2.line = null; }
@@ -7045,6 +7140,13 @@ $('v-propsim').addEventListener('click', e => {
   renderPropSim();
   if ((b.dataset.pl || b.dataset.top) && window.matchMedia('(max-width:1180px)').matches){ const el = $('psprop'); if (el && el.scrollIntoView) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
 });
+// the record card and the challengers fold remember open or closed (toggle does not bubble, so listen in the capture phase)
+try { if (localStorage.getItem('nba-ps-trk') === '0') $('pstrack').open = false; if (localStorage.getItem('nba-ps-ch') === '0') ps2.chOpen = false; } catch (e){}
+$('v-propsim').addEventListener('toggle', e => {
+  const t = e.target;
+  if (t.id === 'pstrack') try { localStorage.setItem('nba-ps-trk', t.open ? '1' : '0'); } catch (x){}
+  if (t.id === 'pschf'){ ps2.chOpen = t.open; try { localStorage.setItem('nba-ps-ch', t.open ? '1' : '0'); } catch (x){} }
+}, true);
 $('v-propsim').addEventListener('change', e => { if (e.target.dataset.f !== 'line') return; const v = e.target.value; ps2.line = v === '' ? null : +v; ps2.side = null; renderPropSim(); });
 
 // ── Control Room ──────────────────────────────────────────────────────────────────────────────────
