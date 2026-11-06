@@ -170,6 +170,18 @@ def slim_photos():
     return d
 
 
+def cladder():
+    """The three frozen challenger rules (conf_ladder.py) for the page: cuts, the combined rule's weights, the minutes dispersion and the 201 frozen
+    actual/projected minutes quantiles. The page applies them to tonight's open props; the record itself is scored in Python."""
+    try:
+        sys.path.insert(0, HERE)
+        import conf_ladder as CL
+        q = json.load(open(CL._Q))['ratio_q']
+    except Exception:
+        return None
+    return {'cuts': CL.CUTS, 'w': list(CL.COMB_W), 'b': CL.COMB_B, 'c': CL.COMB_C, 'phi': CL.MIN_PHI, 'q': q}
+
+
 def render(full=False):
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
     hk = os.path.join(HERE, '..', 'ui', 'halaska', 'dist.js')
@@ -199,6 +211,7 @@ def render(full=False):
                .replace('/*LEANBT*/null', json.dumps(load('lean_backtest.json'), separators=(',', ':')))
                .replace('/*LEANBF*/null', json.dumps(lean_backfill(), separators=(',', ':')))
                .replace('/*SIMCH*/null', json.dumps(load('sim_challenger.json'), separators=(',', ':')))
+               .replace('/*CLADDER*/null', json.dumps(cladder(), separators=(',', ':')))
                .replace('/*MATCHUPS*/null', json.dumps(load('matchups.json'), separators=(',', ':')))
                .replace('/*DIETDEF*/null', json.dumps(load('diet_defense.json'), separators=(',', ':')))
                .replace('/*MATCHUP*/null', json.dumps(load('matchup_terms.json'), separators=(',', ':')))
