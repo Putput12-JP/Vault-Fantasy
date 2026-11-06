@@ -192,6 +192,7 @@ def render(full=False):
     tpl = tpl.replace('/*VAULT_APPEARANCE*/', open(os.path.join(HERE, '..', '..', 'src', 'vault-appearance.js')).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*MINUTES_GBM_JS*/', open(gj).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*ROTATION_MINUTES_JS*/', open(rj).read().replace('</script', '<\\/script'))
+    tpl = tpl.replace('/*PROPS_BOARD_JS*/', open(os.path.join(HERE, '..', 'ui', 'props_board.js')).read().replace('</script', '<\\/script'))   # the Outlier-style Props Table
     tpl = tpl.replace('<!--PRELOAD-->', '' if full else '<link rel="preload" href="data/track.json" as="fetch" crossorigin="anonymous">')   # starts the snapshot download while the page itself is still arriving
     html = (tpl.replace('/*DATA*/null', json.dumps(projections(), separators=(',', ':')))
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
