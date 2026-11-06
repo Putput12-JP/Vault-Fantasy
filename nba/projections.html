@@ -1286,7 +1286,7 @@ button.ps-ar{cursor:pointer;border:1px solid transparent}button.ps-ar:hover{back
 .ps-oh{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .ps-chf{margin-top:20px}.ps-chf>summary .ps-lbl{font-weight:400}
 .ps-rl,.ps-rc{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;border-radius:6px;padding:4px 6px;margin:-4px -6px;transition:background-color .12s ease}
-.ps-rc{text-align:right}.ps-rl{color:var(--fg);text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px}
+.ps-rc{text-align:center;margin:-4px 0;white-space:nowrap}table.nt.ps-nt.ch th:not(.l),table.nt.ps-nt.ch td.num{text-align:center}.ps-rl{color:var(--fg);text-decoration:underline;text-decoration-color:var(--border);text-underline-offset:3px}
 .ps-rl:hover,.ps-rc:hover{background:var(--raised)}.ps-rl:focus-visible,.ps-rc:focus-visible{outline:2px solid var(--fg);outline-offset:1px}
 .ps-rl[aria-pressed="true"],.ps-rc[aria-pressed="true"]{box-shadow:inset 0 0 0 1px var(--fg)}table.nt.ps-nt tr.on td.l .ps-rl{text-decoration-color:var(--fg)}
 .ps-open{margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-card)}
@@ -8453,7 +8453,7 @@ function renderPropSim(){
   const CH = [['model', 'The model (shown on this page)'], ['agree', 'Model, only when the market agrees'], ['minutes', 'Model, only when a minutes check agrees'], ['combined', 'Market-led, 2 of 3 checks agree']];
   // record cell: won-lost in plain numbers first, the rate beside it, and how the under did on the same props underneath
   const wl = a => `${a[1].toLocaleString()}-${(a[0] - a[1]).toLocaleString()}`;
-  const cell = a => a[0] ? `<span class="ps-wl"><b>${wl(a)}</b> <span>${pc(a[1] / a[0])}</span></span><small>under went ${wl([a[0], a[2]])}</small>` : '<span class="muted">&ndash;</span>';
+  const cell = a => a[0] ? `<span class="ps-wl"><b>${wl(a)}</b> <span>${pc(a[1] / a[0])}</span></span><small>taking the under: ${wl([a[0], a[2]])}</small>` : '<span class="muted">&ndash;</span>';
   const ga = gapStats(gapPicks()), gv = gapPicks().filter(r => (r.r === 'W' || r.r === 'L') && r.pm != null), vex = gv.reduce((a, r) => a + (r.v != null ? r.v : vaultP(r.p, r.pm)), 0);
   const pre = CH.map(([k, l]) => [l, psChRec(k, false)[3]]).filter(([, a]) => a[0]);
   $('pstrkt').textContent = `Does higher confidence win more? ${PS_LBL[stat]}, this season`;
@@ -8474,7 +8474,7 @@ function renderPropSim(){
       <p class="ps-note" data-about>Calls come from the live board and can change until tip: the record scores each prop from its last price before tip, not from what shows here. ${O.held ? `${O.held} props on teams the roster guard holds are left out, as they are in the record. ` : ''}Where to look, not a bet.</p></div>`;
   }
   $('pstrackb').innerHTML = `<div class="card-b">
-      <div class="ps-oh"><p class="ps-note" style="margin:0">The model's side, by confidence level, won-lost, with how the under did on the same props.</p><button class="btn" id="psrec" type="button">Open Track Record</button></div>
+      <div class="ps-oh"><p class="ps-note" style="margin:0">The model's side by confidence level, won-lost. Under each: the record if you had taken the under on those same props instead, the simple baseline to beat.</p><button class="btn" id="psrec" type="button">Open Track Record</button></div>
       <div class="nt-tw"><table class="nt ps-nt"><thead><tr><th class="l" scope="col">Confidence</th><th scope="col">${PS_LBL[stat]}</th><th scope="col">All stats</th></tr></thead><tbody>${
         [3, 2, 1, 0].map(k => `<tr><td class="l">${psPips(k + 1)} <b style="margin-left:6px">L${k + 1} ${PS_LVN[k + 1]}</b></td><td class="num">${cell(LV[k])}</td><td class="num">${cell(LVA[k])}</td></tr>`).join('')}</tbody></table></div>
       <p class="ps-note" data-about>Win rate of the model's side; under each, the props and how often the under landed on the same props. Higher confidence should win more, and beat the under at the top. Levels are cut at the Oct 20 to Nov 1 quartiles of the model's distance from 50%. Teams the roster guard held are left out.</p>
