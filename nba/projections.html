@@ -3757,24 +3757,58 @@ window.PBX = (() => {
     return w === 'L5' ? all.slice(0, 5) : w === 'L10' ? all.slice(0, 10) : w === 'L20' ? all.slice(0, 20) : w === 'H2H' ? all.filter(g => GL.teams[g[2]] === opp)
       : w === 'S0' ? all.filter(g => g[1] === SEA) : all.filter(g => g[1] === SEA - 1);
   }
+  // Made-vs-attempted stats get a ghost outline for the attempts (same unit, so it shares the axis).
+  const GHOST = {'3pm': 'tpa', fgm: 'fga', ftm: 'fta'};
+  // Short names for the numbers printed inside stacked segments.
+  const SEG = {pts: 'P', reb: 'R', ast: 'A', stl: 'S', blk: 'B', oreb: 'Off', dreb: 'Def'};
+  // Bars split into parts: the combo markets, and rebounds into offensive / defensive when the log has both.
+  const partsOf = (g, s) => COMBO[s] || (s === 'reb' && g[GI.oreb] != null && g[GI.dreb] != null && g[GI.oreb] + g[GI.dreb] === g[GI.reb] ? ['dreb', 'oreb'] : [s]);
   function chart(gl, s, line, mu){
     gl = gl.slice(0, 30).reverse();
     if (!gl.length) return '<p class="empty" style="padding:24px">No games in this window.</p>';
-    const W = innerWidth < 760 ? 440 : 860, H = innerWidth < 760 ? 230 : 260, padL = 42, padB = 40, padT = 18, n = gl.length, parts = COMBO[s] || [s];
-    const vals = gl.map(g => gval(g, s)), max = Math.max(...vals, line, mu || 0) * 1.15 || 1, y = v => padT + (H - padT - padB) * (1 - v / max);
+    const W = innerWidth < 760 ? 440 : 860, H = (innerWidth < 760 ? 230 : 260) + (COMBO[s] ? 40 : 0), padL = 42, padB = 40, padT = 18, n = gl.length, gk = GHOST[s];
+    const vals = gl.map(g => gval(g, s)), ghost = gl.map(g => gk ? g[GI[gk]] : null);
+    const max = Math.max(...vals, ...ghost.filter(v => v != null), line, mu || 0) * 1.15 || 1, y = v => padT + (H - padT - padB) * (1 - v / max);
     const bw = Math.min(56, (W - padL) / n * .72), step = (W - padL) / n;
     let o = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${SLABEL[s]} by game against the line of ${line}">`;
     for (let i = 0; i <= 4; i++){ const v = max / 1.15 * i / 4; o += `<line class="gl" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/>` + (Math.abs(y(v) - y(line)) > 12 ? `<text class="ax" x="${padL - 8}" y="${y(v) + 3}" text-anchor="end">${+v.toFixed(1)}</text>` : ''); }
     gl.forEach((g, i) => {
-      const v = vals[i], x = padL + step * i + (step - bw) / 2, cls = v > line ? 'o' : 'u', opp = GL.teams[g[2]];
-      o += `<g><title>${gdate(g[0])} ${g[3] ? 'vs' : '@'} ${opp}: ${v} ${SLABEL[s]} in ${g[MIN_I]} min</title>`;
-      if (parts.length > 1){ let acc = 0; parts.forEach((k, j) => { const pv = g[GI[k]]; if (!pv) return; o += `<rect class="b ${cls}${j}" x="${x}" y="${y(acc + pv)}" width="${bw}" height="${Math.max(0, y(acc) - y(acc + pv))}"/>`; acc += pv; }); }
+      const v = vals[i], x = padL + step * i + (step - bw) / 2, cx = x + bw / 2, cls = v > line ? 'o' : 'u', opp = GL.teams[g[2]], parts = partsOf(g, s), gv = ghost[i];
+      const att = s === 'pts' ? `${g[GI.fgm]}/${g[GI.fga]} FG, ${g[GI['3pm']]}/${g[GI.tpa]} 3PT, ${g[GI.ftm]}/${g[GI.fta]} FT` : gk ? `${v}/${gv} ${SLABEL[gk]}` : parts.length > 1 ? parts.map(k => `${g[GI[k]]} ${SLABEL[k]}`).join(', ') : '';
+      o += `<g><title>${gdate(g[0])} ${g[3] ? 'vs' : '@'} ${opp}: ${v} ${SLABEL[s]} in ${g[MIN_I]} min${att ? ` (${att})` : ''}</title>`;
+      // attempts ghost sits behind the made bar; its number goes on top when there were misses
+      if (gv != null && gv > 0) o += `<rect class="gh" x="${x}" y="${y(gv)}" width="${bw}" height="${Math.max(0, y(0) - y(gv))}" rx="3"/>` + (gv > v ? `<text class="gt" x="${cx}" y="${y(gv) - 5}" text-anchor="middle">${gv} att</text>` : '');
+      if (parts.length > 1){
+        let acc = 0;
+        parts.forEach((k, j) => {
+          const pv = g[GI[k]]; if (!pv) return;
+          const top = y(acc + pv), h = Math.max(0, y(acc) - top);
+          o += `<rect class="b ${cls}${j}" x="${x}" y="${top}" width="${bw}" height="${h}"/>`;
+          const tag = `${pv}${bw >= 34 ? `<tspan class="sk"> ${SEG[k]}</tspan>` : ''}`;
+          if (h >= 12 && bw >= 18) o += `<text class="sg${j > 1 ? ' lt' : ''}" x="${cx}" y="${top + h / 2 + 3.5}" text-anchor="middle">${tag}</text>`;
+          else if (step - bw >= 16) o += `<text class="so" x="${x + bw + 3}" y="${top + h / 2 + 3.5}">${tag}</text>`;   // too short to hold its number: print it beside the bar
+          acc += pv;
+        });
+      }
       else o += `<rect class="b ${cls}0" x="${x}" y="${y(v)}" width="${bw}" height="${Math.max(2, y(0) - y(v))}" rx="3"/>`;
-      o += `<text class="lb" x="${x + bw / 2}" y="${y(v) - 5}" text-anchor="middle">${v}</text><text class="ax" x="${x + bw / 2}" y="${H - padB + 15}" text-anchor="middle">${gdate(g[0])}</text><text class="ax" x="${x + bw / 2}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? 'vs' : '@'} ${opp}</text></g>`;
+      // points: the shots behind them, printed inside the base of the bar
+      if (s === 'pts' && g[GI.fga] != null && y(0) - y(v) >= 30 && bw >= 30) o += `<text class="sg" x="${cx}" y="${y(0) - 16}" text-anchor="middle">${g[GI.fgm]}/${g[GI.fga]}</text><text class="sg sk" x="${cx}" y="${y(0) - 6}" text-anchor="middle">FG</text>`;
+      const lbY = gv != null && gv > v && y(v) - y(gv) < 14 ? y(v) + 12 : y(v) - 5;   // keep the made number clear of the ghost label
+      o += `<text class="lb${lbY > y(v) ? ' in' : ''}" x="${cx}" y="${lbY}" text-anchor="middle">${v}</text><text class="ax" x="${cx}" y="${H - padB + 15}" text-anchor="middle">${gdate(g[0])}</text><text class="ax" x="${cx}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? 'vs' : '@'} ${opp}</text></g>`;
     });
     o += `<line class="ln" x1="${padL}" x2="${W}" y1="${y(line)}" y2="${y(line)}"/><rect class="tg" x="0" y="${y(line) - 9}" width="38" height="18" rx="4"/><text class="tt" x="19" y="${y(line) + 4}" text-anchor="middle">${line}</text>`;
     if (mu != null) o += `<line class="vl" x1="${padL}" x2="${W}" y1="${y(mu)}" y2="${y(mu)}"/><rect class="vtg" x="${W - 76}" y="${y(mu) - 9}" width="76" height="18" rx="4"/><text class="vtt" x="${W - 38}" y="${y(mu) + 4}" text-anchor="middle">Vault ${fmt(mu)}</text>`;
     return o + '</svg>';
+  }
+  // chart key: what the ghost, the segments and the inside numbers mean for this stat
+  function chartKey(s){
+    const gk = GHOST[s], parts = COMBO[s] || (s === 'reb' ? ['dreb', 'oreb'] : null);
+    let k = '';
+    if (gk) k += `<span><i class="gh"></i>${SLABEL[gk]} (attempts)</span>`;
+    if (s === 'pts') k += '<span>Inside bar: FG made/attempted</span>';
+    if (parts) k += parts.map((p, j) => `<span><i class="sq o${j}"></i>${SLABEL[p]} (${SEG[p]})</span>`).join('');
+    if (s === 'reb' || s === 'ast') k += `<span class="na">Potential ${s === 'reb' ? 'rebounds' : 'assists'}: no source yet</span>`;
+    return k;
   }
   // tracker: every candidate on this side (any line) plus "Other book" at the main line
   function trkOpts(x){
@@ -3967,7 +4001,7 @@ window.PBX = (() => {
         <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}${DS.mate ? `<span class="pbx-mf">${DS.mate.mode === 'w' ? 'With' : 'Without'} ${esc((ms.find(m => m.id === DS.mate.id) || {}).name || '')}<button type="button" data-mclear="1" aria-label="Clear teammate filter">×</button></span>` : ''}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
           ${WIN.filter(w => w[0] !== DS.win).map(([k, l]) => `<div class="w"><small>${l}</small><b class="${h[k] && h[k].pct > .5 ? 'pos' : h[k] && h[k].pct < .5 ? 'neg' : ''}">${h[k] ? Math.round(h[k].pct * 100) + '%' : '-'}</b></div>`).join('')}</div>
         <div class="pbx-chart">${chart(wg, s, r.line, r.mu)}</div>
-        <div class="pbx-ck"><span><i class="ln"></i>Tonight's line ${r.line}</span>${r.mu != null ? `<span><i class="vl"></i>Vault projection ${fmt(r.mu)}</span>` : ''}<span><i class="sq o"></i>Over</span><span><i class="sq u"></i>Under</span>${COMBO[s] ? `<span>Segments: ${COMBO[s].map(k => SLABEL[k]).join(' / ')}</span>` : ''}</div>
+        <div class="pbx-ck"><span><i class="ln"></i>Tonight's line ${r.line}</span>${r.mu != null ? `<span><i class="vl"></i>Vault projection ${fmt(r.mu)}</span>` : ''}<span><i class="sq o"></i>Over</span><span><i class="sq u"></i>Under</span>${chartKey(s)}</div>
         <div class="pbx-suph"><h4>Supporting stats <small>${wg.length} games</small></h4><span class="seg"><button type="button" data-med="0" aria-pressed="${!DS.med}">Average</button><button type="button" data-med="1" aria-pressed="${DS.med}">Median</button></span></div>
         <div class="pbx-sup">
           <div><small>Minutes</small><b>${f1(sv(MIN_I))}${r.min ? ` <i>proj ${fmt(r.min)}</i>` : ''}</b></div>
@@ -4332,6 +4366,14 @@ window.PBX = (() => {
 .pbx-chart .lb{font:600 11px var(--font-sans);fill:var(--fg)}
 .pbx-chart .o0{fill:var(--pbx-g)}.pbx-chart .o1{fill:color-mix(in srgb,var(--pbx-g) 72%,#000)}.pbx-chart .o2{fill:color-mix(in srgb,var(--pbx-g) 52%,#000)}
 .pbx-chart .u0{fill:var(--pbx-r)}.pbx-chart .u1{fill:color-mix(in srgb,var(--pbx-r) 72%,#000)}.pbx-chart .u2{fill:color-mix(in srgb,var(--pbx-r) 52%,#000)}
+.pbx-chart .gh{fill:rgb(var(--ink) / .04);stroke:rgb(var(--ink) / .42);stroke-width:1.2;stroke-dasharray:3 3}
+.pbx-chart .gt{font:500 10px var(--font-sans);fill:var(--fg3)}
+.pbx-chart .lb.in{fill:#0b0b0c}
+.pbx-chart .sg{font:700 10px var(--font-mono);fill:rgb(0 0 0 / .78);pointer-events:none}.pbx-chart .sg .sk,.pbx-chart .sg.sk{font-weight:500;fill:rgb(0 0 0 / .55)}
+.pbx-chart .sg.lt{fill:rgb(255 255 255 / .9)}.pbx-chart .sg.lt .sk{fill:rgb(255 255 255 / .65)}
+/* light theme: the bars are dark green / red, so the numbers inside them go white */
+:root[data-theme="light"] .pbx-chart :is(.sg,.lb.in){fill:#fff}:root[data-theme="light"] .pbx-chart .sg .sk,:root[data-theme="light"] .pbx-chart .sg.sk{fill:rgb(255 255 255 / .72)}
+.pbx-chart .so{font:600 9px var(--font-mono);fill:var(--fg2)}.pbx-chart .so .sk{font-weight:500;fill:var(--fg3)}
 .pbx-chart .ln{stroke:var(--fg);stroke-width:1.5;stroke-dasharray:5 4;opacity:.85}
 .pbx-chart .vl{stroke:var(--pbx-v);stroke-width:1.5;stroke-dasharray:2 3}
 .pbx-chart .tg{fill:var(--fg)}.pbx-chart .tt{font:700 10.5px var(--font-mono);fill:var(--bg)}
@@ -4339,7 +4381,10 @@ window.PBX = (() => {
 .pbx-ck{display:flex;gap:14px;flex-wrap:wrap;padding:0 16px 10px;color:var(--fg3);font-size:11px}
 .pbx-ck span{display:inline-flex;align-items:center;gap:5px}
 .pbx-ck i{display:inline-block;width:14px;border-top:1.5px dashed var(--fg)}.pbx-ck i.vl{border-top:1.5px dotted var(--pbx-v)}
-.pbx-ck i.sq{width:9px;height:9px;border:0;border-radius:2px}.pbx-ck i.o{background:var(--pbx-g)}.pbx-ck i.u{background:var(--pbx-r)}
+.pbx-ck i.sq{width:9px;height:9px;border:0;border-radius:2px}.pbx-ck i.o,.pbx-ck i.o0{background:var(--pbx-g)}.pbx-ck i.u{background:var(--pbx-r)}
+.pbx-ck i.o1{background:color-mix(in srgb,var(--pbx-g) 72%,#000)}.pbx-ck i.o2{background:color-mix(in srgb,var(--pbx-g) 52%,#000)}
+.pbx-ck i.gh{width:10px;height:10px;border:1.2px dashed rgb(var(--ink) / .5);border-radius:2px}
+.pbx-ck .na{opacity:.7}
 .pbx-suph{display:flex;justify-content:space-between;align-items:center;padding:10px 16px 0}
 .pbx-suph h4{margin:0;font-size:12.5px}.pbx-suph small{color:var(--fg3);font-weight:500}
 .pbx-sup{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin-top:10px;border-top:1px solid rgb(var(--ink) / .06)}
