@@ -2595,7 +2595,6 @@ th{font-weight:500}
       </div>
       <div id="pv-full" class="pv-wrap" hidden>
       <div id="pbx-root" hidden></div>
-      <div id="pbx-classicbar" hidden style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;border-radius:16px;background:var(--surface);border:1px solid rgb(var(--ink) / .1)"><span>You are on the classic table.</span><button class="btn primary" id="pbx-new" type="button">Switch to the new table</button></div>
       <div class="kpis" id="pkpis"></div>
       <section class="card pv-games" id="pgames" hidden></section>
       <section class="card" id="pf-classic">
@@ -4837,10 +4836,9 @@ function renderProps(){
   }
   $('pex')?.addEventListener('click', () => { showExample = !showExample; pf.open.clear(); renderProps(); });
   if (pv.tab !== 'full'){ propsFoot(); pvShow(); return; }   // the table below is only on the Props Table tab: on the other tabs it is hidden, so pricing and drawing it was wasted work
-  // The Outlier-style table (ui/props_board.js) unless this browser chose the classic one
-  const pbxOn = !!(window.PBX && !PBX.classic());
-  $('pbx-root').hidden = !pbxOn; $('pf-classic').hidden = $('pkpis').hidden = pbxOn; $('pbx-classicbar').hidden = pbxOn || !window.PBX;
-  if (pbxOn){ $('pgames').hidden = true; PBX.render(B); propsStamp(); propsFoot(); pvShow(); return; }
+  // The Props Table is ui/props_board.js. The classic table below is no longer shown.
+  $('pbx-root').hidden = false; $('pf-classic').hidden = $('pkpis').hidden = $('pgames').hidden = true;
+  PBX.render(B); propsStamp(); propsFoot(); pvShow(); return;
 
   // filters
   const games = B.games || [];
@@ -5168,7 +5166,6 @@ $('pq').addEventListener('input', e => { pf.q = e.target.value; clearTimeout(pqT
 $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; renderProps(); });
 $('pwatch').addEventListener('change', e => { pf.watch = e.target.checked; renderProps(); });
 $('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
-$('pbx-new').addEventListener('click', () => { PBX.setClassic(false); renderProps(); });
 const toggleRow = tr => { const k = tr.dataset.k; pf.open.has(k) ? pf.open.delete(k) : pf.open.add(k); renderProps(); };
 // Log and watch from a row's detail (Props Table and the Player profile share these: rows come from pf.rows or pl.rows).
 const pbRow = k => (((view === 'player' || pl.modal) ? pl.rows : pf.rows) || []).find(x => pvKey(x) === k);

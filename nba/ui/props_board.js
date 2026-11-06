@@ -5,13 +5,12 @@
 // every price, and a bet tracker that saves through pvMkBet into My Bets. Every number comes from the page's own
 // pricing (priceRow, scOf, logsOf, hitRate): nothing here prices a prop.
 window.PBX = (() => {
-  const LS = 'nba-pbx-f', LSC = 'nba-pbx-classic';
+  const LS = 'nba-pbx-f';
+  try{ localStorage.removeItem('nba-pbx-classic'); }catch(e){}   // the classic table is gone; forget a saved choice of it
   const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any'};
   const load = () => { try{ const f = JSON.parse(localStorage.getItem(LS)); return f ? {...FDEF, ...f, ven: {...FDEF.ven, ...(f.ven || {})}} : JSON.parse(JSON.stringify(FDEF)); }catch(e){ return JSON.parse(JSON.stringify(FDEF)); } };
   const S = {stat: 'all', side: 'all', game: 'all', q: '', sort: 'edge', dir: -1, limit: 60, fOpen: false, f: load(), open: null};
   const save = () => { try{ localStorage.setItem(LS, JSON.stringify(S.f)); }catch(e){} };
-  const classic = () => { try{ return localStorage.getItem(LSC) === '1'; }catch(e){ return false; } };
-  const setClassic = on => { try{ on ? localStorage.setItem(LSC, '1') : localStorage.removeItem(LSC); }catch(e){} };
 
   const VEN = [['book', 'Sportsbooks'], ['kalshi', 'Kalshi'], ['poly', 'Polymarket'], ['pickem', "Pick'em"]];
   const BK = {DraftKings: ['DK', '#53d337', '#0a1f05'], FanDuel: ['FD', '#1493ff', '#fff'], BetMGM: ['MGM', '#b39256', '#fff'], bet365: ['365', '#127a4b', '#fff'], BetRivers: ['BR', '#1b3d6d', '#fff'],
@@ -559,7 +558,6 @@ window.PBX = (() => {
         <label class="pbx-fb q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="pbx-q" type="search" placeholder="Players" autocomplete="off" value="${esc(S.q)}" aria-label="Filter players"></label>
         <div class="seg" role="group" aria-label="Side">${[['all', 'Over / Under'], ['o', 'Over'], ['u', 'Under']].map(([k, l]) => `<button type="button" data-side="${k}" aria-pressed="${S.side === k}">${l}</button>`).join('')}</div>
         <span class="pbx-n">${rows.length.toLocaleString()} / ${all.length.toLocaleString()} props</span>
-        <button type="button" class="linkbtn" data-classic="1">Classic table</button>
       </div>
       ${S.fOpen ? filterPanel(rows.length) : ''}
       ${act.length ? `<div class="pbx-chips">${act.map(([k, l]) => `<span>${esc(l)}<button type="button" data-fclear="${k}" aria-label="Remove ${esc(l)}">×</button></span>`).join('')}</div>` : ''}
@@ -578,7 +576,7 @@ window.PBX = (() => {
     root.addEventListener('click', e => {
       if (pbClick(e, rerender)) return;                                   // Watch (and Log in any shared drawer)
       if (detailClick(e)) return;
-      const t = e.target, b = t.closest('[data-game],[data-stat],[data-side],[data-sort],[data-f],[data-fclear],[data-fopen],[data-freset],[data-fdone],[data-more],[data-classic],[data-w],[data-lab]');
+      const t = e.target, b = t.closest('[data-game],[data-stat],[data-side],[data-sort],[data-f],[data-fclear],[data-fopen],[data-freset],[data-fdone],[data-more],[data-w],[data-lab]');
       if (b){
         const d = b.dataset;
         if (d.w){ pwin = d.w; rerender(); return; }
@@ -592,7 +590,6 @@ window.PBX = (() => {
         else if (d.freset){ S.f = JSON.parse(JSON.stringify(FDEF)); save(); }
         else if (d.fclear){ fClear(d.fclear); S.limit = 60; }
         else if (d.more){ S.limit += 60; }
-        else if (d.classic){ setClassic(true); }
         else if (d.f){ const k = d.f, f = S.f;
           if (k === 'ven'){ f.ven[d.v] = f.ven[d.v] ? 0 : 1; if (!Object.values(f.ven).some(Boolean)) f.ven[d.v] = 1; }
           else if (k === 'oppFav' || k === 'healthy' || k === 'starters') f[k] = !f[k];
@@ -900,7 +897,6 @@ window.PBX = (() => {
 
   let wired = false;
   return {
-    classic, setClassic,
     render(B){ if (!wired){ wire(); wired = true; } render(B); },
   };
 })();
