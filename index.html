@@ -13473,7 +13473,7 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
-    ts:'2026-11-06T12:30', tag:'New', title:'NBA props: every prop gets its own page',
+    ts:'2026-11-06T13:30', tag:'New', title:'NBA props: every prop gets its own page',
     items:[
       'Tap any row on the Props Table to open the prop: a game-by-game bar chart against tonight\'s line, with Vault\'s projection drawn on it.',
       'Switch stats and windows (last 5, 10, 20, head to head, this season, last season) and see minutes, shots and free throws behind the numbers.',
@@ -13483,13 +13483,20 @@ const VAULT_CHANGELOG = [
     ]
   },
   {
-    ts:'2026-11-06T10:30', tag:'Improved', title:'NBA Props Table: a cleaner, faster way to scan every prop',
+    ts:'2026-11-06T13:00', tag:'Improved', title:'NBA Props Table: a cleaner, faster way to scan every prop',
     items:[
       'Every prop now has an Over row and an Under row, each with its own best price, Vault fair chance and edge.',
       'Colored hit-rate tiles for the last 5, 10 and 20 games, head to head, this season and last season, so the pattern jumps out.',
       'A new Opp rank column shows how many of that stat tonight\'s opponent allows to his position.',
       'Filters: pick the venues you can bet (the best price updates to match), set a minimum edge, hit rate, odds range or line move, or show only soft matchups and starters.',
       'Tap a row for the Kalshi ladder, every book and Log bet, same as before. Prefer the old table? Classic table is one tap away.',
+    ]
+  },
+  {
+    ts:'2026-11-06T12:00', tag:'Fixed', title:'NBA Combo Check: old sportsbook prices are no longer used',
+    items:[
+      'Sportsbook alt-line prices more than 15 minutes old are now left out of every combo and leg, instead of being priced as if they were current.',
+      'When that happens, Combo Check says the sportsbook prices are unavailable and shows when they were last updated. Kalshi, Novig and Polymarket prices still work as before.',
     ]
   },
   {
