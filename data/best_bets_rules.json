@@ -1,21 +1,21 @@
 {
- "generated": "2026-11-06T04:05:42.928461+00:00",
+ "generated": "2026-11-06T04:20:44.369472+00:00",
  "season": "2026",
  "weeks": [
-  5,
   6,
   7,
-  8
+  8,
+  9
  ],
  "buckets": {
   "pass_td|over|QB": {
    "on": false,
    "was": false,
    "n": 2,
-   "W": 1,
-   "L": 1,
-   "units": 0.05,
-   "roi": 0.025,
+   "W": 0,
+   "L": 2,
+   "units": -2.0,
+   "roi": -1.0,
    "why": "needs 15+ plays at 5%+ return"
   },
   "pass_td|under|QB": {
@@ -31,11 +31,11 @@
   "rec_yd|under|WR/TE": {
    "on": false,
    "was": false,
-   "n": 4,
-   "W": 3,
+   "n": 2,
+   "W": 1,
    "L": 1,
-   "units": 2.01,
-   "roi": 0.5015,
+   "units": 0.08,
+   "roi": 0.04,
    "why": "needs 15+ plays at 5%+ return",
    "history": {
     "n": 1625,
@@ -59,11 +59,11 @@
   "rec|over|WR/TE": {
    "on": false,
    "was": false,
-   "n": 4,
-   "W": 2,
-   "L": 2,
-   "units": 1.01,
-   "roi": 0.2525,
+   "n": 1,
+   "W": 0,
+   "L": 1,
+   "units": -1.0,
+   "roi": -1.0,
    "why": "needs 15+ plays at 5%+ return",
    "history": {
     "n": 911,
@@ -73,49 +73,25 @@
   "rec|under|WR/TE": {
    "on": false,
    "was": false,
-   "n": 9,
-   "W": 5,
-   "L": 4,
-   "units": 0.72,
-   "roi": 0.0802,
+   "n": 5,
+   "W": 4,
+   "L": 1,
+   "units": 2.84,
+   "roi": 0.5674,
    "why": "needs 15+ plays at 5%+ return",
    "history": {
     "n": 1392,
     "roi": -0.0123
    }
   },
-  "rush_att|under|QB": {
-   "on": false,
-   "was": false,
-   "n": 1,
-   "W": 0,
-   "L": 1,
-   "units": -1.0,
-   "roi": -1.0,
-   "why": "needs 15+ plays at 5%+ return"
-  },
-  "rush_att|under|RB": {
-   "on": false,
-   "was": false,
-   "n": 5,
-   "W": 3,
-   "L": 2,
-   "units": 0.94,
-   "roi": 0.188,
-   "why": "needs 15+ plays at 5%+ return",
-   "history": {
-    "n": 834,
-    "roi": -0.0197
-   }
-  },
   "rush_yd|under|RB": {
    "on": false,
    "was": false,
-   "n": 2,
-   "W": 2,
+   "n": 1,
+   "W": 1,
    "L": 0,
-   "units": 1.96,
-   "roi": 0.9785,
+   "units": 1.08,
+   "roi": 1.08,
    "why": "needs 15+ plays at 5%+ return"
   }
  },
