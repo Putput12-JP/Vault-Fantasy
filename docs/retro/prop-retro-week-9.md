@@ -1,20 +1,20 @@
 # Player-prop retro — week 9
 
-_48 graded props (48 with a projection to score)._
+_56 graded props (56 with a projection to score)._
 
 ## Headline
 
-- **Record:** 24-24 (50.0%) vs 52.4% break-even → below break-even
+- **Record:** 28-28 (50.0%) vs 52.4% break-even → below break-even
 - **CLV beat-rate:** 37.5% — how often we land on the right side of the closing line
-- **Model vs market log-loss:** 0.7055 vs 0.6850 → **market prices probability better** by 0.0205
+- **Model vs market log-loss:** 0.6950 vs 0.6800 → **market prices probability better** by 0.0150
 
 The closing line is the sharpest number the market posts, so it is our stand-in for "industry tools." Beating it on CLV = real side-selection edge; a worse log-loss = our confidence numbers are still less calibrated than consensus.
 
 ## By market
 
 ```
-rec_yd         n=  10      4-6 40.0% | CLV 30.0% | MAE  20.6 bias +5.74 | edge -0.027
-rec            n=  10      4-6 40.0% | CLV 50.0% | MAE   1.3 bias +0.63 | edge -0.092
+rec_yd         n=  14      5-9 35.7% | CLV 28.6% | MAE  18.7 bias +8.14 | edge +0.002
+rec            n=  14      7-7 50.0% | CLV 50.0% | MAE   1.4 bias +0.93 | edge -0.081
 rush_yd        n=   6      5-1 83.3% | CLV 33.3% | MAE  21.3 bias -0.47 | edge +0.145
 rush_att       n=   6      3-3 50.0% | CLV 33.3% | MAE   2.9 bias +0.43 | edge -0.024
 rush_rec_yd    n=   3      3-0 100.0% | CLV  0.0% | MAE  39.6 bias +0.82 | edge   -  
@@ -30,27 +30,27 @@ pass_cmp       n=   1      0-1  0.0% | CLV 100.0% | MAE   8.7 bias +8.67 | edge 
 ## By position
 
 ```
-RB     n=  15     10-5 66.7% | CLV 13.3% | MAE  16.1 bias -1.40 | edge +0.070
+RB     n=  19     12-7 63.2% | CLV 21.1% | MAE  14.4 bias +0.61 | edge +0.056
 QB     n=  15      7-8 46.7% | CLV 53.3% | MAE  13.8 bias +13.27 | edge -0.038
-WR     n=  10      3-7 30.0% | CLV 60.0% | MAE  12.0 bias +7.94 | edge -0.080
-TE     n=   8      4-4 50.0% | CLV 25.0% | MAE  11.9 bias -2.22 | edge -0.059
+WR     n=  12      3-9 25.0% | CLV 50.0% | MAE  11.9 bias +8.58 | edge -0.088
+TE     n=  10      6-4 60.0% | CLV 30.0% | MAE  10.2 bias -1.08 | edge -0.015
 ```
 
 ## Over vs under
 
 ```
-over   n=  31    12-19 38.7% | CLV 41.9% | MAE  15.8 bias +6.17 | edge -0.070
-under  n=  17     12-5 70.6% | CLV 29.4% | MAE  10.3 bias +2.85 | edge +0.078
+over   n=  35    12-23 34.3% | CLV 37.1% | MAE  15.5 bias +6.96 | edge -0.067
+under  n=  21     16-5 76.2% | CLV 38.1% | MAE   8.8 bias +2.81 | edge +0.078
 ```
 
 ## Calibration (model P(over) → realized)
 
 ```
       bucket    n   pred  actual
-0.50-0.55     10  0.529   0.400  << overconfident
+0.50-0.55     14  0.528   0.429  << overconfident
 0.55-0.60     10  0.582   0.300  << overconfident
-0.60-0.65      9  0.626   0.667
-0.65-0.70      4  0.665   0.250  << overconfident
+0.60-0.65     11  0.625   0.636
+0.65-0.70      5  0.668   0.400  << overconfident
 0.80-1.01      1  0.914   1.000
 ```
 
@@ -58,13 +58,14 @@ under  n=  17     12-5 70.6% | CLV 29.4% | MAE  10.3 bias +2.85 | edge +0.078
 
 Ranked by demonstrated edge (sample-shrunk log-loss + CLV, collapsed when the two disagree), so a lucky small-sample market can't top it.
 
-- **Best market: rec** — 4-6 (40.0%), CLV 50.0%, log-loss edge -0.092, projection MAE 1.3.
+- **Best market: rec_yd** — 5-9 (35.7%), CLV 28.6%, log-loss edge +0.002, projection MAE 18.7.
 - **Best position: QB** — 7-8 (46.7%), CLV 53.3%, log-loss edge -0.038, projection MAE 13.8.
 
 ## Flags
 
-- **[bias]** rec: OVER-projects by 0.6 (10 props, MAE 1.3) — systematic, not noise
-- **[vs-market]** rec: market prices it better (log-loss +0.092 worse) — defer / blend toward the line
+- **[bias]** rec_yd: OVER-projects by 8.1 (14 props, MAE 18.7) — systematic, not noise
+- **[bias]** rec: OVER-projects by 0.9 (14 props, MAE 1.4) — systematic, not noise
+- **[vs-market]** rec: market prices it better (log-loss +0.081 worse) — defer / blend toward the line
 - **[luck]** rush_yd: 5-1 looks hot but CLV beat-rate 33.3% — the close moved against us, this is variance not edge
 - **[grades]** grade ladder is non-monotonic vs win% — the letter grade is not separating winners from losers this slice
 
