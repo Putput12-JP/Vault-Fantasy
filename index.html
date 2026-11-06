@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-11-06T12:00', tag:'Fixed', title:'NBA Combo Check: old sportsbook prices are no longer used',
+    items:[
+      'Sportsbook alt-line prices more than 15 minutes old are now left out of every combo and leg, instead of being priced as if they were current.',
+      'When that happens, Combo Check says the sportsbook prices are unavailable and shows when they were last updated. Kalshi, Novig and Polymarket prices still work as before.',
+    ]
+  },
+  {
     ts:'2026-11-02T18:00', tag:'Improved', title:'NBA Summary: a cleaner, easier-to-read layout',
     items:[
       'Your team\'s game now leads the page, with the book line and the Vault line side by side on one gauge, plus the starting five and who is out.',
