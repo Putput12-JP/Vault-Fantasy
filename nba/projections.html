@@ -3594,6 +3594,8 @@ window.PBX = (() => {
   const load = () => { try{ const f = JSON.parse(localStorage.getItem(LS)); return f ? {...FDEF, ...f, ven: {...FDEF.ven, ...(f.ven || {})}} : JSON.parse(JSON.stringify(FDEF)); }catch(e){ return JSON.parse(JSON.stringify(FDEF)); } };
   const S = {stat: 'all', side: 'all', game: 'all', q: '', sort: 'edge', dir: -1, limit: 60, fOpen: false, f: load(), open: null};
   const save = () => { try{ localStorage.setItem(LS, JSON.stringify(S.f)); }catch(e){} };
+  // a watch remembers the side it was starred on (over or under); one saved before that remembers both
+  const watched = (r, side) => { const w = pvW[pvKey(r)]; return !!w && (!w.side || w.side === side); };
 
   const VEN = [['book', 'Sportsbooks'], ['kalshi', 'Kalshi'], ['poly', 'Polymarket'], ['pickem', "Pick'em"]];
   const BK = {DraftKings: ['DK', '#53d337', '#0a1f05'], FanDuel: ['FD', '#1493ff', '#fff'], BetMGM: ['MGM', '#b39256', '#fff'], bet365: ['365', '#127a4b', '#fff'], BetRivers: ['BR', '#1b3d6d', '#fff'],
@@ -3705,7 +3707,7 @@ window.PBX = (() => {
       if (oMin != null || oMax != null){ const a = amOf(x.best); if (a == null) return false; if (oMin != null && amP(a) > amP(oMin) + 1e-9) return false; if (oMax != null && amP(a) < amP(oMax) - 1e-9) return false; }
       if (f.healthy && r.inj && !/^available$/i.test(r.inj)) return false;
       if (f.starters && r.lu !== 's') return false;
-      if (f.watch && !pvW[pvKey(r)]) return false;
+      if (f.watch && !watched(r, x.side)) return false;
       if (f.moved !== 'any'){ const d = x.sc.dm; if (!d) return false; if ((f.moved === 'with') !== (x.side === 'o' ? d < 0 : d > 0)) return false; }   // a falling line makes the over easier
       return true;
     });
@@ -3983,7 +3985,7 @@ window.PBX = (() => {
     const stB = statusFromBoard(B), injs = Object.entries(stB).filter(([pid, st]) => /out|doubt|quest|inactive/i.test(st) && PIDX[pid] && g && (PIDX[pid].t === g.away || PIDX[pid].t === g.home))
       .map(([pid, st]) => [PIDX[pid].p.name, PIDX[pid].t, st]).sort((a, b) => a[1].localeCompare(b[1]));
     const grpW = x.grp === 'G' ? 'guards' : x.grp === 'C' ? 'centers' : 'forwards';
-    const pkey = pvKey(r), watching = !!pvW[pkey];
+    const pkey = pvKey(r), pw = pvW[pkey], watching = watched(r, side), both = watching && !pw.side;
     const kw = g && g.mk && g.mk.kalshi && g.mk.kalshi.win;
     root.innerHTML = `
     <button type="button" class="pbx-back" data-back="1">← Props</button>
@@ -3996,7 +3998,7 @@ window.PBX = (() => {
             <span class="seg"><button type="button" data-dside="o" aria-pressed="${side === 'o'}">Over</button><button type="button" data-dside="u" aria-pressed="${side === 'u'}">Under</button></span>
             <span class="pbx-sel ${side}">${side === 'o' ? 'Over' : 'Under'} ${r.line} ${best ? bkChip(best.bk) + `<b>${esc(priceTxt(best))}</b>` : ''}</span>
             ${r.kal.length > 1 ? `<select class="pbx-alt" aria-label="Kalshi alt lines"><option>Alt lines (${r.kal.length})</option>${r.kal.map(k => `<option>${k.line + .5}+: Kalshi ${Math.round(k.ask * 100)}¢ · fair ${pc(k.fair)}</option>`).join('')}</select>` : ''}
-            <button class="pv-star" type="button" data-pbstar="${esc(pkey)}" aria-pressed="${watching}">${watching ? '★ Watching' : '☆ Watch'}</button>
+            <button class="pv-star" type="button" data-pbstar="${esc(pkey)}" data-pbside="${side}" aria-pressed="${watching}"${both ? ` title="Saved before watches kept a side. Tap to keep only the ${side === 'o' ? 'over' : 'under'}."` : ''}>${both ? '★ Watching both' : watching ? '★ Watching' : '☆ Watch'}</button>
             <button type="button" class="btn primary" data-totrk="1">Track a bet ↓</button>
           </div></div>
         <div class="pbx-tabs" id="pbx-stabs">${stats.map(k => `<button type="button" data-ds="${k}" class="${k === s ? 'on' : ''}">${esc(SLABEL[k])}</button>`).join('')}<span class="pbx-ul"></span></div>
@@ -4149,12 +4151,12 @@ window.PBX = (() => {
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
     const all = build(B), rows = filtered(all), show = rows.slice(0, S.limit);
-    const nWatch = new Set(all.filter(x => pvW[pvKey(x.r)]).map(x => pvKey(x.r))).size;   // props watched (each counted once, not per side) that are still on the board
+    const nWatch = new Set(all.filter(x => watched(x.r, x.side)).map(x => pvKey(x.r))).size;   // props watched that are still on the board
     pf.rows = show.map(x => x.r);                    // the shared drawer's Log and Watch buttons look rows up here
     const statsOn = STATS.filter(([k]) => k === 'all' || all.some(x => x.r.e.s === k));
     const th = (k, l, c, v) => `<button type="button" class="${c ? 'c ' : ''}${v ? 'v ' : ''}${S.sort === k ? 'on' : ''}" data-sort="${k}" aria-sort="${S.sort === k ? (S.dir > 0 ? 'ascending' : 'descending') : 'none'}">${l}${S.sort === k ? `<i>${S.dir > 0 ? '▲' : '▼'}</i>` : ''}</button>`;
     const act = fActive();
-    const row = (x, i) => { const r = x.r, h = hits(x), key = `${r.e.p}|${r.e.s}|${x.side}`, open = S.open === key, w = pvW[pvKey(r)];
+    const row = (x, i) => { const r = x.r, h = hits(x), key = `${r.e.p}|${r.e.s}|${x.side}`, open = S.open === key, w = watched(r, x.side);
       const who = x.g ? `${x.g.away} @ ${x.g.home} · ${clock(x.g.tip)}` : esc(r.team);
       return `<article class="pbx-row${open ? ' open' : ''}" data-i="${i}">
         <button type="button" class="pbx-tr press" aria-expanded="${open}">
@@ -6585,8 +6587,10 @@ function pbClick(e, again){
   if (sb){
     const k = sb.dataset.pbstar, r = pbRow(k);
     if (r && !r.sharp) r.sharp = pvSharp(r);            // Player Props rows carry it; the snapshot a watch compares against reads it
-    if (pvW[k]) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
-    pvSave(); again(); pvToast(pvW[k] ? 'Watching. Switch on Watching only above the table to see your watched props.' : 'No longer watching.'); return true;
+    const side = sb.dataset.pbside || null, w = pvW[k], sw = s => s === 'o' ? 'over' : 'under';   // the Props Table page stars one side
+    if (w && side && w.side !== side){ w.side = side; pvSave(); again(); pvToast(`Watching the ${sw(side)} only.`); return true; }
+    if (w) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, side, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
+    pvSave(); again(); pvToast(pvW[k] ? `Watching${side ? ` the ${sw(side)}` : ''}. Switch on Watching above the table to see your watched props.` : 'No longer watching.'); return true;
   }
   if (t.closest('[data-pbbets]')){ goView('mybets'); return true; }
   return false;
