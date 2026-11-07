@@ -2,7 +2,7 @@
  "version": 1,
  "paper_only": true,
  "live_orders": false,
- "updated": "2026-11-07T17:47:06Z",
+ "updated": "2026-11-07T18:05:46Z",
  "bankroll_start": 1000.0,
  "cash": 929.08,
  "trades": [
@@ -5612,7 +5612,7 @@
   {
    "id": "novig:01a195fc-b359-7941-ba81-fe5f747d477b:01a195fc-b359-7941-ba81-fe61973e6141:1793785351",
    "ts": "2026-11-04T09:42:31Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5658,19 +5658,29 @@
     "novig_market_id": "01a195fc-b359-7941-ba81-fe5f747d477b",
     "novig_outcome_id": "01a195fc-b359-7941-ba81-fe61973e6141"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T17:47:06Z",
+   "result": "exit",
+   "payout": 0.46,
+   "pnl": -0.1,
+   "close_mid": 0.4625,
+   "clv": -0.0975,
    "mark_value": 0.46,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": false,
+   "exit_pnl_pc": -0.1,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T17:47:06Z",
+   "exit_bid": 0.46,
+   "exit_bid_size": 67482.67,
+   "exit_gap_min": 12.9,
+   "exit_filled_contracts": 1,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": -0.1,
+   "exit_part_pnl": -0.1,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a19604-ca3e-7ab0-b97a-bdd22114bcef:01a19604-ca3e-7ab0-b97a-bde26c767ede:1793785351",
@@ -6103,6 +6113,11 @@
    "ts": "2026-11-07T17:47:06Z",
    "cash": 929.08,
    "equity": 929.08
+  },
+  {
+   "ts": "2026-11-07T18:05:46Z",
+   "cash": 929.08,
+   "equity": 929.08
   }
  ],
  "runs": [
@@ -6407,19 +6422,35 @@
    ],
    "equity": 929.08,
    "cash": 929.08
+  },
+  {
+   "ts": "2026-11-07T18:05:46Z",
+   "settled": 0,
+   "opened": 0,
+   "vetoed": 0,
+   "skipped": 0,
+   "halt": null,
+   "notes": [
+    "cfb_jp_novig: 0 new games, 0 snapshots, 0 entered, 1 exited, 0 graded; pass bar 32/60 collecting, 1 triggered games not listed on Novig yet",
+    "nba total: 0 eligible games; 0 signals; 194 quotes unmatched; skipped 22 first four weeks",
+    "cfb moneyline: 34 projected games, 0 signals, 237 events unmatched, min week 4",
+    "llm filter off"
+   ],
+   "equity": 929.08,
+   "cash": 929.08
   }
  ],
  "summary": {
   "strategies": {
    "cfb_jp_novig": {
     "pass_bar": {
-     "n": 31,
+     "n": 32,
      "n_needed": 60,
-     "to_go": 29,
-     "mean": -0.01613,
-     "sd": 0.04082,
-     "se": 0.00733,
-     "z": -2.2,
+     "to_go": 28,
+     "mean": -0.01875,
+     "sd": 0.0428,
+     "se": 0.00757,
+     "z": -2.478,
      "z_needed": 2.0,
      "status": "collecting",
      "rule": "mean profit per contract after spread > 0, z >= 2, over 60+ trades at 5+ point edges"
@@ -6427,14 +6458,14 @@
     "slices": {
      "3+": {
       "entered": 73,
-      "open": 14,
+      "open": 13,
       "no_exit_bid": 0,
       "exit": {
-       "n": 59,
-       "mean": -0.01568,
-       "sd": 0.04605,
-       "se": 0.00599,
-       "z": -2.615
+       "n": 60,
+       "mean": -0.01708,
+       "sd": 0.04693,
+       "se": 0.00606,
+       "z": -2.819
       },
       "hold": {
        "n": 56,
@@ -6446,14 +6477,14 @@
      },
      "5+": {
       "entered": 38,
-      "open": 7,
+      "open": 6,
       "no_exit_bid": 0,
       "exit": {
-       "n": 31,
-       "mean": -0.01613,
-       "sd": 0.04082,
-       "se": 0.00733,
-       "z": -2.2
+       "n": 32,
+       "mean": -0.01875,
+       "sd": 0.0428,
+       "se": 0.00757,
+       "z": -2.478
       },
       "hold": {
        "n": 28,
@@ -6465,14 +6496,14 @@
      },
      "7+": {
       "entered": 17,
-      "open": 1,
+      "open": 0,
       "no_exit_bid": 0,
       "exit": {
-       "n": 16,
-       "mean": -0.02406,
-       "sd": 0.03574,
-       "se": 0.00894,
-       "z": -2.693
+       "n": 17,
+       "mean": -0.02853,
+       "sd": 0.0392,
+       "se": 0.00951,
+       "z": -3.001
       },
       "hold": {
        "n": 16,
@@ -6485,15 +6516,15 @@
     },
     "monitor": {
      "improving": false,
-     "n": 31,
-     "prev_n": 31,
-     "prev_mean": -0.01613,
+     "n": 32,
+     "prev_n": 32,
+     "prev_mean": -0.01875,
      "note": null
     },
     "counts": {
      "entered": 73,
-     "open": 14,
-     "exited": 59,
+     "open": 13,
+     "exited": 60,
      "no_exit_bid": 0,
      "stale_exits": 40,
      "hold_graded": 56,
@@ -6518,17 +6549,17 @@
   },
   "by_source": {
    "cfb_jp_novig": {
-    "settled": 59,
+    "settled": 60,
     "wins": 18,
-    "losses": 41,
+    "losses": 42,
     "pending": 0,
-    "stake": 2147.3,
-    "pnl": -51.91,
+    "stake": 2147.86,
+    "pnl": -52.01,
     "roi": -0.0242,
-    "clv_n": 59,
-    "clv_mean": -0.011,
+    "clv_n": 60,
+    "clv_mean": -0.0125,
     "brier": null,
-    "open": 14,
+    "open": 13,
     "vetoed": 0
    },
    "cfb_ml": {
@@ -10732,7 +10763,7 @@
      "model_margin": 1.7,
      "open_margin": -6.5,
      "open_hcap": 6.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a195fc-b359-7941-ba81-fe5f747d477b:01a195fc-b359-7941-ba81-fe61973e6141:1793785351",
      "created": "2026-11-01T21:50:47Z",
      "code_src": "name",
@@ -11283,13 +11314,13 @@
    },
    "progress": {
     "pass_bar": {
-     "n": 31,
+     "n": 32,
      "n_needed": 60,
-     "to_go": 29,
-     "mean": -0.01613,
-     "sd": 0.04082,
-     "se": 0.00733,
-     "z": -2.2,
+     "to_go": 28,
+     "mean": -0.01875,
+     "sd": 0.0428,
+     "se": 0.00757,
+     "z": -2.478,
      "z_needed": 2.0,
      "status": "collecting",
      "rule": "mean profit per contract after spread > 0, z >= 2, over 60+ trades at 5+ point edges"
@@ -11297,14 +11328,14 @@
     "slices": {
      "3+": {
       "entered": 73,
-      "open": 14,
+      "open": 13,
       "no_exit_bid": 0,
       "exit": {
-       "n": 59,
-       "mean": -0.01568,
-       "sd": 0.04605,
-       "se": 0.00599,
-       "z": -2.615
+       "n": 60,
+       "mean": -0.01708,
+       "sd": 0.04693,
+       "se": 0.00606,
+       "z": -2.819
       },
       "hold": {
        "n": 56,
@@ -11316,14 +11347,14 @@
      },
      "5+": {
       "entered": 38,
-      "open": 7,
+      "open": 6,
       "no_exit_bid": 0,
       "exit": {
-       "n": 31,
-       "mean": -0.01613,
-       "sd": 0.04082,
-       "se": 0.00733,
-       "z": -2.2
+       "n": 32,
+       "mean": -0.01875,
+       "sd": 0.0428,
+       "se": 0.00757,
+       "z": -2.478
       },
       "hold": {
        "n": 28,
@@ -11335,14 +11366,14 @@
      },
      "7+": {
       "entered": 17,
-      "open": 1,
+      "open": 0,
       "no_exit_bid": 0,
       "exit": {
-       "n": 16,
-       "mean": -0.02406,
-       "sd": 0.03574,
-       "se": 0.00894,
-       "z": -2.693
+       "n": 17,
+       "mean": -0.02853,
+       "sd": 0.0392,
+       "se": 0.00951,
+       "z": -3.001
       },
       "hold": {
        "n": 16,
@@ -11355,15 +11386,15 @@
     },
     "monitor": {
      "improving": false,
-     "n": 31,
-     "prev_n": 31,
-     "prev_mean": -0.01613,
+     "n": 32,
+     "prev_n": 32,
+     "prev_mean": -0.01875,
      "note": null
     },
     "counts": {
      "entered": 73,
-     "open": 14,
-     "exited": 59,
+     "open": 13,
+     "exited": 60,
      "no_exit_bid": 0,
      "stale_exits": 40,
      "hold_graded": 56,
@@ -13616,7 +13647,7 @@
      "open_hcap": 6.5,
      "strike": 6.5,
      "strike_distance": 0.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a195fc-b359-7941-ba81-fe5f747d477b:01a195fc-b359-7941-ba81-fe61973e6141:1793785351",
      "novig_listed_ts": 1793517728,
      "novig_first_seen_ts": 1793569847,
@@ -14111,7 +14142,7 @@
      }
     }
    ],
-   "updated": "2026-11-07T17:47:06Z",
+   "updated": "2026-11-07T18:05:46Z",
    "version": 1,
    "config": {
     "min_week": 7,
@@ -14125,9 +14156,9 @@
     "fees": 0
    },
    "last_run": {
-    "ts": "2026-11-07T17:47:06Z",
+    "ts": "2026-11-07T18:05:46Z",
     "notes": [],
-    "novig_requests": 15,
+    "novig_requests": 1,
     "novig_errors": 0
    }
   }
