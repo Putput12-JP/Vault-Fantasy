@@ -2,7 +2,7 @@
  "version": 1,
  "paper_only": true,
  "live_orders": false,
- "updated": "2026-11-07T19:17:35Z",
+ "updated": "2026-11-07T22:55:18Z",
  "bankroll_start": 1000.0,
  "cash": 929.08,
  "trades": [
@@ -4881,7 +4881,7 @@
    "pnl": null,
    "close_mid": null,
    "clv": null,
-   "mark_value": 0.45,
+   "mark_value": 0.445,
    "won": null,
    "exit_pnl_pc": null,
    "hold_status": "pending",
@@ -4972,7 +4972,7 @@
   {
    "id": "novig:01a1954f-a3dc-7602-ad1a-0b2194af4dc3:01a1954f-a3dc-7602-ad1a-0b30343658ee:1793606553",
    "ts": "2026-11-02T08:02:33Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5018,24 +5018,34 @@
     "novig_market_id": "01a1954f-a3dc-7602-ad1a-0b2194af4dc3",
     "novig_outcome_id": "01a1954f-a3dc-7602-ad1a-0b30343658ee"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 0.6,
+   "pnl": -0.035,
+   "close_mid": 0.605,
+   "clv": -0.03,
    "mark_value": 0.6,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": false,
+   "exit_pnl_pc": -0.035,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.6,
+   "exit_bid_size": 54752.49,
+   "exit_gap_min": 72.4,
+   "exit_filled_contracts": 1,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": -0.035,
+   "exit_part_pnl": -0.035,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a195ef-e1f3-7512-ba69-33ceb734db6e:01a195ef-e1f3-7512-ba69-33d7ed2caab8:1793606553",
    "ts": "2026-11-02T08:02:33Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5081,24 +5091,34 @@
     "novig_market_id": "01a195ef-e1f3-7512-ba69-33ceb734db6e",
     "novig_outcome_id": "01a195ef-e1f3-7512-ba69-33d7ed2caab8"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 52.89,
+   "pnl": 3.01,
+   "close_mid": 0.6225,
+   "clv": 0.0425,
    "mark_value": 52.89,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": true,
+   "exit_pnl_pc": 0.035,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.615,
+   "exit_bid_size": 25578.0,
+   "exit_gap_min": 87.4,
+   "exit_filled_contracts": 86,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": 0.035,
+   "exit_part_pnl": 3.01,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a197d1-814f-7b31-ac81-b0375e5159d6:01a197d1-814f-7b31-ac81-b041a24132e8:1793606553",
    "ts": "2026-11-02T08:02:33Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5144,24 +5164,34 @@
     "novig_market_id": "01a197d1-814f-7b31-ac81-b0375e5159d6",
     "novig_outcome_id": "01a197d1-814f-7b31-ac81-b041a24132e8"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 48.4,
+   "pnl": -1.2,
+   "close_mid": 0.61,
+   "clv": -0.01,
    "mark_value": 48.4,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": false,
+   "exit_pnl_pc": -0.015,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.605,
+   "exit_bid_size": 33014.07,
+   "exit_gap_min": 42.4,
+   "exit_filled_contracts": 80,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": -0.015,
+   "exit_part_pnl": -1.2,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a1958c-daf1-79a3-ba8d-80c193f9a535:01a1958c-daf1-79a3-ba8d-80ebb206808a:1793694598",
    "ts": "2026-11-03T08:29:58Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5207,24 +5237,34 @@
     "novig_market_id": "01a1958c-daf1-79a3-ba8d-80c193f9a535",
     "novig_outcome_id": "01a1958c-daf1-79a3-ba8d-80ebb206808a"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 0.485,
+   "pnl": 0.02,
+   "close_mid": 0.4875,
+   "clv": 0.0225,
    "mark_value": 0.485,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": true,
+   "exit_pnl_pc": 0.02,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.485,
+   "exit_bid_size": 123265.58,
+   "exit_gap_min": 42.4,
+   "exit_filled_contracts": 1,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": 0.02,
+   "exit_part_pnl": 0.02,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a197da-aab9-7272-88cc-e529806db8b2:01a197da-aab9-7272-88cc-e53ae7aff102:1793694598",
    "ts": "2026-11-03T08:29:58Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5270,19 +5310,29 @@
     "novig_market_id": "01a197da-aab9-7272-88cc-e529806db8b2",
     "novig_outcome_id": "01a197da-aab9-7272-88cc-e53ae7aff102"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 43.68,
+   "pnl": -5.85,
+   "close_mid": 0.5625,
+   "clv": -0.0725,
    "mark_value": 43.68,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": false,
+   "exit_pnl_pc": -0.075,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.56,
+   "exit_bid_size": 28442.69,
+   "exit_gap_min": 162.4,
+   "exit_filled_contracts": 78,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": -0.075,
+   "exit_part_pnl": -5.85,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a197db-873d-7351-a2cd-bdbe2fc98691:01a197db-873d-7351-a2cd-bdca92c6f245:1793694598",
@@ -5342,10 +5392,10 @@
    "mark_value": 0.54,
    "won": false,
    "exit_pnl_pc": -0.085,
-   "hold_status": "pending",
-   "hold_pnl_pc": null,
-   "hold_pnl": null,
-   "hold_result": null,
+   "hold_status": "graded",
+   "hold_pnl_pc": -0.625,
+   "hold_pnl": -0.625,
+   "hold_result": "loss",
    "exit_ts": "2026-11-07T14:46:43Z",
    "exit_bid": 0.54,
    "exit_bid_size": 44519.48,
@@ -5355,7 +5405,14 @@
    "exit_fill_frac": 1.0,
    "exit_part_pnl_pc": -0.085,
    "exit_part_pnl": -0.085,
-   "remainder_pending": false
+   "remainder_pending": false,
+   "hold_payout": 0.0,
+   "final_score": {
+    "home": 10.0,
+    "away": 60.0
+   },
+   "hold_margin_vs_strike": -46.5,
+   "graded_ts": "2026-11-07T22:55:18Z"
   },
   {
    "id": "novig:01a197f1-8c2c-7903-a408-748e4f6a9687:01a197f1-8c2c-7903-a408-74a587b25c14:1793694598",
@@ -5412,7 +5469,7 @@
    "pnl": null,
    "close_mid": null,
    "clv": null,
-   "mark_value": 41.975,
+   "mark_value": 40.88,
    "won": null,
    "exit_pnl_pc": null,
    "hold_status": "pending",
@@ -5549,7 +5606,7 @@
   {
    "id": "novig:01a19588-4711-7a81-874f-060f86b2e403:01a19588-4711-7a81-874f-061c06c7fc18:1793785351",
    "ts": "2026-11-04T09:42:31Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5595,19 +5652,29 @@
     "novig_market_id": "01a19588-4711-7a81-874f-060f86b2e403",
     "novig_outcome_id": "01a19588-4711-7a81-874f-061c06c7fc18"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 46.92,
+   "pnl": -2.76,
+   "close_mid": 0.5125,
+   "clv": -0.0275,
    "mark_value": 46.92,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": false,
+   "exit_pnl_pc": -0.03,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.51,
+   "exit_bid_size": 90451.62,
+   "exit_gap_min": 117.4,
+   "exit_filled_contracts": 92,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": -0.03,
+   "exit_part_pnl": -2.76,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a195fc-b359-7941-ba81-fe5f747d477b:01a195fc-b359-7941-ba81-fe61973e6141:1793785351",
@@ -5667,10 +5734,10 @@
    "mark_value": 0.46,
    "won": false,
    "exit_pnl_pc": -0.1,
-   "hold_status": "pending",
-   "hold_pnl_pc": null,
-   "hold_pnl": null,
-   "hold_result": null,
+   "hold_status": "graded",
+   "hold_pnl_pc": -0.56,
+   "hold_pnl": -0.56,
+   "hold_result": "loss",
    "exit_ts": "2026-11-07T17:47:06Z",
    "exit_bid": 0.46,
    "exit_bid_size": 67482.67,
@@ -5680,7 +5747,14 @@
    "exit_fill_frac": 1.0,
    "exit_part_pnl_pc": -0.1,
    "exit_part_pnl": -0.1,
-   "remainder_pending": false
+   "remainder_pending": false,
+   "hold_payout": 0.0,
+   "final_score": {
+    "home": 28.0,
+    "away": 66.0
+   },
+   "hold_margin_vs_strike": -31.5,
+   "graded_ts": "2026-11-07T22:55:18Z"
   },
   {
    "id": "novig:01a19604-ca3e-7ab0-b97a-bdd22114bcef:01a19604-ca3e-7ab0-b97a-bde26c767ede:1793785351",
@@ -5740,10 +5814,10 @@
    "mark_value": 52.015,
    "won": true,
    "exit_pnl_pc": 0.02,
-   "hold_status": "pending",
-   "hold_pnl_pc": null,
-   "hold_pnl": null,
-   "hold_result": null,
+   "hold_status": "graded",
+   "hold_pnl_pc": -0.495,
+   "hold_pnl": -49.995,
+   "hold_result": "loss",
    "exit_ts": "2026-11-07T14:46:43Z",
    "exit_bid": 0.515,
    "exit_bid_size": 100913.85,
@@ -5753,7 +5827,14 @@
    "exit_fill_frac": 1.0,
    "exit_part_pnl_pc": 0.02,
    "exit_part_pnl": 2.02,
-   "remainder_pending": false
+   "remainder_pending": false,
+   "hold_payout": 0.0,
+   "final_score": {
+    "home": 24.0,
+    "away": 31.0
+   },
+   "hold_margin_vs_strike": -0.5,
+   "graded_ts": "2026-11-07T22:55:18Z"
   },
   {
    "id": "novig:01a18dd2-7583-7152-a2d5-2a4c39e99086:01a18dd2-7583-7152-a2d5-2a5e55c5fc24:1793879976",
@@ -5813,10 +5894,10 @@
    "mark_value": 47.79,
    "won": false,
    "exit_pnl_pc": -0.025,
-   "hold_status": "pending",
-   "hold_pnl_pc": null,
-   "hold_pnl": null,
-   "hold_result": null,
+   "hold_status": "graded",
+   "hold_pnl_pc": 0.385,
+   "hold_pnl": 31.185,
+   "hold_result": "win",
    "exit_ts": "2026-11-07T14:46:43Z",
    "exit_bid": 0.59,
    "exit_bid_size": 85250.11,
@@ -5826,7 +5907,14 @@
    "exit_fill_frac": 1.0,
    "exit_part_pnl_pc": -0.025,
    "exit_part_pnl": -2.025,
-   "remainder_pending": false
+   "remainder_pending": false,
+   "hold_payout": 81.0,
+   "final_score": {
+    "home": 28.0,
+    "away": 20.0
+   },
+   "hold_margin_vs_strike": 5.5,
+   "graded_ts": "2026-11-07T22:55:18Z"
   },
   {
    "id": "novig:01a18f75-9e2f-76c2-8428-44521968e248:01a18f75-9e2f-76c2-8428-447df7ef3e56:1793879976",
@@ -5894,7 +5982,7 @@
   {
    "id": "novig:01a197e0-3c80-7652-8a62-9985c86a0953:01a197e0-3c80-7652-8a62-999c0869495b:1793879976",
    "ts": "2026-11-05T11:59:36Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -5940,24 +6028,34 @@
     "novig_market_id": "01a197e0-3c80-7652-8a62-9985c86a0953",
     "novig_outcome_id": "01a197e0-3c80-7652-8a62-999c0869495b"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 45.475,
+   "pnl": -4.28,
+   "close_mid": 0.4275,
+   "clv": -0.0375,
    "mark_value": 45.475,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": false,
+   "exit_pnl_pc": -0.04,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.425,
+   "exit_bid_size": 6192.03,
+   "exit_gap_min": 72.4,
+   "exit_filled_contracts": 107,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": -0.04,
+   "exit_part_pnl": -4.28,
+   "remainder_pending": false
   },
   {
    "id": "novig:01a197e9-417c-7cb3-86b1-54800d338835:01a197e9-417c-7cb3-86b1-549e48ce215e:1793879976",
    "ts": "2026-11-05T11:59:36Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_jp_novig",
    "strategy": "cfb_jp_novig",
    "book": "novig",
@@ -6003,19 +6101,29 @@
     "novig_market_id": "01a197e9-417c-7cb3-86b1-54800d338835",
     "novig_outcome_id": "01a197e9-417c-7cb3-86b1-549e48ce215e"
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": null,
-   "clv": null,
+   "settled_ts": "2026-11-07T19:17:35Z",
+   "result": "exit",
+   "payout": 0.505,
+   "pnl": -0.02,
+   "close_mid": 0.5075,
+   "clv": -0.0175,
    "mark_value": 0.505,
-   "won": null,
-   "exit_pnl_pc": null,
+   "won": false,
+   "exit_pnl_pc": -0.02,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
-   "hold_result": null
+   "hold_result": null,
+   "exit_ts": "2026-11-07T19:17:35Z",
+   "exit_bid": 0.505,
+   "exit_bid_size": 48032.62,
+   "exit_gap_min": 102.4,
+   "exit_filled_contracts": 1,
+   "exit_remainder_contracts": 0,
+   "exit_fill_frac": 1.0,
+   "exit_part_pnl_pc": -0.02,
+   "exit_part_pnl": -0.02,
+   "remainder_pending": false
   }
  ],
  "equity": [
@@ -6444,13 +6552,13 @@
   "strategies": {
    "cfb_jp_novig": {
     "pass_bar": {
-     "n": 32,
+     "n": 34,
      "n_needed": 60,
-     "to_go": 28,
-     "mean": -0.01875,
-     "sd": 0.0428,
-     "se": 0.00757,
-     "z": -2.478,
+     "to_go": 26,
+     "mean": -0.01721,
+     "sd": 0.0425,
+     "se": 0.00729,
+     "z": -2.361,
      "z_needed": 2.0,
      "status": "collecting",
      "rule": "mean profit per contract after spread > 0, z >= 2, over 60+ trades at 5+ point edges"
@@ -6458,40 +6566,40 @@
     "slices": {
      "3+": {
       "entered": 73,
-      "open": 13,
+      "open": 5,
       "no_exit_bid": 0,
       "exit": {
-       "n": 60,
-       "mean": -0.01708,
-       "sd": 0.04693,
-       "se": 0.00606,
-       "z": -2.819
+       "n": 68,
+       "mean": -0.01743,
+       "sd": 0.04545,
+       "se": 0.00551,
+       "z": -3.162
       },
       "hold": {
-       "n": 56,
-       "mean": 0.005,
-       "sd": 0.50813,
-       "se": 0.0679,
-       "z": 0.074
+       "n": 60,
+       "mean": -0.01692,
+       "sd": 0.50894,
+       "se": 0.0657,
+       "z": -0.257
       }
      },
      "5+": {
       "entered": 38,
-      "open": 6,
+      "open": 4,
       "no_exit_bid": 0,
       "exit": {
-       "n": 32,
-       "mean": -0.01875,
-       "sd": 0.0428,
-       "se": 0.00757,
-       "z": -2.478
+       "n": 34,
+       "mean": -0.01721,
+       "sd": 0.0425,
+       "se": 0.00729,
+       "z": -2.361
       },
       "hold": {
-       "n": 28,
-       "mean": 0.1575,
-       "sd": 0.46357,
-       "se": 0.08761,
-       "z": 1.798
+       "n": 32,
+       "mean": 0.09734,
+       "sd": 0.48497,
+       "se": 0.08573,
+       "z": 1.135
       }
      },
      "7+": {
@@ -6506,29 +6614,29 @@
        "z": -3.001
       },
       "hold": {
-       "n": 16,
-       "mean": 0.16594,
-       "sd": 0.45249,
-       "se": 0.11312,
-       "z": 1.467
+       "n": 17,
+       "mean": 0.12324,
+       "sd": 0.47218,
+       "se": 0.11452,
+       "z": 1.076
       }
      }
     },
     "monitor": {
      "improving": false,
-     "n": 32,
-     "prev_n": 32,
-     "prev_mean": -0.01875,
+     "n": 34,
+     "prev_n": 34,
+     "prev_mean": -0.01721,
      "note": null
     },
     "counts": {
      "entered": 73,
-     "open": 13,
-     "exited": 60,
+     "open": 5,
+     "exited": 68,
      "no_exit_bid": 0,
-     "stale_exits": 40,
-     "hold_graded": 56,
-     "hold_pending": 17
+     "stale_exits": 46,
+     "hold_graded": 60,
+     "hold_pending": 13
     }
    }
   },
@@ -6549,17 +6657,17 @@
   },
   "by_source": {
    "cfb_jp_novig": {
-    "settled": 60,
-    "wins": 18,
-    "losses": 42,
+    "settled": 68,
+    "wins": 20,
+    "losses": 48,
     "pending": 0,
-    "stake": 2147.86,
-    "pnl": -52.01,
-    "roi": -0.0242,
-    "clv_n": 60,
-    "clv_mean": -0.0125,
+    "stake": 2397.93,
+    "pnl": -63.12,
+    "roi": -0.0263,
+    "clv_n": 68,
+    "clv_mean": -0.0129,
     "brier": null,
-    "open": 13,
+    "open": 5,
     "vetoed": 0
    },
    "cfb_ml": {
@@ -6826,7 +6934,7 @@
      "model_margin": 0.3,
      "open_margin": -3.0,
      "open_hcap": 3.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197d1-814f-7b31-ac81-b0375e5159d6:01a197d1-814f-7b31-ac81-b041a24132e8:1793606553",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -9678,7 +9786,8 @@
        "1794037176,0.575,0.605,4036.0,3810.0",
        "1794062803,0.565,0.605,3500.0,3500.0",
        "1794073626,0.58,0.595,19193.77,12155.04",
-       "1794079055,0.575,0.58,32508.66,7725.13"
+       "1794079055,0.575,0.58,32508.66,7725.13",
+       "1794092118,0.56,0.565,8692.63,30260.92"
       ]
      },
      "kalshi": {
@@ -9761,7 +9870,7 @@
      "model_margin": 9.4,
      "open_margin": 5.5,
      "open_hcap": -5.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197da-aab9-7272-88cc-e529806db8b2:01a197da-aab9-7272-88cc-e53ae7aff102:1793694598",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -9892,7 +10001,8 @@
        "1794037176,0.635,0.66,6968.04,6322.59",
        "1794062803,0.645,0.66,6593.98,5390.4",
        "1794073626,0.67,0.695,4824.99,3900.0",
-       "1794079055,0.67,0.69,4522.75,6064.0"
+       "1794079055,0.67,0.69,4522.75,6064.0",
+       "1794092118,0.67,0.68,3697.99,7809.0"
       ]
      },
      "kalshi": {
@@ -9925,7 +10035,8 @@
        "1794037176,0.63,0.65,505.0,",
        "1794062803,0.64,0.66,2310.27,",
        "1794073626,0.66,0.68,88.0,",
-       "1794079055,0.67,0.68,417.0,"
+       "1794079055,0.67,0.68,417.0,",
+       "1794092118,0.67,0.68,3172.24,"
       ]
      },
      "entry_ts": 1793694598
@@ -9947,7 +10058,7 @@
      "model_margin": 7.5,
      "open_margin": 2.5,
      "open_hcap": -2.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a195ef-e1f3-7512-ba69-33ceb734db6e:01a195ef-e1f3-7512-ba69-33d7ed2caab8:1793606553",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -10042,7 +10153,7 @@
      "model_margin": 2.3,
      "open_margin": -3.0,
      "open_hcap": 3.0,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a197db-873d-7351-a2cd-bdbe2fc98691:01a197db-873d-7351-a2cd-bdca92c6f245:1793694598",
      "created": "2026-11-01T21:50:47Z",
      "code_src": "name",
@@ -10058,27 +10169,7 @@
       "first_seen_ts": 1793569847,
       "snaps": [
        "1793569847,,,,",
-       "1793582539,0.48,,,270.0",
-       "1793606553,0.49,,,270.0",
-       "1793645007,0.565,0.61,2859.0,3156.0",
-       "1793662575,0.56,0.62,3759.0,2059.0",
-       "1793669309,0.56,0.615,2000.0,2000.0",
        "1793694598,0.565,0.625,4212.0,2156.0",
-       "1793723385,0.575,0.59,4319.24,1217.35",
-       "1793742944,0.58,0.595,4491.48,1194.74",
-       "1793757713,0.58,0.595,4191.48,1194.74",
-       "1793785351,0.58,0.595,4191.48,3644.74",
-       "1793814707,0.575,0.59,7341.48,7653.15",
-       "1793834710,0.57,0.585,9212.74,8623.41",
-       "1793849985,0.57,0.585,12734.74,7293.41",
-       "1793879976,0.57,0.59,13669.97,4943.81",
-       "1793908298,0.57,0.58,20163.93,4050.97",
-       "1793926457,0.555,0.57,18266.19,9550.74",
-       "1793951219,0.55,0.56,15244.52,7793.17",
-       "1793980028,0.54,0.56,16581.71,10738.13",
-       "1794000175,0.535,0.555,27069.46,19585.65",
-       "1794013466,0.54,0.55,31544.74,13883.24",
-       "1794037176,0.54,0.545,21368.62,17484.17",
        "1794062803,0.54,0.545,31657.24,44519.48"
       ]
      },
@@ -10092,27 +10183,7 @@
       "first_seen_ts": 1793569847,
       "snaps": [
        "1793569847,0.52,0.96,13.0,",
-       "1793582539,0.55,0.63,232.0,",
-       "1793606553,0.56,0.62,500.0,",
-       "1793645007,0.57,0.6,500.0,",
-       "1793662575,0.57,0.61,1500.0,",
-       "1793669309,0.57,0.61,515.0,",
        "1793694598,0.57,0.61,3015.0,",
-       "1793723385,0.57,0.6,3983.0,",
-       "1793742944,0.57,0.59,267.08,",
-       "1793757713,0.57,0.59,267.08,",
-       "1793785351,0.58,0.59,332.01,",
-       "1793814707,0.57,0.58,2300.0,",
-       "1793834710,0.57,0.58,2300.0,",
-       "1793849985,0.57,0.58,2300.0,",
-       "1793879976,0.57,0.59,5930.38,",
-       "1793908298,0.56,0.57,4045.51,",
-       "1793926457,0.56,0.57,20234.5,",
-       "1793951219,0.55,0.56,5532.36,",
-       "1793980028,0.55,0.56,100786.55,",
-       "1794000175,0.54,0.55,54923.21,",
-       "1794013466,0.54,0.55,129980.23,",
-       "1794037176,0.53,0.54,6407.79,",
        "1794062803,0.53,0.54,29037.03,"
       ]
      },
@@ -10135,7 +10206,7 @@
      "model_margin": 9.9,
      "open_margin": 6.0,
      "open_hcap": -6.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a1954f-a3dc-7602-ad1a-0b2194af4dc3:01a1954f-a3dc-7602-ad1a-0b30343658ee:1793606553",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -10230,7 +10301,7 @@
      "model_margin": 2.4,
      "open_margin": 6.5,
      "open_hcap": 6.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a1958c-daf1-79a3-ba8d-80c193f9a535:01a1958c-daf1-79a3-ba8d-80ebb206808a:1793694598",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -10363,7 +10434,8 @@
        "1794037176,0.44,0.46,13269.48,20747.29",
        "1794062803,0.45,0.465,18745.39,38224.8",
        "1794073626,0.445,0.465,26008.26,40596.04",
-       "1794079055,0.45,0.46,59295.71,45719.56"
+       "1794079055,0.45,0.46,59295.71,45719.56",
+       "1794092118,0.445,0.465,49745.93,60004.39"
       ]
      },
      "kalshi": {
@@ -10398,7 +10470,8 @@
        "1794037176,0.44,0.45,189.0,",
        "1794062803,0.44,0.45,182.0,",
        "1794073626,0.44,0.45,60.61,",
-       "1794079055,0.44,0.45,53.61,"
+       "1794079055,0.44,0.45,53.61,",
+       "1794092118,0.44,0.45,53.61,"
       ]
      },
      "entry_ts": 1793582539
@@ -10473,7 +10546,7 @@
      "model_margin": 7.5,
      "open_margin": 3.0,
      "open_hcap": -3.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a19588-4711-7a81-874f-060f86b2e403:01a19588-4711-7a81-874f-061c06c7fc18:1793785351",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -10568,7 +10641,7 @@
      "model_margin": -1.4,
      "open_margin": -6.5,
      "open_hcap": 6.5,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a19604-ca3e-7ab0-b97a-bdd22114bcef:01a19604-ca3e-7ab0-b97a-bde26c767ede:1793785351",
      "created": "2026-11-01T21:50:47Z",
      "code_src": "name",
@@ -10584,27 +10657,7 @@
       "first_seen_ts": 1793569847,
       "snaps": [
        "1793569847,0.465,0.505,4239.81,4504.53",
-       "1793582539,0.48,0.505,4470.71,3311.03",
-       "1793606553,0.48,0.5,2667.16,3644.45",
-       "1793645007,0.465,0.475,1019.38,4946.99",
-       "1793662575,0.465,0.47,1098.97,3035.73",
-       "1793669309,0.46,0.47,1031.97,3048.72",
-       "1793694598,0.46,0.475,751.2,2438.26",
-       "1793723385,0.465,0.475,2116.62,10395.34",
-       "1793742944,0.49,0.505,11639.32,5894.67",
-       "1793757713,0.485,0.495,7937.77,6438.34",
        "1793785351,0.485,0.495,7465.93,5910.18",
-       "1793814707,0.48,0.5,12207.53,12233.24",
-       "1793834710,0.485,0.495,12552.05,10577.6",
-       "1793849985,0.48,0.5,15228.68,12181.34",
-       "1793879976,0.48,0.495,7869.28,9415.79",
-       "1793908298,0.49,0.495,36921.35,15498.7",
-       "1793926457,0.49,0.5,49224.15,15002.3",
-       "1793951219,0.495,0.505,30813.78,17086.37",
-       "1793980028,0.49,0.505,28705.34,17577.81",
-       "1794000175,0.5,0.505,51319.7,14354.8",
-       "1794013466,0.5,0.505,90206.78,59289.01",
-       "1794037176,0.51,0.52,54474.5,95953.38",
        "1794062803,0.515,0.52,80198.87,100913.85"
       ]
      },
@@ -10618,27 +10671,7 @@
       "first_seen_ts": 1793569847,
       "snaps": [
        "1793569847,0.48,0.5,127.34,",
-       "1793582539,0.49,0.5,72.02,",
-       "1793606553,0.48,0.5,132.36,",
-       "1793645007,0.46,0.47,242.0,",
-       "1793662575,0.46,0.47,242.0,",
-       "1793669309,0.46,0.47,21.0,",
-       "1793694598,0.46,0.47,21.0,",
-       "1793723385,0.46,0.47,1.0,",
-       "1793742944,0.49,0.5,93.4,",
-       "1793757713,0.49,0.5,76.97,",
        "1793785351,0.49,0.5,70.0,",
-       "1793814707,0.49,0.5,500.0,",
-       "1793834710,0.48,0.5,4384.0,",
-       "1793849985,0.48,0.5,4238.0,",
-       "1793879976,0.48,0.49,50.0,",
-       "1793908298,0.48,0.5,69675.83,",
-       "1793926457,0.49,0.5,68691.06,",
-       "1793951219,0.49,0.5,137997.47,",
-       "1793980028,0.49,0.5,127762.68,",
-       "1794000175,0.49,0.5,148078.71,",
-       "1794013466,0.49,0.51,241780.3,",
-       "1794037176,0.5,0.51,4676.71,",
        "1794062803,0.5,0.51,18310.31,"
       ]
      },
@@ -10749,7 +10782,8 @@
        "1794037176,0.6,0.65,5950.0,6000.0",
        "1794062803,0.6,0.655,5700.0,6650.0",
        "1794073626,0.605,0.645,7600.0,6450.0",
-       "1794079055,0.6,0.645,7600.0,6600.0"
+       "1794079055,0.6,0.645,7600.0,6600.0",
+       "1794092118,0.6,0.635,19750.0,19832.0"
       ]
      },
      "kalshi": {
@@ -10781,7 +10815,7 @@
      "model_margin": 1.7,
      "open_margin": -6.5,
      "open_hcap": 6.5,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a195fc-b359-7941-ba81-fe5f747d477b:01a195fc-b359-7941-ba81-fe61973e6141:1793785351",
      "created": "2026-11-01T21:50:47Z",
      "code_src": "name",
@@ -10797,27 +10831,7 @@
       "first_seen_ts": 1793569847,
       "snaps": [
        "1793569847,0.25,0.75,1226.0,1200.0",
-       "1793582539,0.25,0.75,1225.0,1200.0",
-       "1793606553,0.255,0.745,1455.0,1225.0",
-       "1793645007,0.515,0.585,1059.0,1059.0",
-       "1793662575,0.515,0.595,3155.0,1114.0",
-       "1793669309,0.515,0.585,2955.0,955.0",
-       "1793694598,0.515,0.585,1059.0,1059.0",
-       "1793723385,0.55,0.57,2188.45,1386.59",
-       "1793742944,0.54,0.565,2661.25,3165.72",
-       "1793757713,0.54,0.565,2661.25,3165.72",
        "1793785351,0.545,0.56,2600.1,1166.66",
-       "1793814707,0.515,0.525,5317.43,1956.37",
-       "1793834710,0.505,0.525,8252.73,8288.66",
-       "1793849985,0.505,0.525,6540.67,7106.66",
-       "1793879976,0.505,0.515,4981.61,5258.52",
-       "1793908298,0.49,0.5,7858.63,6869.88",
-       "1793926457,0.485,0.5,6857.63,7719.6",
-       "1793951219,0.48,0.495,3289.82,13680.91",
-       "1793980028,0.485,0.49,17821.42,20896.97",
-       "1794000175,0.48,0.49,39087.16,44924.41",
-       "1794013466,0.48,0.485,28370.5,48665.43",
-       "1794037176,0.475,0.485,48323.3,13387.82",
        "1794062803,0.48,0.485,42427.84,59615.72",
        "1794073626,0.46,0.465,119341.96,67482.67"
       ]
@@ -10832,25 +10846,7 @@
       "first_seen_ts": 1793606553,
       "snaps": [
        "1793606553,0.53,0.62,269.0,",
-       "1793645007,0.53,0.57,1.0,",
-       "1793662575,0.54,0.56,1.0,",
-       "1793669309,0.54,0.56,1.0,",
-       "1793694598,0.53,0.57,94.0,",
-       "1793723385,0.55,0.56,88.0,",
-       "1793742944,0.55,0.56,566.24,",
-       "1793757713,0.55,0.56,566.24,",
        "1793785351,0.55,0.56,431.15,",
-       "1793814707,0.51,0.52,3332.98,",
-       "1793834710,0.51,0.52,2142.71,",
-       "1793849985,0.51,0.52,2142.71,",
-       "1793879976,0.5,0.51,4887.0,",
-       "1793908298,0.48,0.49,6242.0,",
-       "1793926457,0.48,0.49,737.06,",
-       "1793951219,0.48,0.49,6566.41,",
-       "1793980028,0.48,0.49,45088.19,",
-       "1794000175,0.48,0.49,66925.03,",
-       "1794013466,0.48,0.49,72555.48,",
-       "1794037176,0.48,0.49,60853.02,",
        "1794062803,0.48,0.49,229433.04,",
        "1794073626,0.46,0.47,88579.46,"
       ]
@@ -10874,7 +10870,7 @@
      "model_margin": 8.4,
      "open_margin": 3.0,
      "open_hcap": -3.0,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a18dd2-7583-7152-a2d5-2a4c39e99086:01a18dd2-7583-7152-a2d5-2a5e55c5fc24:1793879976",
      "created": "2026-11-01T21:50:47Z",
      "code_src": "name",
@@ -10890,27 +10886,7 @@
       "first_seen_ts": 1793569847,
       "snaps": [
        "1793569847,0.505,0.715,1414.92,1548.01",
-       "1793582539,0.585,0.715,1250.0,1251.0",
-       "1793606553,0.575,0.68,255.0,255.0",
-       "1793645007,0.595,0.67,2619.0,559.0",
-       "1793662575,0.58,0.655,1013.0,1155.0",
-       "1793669309,0.58,0.66,959.0,2955.0",
-       "1793694598,0.58,0.65,3266.0,1116.0",
-       "1793723385,0.61,0.63,4413.46,1851.72",
-       "1793742944,0.615,0.63,6598.16,3047.49",
-       "1793757713,0.615,0.635,5425.12,3064.09",
-       "1793785351,0.615,0.63,4612.7,3063.09",
-       "1793814707,0.61,0.63,6896.6,3878.72",
-       "1793834710,0.615,0.63,6857.14,6180.92",
-       "1793849985,0.595,0.62,4919.56,7933.44",
        "1793879976,0.59,0.615,5071.67,12257.39",
-       "1793908298,0.6,0.615,14067.85,10144.98",
-       "1793926457,0.585,0.595,5930.56,17103.83",
-       "1793951219,0.585,0.595,12101.1,10998.51",
-       "1793980028,0.595,0.6,13552.56,11784.55",
-       "1794000175,0.58,0.595,24417.09,16689.8",
-       "1794013466,0.585,0.6,26541.14,25529.75",
-       "1794037176,0.595,0.605,17855.47,30476.62",
        "1794062803,0.59,0.6,79719.49,85250.11"
       ]
      },
@@ -10924,27 +10900,7 @@
       "first_seen_ts": 1793569847,
       "snaps": [
        "1793569847,0.58,0.67,161.0,",
-       "1793582539,0.61,0.66,1.46,",
-       "1793606553,0.61,0.66,10.0,",
-       "1793645007,0.62,0.64,11.0,",
-       "1793662575,0.61,0.63,10.0,",
-       "1793669309,0.6,0.63,10.0,",
-       "1793694598,0.61,0.63,133.0,",
-       "1793723385,0.61,0.62,242.58,",
-       "1793742944,0.61,0.63,1766.78,",
-       "1793757713,0.62,0.63,527.62,",
-       "1793785351,0.62,0.63,661.92,",
-       "1793814707,0.61,0.63,2085.46,",
-       "1793834710,0.61,0.63,1746.32,",
-       "1793849985,0.6,0.61,1.0,",
        "1793879976,0.6,0.61,5862.0,",
-       "1793908298,0.6,0.61,116.03,",
-       "1793926457,0.58,0.59,879.52,",
-       "1793951219,0.58,0.59,3756.24,",
-       "1793980028,0.59,0.6,11733.9,",
-       "1794000175,0.58,0.59,5723.09,",
-       "1794013466,0.58,0.59,4821.96,",
-       "1794037176,0.59,0.6,699.5,",
        "1794062803,0.59,0.6,215120.88,"
       ]
      },
@@ -11005,7 +10961,8 @@
        "1794037176,0.575,0.595,12043.66,19018.47",
        "1794062803,0.575,0.585,22599.7,27335.59",
        "1794073626,0.565,0.58,33040.32,16152.99",
-       "1794079055,0.57,0.58,12201.11,14557.75"
+       "1794079055,0.57,0.58,12201.11,14557.75",
+       "1794092118,0.57,0.58,45959.6,34036.86"
       ]
      },
      "kalshi": {
@@ -11040,7 +10997,8 @@
        "1794037176,0.57,0.58,210.0,",
        "1794062803,0.57,0.58,4966.84,",
        "1794073626,0.57,0.58,12342.34,",
-       "1794079055,0.57,0.58,1488.52,"
+       "1794079055,0.57,0.58,1488.52,",
+       "1794092118,0.56,0.58,6509.36,"
       ]
      },
      "entry_ts": 1793879976
@@ -11062,7 +11020,7 @@
      "model_margin": 5.3,
      "open_margin": 1.5,
      "open_hcap": -1.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197e0-3c80-7652-8a62-9985c86a0953:01a197e0-3c80-7652-8a62-999c0869495b:1793879976",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -11207,7 +11165,7 @@
      "model_margin": 10.4,
      "open_margin": 4.5,
      "open_hcap": -4.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197e9-417c-7cb3-86b1-54800d338835:01a197e9-417c-7cb3-86b1-549e48ce215e:1793879976",
      "created": "2026-11-02T01:22:19Z",
      "code_src": "name",
@@ -11338,13 +11296,13 @@
    },
    "progress": {
     "pass_bar": {
-     "n": 32,
+     "n": 34,
      "n_needed": 60,
-     "to_go": 28,
-     "mean": -0.01875,
-     "sd": 0.0428,
-     "se": 0.00757,
-     "z": -2.478,
+     "to_go": 26,
+     "mean": -0.01721,
+     "sd": 0.0425,
+     "se": 0.00729,
+     "z": -2.361,
      "z_needed": 2.0,
      "status": "collecting",
      "rule": "mean profit per contract after spread > 0, z >= 2, over 60+ trades at 5+ point edges"
@@ -11352,40 +11310,40 @@
     "slices": {
      "3+": {
       "entered": 73,
-      "open": 13,
+      "open": 5,
       "no_exit_bid": 0,
       "exit": {
-       "n": 60,
-       "mean": -0.01708,
-       "sd": 0.04693,
-       "se": 0.00606,
-       "z": -2.819
+       "n": 68,
+       "mean": -0.01743,
+       "sd": 0.04545,
+       "se": 0.00551,
+       "z": -3.162
       },
       "hold": {
-       "n": 56,
-       "mean": 0.005,
-       "sd": 0.50813,
-       "se": 0.0679,
-       "z": 0.074
+       "n": 60,
+       "mean": -0.01692,
+       "sd": 0.50894,
+       "se": 0.0657,
+       "z": -0.257
       }
      },
      "5+": {
       "entered": 38,
-      "open": 6,
+      "open": 4,
       "no_exit_bid": 0,
       "exit": {
-       "n": 32,
-       "mean": -0.01875,
-       "sd": 0.0428,
-       "se": 0.00757,
-       "z": -2.478
+       "n": 34,
+       "mean": -0.01721,
+       "sd": 0.0425,
+       "se": 0.00729,
+       "z": -2.361
       },
       "hold": {
-       "n": 28,
-       "mean": 0.1575,
-       "sd": 0.46357,
-       "se": 0.08761,
-       "z": 1.798
+       "n": 32,
+       "mean": 0.09734,
+       "sd": 0.48497,
+       "se": 0.08573,
+       "z": 1.135
       }
      },
      "7+": {
@@ -11400,29 +11358,29 @@
        "z": -3.001
       },
       "hold": {
-       "n": 16,
-       "mean": 0.16594,
-       "sd": 0.45249,
-       "se": 0.11312,
-       "z": 1.467
+       "n": 17,
+       "mean": 0.12324,
+       "sd": 0.47218,
+       "se": 0.11452,
+       "z": 1.076
       }
      }
     },
     "monitor": {
      "improving": false,
-     "n": 32,
-     "prev_n": 32,
-     "prev_mean": -0.01875,
+     "n": 34,
+     "prev_n": 34,
+     "prev_mean": -0.01721,
      "note": null
     },
     "counts": {
      "entered": 73,
-     "open": 13,
-     "exited": 60,
+     "open": 5,
+     "exited": 68,
      "no_exit_bid": 0,
-     "stale_exits": 40,
-     "hold_graded": 56,
-     "hold_pending": 17
+     "stale_exits": 46,
+     "hold_graded": 60,
+     "hold_pending": 13
     }
    },
    "watch": [
@@ -13560,7 +13518,7 @@
      "open_hcap": 3.0,
      "strike": 3.5,
      "strike_distance": 0.5,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a197db-873d-7351-a2cd-bdbe2fc98691:01a197db-873d-7351-a2cd-bdca92c6f245:1793694598",
      "novig_listed_ts": 1793549109,
      "novig_first_seen_ts": 1793569847,
@@ -13568,8 +13526,8 @@
      "kalshi_first_seen_ts": 1793569847,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07TLSATULN-TLSA4",
      "kalshi_side": "no",
-     "novig_snaps": 23,
-     "kalshi_snaps": 23,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
       "ts": 1794062803,
       "bid": 0.54,
@@ -13597,7 +13555,7 @@
      "open_hcap": 6.5,
      "strike": 6.5,
      "strike_distance": 0.0,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a19604-ca3e-7ab0-b97a-bdd22114bcef:01a19604-ca3e-7ab0-b97a-bde26c767ede:1793785351",
      "novig_listed_ts": 1793518258,
      "novig_first_seen_ts": 1793569847,
@@ -13605,8 +13563,8 @@
      "kalshi_first_seen_ts": 1793569847,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07FSUBC-FSU7",
      "kalshi_side": "no",
-     "novig_snaps": 23,
-     "kalshi_snaps": 23,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
       "ts": 1794062803,
       "bid": 0.515,
@@ -13634,7 +13592,7 @@
      "open_hcap": -3.0,
      "strike": -2.5,
      "strike_distance": 0.5,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a18dd2-7583-7152-a2d5-2a4c39e99086:01a18dd2-7583-7152-a2d5-2a5e55c5fc24:1793879976",
      "novig_listed_ts": 1793380742,
      "novig_first_seen_ts": 1793569847,
@@ -13642,8 +13600,8 @@
      "kalshi_first_seen_ts": 1793569847,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07BYUUTAH-UTAH3",
      "kalshi_side": "yes",
-     "novig_snaps": 23,
-     "kalshi_snaps": 23,
+     "novig_snaps": 3,
+     "kalshi_snaps": 3,
      "novig_last": {
       "ts": 1794062803,
       "bid": 0.59,
@@ -13671,7 +13629,7 @@
      "open_hcap": 6.5,
      "strike": 6.5,
      "strike_distance": 0.0,
-     "state": "exited",
+     "state": "graded",
      "trade_id": "novig:01a195fc-b359-7941-ba81-fe5f747d477b:01a195fc-b359-7941-ba81-fe61973e6141:1793785351",
      "novig_listed_ts": 1793517728,
      "novig_first_seen_ts": 1793569847,
@@ -13679,8 +13637,8 @@
      "kalshi_first_seen_ts": 1793606553,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07OKSTKSU-OKST7",
      "kalshi_side": "no",
-     "novig_snaps": 24,
-     "kalshi_snaps": 22,
+     "novig_snaps": 4,
+     "kalshi_snaps": 4,
      "novig_last": {
       "ts": 1794073626,
       "bid": 0.46,
@@ -13708,7 +13666,7 @@
      "open_hcap": 3.0,
      "strike": 3.5,
      "strike_distance": 0.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197d1-814f-7b31-ac81-b0375e5159d6:01a197d1-814f-7b31-ac81-b041a24132e8:1793606553",
      "novig_listed_ts": 1793548452,
      "novig_first_seen_ts": 1793582539,
@@ -13745,7 +13703,7 @@
      "open_hcap": 6.5,
      "strike": 6.5,
      "strike_distance": 0.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a1958c-daf1-79a3-ba8d-80c193f9a535:01a1958c-daf1-79a3-ba8d-80ebb206808a:1793694598",
      "novig_listed_ts": 1793510398,
      "novig_first_seen_ts": 1793582539,
@@ -13782,7 +13740,7 @@
      "open_hcap": -6.0,
      "strike": -5.5,
      "strike_distance": 0.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a1954f-a3dc-7602-ad1a-0b2194af4dc3:01a1954f-a3dc-7602-ad1a-0b30343658ee:1793606553",
      "novig_listed_ts": 1793393880,
      "novig_first_seen_ts": 1793582539,
@@ -13819,7 +13777,7 @@
      "open_hcap": -1.5,
      "strike": -1.5,
      "strike_distance": 0.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197e0-3c80-7652-8a62-9985c86a0953:01a197e0-3c80-7652-8a62-999c0869495b:1793879976",
      "novig_listed_ts": 1793549417,
      "novig_first_seen_ts": 1793582539,
@@ -13856,7 +13814,7 @@
      "open_hcap": -2.5,
      "strike": -2.5,
      "strike_distance": 0.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a195ef-e1f3-7512-ba69-33ceb734db6e:01a195ef-e1f3-7512-ba69-33d7ed2caab8:1793606553",
      "novig_listed_ts": 1793516888,
      "novig_first_seen_ts": 1793582539,
@@ -13893,7 +13851,7 @@
      "open_hcap": -4.5,
      "strike": -4.5,
      "strike_distance": 0.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197e9-417c-7cb3-86b1-54800d338835:01a197e9-417c-7cb3-86b1-549e48ce215e:1793879976",
      "novig_listed_ts": 1793550008,
      "novig_first_seen_ts": 1793582539,
@@ -13930,7 +13888,7 @@
      "open_hcap": -3.0,
      "strike": -2.5,
      "strike_distance": 0.5,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a19588-4711-7a81-874f-060f86b2e403:01a19588-4711-7a81-874f-061c06c7fc18:1793785351",
      "novig_listed_ts": 1793510098,
      "novig_first_seen_ts": 1793582539,
@@ -13967,7 +13925,7 @@
      "open_hcap": -5.5,
      "strike": -5.5,
      "strike_distance": 0.0,
-     "state": "entered",
+     "state": "exited",
      "trade_id": "novig:01a197da-aab9-7272-88cc-e529806db8b2:01a197da-aab9-7272-88cc-e53ae7aff102:1793694598",
      "novig_listed_ts": 1793549052,
      "novig_first_seen_ts": 1793582539,
@@ -14012,17 +13970,17 @@
      "kalshi_first_seen_ts": 1793582539,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07LOUGT-LOU14",
      "kalshi_side": "no",
-     "novig_snaps": 24,
-     "kalshi_snaps": 24,
+     "novig_snaps": 25,
+     "kalshi_snaps": 25,
      "novig_last": {
-      "ts": 1794079055,
-      "bid": 0.45,
-      "ask": 0.46,
-      "ask_size": 59295.71,
-      "bid_size": 45719.56
+      "ts": 1794092118,
+      "bid": 0.445,
+      "ask": 0.465,
+      "ask_size": 49745.93,
+      "bid_size": 60004.39
      },
      "kalshi_last": {
-      "ts": 1794079055,
+      "ts": 1794092118,
       "bid": 0.44,
       "ask": 0.45,
       "ask_size": 53.61,
@@ -14049,14 +14007,14 @@
      "kalshi_first_seen_ts": 1793606553,
      "kalshi_ticker": null,
      "kalshi_side": null,
-     "novig_snaps": 23,
+     "novig_snaps": 24,
      "kalshi_snaps": 0,
      "novig_last": {
-      "ts": 1794079055,
+      "ts": 1794092118,
       "bid": 0.6,
-      "ask": 0.645,
-      "ask_size": 7600.0,
-      "bid_size": 6600.0
+      "ask": 0.635,
+      "ask_size": 19750.0,
+      "bid_size": 19832.0
      },
      "kalshi_last": null
     },
@@ -14080,20 +14038,20 @@
      "kalshi_first_seen_ts": 1793582539,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07AFAARMY-ARMY7",
      "kalshi_side": "no",
-     "novig_snaps": 24,
-     "kalshi_snaps": 24,
+     "novig_snaps": 25,
+     "kalshi_snaps": 25,
      "novig_last": {
-      "ts": 1794079055,
+      "ts": 1794092118,
       "bid": 0.57,
       "ask": 0.58,
-      "ask_size": 12201.11,
-      "bid_size": 14557.75
+      "ask_size": 45959.6,
+      "bid_size": 34036.86
      },
      "kalshi_last": {
-      "ts": 1794079055,
-      "bid": 0.57,
+      "ts": 1794092118,
+      "bid": 0.56,
       "ask": 0.58,
-      "ask_size": 1488.52,
+      "ask_size": 6509.36,
       "bid_size": null
      }
     },
@@ -14117,14 +14075,14 @@
      "kalshi_first_seen_ts": 1793645007,
      "kalshi_ticker": null,
      "kalshi_side": null,
-     "novig_snaps": 22,
+     "novig_snaps": 23,
      "kalshi_snaps": 0,
      "novig_last": {
-      "ts": 1794079055,
-      "bid": 0.575,
-      "ask": 0.58,
-      "ask_size": 32508.66,
-      "bid_size": 7725.13
+      "ts": 1794092118,
+      "bid": 0.56,
+      "ask": 0.565,
+      "ask_size": 8692.63,
+      "bid_size": 30260.92
      },
      "kalshi_last": null
     },
@@ -14148,25 +14106,25 @@
      "kalshi_first_seen_ts": 1793645007,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV07WYOUNLV-UNLV9",
      "kalshi_side": "no",
-     "novig_snaps": 22,
-     "kalshi_snaps": 22,
+     "novig_snaps": 23,
+     "kalshi_snaps": 23,
      "novig_last": {
-      "ts": 1794079055,
-      "bid": 0.67,
-      "ask": 0.69,
-      "ask_size": 4522.75,
-      "bid_size": 6064.0
-     },
-     "kalshi_last": {
-      "ts": 1794079055,
+      "ts": 1794092118,
       "bid": 0.67,
       "ask": 0.68,
-      "ask_size": 417.0,
+      "ask_size": 3697.99,
+      "bid_size": 7809.0
+     },
+     "kalshi_last": {
+      "ts": 1794092118,
+      "bid": 0.67,
+      "ask": 0.68,
+      "ask_size": 3172.24,
       "bid_size": null
      }
     }
    ],
-   "updated": "2026-11-07T19:17:35Z",
+   "updated": "2026-11-07T22:55:18Z",
    "version": 1,
    "config": {
     "min_week": 7,
@@ -14180,9 +14138,9 @@
     "fees": 0
    },
    "last_run": {
-    "ts": "2026-11-07T19:17:35Z",
+    "ts": "2026-11-07T22:55:18Z",
     "notes": [],
-    "novig_requests": 14,
+    "novig_requests": 6,
     "novig_errors": 0
    }
   }
