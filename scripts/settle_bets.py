@@ -357,7 +357,7 @@ def _overlay_espn(out, season):
 def actual_for(actuals, name, week, market):
     cols = COL.get(market)
     if not cols: return None
-    wk = actuals.get(name)
+    wk = actual_row(actuals, name)
     if not wk: return None
     row = wk.get(int(week))
     if not row: return None
@@ -368,8 +368,125 @@ def actual_for(actuals, name, week, market):
             tot += v; seen = True
     return tot if seen else None
 
-def games_played(actuals, name, before_week):
+def actual_row(actuals, name):
+    """The player's box-score weeks, by name or, when the board and box score spell it differently ("Chris Godwin" vs
+    "Chris Godwin Jr."), by the loose key. Same join as the Sharp Money prop ledger's actualOf."""
     wk = actuals.get(name)
+    if wk is None and actuals:
+        ix = _NKEY_IX.get(id(actuals))
+        if ix is None or ix[0] is not actuals:
+            ix = _NKEY_IX[id(actuals)] = (actuals, {_jkey(k): k for k in actuals})
+        k = ix[1].get(_jkey(name))
+        wk = actuals.get(k) if k else None
+    return wk
+_NKEY_IX = {}
+
+def _jkey(s):
+    """build-props-board.mjs nkey: lower case, generational suffix dropped, letters only."""
+    import re, unicodedata
+    s = unicodedata.normalize("NFD", str(s or "")).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z]", "", re.sub(r"\b(jr|sr|ii|iii|iv|v)\b\.?", "", s))
+
+
+# ── NFL settle: whether a player missing from the box score played ─────────────
+# Same rule as scripts/track-prop-plays.mjs. A box score lists only players who recorded a stat, so a missing row is not a DNP: once
+# the team's game is in the box, Sleeper's weekly stats say whether the player took a snap. Played = graded on Sleeper's number (a stat
+# it omits is 0); not played = not settled (the prop is void). Sleeper's ids are the board's pids.
+# The week stays the record's own. Unlike a Sharp Money play, a history record is one key per board week: one that lagged the slate
+# holds its own game's open plus later samples of the next game, and its commence/opp are overwritten by the last sample. The close is
+# already cut at the stored week's kickoff (pregame_prop_close), so the stored week is the game it grades.
+def nfl_week_start(season):
+    """Week 1 opens the Tuesday after Labor Day, 12:00 UTC; weeks turn over then, after Monday night."""
+    import datetime
+    y = int(season)
+    labor = datetime.datetime(y, 9, 1 + (7 - datetime.date(y, 9, 1).weekday()) % 7, tzinfo=datetime.timezone.utc)
+    return labor + datetime.timedelta(hours=36)
+
+SLEEPER_WEEK = "https://api.sleeper.app/v1/stats/nfl/regular/{season}/{week}"
+SLEEPER_COL = {
+    "pass_yd": ("pass_yd",), "pass_att": ("pass_att",), "pass_cmp": ("pass_cmp",), "pass_td": ("pass_td",), "pass_int": ("pass_int",),
+    "rush_yd": ("rush_yd",), "rush_att": ("rush_att",), "rush_td": ("rush_td",), "rec": ("rec",), "rec_yd": ("rec_yd",), "rec_td": ("rec_td",),
+    "anytime_td": ("rush_td", "rec_td"), "rush_rec_yd": ("rush_yd", "rec_yd"), "pass_rush_yd": ("pass_yd", "rush_yd"),
+}
+SNAP_KEEP = ("gp", "off_snp", "gms_active") + tuple(sorted({c for cs in SLEEPER_COL.values() for c in cs}))
+SNAP_SETTLE_DAYS = 4      # a week's Sleeper read is refreshed until this long after the week ends (stat corrections), then kept as is
+BOX_TEAM = {"LAR": "LA", "WSH": "WAS", "JAC": "JAX", "LVR": "LV", "OAK": "LV", "ARZ": "ARI"}
+
+def teams_in_box(actuals):
+    """{week: {team}} whose game is in the box: an opponent has a row that week against it."""
+    out = defaultdict(set)
+    for wk in actuals.values():
+        for w, row in wk.items():
+            if row.get("opp"): out[w].add(BOX_TEAM.get(row["opp"], row["opp"]))
+    return out
+
+def sleeper_get(season, week):
+    try:
+        with urllib.request.urlopen(SLEEPER_WEEK.format(season=season, week=week), timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        print(f"[settle] Sleeper {season} wk{week} fetch failed ({e})")
+        return None
+
+class SleeperSnaps:
+    """Sleeper's weekly line for the players a box score left out, kept in data/sleeper_snaps_<season>.json so the rebuild stays
+    deterministic: a week is read again only while it can still change (SNAP_SETTLE_DAYS after it ends) or when a player it has not
+    stored is asked for. A stored null = not on Sleeper's sheet that week (did not play). Sleeper down = that prop waits."""
+    def __init__(self, season, get=sleeper_get, now=None):
+        import datetime
+        self.season, self.get, self.dirty, self.fresh = str(season), get, False, {}
+        self.now = now or datetime.datetime.now(datetime.timezone.utc)
+        self.path = os.path.join(DATA, f"sleeper_snaps_{self.season}.json")
+        try:
+            with open(self.path) as f:
+                self.weeks = json.load(f).get("weeks") or {}
+        except Exception:
+            self.weeks = {}
+
+    def _settled(self, week):
+        """True once a week can no longer change on Sleeper."""
+        import datetime
+        start = nfl_week_start(self.season)
+        return self.now >= start + datetime.timedelta(days=7 * week + SNAP_SETTLE_DAYS)
+
+    def player(self, week, pid):
+        """(known, row): row None = not on the sheet. known False = no read yet."""
+        if not (1 <= week <= 18): return False, None
+        pid, W = str(pid), self.weeks.get(str(week))
+        if week not in self.fresh and (W is None or pid not in W["p"] or not self._settled(week)):
+            d = self.get(self.season, week)
+            self.fresh[week] = d if d and any(isinstance(r, dict) and (r.get("gp") or 0) > 0 for r in d.values()) else None
+        d = self.fresh.get(week)
+        if d is not None:                  # read this run: answer from it, and store what was asked
+            r = d.get(pid)
+            row = {k: r[k] for k in SNAP_KEEP if r.get(k) is not None} if isinstance(r, dict) else None
+            W = self.weeks.setdefault(str(week), {"p": {}})
+            if pid not in W["p"] or W["p"][pid] != row:
+                W["p"][pid] = row; self.dirty = True
+        if W is None or pid not in W["p"]: return False, None
+        return True, W["p"][pid]
+
+    def save(self):
+        if not self.dirty: return
+        weeks = {k: {"p": dict(sorted(v["p"].items()))} for k, v in sorted(self.weeks.items(), key=lambda kv: int(kv[0]))}
+        with open(self.path, "w") as f:
+            json.dump({"season": self.season, "source": "https://api.sleeper.app/v1/stats/nfl/regular/<season>/<week>", "weeks": weeks}, f, separators=(",", ":"))
+
+def sleeper_actual(snaps, in_box, week, pid, team, market):
+    """(value, why): value graded from Sleeper, or None with why 'dnp' (did not play) / 'wait' (not known yet)."""
+    if snaps is None or BOX_TEAM.get(team, team) not in in_box.get(int(week), ()):
+        return None, "wait"
+    known, row = snaps.player(int(week), pid)
+    if not known: return None, "wait"
+    if not row or not ((row.get("gp") or 0) > 0 or (row.get("off_snp") or 0) > 0):
+        return None, "dnp"
+    cols = SLEEPER_COL.get(market)
+    if not cols: return None, "wait"
+    return float(sum(row.get(c) or 0 for c in cols)), None
+
+
+def games_played(actuals, name, before_week):
+    wk = actual_row(actuals, name)
     return sum(1 for w in wk if w < before_week) if wk else 0
 
 
@@ -483,7 +600,8 @@ def build_grade_recal(prop_picks):
 
 
 # ── prop settlement ─────────────────────────────────────────────────────────
-def settle_props(season_filter=None):
+def settle_props(season_filter=None, snaps_for=None):
+    """snaps_for(season) -> SleeperSnaps, or None to settle from box scores only. main() passes the stored, refreshed Sleeper reads."""
     try:
         blob = json.load(open(os.path.join(DATA, "prop_line_history.json")))
     except Exception:
@@ -507,6 +625,8 @@ def settle_props(season_filter=None):
     leans = load_team_leans()
     kickoffs = load_kickoffs()
     picks, unmatched, unsettled = [], 0, 0
+    n_sleeper = n_dnp = 0
+    in_box_cache = {}
     n_kick = n_clamped = n_no_pregame = 0
 
     for r in dedup.values():
@@ -529,11 +649,18 @@ def settle_props(season_filter=None):
             actuals_cache[prior] = load_actuals(prior)
         prior_actuals = actuals_cache.get(prior, {})
 
-        actual = actual_for(actuals, name, week, market)
-        if actual is None:            # game not played yet, or name didn't join
-            unsettled += 1
-            if name not in actuals: unmatched += 1
-            continue
+        actual, actual_src = actual_for(actuals, name, week, market), None
+        if actual is None:            # no box-score row: not played yet, did not play, or played and recorded no stat
+            snaps = snaps_for(season) if snaps_for else None
+            if season not in in_box_cache: in_box_cache[season] = teams_in_box(actuals)
+            actual, why = sleeper_actual(snaps, in_box_cache[season], week, r.get("pid"), r.get("team"), market)
+            if actual is None:
+                if why == "dnp": n_dnp += 1
+                else:
+                    unsettled += 1
+                    if actual_row(actuals, name) is None: unmatched += 1
+                continue
+            actual_src = "sleeper"; n_sleeper += 1
 
         opn = r.get("open") or {}
         # Close = last snapshot before kickoff (games.csv by team; the record's
@@ -666,6 +793,7 @@ def settle_props(season_filter=None):
 
         picks.append({
             "kind": "prop", "season": season, "seasonType": seasonType, "week": week,
+            **({"actual_src": actual_src} if actual_src else {}),
             "pid": r.get("pid"), "name": name, "team": r.get("team"), "pos": r.get("pos"),
             "opp": r.get("opp"), "market": market, "side": side,
             "line_open": line_o, "line_close": line_c, "proj": proj, "actual": actual,
@@ -701,6 +829,7 @@ def settle_props(season_filter=None):
         })
 
     return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks),
+                   "settled_from_sleeper": n_sleeper, "did_not_play": n_dnp,
                    "kickoff_known": n_kick, "close_before_kickoff": n_clamped,
                    "no_pregame_line": n_no_pregame}
 
@@ -1280,9 +1409,8 @@ def _grade_plays(picks, prop_picks):
     by_key = {(str(p.get("season")), p.get("week"), str(p.get("pid")), p.get("market")): p for p in prop_picks}
     # A team whose props have settled this week has played; a card player on it
     # with no box score sat out, and books void the bet (result "V", 0 units).
-    # Caveat: a player who dressed but recorded no stat also has no row; for the
-    # yardage/catch markets the card plays that is rare (Wk1-3 voids were all
-    # confirmed inactive), but check a V against the injury report if in doubt.
+    # A player who dressed and recorded no stat also has no row: the ledger
+    # carries his Sleeper-graded 0 (settle_props), so the join below reads it.
     team_done = {(str(p.get("season")), p.get("week"), p.get("team")) for p in prop_picks if p.get("actual") is not None}
     actuals_cache, out = {}, []
     for c in picks:
@@ -1667,7 +1795,8 @@ def main():
     ap.add_argument("--dry", action="store_true")
     args = ap.parse_args()
 
-    prop_picks, pmeta = settle_props(args.season)
+    snaps = {}
+    prop_picks, pmeta = settle_props(args.season, snaps_for=lambda season: snaps.setdefault(season, SleeperSnaps(season)))
     n_wh = tag_withheld(prop_picks)
     if n_wh: print(f"[settle] withheld-player ledger rows: {n_wh}")
     anchor_w = anchor_shadow(prop_picks)
@@ -1772,6 +1901,7 @@ def main():
 
     if args.dry:
         print("[settle] --dry: not written"); return
+    for sn in snaps.values(): sn.save()
     json.dump(ledger, open(os.path.join(DATA, "bet_results.json"), "w"))
     json.dump(scoreboard, open(os.path.join(DATA, "edge_scoreboard.json"), "w"))
     json.dump(recal, open(os.path.join(DATA, "grade_recal.json"), "w"))
