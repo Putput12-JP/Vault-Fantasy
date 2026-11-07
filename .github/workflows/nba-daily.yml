@@ -2,6 +2,7 @@
 #
 # Everything the Minutes Lab and Player Props pages read that changes day to day during the season:
 #   fetch_hoopr.py            box scores + schedules (sportsdataverse, rebuilt nightly in season)
+#   fetch_espn_box.py         fills finished games hoopR has not published yet, from ESPN game summaries (last 3 days)
 #   fetch_depth_charts.py     current rosters and depth charts (ESPN)
 #   build_player_projections  default minutes (follow this season's minutes once games are played) and rates
 #   build_gamelogs            per-player game logs: L5 / L10 / L20 / season / H2H hit rates
@@ -45,6 +46,12 @@ jobs:
           Y=$(date -u +%Y); M=$(date -u +%m)
           CUR=$(( 10#$M >= 8 ? Y + 1 : Y ))        # season label = the year it ends
           python3 nba/scripts/fetch_hoopr.py $((CUR-3)) $((CUR-2)) $((CUR-1)) $CUR
+
+      # hoopR rebuilds once a night and can land after the morning run. Fill any finished game it has not published from ESPN's game
+      # summary (the source hoopR is built from); the next fetch_hoopr replaces those rows with hoopR's own.
+      - name: Box score fallback (ESPN, last 3 days)
+        continue-on-error: true
+        run: python3 nba/scripts/fetch_espn_box.py
 
       - name: Box score gap check
         run: python3 nba/scripts/check_box_freshness.py
