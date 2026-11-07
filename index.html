@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-11-06T17:00', tag:'Fixed', title:'NBA prop charts: numbers no longer overlap',
+    items:[
+      'The Vault projection tag has its own space at the right edge, so it never covers the last game.',
+      'Numbers that sit on the line or projection line stay readable.',
+      'When a made number would touch its attempts label, they show together, like 1/3 att.'
+    ]
+  },
+  {
     ts:'2026-11-06T16:30', tag:'Improved', title:'NBA prop charts: attempts and every part labeled',
     items:[
       'On a 3PM, FGM or FTM prop, a dashed outline behind each bar shows the attempts that game, so a cold night on 9 tries reads differently from 1 try.',
