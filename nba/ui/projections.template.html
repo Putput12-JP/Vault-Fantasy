@@ -5177,8 +5177,10 @@ function pbClick(e, again){
   if (sb){
     const k = sb.dataset.pbstar, r = pbRow(k);
     if (r && !r.sharp) r.sharp = pvSharp(r);            // Player Props rows carry it; the snapshot a watch compares against reads it
-    if (pvW[k]) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
-    pvSave(); again(); pvToast(pvW[k] ? 'Watching. Switch on Watching only above the table to see your watched props.' : 'No longer watching.'); return true;
+    const side = sb.dataset.pbside || null, w = pvW[k], sw = s => s === 'o' ? 'over' : 'under';   // the Props Table page stars one side
+    if (w && side && w.side !== side){ w.side = side; pvSave(); again(); pvToast(`Watching the ${sw(side)} only.`); return true; }
+    if (w) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, side, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
+    pvSave(); again(); pvToast(pvW[k] ? `Watching${side ? ` the ${sw(side)}` : ''}. Switch on Watching above the table to see your watched props.` : 'No longer watching.'); return true;
   }
   if (t.closest('[data-pbbets]')){ goView('mybets'); return true; }
   return false;
