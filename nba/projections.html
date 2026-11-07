@@ -3767,9 +3767,10 @@ window.PBX = (() => {
     gl = gl.slice(0, 30).reverse();
     if (!gl.length) return '<p class="empty" style="padding:24px">No games in this window.</p>';
     const W = innerWidth < 760 ? 440 : 860, H = (innerWidth < 760 ? 230 : 260) + (COMBO[s] ? 40 : 0), padL = 42, padB = 40, padT = 18, n = gl.length, gk = GHOST[s];
+    const padR = mu != null ? 84 : 8;   // the Vault tag gets its own margin, like the line tag on the left, so no bar or number sits under it
     const vals = gl.map(g => gval(g, s)), ghost = gl.map(g => gk ? g[GI[gk]] : null);
     const max = Math.max(...vals, ...ghost.filter(v => v != null), line, mu || 0) * 1.15 || 1, y = v => padT + (H - padT - padB) * (1 - v / max);
-    const bw = Math.min(56, (W - padL) / n * .72), step = (W - padL) / n;
+    const bw = Math.min(56, (W - padL - padR) / n * .72), step = (W - padL - padR) / n;
     let o = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${SLABEL[s]} by game against the line of ${line}">`;
     for (let i = 0; i <= 4; i++){ const v = max / 1.15 * i / 4; o += `<line class="gl" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/>` + (Math.abs(y(v) - y(line)) > 12 ? `<text class="ax" x="${padL - 8}" y="${y(v) + 3}" text-anchor="end">${+v.toFixed(1)}</text>` : ''); }
     gl.forEach((g, i) => {
@@ -3777,7 +3778,7 @@ window.PBX = (() => {
       const att = s === 'pts' ? `${g[GI.fgm]}/${g[GI.fga]} FG, ${g[GI['3pm']]}/${g[GI.tpa]} 3PT, ${g[GI.ftm]}/${g[GI.fta]} FT` : gk ? `${v}/${gv} ${SLABEL[gk]}` : parts.length > 1 ? parts.map(k => `${g[GI[k]]} ${SLABEL[k]}`).join(', ') : '';
       o += `<g><title>${gdate(g[0])} ${g[3] ? 'vs' : '@'} ${opp}: ${v} ${SLABEL[s]} in ${g[MIN_I]} min${att ? ` (${att})` : ''}</title>`;
       // attempts ghost sits behind the made bar; its number goes on top when there were misses
-      if (gv != null && gv > 0) o += `<rect class="gh" x="${x}" y="${y(gv)}" width="${bw}" height="${Math.max(0, y(0) - y(gv))}" rx="3"/>` + (gv > v ? `<text class="gt" x="${cx}" y="${y(gv) - 5}" text-anchor="middle">${gv} att</text>` : '');
+      if (gv != null && gv > 0) o += `<rect class="gh" x="${x}" y="${y(gv)}" width="${bw}" height="${Math.max(0, y(0) - y(gv))}" rx="3"/>`;
       if (parts.length > 1){
         let acc = 0;
         parts.forEach((k, j) => {
@@ -3793,11 +3794,14 @@ window.PBX = (() => {
       else o += `<rect class="b ${cls}0" x="${x}" y="${y(v)}" width="${bw}" height="${Math.max(2, y(0) - y(v))}" rx="3"/>`;
       // points: the shots behind them, printed inside the base of the bar
       if (s === 'pts' && g[GI.fga] != null && y(0) - y(v) >= 30 && bw >= 30) o += `<text class="sg" x="${cx}" y="${y(0) - 16}" text-anchor="middle">${g[GI.fgm]}/${g[GI.fga]}</text><text class="sg sk" x="${cx}" y="${y(0) - 6}" text-anchor="middle">FG</text>`;
-      const lbY = gv != null && gv > v && y(v) - y(gv) < 14 ? y(v) + 12 : y(v) - 5;   // keep the made number clear of the ghost label
-      o += `<text class="lb${lbY > y(v) ? ' in' : ''}" x="${cx}" y="${lbY}" text-anchor="middle">${v}</text><text class="ax" x="${cx}" y="${H - padB + 15}" text-anchor="middle">${gdate(g[0])}</text><text class="ax" x="${cx}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? 'vs' : '@'} ${opp}</text></g>`;
+      // keep the made number clear of the ghost label: inside the bar when it is tall enough, else merged into one "made/att" label
+      const near = gv != null && gv > v && y(v) - y(gv) < 14, inside = near && y(0) - y(v) >= 16;
+      if (gv != null && gv > v) o += `<text class="gt" x="${cx}" y="${y(gv) - 5}" text-anchor="middle">${near && !inside ? `<tspan class="gm">${v}</tspan>/` : ''}${gv} att</text>`;
+      if (!near || inside) o += `<text class="lb${inside ? ' in' : ''}" x="${cx}" y="${inside ? y(v) + 12 : y(v) - 5}" text-anchor="middle">${v}</text>`;
+      o += `<text class="ax" x="${cx}" y="${H - padB + 15}" text-anchor="middle">${gdate(g[0])}</text><text class="ax" x="${cx}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? 'vs' : '@'} ${opp}</text></g>`;
     });
     o += `<line class="ln" x1="${padL}" x2="${W}" y1="${y(line)}" y2="${y(line)}"/><rect class="tg" x="0" y="${y(line) - 9}" width="38" height="18" rx="4"/><text class="tt" x="19" y="${y(line) + 4}" text-anchor="middle">${line}</text>`;
-    if (mu != null) o += `<line class="vl" x1="${padL}" x2="${W}" y1="${y(mu)}" y2="${y(mu)}"/><rect class="vtg" x="${W - 76}" y="${y(mu) - 9}" width="76" height="18" rx="4"/><text class="vtt" x="${W - 38}" y="${y(mu) + 4}" text-anchor="middle">Vault ${fmt(mu)}</text>`;
+    if (mu != null) o += `<line class="vl" x1="${padL}" x2="${W}" y1="${y(mu)}" y2="${y(mu)}"/><rect class="vtg" x="${W - 78}" y="${y(mu) - 9}" width="76" height="18" rx="4"/><text class="vtt" x="${W - 39}" y="${y(mu) + 4}" text-anchor="middle">Vault ${fmt(mu)}</text>`;
     return o + '</svg>';
   }
   // chart key: what the ghost, the segments and the inside numbers mean for this stat
@@ -4369,6 +4373,9 @@ window.PBX = (() => {
 .pbx-chart .gh{fill:rgb(var(--ink) / .04);stroke:rgb(var(--ink) / .42);stroke-width:1.2;stroke-dasharray:3 3}
 .pbx-chart .gt{font:500 10px var(--font-sans);fill:var(--fg3)}
 .pbx-chart .lb.in{fill:#0b0b0c}
+/* numbers sitting on a dashed line get a halo in the card colour so the line never runs through them */
+.pbx-chart :is(.lb:not(.in),.gt,.so){paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+.pbx-chart .gt .gm{font-weight:700;fill:var(--fg)}
 .pbx-chart .sg{font:700 10px var(--font-mono);fill:rgb(0 0 0 / .78);pointer-events:none}.pbx-chart .sg .sk,.pbx-chart .sg.sk{font-weight:500;fill:rgb(0 0 0 / .55)}
 .pbx-chart .sg.lt{fill:rgb(255 255 255 / .9)}.pbx-chart .sg.lt .sk{fill:rgb(255 255 255 / .65)}
 /* light theme: the bars are dark green / red, so the numbers inside them go white */
