@@ -60,13 +60,19 @@ export function ledgerKey(c) {
 /* ---- one row per pick, even when the start time drifts ----
    A prop id carries the start second, and the feeds do not always agree on it: the Nov 5 2026 Thursday game read 7:15 PM from one poll and 7:16 PM
    from the next, so the same pick was logged twice (65 rows across the three ledgers, every one exactly 60 seconds apart). A prop is the same pick
-   as a stored one when player, market, line and side match and the starts are within SAME_GAME of each other; no player has two games that close. */
+   as a stored one when player, market, line and side match and the starts are within SAME_GAME of each other; no player has two games that close.
+   A game pick can be logged once per kind: the sportsbook row is keyed by its title ("Raptors to win") and the exchange row by its label ("TOR"),
+   so TOR @ MIL on Nov 6 2026 was logged at DraftKings -239 and again at Novig -257. A game is the same pick when game, market, side (home / away /
+   over / under) and line match; a different line is a different pick. */
 export const SAME_GAME = 6 * 3600;
 const pickOf = r => [r.pid, r.mkt, r.line, r.side].join('|');
+const gamePickOf = (gk, g) => ['g', gk, g.m, g.side, g.hline, g.line].join('|');
+const rowPick = r => r.prop ? pickOf(r.prop) : r.game ? gamePickOf(r.game.gk, r.game) : null;
 function pickIndex(L) {
   const ix = new Map();
-  for (const r of Object.values(L.plays)) if (r && r.kind === 'prop' && r.prop) {
-    const k = pickOf(r.prop); if (!ix.has(k)) ix.set(k, []); ix.get(k).push(r);
+  for (const r of Object.values(L.plays)) {
+    const k = r && rowPick(r); if (!k) continue;
+    if (!ix.has(k)) ix.set(k, []); ix.get(k).push(r);
   }
   return ix;
 }
@@ -114,7 +120,8 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
     if (c.capPending) continue;                                  // an NBA prop in tonight's top 5 before the lock (gates.js NBA_CAP): logged at the lock, not now
     const id = ledgerKey(c);
     if (L.plays[id]) continue;
-    if (c.kind === 'prop' && sameGame(ix.get(pickOf({ pid: c.row.pid, mkt: c.row.mkt, line: c.row.line, side: c.side })), c.start)) continue;   // already logged under a drifted start
+    const pk = c.kind === 'prop' ? pickOf({ pid: c.row.pid, mkt: c.row.mkt, line: c.row.line, side: c.side }) : gamePickOf(c.gk, gamePick(c));
+    if (sameGame(ix.get(pk), c.start)) continue;                 // already logged: a drifted start, or the same game pick at a sportsbook and an exchange
     const refs = c.refs.map(r => ({ n: r.n, p: r4(r.p), edge: r4(r.edge) }));
     const first = {
       title: c.title, sub: c.sub, market: c.market, price: { am: c.price.am, p: r4(c.price.p), book: c.price.book, ...(c.price.shop ? { shop: c.price.shop } : {}), ...(c.sport === 'nba' && c.kind === 'prop' ? { kal: !!c.price.kal } : {}) },
@@ -132,7 +139,7 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
       if (c.kind === 'exch') first.edgeGenerated = edgeGenerated;
     }
     L.plays[id] = row; added.push(id);
-    if (row.prop) { const k = pickOf(row.prop); if (!ix.has(k)) ix.set(k, []); ix.get(k).push(row); }
+    if (!ix.has(pk)) ix.set(pk, []); ix.get(pk).push(row);
   }
   return added;
 }

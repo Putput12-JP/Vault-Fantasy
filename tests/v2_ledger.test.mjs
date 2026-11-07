@@ -273,3 +273,25 @@ test('the prop close is found when the stored start is off the tape kickoff by a
   assert.equal(cl.p, 0.6, 'under = 1 - P(over)');
   assert.equal(propClose(T, { ...play, start: ko + 7 * 3600 }), null, 'a start 7h off is another game');
 });
+
+/* Nov 6 2026: TOR @ MIL moneyline was logged at DraftKings -239 (id keyed by the title "Raptors to win") and at Novig -257 (keyed by the label "TOR"). */
+test('a game pick is logged once whether a sportsbook or an exchange hangs it', async () => {
+  const { mergeDupPicks } = await import('../scripts/track-v2-plays.mjs');
+  const game = { gk: 'nba:295191', away: 'TOR', home: 'MIL', m: 'ml', side: 'away', hline: null, line: null };
+  const D = fresh();
+  D.plays['b|nba:295191|ml|away|Raptors to win'] = { id: 'b|nba:295191|ml|away|Raptors to win', kind: 'book', sport: 'nba', start: 1794013200, firstSeen: 1793923032, status: 'open', first: { price: { am: -239, p: 0.705 } }, game };
+  D.plays['e|nba:295191|ml|TOR|'] = { id: 'e|nba:295191|ml|TOR|', kind: 'exch', sport: 'nba', start: 1794013200, firstSeen: 1793927841, status: 'open', first: { price: { am: -257, p: 0.72 } }, game };
+  D.plays['e|nba:295191|sp|TOR -6.5|-6.5'] = { id: 'e|nba:295191|sp|TOR -6.5|-6.5', kind: 'exch', sport: 'nba', start: 1794013200, firstSeen: 1793927841, status: 'open', first: { price: { p: 0.52 } }, game: { ...game, m: 'sp', hline: 6.5 } };
+  assert.equal(mergeDupPicks(D), 1);
+  assert.deepEqual(D.merged, { 'e|nba:295191|ml|TOR|': 'b|nba:295191|ml|away|Raptors to win' });
+  assert.equal(Object.keys(D.plays).length, 2, 'the spread is another pick');
+
+  // logging: a second candidate for the same pick under another id (another title, another label) is not logged again
+  const g = build().find(x => x.kind === 'book' || x.kind === 'exch');
+  assert.ok(g, 'fixture has a game candidate');
+  const c = { ...g, tier: 'play' }, L = fresh();
+  assert.equal(logPlays(L, [c], TS, opts).length, 1);
+  const twin = c.kind === 'book' ? { ...c, title: c.title + ' (renamed)' } : { ...c, side: c.side + ' (renamed)' };
+  assert.notEqual(ledgerKey(twin), ledgerKey(c));
+  assert.equal(logPlays(L, [twin], TS + 600, opts).length, 0, 'same game pick under another id');
+});
