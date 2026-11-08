@@ -59,7 +59,7 @@ def psig():
         d = json.load(open(os.path.join(DATA, 'prop_signals.json')))
     except (OSError, ValueError):
         return None
-    return {k: d.get(k) for k in ('first', 'through', 'n', 'half', 'sig', 'level', 'tier', 'tier_days')}
+    return {k: d.get(k) for k in ('first', 'through', 'n', 'half', 'sig', 'level', 'tier', 'tier_days', 'agree')}
 
 
 def copula():
