@@ -172,6 +172,11 @@ def main():
         build_game_picks.snapshot()
     except Exception as e:
         print('game picks snapshot failed (the page keeps the last one):', e)
+    try:                                                   # prop detail chart filters: each team's score and pre-game spread per game (build_game_ctx.py)
+        import build_game_ctx
+        build_game_ctx.write()
+    except Exception as e:
+        print('game context not rebuilt (the page keeps the last one):', e)
     try:                                                   # What Works: this season's record with player-night standard errors (build_live_season.py)
         import build_live_season
         build_live_season.snapshot()
