@@ -451,7 +451,7 @@ window.PBX = (() => {
       return `<div class="${S.kf === k ? 'on' : ''}" title="${rc && rc[0] ? `${rc[1]}-${rc[0] - rc[1]}, market ${hit([rc[0], rc[2]])}, ROI on ${rc[4]} priced` : ''}"><small>${k} agree</small><b>${hit(rc)}</b><i class="${cls(roi)}">${roiT(rc)}</i><em>${rc ? rc[0].toLocaleString() : 0}</em></div>`; }).join('');
     const tile = k => { const c = S.c[k], rc = c.side && PSIG.sig[k] ? PSIG.sig[k][c.side === 'O' ? 'o' : 'u'] : null, lv = k === 'model' ? PSIG.level[String(S.lv)] : null, d = recDiff(lv || rc);
       const st = k === 'model' ? 'm' : k === 'move' ? 'ctx' : !c.side ? 'n' : c.side === S.ms ? 'a' : 'd';
-      return `<div class="pbx-st ${st}" title="${esc(c.why)}"><div class="t"><small>${SIG_NAME[k]}</small>${c.side ? `<span>${c.side === 'O' ? 'Over' : 'Under'}</span>` : ''}</div><b>${esc(c.v)}</b>${d != null ? `<i class="${cls(d)}">${sgnPt(d)} pts vs market</i>` : `<i>${k === 'move' ? 'Context only' : 'No call'}</i>`}</div>`; };
+      return `<div class="pbx-stile ${st}" title="${esc(c.why)}"><div class="t"><small>${SIG_NAME[k]}</small>${c.side ? `<span>${c.side === 'O' ? 'Over' : 'Under'}</span>` : ''}</div><b>${esc(c.v)}</b>${d != null ? `<i class="${cls(d)}">${sgnPt(d)} pts vs market</i>` : `<i>${k === 'move' ? 'Context only' : 'No call'}</i>`}</div>`; };
     return `<section class="pbx-card2 pbx-sig">${head}
       <div class="pbx-sv ${S.tier}">
         <div class="h"><b>${T[0]}</b><span>${sw}${mine ? '' : ` · you are viewing the ${side === 'o' ? 'over' : 'under'}`}</span></div>
@@ -1021,13 +1021,13 @@ window.PBX = (() => {
 .pbx-lad i{font:500 10.5px var(--font-mono);font-style:normal;color:var(--fg3)}.pbx-lad i.pos{color:var(--pbx-g)}.pbx-lad i.neg{color:var(--pbx-r)}
 .pbx-lad em{font-style:normal;font-size:9.5px;color:var(--fg3)}
 .pbx-sg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 16px 10px}
-.pbx-st{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border-radius:10px;background:rgb(var(--ink) / .03);border:1px solid rgb(var(--ink) / .06);border-left:3px solid rgb(var(--ink) / .12);min-width:0}
-.pbx-st.a{border-left-color:var(--pbx-g)}.pbx-st.d{border-left-color:var(--pbx-r)}.pbx-st.m{border-left-color:var(--pbx-v)}.pbx-st.ctx{opacity:.7;border-left-style:dashed}
-.pbx-st .t{display:flex;align-items:center;gap:6px}.pbx-st .t small{color:var(--fg3);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pbx-st .t span{margin-left:auto;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3)}
-.pbx-st.a .t span{color:var(--pbx-g)}.pbx-st.d .t span{color:var(--pbx-r)}.pbx-st.m .t span{color:var(--pbx-v)}
-.pbx-st b{font:600 13px var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pbx-st i{font-style:normal;font-size:10px;color:var(--fg3)}.pbx-st i.pos{color:var(--pbx-g)}.pbx-st i.neg{color:var(--pbx-r)}
+.pbx-stile{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border-radius:10px;background:rgb(var(--ink) / .03);border:1px solid rgb(var(--ink) / .06);border-left:3px solid rgb(var(--ink) / .12);min-width:0}
+.pbx-stile.a{border-left-color:var(--pbx-g)}.pbx-stile.d{border-left-color:var(--pbx-r)}.pbx-stile.m{border-left-color:var(--pbx-v)}.pbx-stile.ctx{opacity:.7;border-left-style:dashed}
+.pbx-stile .t{display:flex;align-items:center;gap:6px}.pbx-stile .t small{color:var(--fg3);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbx-stile .t span{margin-left:auto;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3)}
+.pbx-stile.a .t span{color:var(--pbx-g)}.pbx-stile.d .t span{color:var(--pbx-r)}.pbx-stile.m .t span{color:var(--pbx-v)}
+.pbx-stile b{font:600 13px var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbx-stile i{font-style:normal;font-size:10px;color:var(--fg3)}.pbx-stile i.pos{color:var(--pbx-g)}.pbx-stile i.neg{color:var(--pbx-r)}
 .pbx-sig .note a{color:var(--fg);text-decoration:underline}
 .pbx-inj{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid rgb(var(--ink) / .06);font-size:12px}
 .pbx-inj:first-child{border-top:0}.pbx-inj small{color:var(--fg3)}
