@@ -77,13 +77,13 @@ Vault vs market disagreements of 8+ pts (close):
 _When Pinnacle's no-vig line sat half a point or more off the recreational books 3+ hours out, did those books move toward it by kickoff? FanDuel is the control: an off-the-pack book gets pulled back toward the pack whoever it is, so Pinnacle only counts as sharp if it clearly beats FanDuel. Weeks 1-3 are replayed from the saved odds feed; later weeks are logged live._
 
 ```
-spread  Pinnacle    n= 77  toward  48 / away  16  avg move toward +0.47 pts ±0.10
+spread  Pinnacle    n= 78  toward  48 / away  17  avg move toward +0.47 pts ±0.10
 spread  FanDuel     n= 68  toward  40 / away  17  avg move toward +0.28 pts ±0.14
         -> NO-GO: not ahead of the control (+0.19 pts, z +1.1)
 total   Pinnacle    n= 40  toward  24 / away  13  avg move toward +0.21 pts ±0.17
 total   FanDuel     n= 43  toward  24 / away  14  avg move toward +0.14 pts ±0.16
         -> too few games (40 of 50)
-props   Pinnacle    n=251  toward 131 / away  20  net share toward +0.44 ±0.06
+props   Pinnacle    n=252  toward 131 / away  20  net share toward +0.44 ±0.06
 props   FanDuel     n= 82  toward  44 / away  11  net share toward +0.40 ±0.10
 props   DraftKings  n= 39  toward  13 / away   7  net share toward +0.15 ±0.16
         -> NO-GO: not ahead of the controls (+0.04, z +0.3)
