@@ -1,9 +1,10 @@
 /* Vault Appearance: the Appearance panel shared by Sharp Money and Vault NBA.
    Source of truth is THIS file; each page inlines it (scripts/inline_appearance.py). Settings: Theme (System / Light / Dark /
-   High contrast), Accent (hue slider + swatches), Background tint, Density. One key, 'vault-appearance', so both pages (same
+   High contrast, plus Charcoal when the adapter sets charcoal:true), Accent (hue slider + swatches), Background tint, Density. One key, 'vault-appearance', so both pages (same
    origin) share the choice. A page registers an adapter that knows how to paint ITS colours:
-     VaultAppearance.init({ legacy(), apply(state, ctx), density:true|false })
-   ctx = { resolved:'light'|'dark', contrast:bool, accent:'#rrggbb'|null, tint:0..1, hue:number|null, mix(color,amt) }.
+     VaultAppearance.init({ legacy(), apply(state, ctx), density:true|false, charcoal:true|false })
+   Charcoal is a dark variant on a #131313 base: the module sets data-shade="charcoal" and the page paints it.
+   ctx = { resolved:'light'|'dark', contrast:bool, shade:'charcoal'|null, accent:'#rrggbb'|null, tint:0..1, hue:number|null, mix(color,amt) }.
    The module owns state, persistence, system-theme tracking and the panel; the adapter owns the page's own palette. */
 (function(){
 'use strict';
@@ -35,7 +36,7 @@ function context(){
   if (h != null){ accent = hex(hsl2rgb(h, res === 'dark' ? .78 : .62, res === 'dark' ? .68 : .42)); }
   var tint = S.tint / 100;
   tintRgb = hsl2rgb(h == null ? 250 : h, .55, .5);
-  return { resolved: res, contrast: S.theme === 'contrast', accent: accent, hue: h, tint: tint, density: S.density,
+  return { resolved: res, contrast: S.theme === 'contrast', shade: S.theme === 'charcoal' ? 'charcoal' : null, accent: accent, hue: h, tint: tint, density: S.density,
     ink: accent ? (lum(parse(accent)) > .4 ? '#0b0c0e' : '#ffffff') : null,
     /* mix a page colour toward the accent hue by tint (max ~12% at 100) */
     mix: function(c, amt){ var p = parse(c); if (!p) return c; var t = (amt == null ? tint : amt) * .12; return hex(p.map(function(v, i){ return v + (tintRgb[i] - v) * t; })); } };
@@ -44,6 +45,7 @@ function context(){
 function apply(){
   var ctx = context(), root = document.documentElement;
   if (ctx.contrast) root.dataset.contrast = 'high'; else delete root.dataset.contrast;
+  if (ctx.shade) root.dataset.shade = ctx.shade; else delete root.dataset.shade;
   root.dataset.density = S.density;
   if (A && A.apply) A.apply(S, ctx);
   try{ window.dispatchEvent(new CustomEvent('vault-appearance', { detail: { state: S, ctx: ctx } })); }catch(e){}
@@ -62,7 +64,7 @@ var CSS = '#va-root{position:fixed;inset:0;z-index:2147483000;display:none;align
 + '.va-sec{background:var(--c);border-radius:16px;padding:16px 16px 14px}.va-sec h3{margin:0;font-size:14px;font-weight:600}.va-sec .d{margin:2px 0 12px;color:var(--t2);font-size:13px}'
 + '.va-hr{height:1px;background:var(--bd);margin:14px 0}'
 + '.va-row{display:flex;align-items:center;gap:16px}.va-row>div:first-child{flex:1;min-width:0}.va-row .d{margin:2px 0 0}'
-+ '.va-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:520px){.va-grid{grid-template-columns:repeat(2,1fr)}.va-row{flex-wrap:wrap;gap:10px 12px}.va-row>div:first-child{flex:1 1 100%}}'
++ '.va-grid{display:grid;grid-template-columns:repeat(var(--n,4),1fr);gap:10px}@media(max-width:520px){.va-grid{grid-template-columns:repeat(2,1fr)}.va-row{flex-wrap:wrap;gap:10px 12px}.va-row>div:first-child{flex:1 1 100%}}'
 + '.va-opt{all:unset;box-sizing:border-box;display:block;cursor:pointer;text-align:left}.va-opt .pv{display:block;aspect-ratio:1.45;border-radius:12px;border:1.5px solid var(--bd);overflow:hidden;position:relative}'
 + '.va-opt[aria-pressed=true] .pv{border:2px solid var(--t)}.va-opt .nm{display:block;margin:7px 2px 0;font-size:13px;color:var(--t2)}.va-opt[aria-pressed=true] .nm{color:var(--t);font-weight:500}'
 + '.va-opt:focus-visible,.va-sw:focus-visible,.va-x:focus-visible,.va-btn:focus-visible{outline:2px solid var(--t);outline-offset:2px}'
@@ -81,7 +83,7 @@ var CSS = '#va-root{position:fixed;inset:0;z-index:2147483000;display:none;align
 
 /* tiny theme thumbnails: sidebar strip, message bubble, input bar */
 function thumb(m, extra){
-  var P = { light:['#f1f1f3','#fafafc','#dfe6f5','#d9d9de','#e8e8ec'], dark:['#16171a','#0d0e10','#1d2531','#33353c','#1b1c20'], contrast:['#141414','#000','#000','#9a9a9a','#000'] }[m];
+  var P = { light:['#f1f1f3','#fafafc','#dfe6f5','#d9d9de','#e8e8ec'], dark:['#16171a','#0d0e10','#1d2531','#33353c','#1b1c20'], charcoal:['#1c1c1c','#131313','#2a2a2a','#3a3a3a','#202020'], contrast:['#141414','#000','#000','#9a9a9a','#000'] }[m];
   var line = m === 'contrast' ? '1.5px solid #fff' : '0';
   var body = '<span class="pv" style="background:' + P[1] + (extra || '') + '">'
     + '<i style="left:0;top:0;bottom:0;width:22%;background:' + P[0] + '"></i>'
@@ -98,13 +100,14 @@ function systemThumb(){
 }
 
 function html(){
-  var th = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark'], ['contrast', 'High contrast']].map(function(o){
+  var opts = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].concat(A && A.charcoal ? [['charcoal', 'Charcoal']] : [], [['contrast', 'High contrast']]);
+  var th = opts.map(function(o){
     return '<button type="button" class="va-opt" data-theme-opt="' + o[0] + '" aria-pressed="false">' + (o[0] === 'system' ? systemThumb() : thumb(o[0])) + '<span class="nm">' + o[1] + '</span></button>'; }).join('');
   var sw = '<button type="button" class="va-sw def" data-hue="" aria-label="Default accent" title="Default" aria-pressed="false"></button>'
     + HUES.map(function(h){ return '<button type="button" class="va-sw" data-hue="' + h[1] + '" aria-label="' + h[0] + '" title="' + h[0] + '" style="background:hsl(' + h[1] + ' 72% 66%)" aria-pressed="false"></button>'; }).join('');
   return '<div class="va-card" role="dialog" aria-modal="true" aria-labelledby="va-h">'
     + '<div class="va-top"><div><h2 id="va-h">Appearance</h2><p>How Vault looks on this device.</p></div><button type="button" class="va-x" data-close aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'
-    + '<div class="va-sec" style="margin-top:20px"><h3>Theme</h3><p class="d">System follows your device. High contrast uses stronger edges and text.</p><div class="va-grid" role="group" aria-label="Theme">' + th + '</div></div>'
+    + '<div class="va-sec" style="margin-top:20px"><h3>Theme</h3><p class="d">System follows your device.' + (A && A.charcoal ? ' Charcoal is a deeper dark.' : '') + ' High contrast uses stronger edges and text.</p><div class="va-grid" role="group" aria-label="Theme" style="--n:' + opts.length + '">' + th + '</div></div>'
     + '<div class="va-lab">Color</div><div class="va-sec"><h3>Accent</h3><p class="d">Buttons, links and highlights.</p>'
     + '<div class="va-hv" id="va-hn"></div><input class="va-hue" id="va-hue" type="range" min="0" max="360" step="1" aria-label="Accent hue"><div class="va-sws" role="group" aria-label="Accent swatches">' + sw + '</div>'
     + '<div class="va-hr"></div><div class="va-row"><div><h3>Background tint</h3><p class="d">How much of the accent shows in backgrounds.</p></div><input class="va-rng" id="va-tint" type="range" min="0" max="100" step="1" aria-label="Background tint"><span id="va-tv" style="width:38px;text-align:right;color:var(--t2);font-size:13px"></span></div></div>'
@@ -156,7 +159,8 @@ function init(adapter){
   if (saved){ for (var k in DEF) if (saved[k] !== undefined) S[k] = saved[k]; }
   else { var lg = A.legacy && A.legacy(); if (lg === 'light' || lg === 'dark') S.theme = lg; }   /* keep the theme people already chose */
   S.tint = clamp(+S.tint || 0, 0, 100); if (S.hue != null) S.hue = clamp(+S.hue, 0, 360);
-  if (['system', 'light', 'dark', 'contrast'].indexOf(S.theme) < 0) S.theme = 'system';
+  if (S.theme === 'charcoal' && !A.charcoal) S.theme = 'dark';   /* shared key: a page that does not paint Charcoal shows plain Dark */
+  if (['system', 'light', 'dark', 'charcoal', 'contrast'].indexOf(S.theme) < 0) S.theme = 'system';
   if (S.density !== 'compact') S.density = 'comfortable';
   try{ mq = matchMedia('(prefers-color-scheme: dark)'); (mq.addEventListener ? mq.addEventListener('change', function(){ if (S.theme === 'system'){ apply(); sync(); } }) : mq.addListener(function(){ if (S.theme === 'system'){ apply(); sync(); } })); }catch(e){}
   apply();
