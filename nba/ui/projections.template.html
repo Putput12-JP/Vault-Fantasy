@@ -2715,6 +2715,11 @@ th{font-weight:500}
         </div>
       </details>
 
+      <details class="card tfold" id="tpsigcard">
+        <summary><span class="tf-t"><b>Prop signals: do the checks hold up?</b><small id="tpsigstat">The signal verdict on every prop, rebuilt and forward</small></span></summary>
+        <div class="card-b" id="tpsig"></div>
+      </details>
+
       <details class="card tfold" data-trk="checks" id="theldcard" hidden>
         <summary><span class="tf-t"><b>Held by the roster guard, not bets</b><small id="theldstat">Props the model priced on teams it does not trust yet, settled anyway</small></span></summary>
         <div class="card-b">
@@ -5446,6 +5451,7 @@ function renderTrack(){
   $('mode').innerHTML = !d ? pill('idle', 'No ledger yet')
     : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ${TZL}</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ${TZL}</span>`;
   renderTrackTop(d, all);
+  if (window.PBX) PBX.trackCard($('tpsig'), $('tpsigstat'));                // ui/props_board.js
 
   // filters
   const books = [...new Set(all.filter(r => trMatch(r, ['book'])).map(r => r.venue + '|' + r.book))].sort();
