@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-11-08T09:30', tag:'Fixed', title:'NBA prop charts read cleanly on phones',
+    items:[
+      'On a phone the game chart now fills the screen at full text size, so its numbers are larger and easier to read.',
+      'Dates under the bars no longer pile up: they switch to a short form (11/6, @CLE) and skip bars when there are many games.'
+    ]
+  },
+  {
     ts:'2026-11-08T09:00', tag:'New', title:'NBA prop charts: filter by game type',
     items:[
       'A new game filter on every prop page: favored or underdog (and by 7+), close spreads, home or away, back-to-backs and rest.',

@@ -3765,14 +3765,17 @@ window.PBX = (() => {
   const SEG = {pts: 'P', reb: 'R', ast: 'A', stl: 'S', blk: 'B', oreb: 'Off', dreb: 'Def'};
   // Bars split into parts: the combo markets, and rebounds into offensive / defensive when the log has both.
   const partsOf = (g, s) => COMBO[s] || (s === 'reb' && g[GI.oreb] != null && g[GI.dreb] != null && g[GI.oreb] + g[GI.dreb] === g[GI.reb] ? ['dreb', 'oreb'] : [s]);
+  const mdShort = day => { const d = new Date(day * 864e5); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
   function chart(gl, s, line, mu){
     gl = gl.slice(0, 30).reverse();
     if (!gl.length) return '<p class="empty" style="padding:24px">No games in this window.</p>';
-    const W = innerWidth < 760 ? 440 : 860, H = (innerWidth < 760 ? 230 : 260) + (COMBO[s] ? 40 : 0), padL = 42, padB = 40, padT = 18, n = gl.length, gk = GHOST[s];
-    const padR = mu != null ? 84 : 8;   // the Vault tag gets its own margin, like the line tag on the left, so no bar or number sits under it
+    // phones: draw at the screen's own width so 10px text stays 10px (a fixed 440 viewBox shrank it to about 7px)
+    const narrow = innerWidth < 760, W = narrow ? Math.max(300, Math.min(440, innerWidth - 56)) : 860, H = (innerWidth < 760 ? 230 : 260) + (COMBO[s] ? 40 : 0), padL = 42, padB = 40, padT = 18, n = gl.length, gk = GHOST[s];
+    const padR = mu != null ? (narrow ? 46 : 84) : 8;   // the Vault tag gets its own margin, like the line tag on the left, so no bar or number sits under it
     const vals = gl.map(g => gval(g, s)), ghost = gl.map(g => gk ? g[GI[gk]] : null);
     const max = Math.max(...vals, ...ghost.filter(v => v != null), line, mu || 0) * 1.15 || 1, y = v => padT + (H - padT - padB) * (1 - v / max);
     const bw = Math.min(56, (W - padL - padR) / n * .72), step = (W - padL - padR) / n;
+    const full = step >= 46, every = full ? 1 : Math.ceil(30 / step);
     let o = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${SLABEL[s]} by game against the line of ${line}">`;
     for (let i = 0; i <= 4; i++){ const v = max / 1.15 * i / 4; o += `<line class="gl" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/>` + (Math.abs(y(v) - y(line)) > 12 ? `<text class="ax" x="${padL - 8}" y="${y(v) + 3}" text-anchor="end">${+v.toFixed(1)}</text>` : ''); }
     gl.forEach((g, i) => {
@@ -3798,12 +3801,16 @@ window.PBX = (() => {
       if (s === 'pts' && g[GI.fga] != null && y(0) - y(v) >= 30 && bw >= 30) o += `<text class="sg" x="${cx}" y="${y(0) - 16}" text-anchor="middle">${g[GI.fgm]}/${g[GI.fga]}</text><text class="sg sk" x="${cx}" y="${y(0) - 6}" text-anchor="middle">FG</text>`;
       // keep the made number clear of the ghost label: inside the bar when it is tall enough, else merged into one "made/att" label
       const near = gv != null && gv > v && y(v) - y(gv) < 14, inside = near && y(0) - y(v) >= 16;
-      if (gv != null && gv > v) o += `<text class="gt" x="${cx}" y="${y(gv) - 5}" text-anchor="middle">${near && !inside ? `<tspan class="gm">${v}</tspan>/` : ''}${gv} att</text>`;
+      if (gv != null && gv > v) o += `<text class="gt${step < 22 ? ' sm' : ''}" x="${cx}" y="${y(gv) - 5}" text-anchor="middle">${near && !inside ? `<tspan class="gm">${v}</tspan>/` : ''}${gv}${full ? ' att' : ''}</text>`;
       if (!near || inside) o += `<text class="lb${inside ? ' in' : ''}" x="${cx}" y="${inside ? y(v) + 12 : y(v) - 5}" text-anchor="middle">${v}</text>`;
-      o += `<text class="ax" x="${cx}" y="${H - padB + 15}" text-anchor="middle">${gdate(g[0])}</text><text class="ax" x="${cx}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? 'vs' : '@'} ${opp}</text></g>`;
+      // date and opponent: full when there is room, else short (4/1, @WSH) and on every k-th bar counting back from the newest
+      if ((n - 1 - i) % every === 0) o += full
+        ? `<text class="ax" x="${cx}" y="${H - padB + 15}" text-anchor="middle">${gdate(g[0])}</text><text class="ax" x="${cx}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? 'vs' : '@'} ${opp}</text>`
+        : `<text class="ax sm" x="${cx}" y="${H - padB + 15}" text-anchor="middle">${mdShort(g[0])}</text><text class="ax sm" x="${cx}" y="${H - padB + 28}" text-anchor="middle">${g[3] ? '' : '@'}${opp}</text>`;
+      o += '</g>';
     });
     o += `<line class="ln" x1="${padL}" x2="${W}" y1="${y(line)}" y2="${y(line)}"/><rect class="tg" x="0" y="${y(line) - 9}" width="38" height="18" rx="4"/><text class="tt" x="19" y="${y(line) + 4}" text-anchor="middle">${line}</text>`;
-    if (mu != null) o += `<line class="vl" x1="${padL}" x2="${W}" y1="${y(mu)}" y2="${y(mu)}"/><rect class="vtg" x="${W - 78}" y="${y(mu) - 9}" width="76" height="18" rx="4"/><text class="vtt" x="${W - 39}" y="${y(mu) + 4}" text-anchor="middle">Vault ${fmt(mu)}</text>`;
+    if (mu != null) o += `<line class="vl" x1="${padL}" x2="${W}" y1="${y(mu)}" y2="${y(mu)}"/><rect class="vtg" x="${W - (narrow ? 42 : 78)}" y="${y(mu) - 9}" width="${narrow ? 40 : 76}" height="18" rx="4"/><text class="vtt" x="${W - (narrow ? 22 : 39)}" y="${y(mu) + 4}" text-anchor="middle">${narrow ? '' : 'Vault '}${fmt(mu)}</text>`;
     return o + '</svg>';
   }
   // chart key: what the ghost, the segments and the inside numbers mean for this stat
@@ -4405,12 +4412,12 @@ window.PBX = (() => {
 .pbx-chart{padding:8px 12px 4px}
 .pbx-chart svg{display:block;width:100%;height:auto}
 .pbx-chart .gl{stroke:rgb(var(--ink) / .07)}
-.pbx-chart .ax{font:500 10px var(--font-sans);fill:var(--fg3)}
+.pbx-chart .ax{font:500 10px var(--font-sans);fill:var(--fg3)}.pbx-chart .ax.sm{font-size:9.5px}
 .pbx-chart .lb{font:600 11px var(--font-sans);fill:var(--fg)}
 .pbx-chart .o0{fill:var(--pbx-g)}.pbx-chart .o1{fill:color-mix(in srgb,var(--pbx-g) 72%,#000)}.pbx-chart .o2{fill:color-mix(in srgb,var(--pbx-g) 52%,#000)}
 .pbx-chart .u0{fill:var(--pbx-r)}.pbx-chart .u1{fill:color-mix(in srgb,var(--pbx-r) 72%,#000)}.pbx-chart .u2{fill:color-mix(in srgb,var(--pbx-r) 52%,#000)}
 .pbx-chart .gh{fill:rgb(var(--ink) / .04);stroke:rgb(var(--ink) / .42);stroke-width:1.2;stroke-dasharray:3 3}
-.pbx-chart .gt{font:500 10px var(--font-sans);fill:var(--fg3)}
+.pbx-chart .gt{font:500 10px var(--font-sans);fill:var(--fg3)}.pbx-chart .gt.sm{font-size:8px;letter-spacing:-.02em}
 .pbx-chart .lb.in{fill:#0b0b0c}
 /* numbers sitting on a dashed line get a halo in the card colour so the line never runs through them */
 .pbx-chart :is(.lb:not(.in),.gt,.so){paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
