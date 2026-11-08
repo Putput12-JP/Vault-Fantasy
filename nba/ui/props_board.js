@@ -555,7 +555,7 @@ window.PBX = (() => {
             <h2>${esc(r.name)} <small>${esc(r.team)}${x.grp ? ` · ${x.grp === 'G' ? 'Guard' : x.grp === 'C' ? 'Center' : 'Forward'}` : ''}${r.lu === 's' ? ' · Starter' : ''}</small> ${injTag(r)}</h2></div>
           <div class="acts">
             <span class="seg"><button type="button" data-dside="o" aria-pressed="${side === 'o'}">Over</button><button type="button" data-dside="u" aria-pressed="${side === 'u'}">Under</button></span>
-            <span class="pbx-sel ${side}">${side === 'o' ? 'Over' : 'Under'} ${r.line} ${best ? bkChip(best.bk) + `<b>${esc(priceTxt(best))}</b>` : ''}</span>
+            <span class="pbx-sel ${side}">${side === 'o' ? 'Over' : 'Under'} ${r.line} ${best || x.pk ? bkChip((best || x.pk).bk) + `<b>${esc(priceTxt(best || x.pk))}</b>` : ''}</span>
             ${r.kal.length > 1 ? `<select class="pbx-alt" aria-label="Kalshi alt lines"><option>Alt lines (${r.kal.length})</option>${r.kal.map(k => `<option>${k.line + .5}+: Kalshi ${Math.round(k.ask * 100)}¢ · fair ${pc(k.fair)}</option>`).join('')}</select>` : ''}
             <button class="pv-star" type="button" data-pbstar="${esc(pkey)}" data-pbside="${side}" aria-pressed="${watching}"${both ? ` title="Saved before watches kept a side. Tap to keep only the ${side === 'o' ? 'over' : 'under'}."` : ''}>${both ? '★ Watching both' : watching ? '★ Watching' : '☆ Watch'}</button>
             <button type="button" class="btn primary" data-totrk="1">Track a bet ↓</button>
