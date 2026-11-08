@@ -172,6 +172,11 @@ def main():
         build_game_picks.snapshot()
     except Exception as e:
         print('game picks snapshot failed (the page keeps the last one):', e)
+    try:                                                   # prop signals: every check's record this season (build_prop_signals.py)
+        import build_prop_signals
+        build_prop_signals.write()
+    except Exception as e:
+        print('prop signals not rebuilt (the page keeps the last one):', e)
     try:                                                   # prop detail chart filters: each team's score and pre-game spread per game (build_game_ctx.py)
         import build_game_ctx
         build_game_ctx.write()

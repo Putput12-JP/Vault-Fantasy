@@ -296,7 +296,6 @@ window.PBX = (() => {
     </section>`;
   }
   // ── research cards: teammates, alt lines, opportunity, situations, same-game combos, line history ──
-  const CORR = /*COPULA*/null;                       // copula_corr.json families (render_app.py): which prop pairs move together
   const HIST = {};                                    // 'YYYY-MM-DD' -> {p: {...}} | 'loading' | null (prop_hist.py on nba-data)
   const IDX = {fga: 14, ftm: 15, fta: 16, tpa: 17};
   function histFor(g, pid, s){
@@ -386,20 +385,99 @@ window.PBX = (() => {
     const W = 160, H = 44, n = vals.length; if (!n) return ''; const mx = Math.max(...vals, 1), bw = W / n;
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${vals.map((v, i) => `<rect class="${i >= n - n5 ? 'r5' : ''}" x="${i * bw + 1}" y="${H - v / mx * (H - 2)}" width="${Math.max(1, bw - 2)}" height="${v / mx * (H - 2)}" rx="1.5"/>`).join('')}</svg>`;
   }
-  const BASE4 = ['pts', 'reb', 'ast', '3pm'];
-  function combos(x, all){
-    if (!CORR || !BASE4.includes(x.r.e.s)) return null;
-    const r = x.r, out = [];
-    for (const z of all){
-      if (z.side !== 'o' || String(z.r.e.g) !== String(r.e.g) || z.r === r || !BASE4.includes(z.r.e.s)) continue;
-      const rel = z.r.e.p === r.e.p ? 'self' : z.r.team === r.team ? 'team' : 'opp';
-      const f = CORR.fam.find(f => f[0] === rel && ((f[1] === r.e.s && f[2] === z.r.e.s) || (f[1] === z.r.e.s && f[2] === r.e.s)));
-      if (!f || !f[5]) continue;
-      const qs = f[3] > 0 ? x.side : x.side === 'o' ? 'u' : 'o', fb = z.r.fair == null ? null : qs === 'o' ? z.r.fair : 1 - z.r.fair;
-      out.push({z, rel, f, qs, fa: x.fair, fb});
-    }
-    return out.sort((a, b) => Math.abs(b.f[3]) - Math.abs(a.f[3]) || (b.fb || 0) - (a.fb || 0)).slice(0, 6);
+  // ── prop signals: fixed checks, each with this season's record (data/prop_signals.json, build_prop_signals.py) ──
+  // The definitions below must match build_prop_signals.py exactly: that file rebuilt the records these checks are shown with.
+  const PSIG = /*PSIG*/null;
+  const SIG_FWD = '2026-11-08';                       // forward test: tiers frozen on Nov 8 2026; nights from here on are out of sample
+  const SIG_LEVEL = [0.0345, 0.0683, 0.1223], SIG_OPP = {pts: 'fga', pra: 'fga', pr: 'fga', pa: 'fga', fgm: 'fga', '3pm': 'tpa'};
+  const SIG_RANKED = ['pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'tov', 'pra', 'pr', 'pa', 'ra', 'sb'];
+  const SIG_COUNTED = ['market', 'matchup', 'minutes', 'opp', 'form'];
+  const SIG_NAME = {model: 'Vault model', market: 'Market (no vig)', matchup: 'Matchup', minutes: 'Minutes', opp: 'Opportunity', form: 'Form at this line', move: 'Line move'};
+  const TIER = {strong: ['Strong', 'Model level 3-4, three or more checks agree, none against'], lean: ['Lean', 'Two or more checks agree, more for than against'],
+    split: ['Split', 'Checks are mixed, or nothing beyond the model'], against: ['Against', 'More checks disagree with the model than agree']};
+  const sigLevel = p => 1 + SIG_LEVEL.filter(c => Math.abs(p - .5) >= c).length;
+  function sigTier(lv, kf, ka){ return ka > kf ? 'against' : lv >= 3 && kf >= 3 && ka === 0 ? 'strong' : kf >= 2 && kf > ka ? 'lean' : 'split'; }
+  // {name: {side: 'O'|'U'|null, why}} for tonight's prop, from what the page already holds
+  function sigOf(x, all0, hist){
+    const r = x.r, s = r.e.s, L = r.line, out = {};
+    if (r.pm == null) return null;
+    out.model = {side: r.pm > .5 ? 'O' : 'U', why: `${pc(r.pm > .5 ? r.pm : 1 - r.pm)} on the ${r.pm > .5 ? 'over' : 'under'}, level ${sigLevel(r.pm)}`};
+    out.market = r.mkt == null ? {side: null, why: 'No no-vig market price'} : Math.abs(r.mkt - .5) < .02 ? {side: null, why: `${pc(r.mkt)} over, within 2 points of even`}
+      : {side: r.mkt > .5 ? 'O' : 'U', why: `${pc(r.mkt > .5 ? r.mkt : 1 - r.mkt)} on the ${r.mkt > .5 ? 'over' : 'under'}`};
+    const rk = ranks(), z = rk && x.grp && SIG_RANKED.includes(s) ? rk[`${x.opp}|${x.grp}|${s}`] : null, gw = x.grp === 'G' ? 'guards' : x.grp === 'C' ? 'centers' : 'forwards';
+    out.matchup = !z || z[2] < 5 ? {side: null, why: 'Not ranked for this stat yet'}
+      : {side: z[0] >= 21 ? 'O' : z[0] <= 10 ? 'U' : null, why: `${x.opp} ${ordinal(z[0])} vs ${gw} (${fmt(z[1])} a game)${z[0] > 10 && z[0] < 21 ? ', middle of the league' : ''}`};
+    const l5 = all0.slice(0, 5);
+    if (r.min != null && l5.length === 5){ const a = l5.reduce((t, g) => t + g[MIN_I], 0) / 5, d = r.min - a;
+      out.minutes = {side: d >= 2 ? 'O' : d <= -2 ? 'U' : null, why: `Projected ${fmt(r.min)} vs ${fmt(a)} last 5 (${d >= 0 ? '+' : ''}${fmt(d)})`}; }
+    else out.minutes = {side: null, why: 'Not enough recent games'};
+    const os = SIG_OPP[s];
+    if (!os) out.opp = {side: null, why: s === 'reb' || s === 'ast' || s === 'ra' ? `No potential ${s === 'ast' ? 'assists' : s === 'reb' ? 'rebounds' : 'rebounds or assists'} source yet` : 'Not scored for this stat'};
+    else if (all0.length < 20) out.opp = {side: null, why: 'Needs 20 games'};
+    else { const a = all0.slice(0, 5).reduce((t, g) => t + g[GI[os]], 0) / 5, b = all0.slice(5, 20).reduce((t, g) => t + g[GI[os]], 0) / 15;
+      out.opp = b <= 0 ? {side: null, why: 'No attempts to compare'} : {side: a >= b * 1.1 ? 'O' : a <= b * .9 ? 'U' : null, why: `${SLABEL[os]} ${fmt(a)} last 5 vs ${fmt(b)} the 15 before (${a >= b ? '+' : ''}${((a / b - 1) * 100).toFixed(1)}%)`}; }
+    const l10 = all0.slice(0, 10);
+    if (l10.length === 10){ const hr = l10.filter(g => gval(g, s) > L).length / 10; out.form = {side: hr >= .7 ? 'O' : hr <= .3 ? 'U' : null, why: `Over ${L} in ${Math.round(hr * 10)} of his last 10`}; }
+    else out.form = {side: null, why: 'Needs 10 games'};
+    const ser = hist && hist.state === 'ok' ? hist.ser : null, f0 = ser ? ser[0][1] : null;
+    out.move = f0 == null ? {side: null, why: 'No DraftKings history for this prop'} : f0 === L ? {side: null, why: `DraftKings line unchanged at ${L}`} : {side: L > f0 ? 'O' : 'U', why: `DraftKings line ${f0} to ${L}`};
+    const ms = out.model.side, kf = SIG_COUNTED.filter(k => out[k].side === ms).length, ka = SIG_COUNTED.filter(k => out[k].side && out[k].side !== ms).length;
+    return {c: out, ms, kf, ka, lv: sigLevel(r.pm), tier: sigTier(sigLevel(r.pm), kf, ka)};
   }
+  // record text: rec = [n, wins, market-expected wins, se, priced n, units]
+  const recHit = rc => rc && rc[0] ? `${rc[1]}-${rc[0] - rc[1]} <i>${Math.round(rc[1] / rc[0] * 1000) / 10}%</i>` : '-';
+  const recDiff = rc => { if (!rc || !rc[0]) return null; const d = (rc[1] - rc[2]) / rc[0] * 100; return d; };
+  const recRoi = rc => rc && rc[4] ? rc[5] / rc[4] * 100 : null;
+  const sgnPt = v => v == null ? '-' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
+  function sumRec(list){ const o = [0, 0, 0, null, 0, 0]; list.forEach(rc => { if (!rc) return; o[0] += rc[0]; o[1] += rc[1]; o[2] += rc[2]; o[4] += rc[4]; o[5] += rc[5]; }); return o; }
+  function tierRec(tier, fwd){ if (!PSIG || !PSIG.tier_days) return null; return sumRec(Object.entries(PSIG.tier_days).filter(([d]) => fwd ? d >= SIG_FWD : d < SIG_FWD).map(([, t]) => t[tier])); }
+  function sigCard(x, all0, hist, side){
+    const S = sigOf(x, all0, hist);
+    const head = `<header><h3>Prop signals</h3><small>Checks with this season's record</small></header>`;
+    if (!S) return `<section class="pbx-card2 pbx-sig">${head}<p class="note">No model price on this prop, so there is nothing to check.</p></section>`;
+    if (!PSIG) return `<section class="pbx-card2 pbx-sig">${head}<p class="note">Signal records are not in this build.</p></section>`;
+    const sw = S.ms === 'O' ? 'over' : 'under', mine = (side === 'o' ? 'O' : 'U') === S.ms, T = TIER[S.tier], back = tierRec(S.tier, false), fwd = tierRec(S.tier, true);
+    const roiB = recRoi(back), roiF = recRoi(fwd);
+    const arrow = sd => sd ? `<span class="pbx-sa ${sd === 'O' ? 'o' : 'u'}">${sd === 'O' ? 'Over' : 'Under'}</span>` : '<span class="pbx-sa n">None</span>';
+    const rowRec = (k, sd) => { const rc = PSIG.sig[k] && PSIG.sig[k][sd === 'O' ? 'o' : 'u']; if (!sd || !rc) return ''; const d = recDiff(rc);
+      return `<small class="r">${sd === 'O' ? 'Over' : 'Under'} calls ${recHit(rc)} · market ${Math.round(rc[2] / rc[0] * 1000) / 10}% · <b class="${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}">${sgnPt(d)} pts</b></small>`; };
+    const lvRec = PSIG.level[String(S.lv)];
+    return `<section class="pbx-card2 pbx-sig">${head}
+      <div class="pbx-sv ${S.tier}">
+        <div class="h"><b>${T[0]}</b><span>on the ${sw}${mine ? '' : `, not the ${side === 'o' ? 'over' : 'under'} you are viewing`}</span></div>
+        <p class="d">${T[1]}. Tonight: ${S.kf} for, ${S.ka} against.</p>
+        <div class="k"><div><small>${esc(T[0])}, rebuilt ${PSIG.first.slice(5).replace('-', '/')} to ${PSIG.through.slice(5).replace('-', '/')}</small><b>${recHit(back)}</b><i>market ${back && back[0] ? Math.round(back[2] / back[0] * 1000) / 10 + '%' : '-'} · ROI <span class="${roiB > 0 ? 'pos' : roiB < 0 ? 'neg' : ''}">${roiB == null ? '-' : sgnPt(roiB) + '%'}</span> on ${back ? back[4].toLocaleString() : 0} priced</i></div>
+          <div><small>Forward, since ${SIG_FWD.slice(5).replace('-', '/')}</small><b>${fwd && fwd[0] ? recHit(fwd) : 'No results yet'}</b><i>${fwd && fwd[4] ? `ROI <span class="${roiF > 0 ? 'pos' : roiF < 0 ? 'neg' : ''}">${sgnPt(roiF)}%</span> on ${fwd[4]} priced` : 'Read after a few hundred props'}</i></div></div>
+      </div>
+      <ul class="pbx-sl">
+        ${['model', ...SIG_COUNTED, 'move'].map(k => { const c = S.c[k]; const ag = k === 'model' ? '' : !c.side ? '' : c.side === S.ms ? ' ag' : ' dis';
+          return `<li class="${ag}${k === 'move' ? ' ctx' : ''}"><div class="t"><b>${SIG_NAME[k]}</b>${k === 'move' ? '<small>context only</small>' : ''}${arrow(c.side)}</div><p>${esc(c.why)}</p>${k === 'model' && lvRec ? `<small class="r">Level ${S.lv} calls ${recHit(lvRec)} · market ${Math.round(lvRec[2] / lvRec[0] * 1000) / 10}% · <b class="${recDiff(lvRec) > 0 ? 'pos' : 'neg'}">${sgnPt(recDiff(lvRec))} pts</b></small>` : rowRec(k, c.side)}</li>`; }).join('')}
+      </ul>
+      <p class="note">Each check's record is how often its side won this season against what the no-vig market expected (${PSIG.n.toLocaleString()} props, ${PSIG.first.slice(5).replace('-', '/')} to ${PSIG.through.slice(5).replace('-', '/')}, last look before tip). Beating the market is not profit: ROI is at the best stored price, after the book's cut. The tiers were set on this same season, so the rebuilt record is in-sample; the forward record from ${SIG_FWD.slice(5).replace('-', '/')} is the real test. Line moves are context and never count. <a href="#track" data-go="track">Track Record</a></p>
+    </section>`;
+  }
+  // Track Record card: each tier rebuilt (before the freeze) and forward, plus every check's record by side
+  function trackCard(el, stat){
+    if (!el) return;
+    if (!PSIG){ el.innerHTML = '<p class="hint">Signal records are not in this build.</p>'; return; }
+    const row = (lbl, rc) => { const d = recDiff(rc), roi = recRoi(rc); return `<tr><td class="l">${lbl}</td><td class="num">${rc && rc[0] ? rc[0].toLocaleString() : 0}</td><td class="num">${recHit(rc)}</td><td class="num">${rc && rc[0] ? Math.round(rc[2] / rc[0] * 1000) / 10 + '%' : '-'}</td><td class="num"><span class="${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}">${sgnPt(d)}</span></td><td class="num"><span class="${roi > 0 ? 'pos' : roi < 0 ? 'neg' : ''}">${roi == null ? '-' : sgnPt(roi) + '%'}</span>${rc && rc[4] ? ` <small>${rc[4].toLocaleString()}</small>` : ''}</td></tr>`; };
+    const th = '<thead><tr><th class="l"></th><th>Props</th><th>Won-lost</th><th>Market</th><th>vs market</th><th>ROI · priced</th></tr></thead>';
+    const tiers = ['strong', 'lean', 'split', 'against'];
+    const fw = tiers.map(t => tierRec(t, true)), any = fw.some(rc => rc && rc[0]);
+    const st = tierRec('strong', true);
+    if (stat) stat.textContent = st && st[0] ? `Strong, forward: ${st[1]}-${st[0] - st[1]}${recRoi(st) != null ? `, ROI ${sgnPt(recRoi(st))}%` : ''}` : 'Strong, rebuilt: ' + (() => { const b = tierRec('strong', false); return b && b[0] ? `${b[1]}-${b[0] - b[1]}, ROI ${sgnPt(recRoi(b))}% (in-sample)` : 'no props'; })();
+    el.innerHTML = `<p class="hint tplain">Every prop on the board gets the same fixed checks (model, market, matchup, minutes, opportunity, form; the line move is context). The verdict counts how many back the model's side. Records use the model's side at the last look before tip, against the no-vig market's chance and at the best stored price. Tiers were set on ${PSIG.first.slice(5).replace('-', '/')} to ${PSIG.through.slice(5).replace('-', '/')} data, so that part is in-sample. The forward test started ${SIG_FWD.slice(5).replace('-', '/')}.</p>
+      <h3 class="sim-h">Forward, from ${SIG_FWD.slice(5).replace('-', '/')} (the real test)</h3>
+      ${any ? `<div class="tablewrap"><table class="ht tsim">${th}<tbody>${tiers.map((t, i) => row(TIER[t][0], fw[i])).join('')}</tbody></table></div>` : '<p class="hint">No settled props since the freeze yet. The first night lands after tonight\'s games settle.</p>'}
+      <h3 class="sim-h">Rebuilt, ${PSIG.first.slice(5).replace('-', '/')} to ${PSIG.through < SIG_FWD ? PSIG.through.slice(5).replace('-', '/') : 'the freeze'} (in-sample)</h3>
+      <div class="tablewrap"><table class="ht tsim">${th}<tbody>${tiers.map(t => row(`${TIER[t][0]}<small>${TIER[t][1]}</small>`, tierRec(t, false))).join('')}</tbody></table></div>
+      <h3 class="sim-h">Each check, by the side it points to (whole season)</h3>
+      <div class="tablewrap"><table class="ht tsim">${th}<tbody>${['model', ...SIG_COUNTED, 'move'].flatMap(k => PSIG.sig[k] ? [['o', 'Over'], ['u', 'Under']].map(([sd, l]) => row(`${SIG_NAME[k]} · ${l}${k === 'move' ? ' <small>context only</small>' : ''}`, PSIG.sig[k][sd])) : []).join('')}</tbody></table></div>
+      <h3 class="sim-h">Model level (Props Sim confidence)</h3>
+      <div class="tablewrap"><table class="ht tsim">${th}<tbody>${Object.entries(PSIG.level).map(([k, rc]) => row('Level ' + k, rc)).join('')}</tbody></table></div>
+      <p class="hint">vs market: the side's win rate minus the no-vig market's average chance for it, in points. ROI: 1 unit at the best stored price on the model's side; the count beside it is how many props had a stored price. Pushes are left out. Checks share props, so their records are not independent.</p>`;
+  }
+
   function detail(B, rt){
     const root = $('pbx-root'), all = build(B);
     all.forEach(pick);
@@ -423,7 +501,7 @@ window.PBX = (() => {
     const sits = [sit('Home', z => z[3] === 1, homeT === true), sit('Away', z => z[3] === 0, homeT === false),
       sit('Back-to-back (0 days rest)', z => restOf(all0.indexOf(z)) === 0, restT === 0), sit('1 day rest', z => restOf(all0.indexOf(z)) === 1, restT === 1), sit('2+ days rest', z => restOf(all0.indexOf(z)) >= 2, restT != null && restT >= 2)]
       .concat(cx ? GF.filter(f => f[4]).map(f => sit(f[2], gfOk(f), gfTonight(f[0], spT, homeT, restT))) : []);
-    const cmb = combos(x, all), hist = histFor(g, r.e.p, s);
+    const hist = histFor(g, r.e.p, s);
     pf.rows = [r];                                    // Watch in the header goes through the shared handler, which looks rows up here
     const stats = STATS.map(z => z[0]).filter(k => all.some(z => z.r.e.p === r.e.p && z.r.e.s === k));
     const wg = winGl(logs, DS.win, x.opp), sv = i => { const a = wg.map(z => z[i]); return DS.med ? med(a) : avg(a); };
@@ -549,13 +627,7 @@ window.PBX = (() => {
           <tr><td class="muted">Open</td><td>${main && main.l0 != null ? main.l0 : x.sc.dm != null ? r.line - x.sc.dm : '-'}</td><td>${main && main.o0 ? main.o0 : '-'}</td></tr></tbody></table>
           <p class="note">${hist.state === 'loading' ? 'Loading the move-by-move history...' : 'No DraftKings history recorded for this prop, so only open and now are shown.'}</p>`}
       </section>
-      <section class="pbx-card2"><header><h3>Same-game combos</h3><small>Props that move with this one</small></header>
-        ${cmb && cmb.length ? `<div class="pbx-cmb">${cmb.map(c => `<div><p class="t"><span>${esc(c.z.r.name)} <small>${c.rel === 'self' ? 'Same player' : c.rel === 'team' ? 'Teammate' : 'Opponent'}</small></span><span class="rho ${c.f[3] > 0 ? 'p' : 'n'}" title="Correlation across ${c.f[4].toLocaleString()} paired games">r ${c.f[3] > 0 ? '+' : '−'}${Math.abs(c.f[3]).toFixed(2)}</span></p>
-            <p class="l"><b>${side === 'o' ? 'Over' : 'Under'} ${r.line} ${esc(SLABEL[s])}</b> + <a href="#propboard/${c.z.r.e.p}/${c.z.r.e.s}/${c.qs}">${c.qs === 'o' ? 'Over' : 'Under'} ${c.z.r.line} ${esc(SLABEL[c.z.r.e.s])}</a></p>
-            <p class="j"><span>Fairs <b>${pc(c.fa) || '-'}</b> · <b>${pc(c.fb) || '-'}</b></span><span>Both if independent <b>${c.fa != null && c.fb != null ? pc(c.fa * c.fb) : '-'}</b></span>${c.f[6] ? `<span>Together <b>${c.f[6].toFixed(2)}×</b> at 50/50</span>` : ''}</p></div>`).join('')}</div>
-          <p class="note">Correlations from ${CORR.games} games of box scores. Pricing them did not beat the closing line in testing (${esc(CORR.verdict)}), so they are context, not an edge. <a class="linkbtn" href="#bankroll" data-go="bankroll">Price a combo in Combo Check</a></p>`
-          : `<p class="note">${!CORR ? 'Correlation data is not in this build.' : BASE4.includes(s) ? 'No tested correlation links this prop to another prop in this game.' : 'Correlations are measured for points, rebounds, assists and threes only.'}</p>`}
-      </section>
+      ${sigCard(x, all0, hist, side)}
       <section class="pbx-card2"><div class="pbx-rt">${[['matchup', 'Matchup'], ['inj', 'Injuries'], ['game', 'Game']].map(([k, l]) => `<button type="button" data-rtab="${k}" class="${DS.rtab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
         <div class="pbx-rb">
         ${DS.rtab === 'matchup' ? (oppRows.length ? `<h5>${esc(x.opp)} defense vs ${grpW}</h5><table class="pbx-dt"><thead><tr><th>Stat</th><th>Per game</th><th>Rank</th></tr></thead><tbody>
@@ -920,6 +992,28 @@ window.PBX = (() => {
 .pbx-dt td{text-align:right;padding:7px 0;border-top:1px solid rgb(var(--ink) / .06)}
 .pbx-dt th:first-child,.pbx-dt td:first-child{text-align:left}
 .pbx-dt tr.on td{font-weight:700}
+/* prop signals card */
+.pbx-sv{margin:0 16px 12px;padding:12px 14px;border-radius:12px;background:rgb(var(--ink) / .04);border:1px solid rgb(var(--ink) / .08)}
+.pbx-sv.strong{background:color-mix(in srgb,var(--pbx-g) 10%,transparent);border-color:color-mix(in srgb,var(--pbx-g) 35%,transparent)}
+.pbx-sv.against{background:color-mix(in srgb,var(--pbx-r) 8%,transparent);border-color:color-mix(in srgb,var(--pbx-r) 30%,transparent)}
+.pbx-sv .h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.pbx-sv .h b{font-size:18px;font-weight:700}.pbx-sv .h span{color:var(--fg2);font-size:12.5px}
+.pbx-sv.strong .h b{color:var(--pbx-g)}.pbx-sv.against .h b{color:var(--pbx-r)}
+.pbx-sv .d{margin:4px 0 10px;color:var(--fg2);font-size:12px}
+.pbx-sv .k{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.pbx-sv .k div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pbx-sv .k small{color:var(--fg3);font-size:10.5px}.pbx-sv .k b{font:600 15px var(--font-mono)}.pbx-sv .k b i{font-style:normal;color:var(--fg3);font-size:11px;margin-left:4px}
+.pbx-sv .k i{font-style:normal;color:var(--fg3);font-size:11px}
+.pbx-sl{list-style:none;margin:0;padding:0}
+.pbx-sl li{padding:9px 16px;border-top:1px solid rgb(var(--ink) / .06)}
+.pbx-sl li .t{display:flex;align-items:center;gap:6px;font-size:12.5px}.pbx-sl li .t small{color:var(--fg3);font-size:10.5px}
+.pbx-sl li p{margin:2px 0 0;color:var(--fg2);font-size:11.5px}
+.pbx-sl li .r{display:block;margin-top:2px;color:var(--fg3);font-size:10.5px}.pbx-sl li .r i{font-style:normal}
+.pbx-sl li.ctx{opacity:.8}
+.pbx-sa{margin-left:auto;font:600 10.5px var(--font-sans);padding:2px 7px;border-radius:999px;background:rgb(var(--ink) / .06);color:var(--fg3)}
+.pbx-sl li.ag .pbx-sa{background:color-mix(in srgb,var(--pbx-g) 16%,transparent);color:var(--pbx-g)}
+.pbx-sl li.dis .pbx-sa{background:color-mix(in srgb,var(--pbx-r) 14%,transparent);color:var(--pbx-r)}
+.pbx-sl li:first-child .pbx-sa{background:var(--pbx-vbg);color:var(--pbx-v)}
+.pbx-sig .note a{color:var(--fg);text-decoration:underline}
 .pbx-inj{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid rgb(var(--ink) / .06);font-size:12px}
 .pbx-inj:first-child{border-top:0}.pbx-inj small{color:var(--fg3)}
 .pbx-inj b.neg{color:var(--pbx-r)}.pbx-inj b.warn{color:var(--warn)}
@@ -948,14 +1042,6 @@ window.PBX = (() => {
 .pbx-lc{padding:8px 12px 0}.pbx-lc svg{display:block;width:100%;height:auto}
 .pbx-lc .gl{stroke:rgb(var(--ink) / .07)}.pbx-lc .ax{font:500 9.5px var(--font-sans);fill:var(--fg3)}
 .pbx-lc .st{stroke:var(--pbx-g);stroke-width:2;fill:none}.pbx-lc .pt{fill:var(--pbx-g)}.pbx-lc .px{font:600 9px var(--font-mono);fill:var(--fg2)}
-.pbx-cmb > div{padding:10px 16px;border-bottom:1px solid rgb(var(--ink) / .06)}
-.pbx-cmb p{margin:0}
-.pbx-cmb .t{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:600}
-.pbx-cmb .t small{color:var(--fg3);font-weight:500}
-.pbx-cmb .rho{font:600 11px var(--font-mono);padding:1px 6px;border-radius:5px}
-.pbx-cmb .rho.p{background:color-mix(in srgb,var(--pbx-g) 14%,transparent);color:var(--pbx-g)}.pbx-cmb .rho.n{background:color-mix(in srgb,var(--pbx-r) 14%,transparent);color:var(--pbx-r)}
-.pbx-cmb .l{font-size:11.5px;color:var(--fg2);margin-top:3px}.pbx-cmb .l b{color:var(--fg)}.pbx-cmb .l a{color:var(--fg);font-weight:600}
-.pbx-cmb .j{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:11px;color:var(--fg3);margin-top:4px}.pbx-cmb .j span{white-space:nowrap}.pbx-cmb .j b{color:var(--fg);font-family:var(--font-mono)}
 @media (max-width:760px){
   .pbx-o4{grid-template-columns:1fr 1fr}
   .pbx-o4 > div:nth-child(2){border-right:0}
@@ -1001,5 +1087,6 @@ window.PBX = (() => {
   let wired = false;
   return {
     render(B){ if (!wired){ wire(); wired = true; } render(B); },
+    trackCard,
   };
 })();
