@@ -9,6 +9,7 @@
 <script>
 /* Appearance adapter: the shared panel (src/vault-appearance.js) decides; this paints Vault NBA's own tokens. */
 VaultAppearance.init({
+  charcoal: true,
   legacy: function(){ try{ return JSON.parse(localStorage.getItem("nba-theme")); }catch(e){} },
   apply: function(S, c){
     var r = document.documentElement;
@@ -1942,6 +1943,8 @@ th{font-weight:500}
 /* ── Appearance panel (src/vault-appearance.js): High contrast is a dark variant with stronger edges and text; Compact tightens rows and gaps. ── */
 :root[data-contrast="high"]{--fg:#ffffff;--fg2:#e6e8ed;--fg3:#c7cbd3;--border:#8b909b;--border2:#c7cbd3;--up:#6ff0a0;--down:#ff9a9a;--warn:#ffd36b}
 :root[data-contrast="high"] :focus-visible{outline-width:3px}
+/* Charcoal: Dark on a deeper #131313 base. Cards and controls keep the dark ladder so the kit-built views still match. */
+:root[data-shade="charcoal"]{--bg:#131313}
 :root[data-density="compact"]{--pad:16px;--gap:10px}
 :root[data-density="compact"] td{padding-top:5px;padding-bottom:5px}
 :root[data-density="compact"] th{padding-top:6px;padding-bottom:6px}
