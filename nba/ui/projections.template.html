@@ -4649,14 +4649,32 @@ function priceRow(e, cache){
     }
     return k;
   });
-  // headline line: Pinnacle, then DraftKings / any book, then the Kalshi rung nearest even
-  const main = r.books.find(b => b.bk === 'Pinnacle') || r.books[0];
+  // headline line, same rule as the recorders (prop_sim_record.main_line): the line most sportsbooks post (Pinnacle breaks a tie,
+  // then a priced line, then the lower one; Polymarket's threshold ladder is never a line), else the line most pick'em apps post.
+  // A Kalshi rung is the headline only when nothing else quotes the prop. Before 2026-11-08 a prop with no sportsbook took the Kalshi
+  // rung whose mid sat nearest 50%, and a wide-spread alt rung won it: Derrick Jones Jr. PRA showed 14.5 (24c bid, 77c ask) while
+  // PrizePicks, Underdog and Sleeper all had 17.5. Pick'em lines now outrank Kalshi rungs; the rungs stay under Alt lines.
+  const modal = rows => { const cnt = {}, first = new Set(), priced = new Set();
+    for (const x of rows){ cnt[x.line] = (cnt[x.line] || 0) + 1; if (x.n === 'Pinnacle') first.add(x.line); if (x.p) priced.add(x.line); }
+    return Object.keys(cnt).map(Number).sort((a, b) => cnt[b] - cnt[a] || first.has(b) - first.has(a) || priced.has(b) - priced.has(a) || a - b)[0]; };
+  const lineBooks = r.books.filter(b => b.bk !== 'Polymarket'), pkL = r.pk.filter(k => k.line != null);
+  const bL = lineBooks.length ? modal(lineBooks.map(b => ({n: b.bk, line: b.line, p: true}))) : null;
+  const main = bL != null ? lineBooks.find(b => b.line === bL && b.bk === 'Pinnacle') || lineBooks.find(b => b.line === bL) : null;
+  const pL = !main && pkL.length ? modal(pkL.map(k => ({n: k.app, line: k.line, p: !k.flat}))) : null;
   if (main){ r.line = main.line; r.lineFrom = main.bk; r.mkt = main.mkt; r.pm = main.pm; r.fair = main.fair; }
+  else if (pL != null){
+    const at = pkL.filter(k => k.line === pL), k = at.find(k => !k.flat) || at[0];
+    r.line = k.line; r.lineFrom = k.app; r.pm = k.pm; r.fair = k.fair;
+    if (!k.flat){ const po = amP(k.o), pu = amP(k.u); if (po != null && pu != null) r.mkt = po / (po + pu); }
+  }
   else if (r.kal.length){
     const k = [...r.kal].filter(k => k.mid != null).sort((a, b) => Math.abs(a.mid - .5) - Math.abs(b.mid - .5))[0];
     if (k){ r.line = k.line; r.lineFrom = 'Kalshi'; r.mkt = k.mid; r.pm = k.pm; r.fair = k.fair; }
   }
-  else if (r.pk.length){ const k = r.pk[0]; r.line = k.line; r.lineFrom = k.app; r.pm = k.pm; r.fair = k.fair; }
+  else if (r.books.length){   // Polymarket alone: its rung nearest even, the same fallback as a Kalshi-only prop
+    const b = [...r.books].sort((a, z) => Math.abs(a.mkt - .5) - Math.abs(z.mkt - .5))[0];
+    r.line = b.line; r.lineFrom = b.bk; r.mkt = b.mkt; r.pm = b.pm; r.fair = b.fair;
+  }
   // pick'em lines as candidates too (never a best bet), then the consensus for every candidate (same order as pricing.py)
   r.pkc = r.pk.filter(k => k.fair != null).flatMap(k => [
     {venue: 'pickem', bk: k.app, side: 'Over', line: k.line, price: k.o ?? null, edge: k.eo, fair: k.fair, g: 'no-go', t: k.t},
