@@ -3918,6 +3918,35 @@ window.PBX = (() => {
     const rate = gl => gl.length ? {n: gl.length, h: gl.filter(ok).length, pct: gl.filter(ok).length / gl.length} : null;
     return Object.fromEntries(WIN.map(([k]) => [k, rate(winGl(all, k, opp))]));
   }
+  // ── game filters: result and the pre-game line (data/game_ctx.json, build_game_ctx.py), home/away and rest (the game log) ──
+  let CTX;                                            // undefined = not asked yet, 'loading', null = unavailable, else {g: {team: {day: [pts, opp, spread]}}}
+  function ctxGet(){
+    if (CTX !== undefined) return CTX === 'loading' ? null : CTX;
+    CTX = 'loading';
+    const raw = `https://raw.githubusercontent.com/${typeof H0 !== 'undefined' && H0 && H0.repo ? H0.repo : 'Putput12-JP/Vault-Fantasy'}/main/nba/data/game_ctx.json`;
+    fetch('data/game_ctx.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject()).catch(() => fetch(raw, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null))
+      .then(j => { CTX = j && j.g ? j : null; if (routeOf()) rerender(); });
+    return null;
+  }
+  // one game from his team's side: {pts, opp, m (margin), sp (his team's spread, negative = favoured, null when no line is stored)}
+  function ctxOf(g){
+    const c = CTX && CTX !== 'loading' && CTX.g[GL.teams[g[2]]], z = c && c[g[0]];
+    return z ? {pts: z[1], opp: z[0], m: z[1] - z[0], sp: z[2] == null ? null : -z[2]} : null;
+  }
+  // [key, group, label, test(game, ctx, rest days), uses game_ctx]; `tonight` marks the ones that describe tonight's game
+  const GF = [
+    ['won', 'Result (known after the game)', 'Team won', (g, c) => c && c.m > 0, 1], ['lost', 'Result (known after the game)', 'Team lost', (g, c) => c && c.m < 0, 1],
+    ['blow', 'Result (known after the game)', 'Blowout (won or lost by 15+)', (g, c) => c && Math.abs(c.m) >= 15, 1], ['close', 'Result (known after the game)', 'Close finish (within 5)', (g, c) => c && Math.abs(c.m) <= 5, 1],
+    ['fav', 'Pre-game line', 'Favored', (g, c) => c && c.sp != null && c.sp < 0, 1], ['dog', 'Pre-game line', 'Underdog', (g, c) => c && c.sp != null && c.sp > 0, 1],
+    ['fav7', 'Pre-game line', 'Favored by 7+', (g, c) => c && c.sp != null && c.sp <= -7, 1], ['dog7', 'Pre-game line', 'Underdog by 7+', (g, c) => c && c.sp != null && c.sp >= 7, 1],
+    ['tight', 'Pre-game line', 'Spread within 4.5', (g, c) => c && c.sp != null && Math.abs(c.sp) <= 4.5, 1],
+    ['home', 'Venue', 'Home', g => g[3] === 1, 0], ['away', 'Venue', 'Away', g => g[3] === 0, 0],
+    ['b2b', 'Rest', 'Back-to-back', (g, c, rd) => rd === 0, 0], ['r1', 'Rest', '1 day rest', (g, c, rd) => rd === 1, 0], ['r2', 'Rest', '2+ days rest', (g, c, rd) => rd != null && rd >= 2, 0]
+  ];
+  function gfTonight(k, sp, home, rest){
+    return {fav: sp != null && sp < 0, dog: sp != null && sp > 0, fav7: sp != null && sp <= -7, dog7: sp != null && sp >= 7, tight: sp != null && Math.abs(sp) <= 4.5,
+      home: home === true, away: home === false, b2b: rest === 0, r1: rest === 1, r2: rest != null && rest >= 2}[k] || false;
+  }
   const pcell = v => v == null ? '<span class="muted">-</span>' : `<span class="pbx-hc ${hcls({pct: v})}">${Math.round(v * 100)}%</span>`;
   function ladder(r, side, all){
     const lines = new Set([r.line]); r.kal.forEach(k => lines.add(k.line)); r.books.forEach(b => lines.add(b.line));
@@ -3954,16 +3983,22 @@ window.PBX = (() => {
     if (!x){ root.innerHTML = `<button type="button" class="pbx-back" data-back="1">← Props</button><section class="pbx-card2"><p class="empty" style="padding:24px">This prop is not on the board now. The game may have tipped, or the line was pulled.</p></section>`; return; }
     const r = x.r, side = x.side, g = x.g, s = r.e.s, X = PIDX[r.e.p], all0 = (r._logs || (r._logs = logsOf(r))).all.filter(z => !z[4]);
     const ms = mates(r, B); if (DS.mate && !ms.some(m => m.id === DS.mate.id)) DS.mate = null;
-    const logs = DS.mate ? mateSplit(all0, DS.mate.id, true)[DS.mate.mode] : all0, h = hitsFrom(logs, s, r.line, side, x.opp);
+    const restD = new Map(all0.map((z, i) => { const n = all0[i + 1]; return [z, n && n[1] === z[1] ? z[0] - n[0] - 1 : null]; }));
+    const cx = ctxGet(), gfDef = DS.gf && GF.find(f => f[0] === DS.gf), gfOk = f => z => !!f[3](z, ctxOf(z), restD.get(z));
+    const logs0 = DS.mate ? mateSplit(all0, DS.mate.id, true)[DS.mate.mode] : all0;
+    const logs = gfDef ? logs0.filter(gfOk(gfDef)) : logs0, h = hitsFrom(logs, s, r.line, side, x.opp);
     const mrows = ms.map(m => { const sp = mateSplit(all0, m.id, true), ok = g2 => side === 'o' ? gval(g2, s) > r.line : gval(g2, s) < r.line, rt2 = a => a.length ? a.filter(ok).length / a.length : null;
       return {m, nw: sp.w.length, nwo: sp.wo.length, aw: avg(sp.w.map(z => gval(z, s))), awo: avg(sp.wo.map(z => gval(z, s))), hw: rt2(sp.w), hwo: rt2(sp.wo), mw: avg(sp.w.map(z => z[MIN_I])), mwo: avg(sp.wo.map(z => z[MIN_I]))}; })
       .filter(z => z.nwo > 0 || /out|doubt|inactive/i.test(z.m.st || ''));
     const lad = ladder(r, side, all0), g15 = all0.slice(0, 15).reverse();
     const tday = g ? Math.floor(Date.parse(g.day + 'T00:00Z') / 864e5) : null, restT = tday != null && all0[0] ? tday - all0[0][0] - 1 : null, homeT = g ? r.team === g.home : null;
+    const spT = g && g.spread != null ? (r.team === g.home ? g.spread : -g.spread) : null;
+    const gfN = GF.map(f => ({f, n: f[4] && !cx ? null : logs0.filter(gfOk(f)).length, now: gfTonight(f[0], spT, homeT, restT)}));
     const okS = g2 => side === 'o' ? gval(g2, s) > r.line : gval(g2, s) < r.line, restOf = i => { const n = all0[i + 1]; return n && n[1] === all0[i][1] ? all0[i][0] - n[0] - 1 : null; };
     const sit = (lbl, f, now) => { const a = all0.filter(f); return {lbl, n: a.length, min: avg(a.map(z => z[MIN_I])), avg: avg(a.map(z => gval(z, s))), hit: a.length ? a.filter(okS).length / a.length : null, now}; };
     const sits = [sit('Home', z => z[3] === 1, homeT === true), sit('Away', z => z[3] === 0, homeT === false),
-      sit('Back-to-back (0 days rest)', z => restOf(all0.indexOf(z)) === 0, restT === 0), sit('1 day rest', z => restOf(all0.indexOf(z)) === 1, restT === 1), sit('2+ days rest', z => restOf(all0.indexOf(z)) >= 2, restT != null && restT >= 2)];
+      sit('Back-to-back (0 days rest)', z => restOf(all0.indexOf(z)) === 0, restT === 0), sit('1 day rest', z => restOf(all0.indexOf(z)) === 1, restT === 1), sit('2+ days rest', z => restOf(all0.indexOf(z)) >= 2, restT != null && restT >= 2)]
+      .concat(cx ? GF.filter(f => f[4]).map(f => sit(f[2], gfOk(f), gfTonight(f[0], spT, homeT, restT))) : []);
     const cmb = combos(x, all), hist = histFor(g, r.e.p, s);
     pf.rows = [r];                                    // Watch in the header goes through the shared handler, which looks rows up here
     const stats = STATS.map(z => z[0]).filter(k => all.some(z => z.r.e.p === r.e.p && z.r.e.s === k));
@@ -4003,8 +4038,9 @@ window.PBX = (() => {
           </div></div>
         <div class="pbx-tabs" id="pbx-stabs">${stats.map(k => `<button type="button" data-ds="${k}" class="${k === s ? 'on' : ''}">${esc(SLABEL[k])}</button>`).join('')}<span class="pbx-ul"></span></div>
         <div class="pbx-wins"><span class="seg">${WIN.map(([k, l]) => `<button type="button" data-win="${k}" aria-pressed="${DS.win === k}">${l}</button>`).join('')}</span>
-          <select id="pbx-mate" class="pbx-alt" aria-label="Teammate filter"><option value="">All games</option>${ms.map(m => `<option value="w|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'w' ? ' selected' : ''}>With ${esc(m.name)}</option><option value="wo|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'wo' ? ' selected' : ''}>Without ${esc(m.name)}${m.st ? ` (${esc(m.st.toLowerCase())} tonight)` : ''}</option>`).join('')}</select></div>
-        <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}${DS.mate ? `<span class="pbx-mf">${DS.mate.mode === 'w' ? 'With' : 'Without'} ${esc((ms.find(m => m.id === DS.mate.id) || {}).name || '')}<button type="button" data-mclear="1" aria-label="Clear teammate filter">×</button></span>` : ''}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
+          <select id="pbx-mate" class="pbx-alt" aria-label="Teammate filter"><option value="">All teammates</option>${ms.map(m => `<option value="w|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'w' ? ' selected' : ''}>With ${esc(m.name)}</option><option value="wo|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'wo' ? ' selected' : ''}>Without ${esc(m.name)}${m.st ? ` (${esc(m.st.toLowerCase())} tonight)` : ''}</option>`).join('')}</select>
+          <select id="pbx-gf" class="pbx-alt" aria-label="Game filter"><option value="">Any game</option>${[...new Set(GF.map(f => f[1]))].map(grp => `<optgroup label="${grp}">${gfN.filter(z => z.f[1] === grp).map(z => `<option value="${z.f[0]}"${DS.gf === z.f[0] ? ' selected' : ''}${z.n === 0 ? ' disabled' : ''}>${z.f[2]}${z.n != null ? ` (${z.n})` : ''}${z.now ? ' · tonight' : ''}</option>`).join('')}</optgroup>`).join('')}</select></div>
+        <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}${DS.mate ? `<span class="pbx-mf">${DS.mate.mode === 'w' ? 'With' : 'Without'} ${esc((ms.find(m => m.id === DS.mate.id) || {}).name || '')}<button type="button" data-mclear="1" aria-label="Clear teammate filter">×</button></span>` : ''}${gfDef ? `<span class="pbx-mf">${gfDef[2]}${gfDef[4] && !cx ? ' (loading)' : ''}<button type="button" data-gclear="1" aria-label="Clear game filter">×</button></span>` : ''}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
           ${WIN.filter(w => w[0] !== DS.win).map(([k, l]) => `<div class="w"><small>${l}</small><b class="${h[k] && h[k].pct > .5 ? 'pos' : h[k] && h[k].pct < .5 ? 'neg' : ''}">${h[k] ? Math.round(h[k].pct * 100) + '%' : '-'}</b></div>`).join('')}</div>
         <div class="pbx-chart">${chart(wg, s, r.line, r.mu)}</div>
         <div class="pbx-ck"><span><i class="ln"></i>Tonight's line ${r.line}</span>${r.mu != null ? `<span><i class="vl"></i>Vault projection ${fmt(r.mu)}</span>` : ''}<span><i class="sq o"></i>Over</span><span><i class="sq u"></i>Under</span>${chartKey(s)}</div>
@@ -4058,11 +4094,11 @@ window.PBX = (() => {
         ${r.min ? `<p class="note">Vault projects ${fmt(r.min)} minutes tonight.</p>` : ''}
       </section>
 
-      <section class="pbx-card2"><header><h3>Situations</h3><small>Last two seasons · tonight is highlighted</small></header>
+      <section class="pbx-card2"><header><h3>Situations</h3><small>Last two seasons · tonight is highlighted · lines are the last DraftKings spread before tip</small></header>
         <div class="pbx-scroll"><table class="pbx-pt pbx-st"><thead><tr><th>Split</th><th>Games</th><th>Minutes</th><th>${esc(SLABEL[s])} avg</th><th>${side === 'o' ? 'Over' : 'Under'} ${r.line}</th></tr></thead><tbody>
           ${sits.map(z => `<tr class="${z.now ? 'main' : ''}"><td>${z.lbl}${z.now ? ' <small>tonight</small>' : ''}</td><td>${z.n}</td><td>${z.min == null ? '-' : fmt(z.min)}</td><td>${z.avg == null ? '-' : fmt(z.avg)}</td><td>${pcell(z.hit)}</td></tr>`).join('')}
         </tbody></table></div>
-        <p class="note">Tonight: ${homeT == null ? '' : homeT ? 'home' : 'away'}${restT == null ? '' : restT === 0 ? ', second night of a back-to-back' : `, ${restT} day${restT === 1 ? '' : 's'} of rest`}. Rest counts days between his own games, so a missed game reads as extra rest.</p>
+        <p class="note">Tonight: ${homeT == null ? '' : homeT ? 'home' : 'away'}${restT == null ? '' : restT === 0 ? ', second night of a back-to-back' : `, ${restT} day${restT === 1 ? '' : 's'} of rest`}${spT != null ? `, ${spT < 0 ? 'favored by ' + Math.abs(spT) : spT > 0 ? 'underdog by ' + spT : 'pick\'em'}` : ''}. Rest counts days between his own games, so a missed game reads as extra rest.${cx ? ' Result rows (won, lost, blowout, close) are only known after the game, and his own big night helps decide them, so they describe the past and cannot be picked in advance.' : ''}</p>
       </section>
 
       <section class="pbx-card2"><header><h3>Every price</h3><small>${side === 'o' ? 'Over' : 'Under'} side · best in green</small></header>
@@ -4123,6 +4159,7 @@ window.PBX = (() => {
     if (d.win){ DS.win = d.win; rerender(); return true; }
     if (d.mate){ const id = +d.mate; DS.mate = DS.mate && DS.mate.id === id ? null : {mode: 'wo', id}; rerender(); window.scrollTo({top: 0, behavior: 'smooth'}); return true; }
     if (d.mclear){ DS.mate = null; rerender(); return true; }
+    if (d.gclear){ DS.gf = null; rerender(); return true; }
     if (d.med){ DS.med = d.med === '1'; rerender(); return true; }
     if (d.rtab){ DS.rtab = d.rtab; rerender(); return true; }
     const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (!x) return true;
@@ -4146,7 +4183,7 @@ window.PBX = (() => {
     css();
     WIN[4][1] = szn(GL.current_season); WIN[5][1] = szn(GL.current_season - 1);
     const rt = routeOf(), rk = rt ? `${rt.pid}|${rt.s}|${rt.side}` : null;
-    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = null; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
+    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = DS.gf = null; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
     if (DS.at){ DS.at = null; const y = S.scroll || 0; setTimeout(() => window.scrollTo(0, y), 0); }
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
@@ -4228,7 +4265,7 @@ window.PBX = (() => {
       if (tr){ const x = root._show[+tr.closest('.pbx-row').dataset.i]; DS.T = null; S.scroll = scrollY; goProp(x.r.e.p, x.r.e.s, x.side); }
     });
     root.addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, rerender); });
-    root.addEventListener('change', e => { if (e.target.id === 'pbx-tven'){ detailInput(e); return; } if (e.target.id === 'pbx-mate'){ const v = e.target.value; DS.mate = v ? {mode: v.split('|')[0], id: +v.split('|')[1]} : null; rerender(); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
+    root.addEventListener('change', e => { if (e.target.id === 'pbx-tven'){ detailInput(e); return; } if (e.target.id === 'pbx-gf'){ DS.gf = e.target.value || null; rerender(); return; } if (e.target.id === 'pbx-mate'){ const v = e.target.value; DS.mate = v ? {mode: v.split('|')[0], id: +v.split('|')[1]} : null; rerender(); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
     let qT = null;
     root.addEventListener('input', e => { if (e.target.id === 'pbx-tprice' || e.target.id === 'pbx-tstake'){ detailInput(e); return; } if (e.target.id !== 'pbx-q') return; S.q = e.target.value; clearTimeout(qT);
       qT = setTimeout(() => { const at = e.target.selectionStart; rerender(); const n = $('pbx-q'); if (n){ n.focus(); n.setSelectionRange(at, at); } }, 150); });
@@ -4468,7 +4505,7 @@ window.PBX = (() => {
 .pbx-card2 > .pbx-lm + .note{padding:0 16px 12px}
 
 .pbx-wins{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.pbx-wins .pbx-alt{margin-left:auto;max-width:280px}
+.pbx-wins .pbx-alt{max-width:260px}.pbx-wins #pbx-mate{margin-left:auto}
 .pbx-mf{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:1px 4px 1px 9px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);font-weight:700}
 .pbx-mf button{background:none;border:0;color:inherit;font-size:13px;padding:0 3px}
 .pbx-st td small{color:var(--fg3);font-weight:500}
