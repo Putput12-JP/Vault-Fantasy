@@ -1,41 +1,41 @@
 {
- "generated": "2026-11-08T12:55:29.612915+00:00",
+ "generated": "2026-11-09T15:30:32.746845+00:00",
  "since": 2007,
  "min_events": 40,
  "note": "median teammate market multiplier when the team's primary QB is out; measured from nflverse weekly stats, sign- and stability-gated",
  "buckets": {
   "QB|pass_yd": {
-   "mult": 0.904,
-   "n": 616,
+   "mult": 0.902,
+   "n": 623,
    "iqr": [
-    0.671,
-    1.185
+    0.662,
+    1.183
    ]
   },
   "WR|rec_yd": {
-   "mult": 0.839,
-   "n": 223,
+   "mult": 0.81,
+   "n": 239,
    "iqr": [
     0.397,
-    1.462
+    1.452
    ]
   }
  },
  "rejected": {
   "QB|pass_att": {
    "mult": 0.974,
-   "n": 644,
+   "n": 651,
    "iqr": [
-    0.764,
-    1.209
+    0.759,
+    1.2
    ],
-   "even": 0.993,
+   "even": 0.985,
    "odd": 0.972,
    "rejected": "no material effect (|0.974-1|<0.05) \u2014 keep withholding"
   },
   "QB|pass_td": {
    "mult": 1.0,
-   "n": 560,
+   "n": 567,
    "iqr": [
     0.0,
     1.0
@@ -46,14 +46,14 @@
   },
   "RB|rec": {
    "mult": 1.0,
-   "n": 629,
+   "n": 633,
    "iqr": [
     0.5,
     1.5
    ],
-   "even": 0.833,
+   "even": 0.8,
    "odd": 1.0,
-   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.167>0.1"
+   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.200>0.1"
   },
   "RB|rec_yd": {
    "mult": 0.566,
@@ -68,7 +68,7 @@
   },
   "RB|rush_att": {
    "mult": 1.0,
-   "n": 926,
+   "n": 933,
    "iqr": [
     0.615,
     1.368
@@ -79,10 +79,10 @@
   },
   "RB|rush_yd": {
    "mult": 0.94,
-   "n": 868,
+   "n": 874,
    "iqr": [
     0.463,
-    1.481
+    1.476
    ],
    "even": 0.935,
    "odd": 0.944,
@@ -90,14 +90,14 @@
   },
   "TE|rec": {
    "mult": 1.0,
-   "n": 647,
+   "n": 654,
    "iqr": [
     0.5,
     1.333
    ],
-   "even": 0.857,
+   "even": 0.833,
    "odd": 1.0,
-   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.143>0.1"
+   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.167>0.1"
   },
   "TE|rec_td": {
    "mult": 0.0,
@@ -111,19 +111,19 @@
    "rejected": "n=6<40; unstable |\u0394|=0.500>0.1"
   },
   "TE|rec_yd": {
-   "mult": 0.949,
-   "n": 78,
+   "mult": 0.895,
+   "n": 82,
    "iqr": [
-    0.506,
-    1.4
+    0.455,
+    1.378
    ],
-   "even": 0.693,
+   "even": 0.654,
    "odd": 1.139,
-   "rejected": "unstable sign even=0.693 odd=1.139"
+   "rejected": "unstable sign even=0.654 odd=1.139"
   },
   "WR|rec": {
    "mult": 1.0,
-   "n": 1592,
+   "n": 1608,
    "iqr": [
     0.5,
     1.429
@@ -134,14 +134,14 @@
   },
   "WR|rec_td": {
    "mult": 0.0,
-   "n": 27,
+   "n": 32,
    "iqr": [
     0.0,
     2.0
    ],
    "even": 0.0,
    "odd": 1.0,
-   "rejected": "n=27<40; unstable |\u0394|=1.000>0.1"
+   "rejected": "n=32<40; unstable |\u0394|=1.000>0.1"
   }
  }
 }
