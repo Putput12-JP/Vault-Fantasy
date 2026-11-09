@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:dark;--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:rgba(255,255,255,.09);--ink:#fff;--mut:#98989f;--dim:#636366;
---acc:#6c9cff;--good:#32d583;--bad:#ff6b6b;--warn:#f5b84a;--ease-spring:cubic-bezier(.34,1.56,.64,1)}
+--acc:#6c9cff;--good:#32d583;--bad:#ff6b6b;--warn:#f5b84a;--nfl:#7aa7ff;--cfb:#f2a65a;--nba:#e57ab3;--ease-spring:cubic-bezier(.34,1.56,.64,1)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.35 -apple-system,"SF Pro Text",Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .cond{font-family:"Barlow Condensed","SF Pro Rounded",Geist,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
@@ -93,10 +93,7 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .title{margin-top:calc(env(safe-area-inset-top) + 18px)}
 .tabbar{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:560px;right:auto}
 .tab-hide{display:none}
-.sgls{margin:10px 0 2px}.sgl{display:flex;gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid var(--line);font-size:13px;color:var(--mut)}.sgl span{width:104px;flex:none}.sgl em{font-style:normal;flex:1;color:#fff}
-.sgl .sd{width:8px;height:8px;border-radius:50%;background:#3a3a3e;flex:none;align-self:center}.sgl.ag .sd{background:var(--good)}.sgl.op .sd{background:var(--bad)}.sgl.op em{color:var(--mut)}.sgl.cx{color:var(--dim)}.sgl.cx .sd{background:transparent;box-shadow:inset 0 0 0 1.5px var(--dim)}.sgl.cx em{color:var(--mut)}
 .dots2{display:inline-flex;gap:4px}.dots2 i{width:8px;height:8px;border-radius:50%;background:#3a3a3e;display:inline-block}.dots2 i.on{background:var(--acc)}
-.px3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.px3 div{background:#2a2a2d;border-radius:12px;padding:8px 10px;text-align:center}.px3 b{display:block;font-size:20px;font-weight:600}.px3 small{color:var(--mut);font-size:11px}
 .lrr{padding:10px 0;border-top:1px solid var(--line)}.lrr:first-of-type{border-top:0}
 .tiles2{display:grid;grid-template-columns:1fr 1fr;gap:0 0;margin:0 16px}.tiles2 .card{margin:0 0 12px}.tiles2 .card:nth-child(odd){margin-right:6px}.tiles2 .card:nth-child(even){margin-left:6px}
 .picked{box-shadow:0 0 0 2px var(--acc) inset}
@@ -118,9 +115,51 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .brr{position:relative;height:6px;border-radius:3px;background:#2a2a2d}.brr i{display:block;height:100%;border-radius:3px}.brr u{position:absolute;top:-2px;width:2px;height:10px;background:#fff;opacity:.5;text-decoration:none}
 .qin{width:100%;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:#101012;color:#fff;font:inherit;box-sizing:border-box}
 .pos{color:var(--good)}.neg{color:var(--bad)}
-.trg{display:grid;grid-template-columns:.7fr 1.3fr 1fr 1fr 1fr;gap:4px;font-size:15px;text-align:right;font-variant-numeric:tabular-nums}.trg>:first-child{text-align:left}
-.trg.h{font-family:-apple-system,Geist,sans-serif;font-size:10.5px;color:var(--dim);font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding-bottom:4px}
-.trs{padding:9px 0;border-top:1px solid var(--line)}
+/* Top Reads, B Bento (phone): verdict, top cards, ledger modules, more reads */
+.trv{display:flex;align-items:center;gap:10px;margin:4px 20px 8px;font-size:14px;line-height:1.35}
+.trv .dt{width:8px;height:8px;border-radius:50%;flex:none;background:var(--warn);box-shadow:0 0 0 4px color-mix(in srgb,var(--warn) 18%,transparent)}
+.trv .dt.ok{background:var(--good);box-shadow:0 0 0 4px color-mix(in srgb,var(--good) 18%,transparent)}.trv .dt.off{background:var(--dim);box-shadow:none}
+.trb .chips{padding:7px 0;margin-top:-3px;margin-bottom:4px}.trb .chips .chip{position:relative}.trb .chips .chip::after{content:"";position:absolute;inset:-7px 0}
+.trsp{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mut)}
+.trsp i,.trd{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none;display:inline-block}
+.trsp.nfl i,.trd.nfl{background:var(--nfl)}.trsp.cfb i,.trd.cfb{background:var(--cfb)}.trsp.nba i,.trd.nba{background:var(--nba)}
+.trmk{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mut)}
+.trc{position:relative;display:flex;flex-direction:column;gap:12px;padding:18px;overflow:hidden}
+.trc .rk{position:absolute;right:16px;top:10px;font:600 44px/1 ui-monospace,"SF Mono",Menlo,monospace;color:var(--card2);pointer-events:none}
+.trc .pk{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.05;padding-right:36px}
+.trc .gm{font-size:13px;color:var(--mut);margin-top:5px}
+.trpx{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-weight:600;font-size:20px;font-variant-numeric:tabular-nums}
+.trbk{color:var(--mut);font-size:12px}
+.trwhy{display:flex;gap:6px;flex-wrap:wrap}
+.trwhy span{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:8px;background:var(--card2);color:var(--mut);font-size:12px;line-height:1.25}
+.trwhy svg{flex:none;width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.trft{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
+.trpl{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--card2);color:var(--mut)}
+.trpl.trial{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.trpl.play{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.trpl.split{background:transparent;border:1px dashed var(--line);color:var(--dim)}
+.trm{padding:18px}.trm .hint,.trb .hint{font-size:12px;color:var(--dim)}
+.trbig{font-size:44px;font-weight:700;line-height:1;margin:12px 0 6px}
+.trvs{display:grid;gap:10px;margin-top:14px}
+.trvr{display:grid;grid-template-columns:58px minmax(0,1fr) 54px;align-items:center;gap:10px;font-size:12px;color:var(--mut)}.trvr .cond{text-align:right;font-size:16px;color:var(--ink)}
+.trlist{margin-top:6px}.trlist>:first-child{border-top:0}
+.trrule{display:flex;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.trrule p{margin:0 0 3px;font-size:14px;font-weight:600;line-height:1.3}
+.trring{width:58px;height:58px;flex:none;font-family:ui-monospace,"SF Mono",Menlo,monospace}
+.trsig{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.5fr) 50px;gap:12px;align-items:center;min-height:44px;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.trdual{position:relative;height:8px;border-radius:8px;background:var(--card2)}
+.trdual i{position:absolute;left:0;top:0;bottom:0;border-radius:8px}
+.trdual u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);text-decoration:none}
+.trmore{padding:4px 16px 6px}
+.trmore .wh{padding:12px 0 4px;color:var(--dim);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.trrow{display:grid;grid-template-columns:8px minmax(0,1fr) auto auto;gap:10px;align-items:center;min-height:44px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer;transition:transform .5s var(--ease-spring)}
+.trmore .wh+.trrow{border-top:0}
+.trrow:active{transform:scale(.99);transition:transform 80ms ease-out}
+.trnm{min-width:0;font-size:15px}.trnm b{font-weight:700}.trnm span{color:var(--mut);font-size:12px}.trnm small{display:block;color:var(--dim);font-size:12px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trrp{text-align:right;line-height:1.15}.trrp .trpx{font-size:15px}.trrp small{display:block;color:var(--mut);font-size:11px}
+.trsplit{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 0;border-top:1px solid var(--line);color:var(--dim);font-size:13px;transition:transform .5s var(--ease-spring)}
+.trsplit span:last-child{color:var(--acc);font-weight:600}
+.trsplit:active{transform:scale(.99);transition:transform 80ms ease-out}
 .skel{background:linear-gradient(90deg,#1c1c1e 25%,#2a2a2d 50%,#1c1c1e 75%);background-size:200% 100%;animation:sk 1.3s linear infinite;border-radius:24px;margin:0 16px 12px;height:150px}
 @keyframes sk{to{background-position:-200% 0}}
 .badge.dot::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
@@ -191,7 +230,7 @@ const pinSp=g=>g.pin&&g.pin.sp?g.pin.sp.line:(g.consensus&&g.consensus.sp?g.cons
 const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
 const live=g=>g.status==='inprogress';
 const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
-const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',trs:'kind_sport',msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30,ptier:'play',pprops:12};
+const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',trsplit:false,trall:false,msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30,ptier:'play',pprops:12};
 const ICON={plays:'<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/>',board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
 $('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${({reads:'Reads'})[k]||k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
@@ -689,9 +728,9 @@ function pickPage(sp,key){
 }
 
 /* ===== Top Reads =====
-   The page leads with the priced ledger (topreads_record.json): plays from proven rules only, rules on trial,
-   the record at real US-book prices and which signals pay. The live reads below it are market context, not picks.
-   Sharp accounts are context only and never count toward anything. */
+   Phone layout "B, Bento": a one-line verdict, plays from proven rules first, then the top three one-sided reads,
+   then the priced ledger (topreads_record.json: the record, rules on trial, which signals pay), then the rest of the
+   reads by kickoff. Read order is display order, not a quality claim. Sharp accounts are context only and never count. */
 const MKT={ml:'moneyline',sp:'spread',tot:'total'},MKU={sp:'Spread',tot:'Total',ml:'Moneyline'};
 const TS={trust:['Trust it','good'],watch:['Watch it','warn'],ignore:['Ignore it','bad'],ctx:['Context','']};
 const TSO={trust:0,watch:1,ignore:2,ctx:3};
@@ -728,22 +767,6 @@ function readOut(g,t){
  if(b)r.behind={side:b.side,txt:b.book+' '+am(b.price)+', '+(b.ev*100).toFixed(1)+"% over Pinnacle's fair",bh:b};
  return {out:r,hl};
 }
-function readFor(g){
- let best=null;
- for(const t of ['sp','tot','ml']){
-  const {out,hl}=readOut(g,t),s={};
-  for(const k of Object.keys(out))if(out[k]&&!out[k].ctx)s[out[k].side]=(s[out[k].side]||0)+1;
-  for(const side of (t==='tot'?['over','under']:['away','home'])){const a=s[side]||0,opp=Object.values(s).reduce((x,y)=>x+y,0)-a;if(a&&(!best||a-opp>best.agree-best.oppose))best={m:t,side,agree:a,oppose:opp,out,hl}}
- }
- return best;
-}
-function readResult(g,r,groups){
- const o=groups.find(d=>d.game===g.key&&d.m===r.m&&d.side===r.side&&d.graded);if(o)return ja(o);
- if(!g.final)return null;const {home:i,away:s}=g.final;
- if(r.m==='ml')return i===s?0:((i>s)===(r.side==='home')?1:-1);
- if(r.hl==null)return null;const x=r.m==='sp'?i+r.hl-s:i+s-r.hl,l=r.side==='home'||r.side==='over'?x:-x;return l>0?1:l<0?-1:0;
-}
-
 /* ---- graded picks, grouped by the signals that fired (sharp is context, never counted) ---- */
 function topGroups(Dd){
  const EF={steam:'line',split:'money',sharp:'sharp',cross:'sharp',behind:'behind'},BET={line:1,money:1,behind:1},OPP={home:'away',away:'home',over:'under',under:'over'};
@@ -925,22 +948,6 @@ function sigPanel(c,d){
 }
 
 /* ---- the page ---- */
-function readCard(x,groups,d){
- const {g,r}=x,m=r.m,side=r.side,opp=rOpp(m,side),pk=rPick(g,m,side,r.hl),pc=Math.round(x.left/WIN*100),col=pc>50?'var(--good)':pc>20?'var(--warn)':'var(--bad)';
- const rows=[['line','Pinnacle line'],['money','Money vs bets'],['behind','+EV at a book']].map(([k,l])=>{const o=r.out[k];
-  if(!o)return `<div class="sgl"><i class="sd"></i><span>${l}</span><em>no signal</em></div>`;
-  const ag=o.side===side;return `<div class="sgl ${ag?'ag':'op'}"><i class="sd"></i><span>${l}</span><em>${ag?'':'against · '}${esc(o.txt)}</em></div>`}).join('');
- const mp=((D&&D.picks)||[]).find(q=>q.game===g.key&&q.m===m&&q.side===side&&q.model),mo=mp?mp.model:null,mdl=mo?`<div class="sgl cx"><i class="sd"></i><span>Our model</span><em>${mo.side===side?'agrees':'disagrees'} · ${mo.edge} pt${mo.edge===1?'':'s'} off this number · context only</em></div>`:'';
- const sh=r.out.sharp?`<div class="sgl cx"><i class="sd"></i><span>Context only</span><em>${r.out.sharp.side===side?'with':'against'} · ${esc(r.out.sharp.txt)}</em></div>`:'';
- const pin=g.pin&&g.pin[m],price=pin&&pin[side]!=null?pin[side]:null,oppP=pin&&pin[opp]!=null?pin[opp]:null,fair=price!=null&&oppP!=null?rDevig(price,oppP):null;
- let best=null;for(const [b,v] of Object.entries(g.soft||{})){const q=v[m];if(!q||q[side]==null)continue;if(m!=='ml'&&q.line!==r.hl)continue;if(!best||q[side]>best.price)best={src:b,price:q[side]}}
- const res=readResult(g,r,groups);
- return `<div class="card tap" data-go="game/${esc(g.key)}" style="${x.left?'':'opacity:.65'}"><div class="gtop"><span class="lgrow">${SPORT[g.sport]} · ${logo(g.away,'xs',g.sport)}${esc(rTn(g,'away'))} @ ${logo(g.home,'xs',g.sport)}${esc(rTn(g,'home'))} · ${MKU[m]} · ${when(g.start)}</span></div>
- <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="cond" style="font-size:30px;font-weight:700">${esc(pk)}</div>${res!=null?wlBadge(res):''}</div>
- <div class="sgls">${rows}${sh}${mdl}</div>
- <div class="px3"><div><b class="cond">${price==null?'-':am(price)}</b><small>Pinnacle</small></div><div><b class="cond">${best?am(best.price):'-'}</b><small>${best?esc(SHB[best.src]||best.src):'best book'}</small></div><div><b class="cond">${fair==null?'-':cent(fair)}</b><small>no-vig fair</small></div></div>
- <div class="brr" style="margin-top:10px"><i style="width:${pc}%;background:${col}"></i></div><div class="foot" style="margin:4px 0 0">${x.left?'about '+Math.round(x.left)+'m of edge left':'edge window closed'}</div></div>`;
-}
 function settledRow(y){
  const R=y.clvs&&y.clvs.length?y.clvs[0]:null;
  return `<div class="mrw" style="cursor:default"><div class="grow"><b class="lgrow">${tpair(lblTeams(y.sport,y.gameLbl,y.game))}${esc(y.gameLbl)}</b><div class="m">${SPORT[y.sport]||''} · ${esc(rLabel(y))} · ${MKU[y.m]||''} · ${[...y.kinds].map(k=>({line:'line moved',money:'money vs bets',behind:'+EV at a book'})[k]||k).join(', ')}${y.conflict?' · both sides':''}</div></div><div class="amt cond" style="font-size:18px">${y.units!=null?(y.units>0?'+':'')+Number(y.units).toFixed(2)+'u':''}<small>${R!=null?(R>0?'+':'')+(R*100).toFixed(1)+'¢ CLV':''}</small></div>${wlBadge(ja(y))}</div>`;
@@ -957,97 +964,131 @@ function loadTR(){
 }
 const trP=x=>x==null?'-':(x*100).toFixed(1)+'%';
 const trU=x=>x==null?'-':(x>0?'+':x<0?'-':'')+Math.abs(x).toFixed(2)+'u';
-const trR=x=>x==null?'-':(x>0?'+':x<0?'-':'')+Math.abs(x*100).toFixed(1)+'%';
 const trRec=s=>s.w+'-'+s.l+(s.p?'-'+s.p:'');
-// the meter is green only when it says Holding
-const trMeter=m=>m?`<span class="badge ${m==='Holding'?'good':''}">${esc(m)}</span>`:'';
-const trLine=s=>!s?'-':(s.n?`n=${s.n} · ${trRec(s)} · ${trU(s.units)} · needed ${trP(s.breakeven)} · won ${trP(s.win)}`:'n=0 · no bets settled at a US-book price yet')+(s.unpriced_n?` · ${s.unpriced_n} unpriced, not in units`:'');
-const trCt=iso=>{const t=Date.parse(iso);return isNaN(t)?'':new Date(t).toLocaleString('en-US',{...CT,weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT'};
-const trCtDay=iso=>{const t=Date.parse(iso);return isNaN(t)?'':new Date(t).toLocaleString('en-US',{...CT,weekday:'short',month:'short',day:'numeric'})};
 const trUp=f=>{const t=Date.parse(f&&f.start_utc);return isNaN(t)||t>Date.now()};
 const TRSTAGE={watching:'Watching',proving:'Proving',proven:'Proven',retired:'Retired'},TRSO={proven:0,proving:1,watching:2,retired:3};
-const TRKIND={line:'Line moved (read)',money:'Money vs bets (read)',behind:'+EV at a book',split:'Money vs bets alert',steam:'Pinnacle move alert',whale:'Big ticket',prop_call:'Prop call'};
-const TRMK={ml:'Moneyline',sp:'Spreads',tot:'Totals',prop:'Player props'};
-const TRBAND={'long dog':'Long dogs','dog':'Dogs',"pick'em":"Pick'ems",'fav':'Favorites','heavy fav':'Heavy favorites'};
-const TRTIME={'24h+':'A day or more out','3-24h':'3 to 24 hours out','under 3h':'Under 3 hours out'};
-const TRGRP=[['kind_sport','Signal'],['band','Price band'],['timing','Timing'],['market','Market']];
-function trFire(f){
- return `<div class="row"><div class="grow"><b>${esc(f.side_label)}</b><div class="m">${esc(f.game)} · ${SPORT[f.sport]||''} · ${esc(f.book)} ${am(f.price)}</div><div class="m">Expires ${esc(f.expires_ct)}${f.price_to_beat!=null?' · price to beat '+am(f.price_to_beat):''}</div></div><span class="badge">On trial, not a play</span></div>`;
+const TRUS=['DraftKings','FanDuel','BetMGM','Caesars','Fanatics','BetRivers','bet365'];
+const TRKN={line:'Line moved',behind:'Book behind Pinnacle',money:'Money vs bets'};
+const TRIC={line:'<path d="M2 11l4-4 3 3 5-6"/><path d="M10 4h4v4"/>',behind:'<circle cx="8" cy="8" r="6"/><path d="M8 4.5v3.7l2.4 1.6"/>',money:'<path d="M3 12V7M8 12V4M13 12V9"/>'};
+const TRKS={line:'Line moved',behind:'Book behind',money:'Money vs bets',split:'Money vs bets alert',steam:'Pinnacle move',whale:'Big ticket',prop_call:'Prop call'};
+const TRSHORT={nfl_prop_under_us_book:'NFL prop Unders at a US book',behind_spread_24h:'Book behind Pinnacle on a spread, 24h+ out',cfb_behind_spread_24h:'College: book behind on a spread, 24h+ out'};
+const trShort=r=>TRSHORT[r.id]||String(r.plain||r.id).split(':')[0].slice(0,60);
+const trIn=(ts,d)=>{const h=(ts-d)/3600;return h<=0?'started':'starts in '+(h<1?Math.max(1,Math.round(h*60))+'m':h<48?Math.round(h)+'h':Math.round(h/24)+'d')};
+const trDot=sp=>`<span class="trsp ${esc(sp)}"><i></i>${SPORT[sp]||esc(sp||'')}</span>`;
+const trPill=k=>k==='play'?'<span class="trpl play">Play</span>':k==='trial'?'<span class="trpl trial">On trial</span>':k==='split'?'<span class="trpl split">Split</span>':'<span class="trpl">Context</span>';
+const trPx=(p,book)=>`<span class="trpx">${am(p)}</span> <span class="trbk">at ${esc(SHB[book]||book)}</span>`;
+
+/* One read per game and market, built from the poller's own signals (readOut). Sharp accounts never count.
+   A market whose signals take both sides is "split" and is hidden behind one row. */
+function trPrice(g,m,side,hl,out,US){
+ let best=null;
+ for(const [b,v] of Object.entries(g.soft||{})){if(!US.includes(b))continue;const q=v[m];if(!q||q[side]==null)continue;if(m!=='ml'&&q.line!==hl)continue;if(!best||q[side]>best.price)best={book:b,price:q[side],hl,us:true}}
+ const bh=out.behind&&out.behind.side===side?out.behind.bh:null;
+ if(!best&&bh&&US.includes(bh.book))best={book:bh.book,price:bh.price,hl:m==='tot'?bh.line:m==='sp'?bh.hline:null,us:true};
+ if(!best){const p=g.pin&&g.pin[m];if(p&&p[side]!=null)best={book:'Pinnacle',price:p[side],hl,us:false}}
+ return best;
 }
-function trPlay(f,R){
- const r=R.find(x=>x.id===f.rule);
- return `<div class="card"><div class="gtop"><span>${SPORT[f.sport]||''} · ${esc(f.game)}</span><span class="badge good">Play</span></div>
- <div class="cond" style="font-size:30px;font-weight:700">${esc(f.side_label)}</div>
- <div class="kv"><span>Price</span><em class="cond" style="font-size:18px">${esc(f.book)} ${am(f.price)}</em></div>
- <div class="kv"><span>Price to beat</span><em class="cond" style="font-size:18px">${f.price_to_beat==null?'-':am(f.price_to_beat)}</em></div>
- <div class="kv"><span>Expires</span><em style="font-size:14px;font-weight:500">${esc(f.expires_ct)}</em></div>
- ${r?`<div class="foot">${esc(r.plain)}</div>`:''}</div>`;
+function trReads(d){
+ const US=(TR.d&&TR.d.pricing&&Array.isArray(TR.d.pricing.us_books)&&TR.d.pricing.us_books.length)?TR.d.pricing.us_books:TRUS;
+ const trial=new Set();if(TR.d)for(const r of TR.d.rules||[])for(const f of r.today||[])if(f&&f.key&&trUp(f))trial.add(f.key);
+ const alertTs={};for(const a of D.alerts||[])(alertTs[a.game]||(alertTs[a.game]=[])).push(a.ts);
+ const one=[],split=[];
+ for(const g of G){
+  if(!(g.start>(st.texp?d-4*3600:d)))continue;
+  for(const m of ['sp','tot','ml']){
+   const {out,hl}=readOut(g,m),ks=['line','behind','money'].filter(k=>out[k]),sides=new Set(ks.map(k=>out[k].side));
+   if(!sides.size)continue;
+   if(sides.size>1){split.push({g,m});continue}
+   const side=[...sides][0],f=Math.max(0,...(alertTs[g.key]||[]),...(g.accts||[]).filter(a=>a.m===m&&a.side===side).map(a=>a.last||0)),left=f?Math.max(0,WIN-(d-f)/60):0;
+   const px=trPrice(g,m,side,hl,out,US);
+   one.push({g,m,side,ks,out,left,px,pick:rPick(g,m,side,px&&px.hl!=null?px.hl:hl),trial:trial.has(g.key+'|'+m+'|'+side)});
+  }
+ }
+ // display order, not a quality claim: on trial, then a US-book price, then soonest start
+ one.sort((a,b)=>(b.trial-a.trial)||((b.px&&b.px.us?1:0)-(a.px&&a.px.us?1:0))||(a.g.start-b.g.start));
+ return {one,split};
 }
-function trRule(r){
- const F=r.forward||{},H=r.holdout_note,P=r.progress||{n:0,need:150,game_days:0,need_days:8},today=(r.today||[]).filter(trUp),ret=r.stage==='retired';
- const fr=Math.min(1,(P.n||0)/(P.need||150),(P.game_days||0)/(P.need_days||8));
- return `<div class="card"${ret?' style="opacity:.6"':''}><div class="gtop" style="align-items:flex-start"><span>On trial since ${esc(trCtDay(r.frozen_at))}</span><span class="badge">${esc(TRSTAGE[r.stage]||r.stage)}</span></div>
- <div style="font-size:15px;font-weight:600;line-height:1.35">${esc(r.plain)}</div>
- <div class="fll" style="margin:10px 0 2px"><span>Since the freeze</span>${trMeter(F.meter)}</div>
- <div class="cond" style="font-size:18px;font-weight:600">${esc(trLine(F))}</div>
- ${ret?'':`<div class="brr" style="margin-top:8px"><i style="width:${Math.round(fr*100)}%;background:var(--acc)"></i></div><div class="foot" style="margin:4px 0 0">${P.n} of ${P.need} bets · ${P.game_days} of ${P.need_days} game days</div>`}
- ${H?`<div class="foot" style="margin:8px 0 0">Before the freeze, does not count: ${esc(trLine(H))}</div>`:''}
- ${r.read_note?`<div class="foot" style="margin:4px 0 0">${esc(r.read_note)}</div>`:''}
- ${ret?'':`<div class="fl"><div class="fll" style="margin:0"><span>Qualifying today</span><span>${today.length}</span></div>${today.length?today.map(trFire).join(''):'<div class="foot" style="margin:4px 0 0">Nothing qualifies right now.</div>'}</div>`}</div>`;
+const trGame=g=>esc(rTn(g,'away'))+' @ '+esc(rTn(g,'home'));
+function trTop(x,i,d){
+ const {g,m}=x,why=x.ks.slice(0,2).map(k=>`<span title="${TRKN[k]}"><svg viewBox="0 0 16 16" aria-hidden="true">${TRIC[k]}</svg>${esc(x.out[k].txt)}</span>`).join('');
+ return `<article class="card tap trc" tabindex="0" data-go="game/${esc(g.key)}"><span class="rk" aria-hidden="true">${i+1}</span>
+ <div>${trDot(g.sport)}<span class="trmk"> · ${MKU[m]}</span></div>
+ <div><div class="pk">${esc(x.pick)}</div><div class="gm">${trGame(g)} · ${when(g.start)}</div></div>
+ <div>${x.px?trPx(x.px.price,x.px.book):'<span class="trbk">No price posted</span>'}</div>
+ ${why?`<div class="trwhy">${why}</div>`:''}
+ <div class="trft">${trPill(x.trial?'trial':'ctx')}<span>${trIn(g.start,d)}</span></div></article>`;
 }
-function trSliceName(g,s){if(g==='kind_sport')return (TRKIND[s.kind]||s.kind)+' · '+(SPORT[s.sport]||s.sport);if(g==='band')return TRBAND[s.key]||s.key;if(g==='timing')return TRTIME[s.key]||s.key;return TRMK[s.key]||s.key}
-function trSlices(T){
- const g=TRGRP.some(x=>x[0]===st.trs)?st.trs:'kind_sport',lift=s=>s.wilson_lo!=null&&s.breakeven!=null?s.wilson_lo-s.breakeven:-Infinity;
- const rows=((T.slices||{})[g]||[]).filter(s=>s.n>0).sort((a,b)=>((b.n>=50)-(a.n>=50))||(a.n>=50?lift(b)-lift(a):0)||b.n-a.n);   // 50+ bets ranked by lift; smaller ones are too early and go below, by size
- let h=chips(TRGRP.map(([v,l])=>[v,l]),g,'trs');
- if(g==='band')h+=`<div class="sub">A high hit rate on favorites is not profit. Needed is what you had to win.</div>`;
- h+=`<div class="card"><div class="trg h"><span>Bets</span><span>Record</span><span>Units</span><span>Needed</span><span>Won</span></div>`+(rows.length?rows.map(s=>`<div class="trs"><div class="fll" style="margin:0 0 3px;color:#fff;font-size:13.5px;font-weight:600"><span>${esc(trSliceName(g,s))}</span>${trMeter(s.meter)}</div><div class="trg cond"><span>${s.n}</span><span>${s.n?trRec(s):'-'}</span><span>${s.n?trU(s.units):'-'}</span><span>${trP(s.breakeven)}</span><span>${trP(s.win)}</span></div>${s.unpriced_n?`<div class="foot" style="margin:2px 0 0">${s.unpriced_n} more settled with no US-book price, not in units</div>`:''}</div>`).join(''):'<div class="empty" style="padding:14px 0">No settled bets in this group yet.</div>')+`<div class="foot" style="margin:8px 0 0">Sorted by how far the low end of the win range sits above what was needed. A row shows up once in each signal that fired on it.</div></div>`;
- return h;
+function trPlayCard(f){
+ const gk=String(f.key||'').split('|')[0],go=GM[gk]?` tabindex="0" data-go="game/${esc(gk)}"`:'';
+ return `<article class="card trc${go?' tap':''}"${go}>
+ <div>${trDot(f.sport)}<span class="trmk"> · ${MKU[f.market]||esc(f.market||'')}</span></div>
+ <div><div class="pk">${esc(f.side_label)}</div><div class="gm">${esc(f.game||'')} · ${esc(f.expires_ct||'')}</div></div>
+ <div>${f.price!=null?trPx(f.price,f.book):''}</div>
+ <div class="trft">${trPill('play')}${f.price_to_beat!=null?`<span>price to beat ${am(f.price_to_beat)}</span>`:''}</div></article>`;
 }
-function trSections(){
+function trRow(x){
+ const {g,m}=x;
+ return `<div class="trrow" tabindex="0" data-go="game/${esc(g.key)}"><i class="trd ${esc(g.sport)}"></i><div class="trnm"><b>${esc(x.pick)}</b> <span>${MKU[m]}</span><small>${trGame(g)}</small></div><div class="trrp">${x.px?`<span class="trpx">${am(x.px.price)}</span><small>${esc(SHB[x.px.book]||x.px.book)}</small>`:'<small>no price</small>'}</div>${trPill(x.trial?'trial':'ctx')}</div>`;
+}
+function trRing(p){
+ const C=2*Math.PI*24,q=Math.max(0,Math.min(1,p||0));
+ return `<svg class="trring" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="24" fill="none" stroke="var(--card2)" stroke-width="6"/><circle cx="29" cy="29" r="24" fill="none" stroke="var(--warn)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${(C*(1-q)).toFixed(2)}" transform="rotate(-90 29 29)"/><text x="29" y="33" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${Math.round(q*100)}%</text></svg>`;
+}
+// the three ledger modules; the meter is green only when it says Holding
+function trModules(){
  const T=TR.d;
- if(!T){if(TR.err)return `<div class="card"><div class="foot" style="margin:0">Ledger unavailable. The market context below still loads.</div></div>`;return '<div class="skel" style="height:64px"></div><div class="skel"></div>'}
- const R=(T.rules||[]).slice().sort((a,b)=>(TRSO[a.stage]??9)-(TRSO[b.stage]??9)),proven=new Set(R.filter(r=>r.stage==='proven').map(r=>r.id));
- const plays=(T.plays||[]).filter(f=>proven.has(f.rule)&&trUp(f)),Hd=T.headline;
- // 1. Today's plays: proven rules only
- let h=`<div class="sec" style="margin-top:4px"><span>Today's plays</span><span>${plays.length}</span></div>`;
- h+=plays.length?plays.map(f=>trPlay(f,R)).join(''):`<div class="card" style="padding:12px 16px"><div style="font-size:14px">No signal has earned a play yet. A play shows up here only after its rule beats the price on games played after we froze it.</div><div class="foot" style="margin:4px 0 0">Last updated ${esc(T.generated_ct||'')}</div></div>`;
- // 2. Rules on trial
- h+=`<div class="sec"><span>Rules on trial</span><span>${R.filter(r=>r.stage!=='retired').length}</span></div>`;
- h+=R.length?R.map(trRule).join(''):'<div class="card"><div class="foot" style="margin:0">No rules on trial.</div></div>';
- // 3. Is it making money?
- const HL=T.headline_label||'Every signal (reads, alerts, prop calls), mostly before the freeze',HS=T.headline_split,CS=T.contested;
- h+=`<div class="sec"><span>Is it making money?</span></div><div class="sub">Every signal, one bet per game, market and side, graded at a US sportsbook price. Not a rule, so it carries no meter.</div>`;
- h+=`<div class="card"><div class="gtop"><span>Every signal · n=${Hd.n}</span>${trMeter(Hd.meter)}</div><div class="cond" style="font-size:30px;font-weight:600">${Hd.n?trRec(Hd):'none settled'}</div>
- <div class="foot" style="margin:2px 0 6px;color:var(--mut);font-size:13px">${Hd.n?'Needed '+trP(Hd.breakeven)+' to break even, won '+trP(Hd.win):'No bets settled at a US-book price yet'}</div>
- <div class="kv"><span>Units, 1u flat</span><em class="cond" style="font-size:18px">${trU(Hd.units)}</em></div><div class="kv"><span>ROI</span><em class="cond" style="font-size:18px">${trR(Hd.roi)}</em></div>
- <div class="kv"><span>Bets</span><em class="cond" style="font-size:18px">${Hd.n} on ${Hd.games} games, ${Hd.game_days} days</em></div>
- <div class="kv"><span>Unpriced, not in units</span><em class="cond" style="font-size:18px">${Hd.unpriced_n}${Hd.unpriced_n?' ('+Hd.unpriced_w+'-'+Hd.unpriced_l+')':''}</em></div>
- ${HS?`<div class="kv"><span>Before the freeze, ${esc(trCtDay(HS.frozen_at))}</span><em class="cond" style="font-size:15px">${HS.before.n?trRec(HS.before)+' · '+trU(HS.before.units):'none'}</em></div><div class="kv"><span>After the freeze</span><em class="cond" style="font-size:15px">${HS.after.n?trRec(HS.after)+' · '+trU(HS.after.units)+' · n='+HS.after.n:'none settled yet'}</em></div>`:''}
- ${CS?`<div class="kv"><span>Signals split, left out</span><em class="cond" style="font-size:15px">${CS.rows} signals on ${CS.markets} markets${CS.record&&CS.record.n?' · '+trRec(CS.record)+' · '+trU(CS.record.units):''}</em></div>`:''}
- <div class="foot">${esc((T.pricing&&T.pricing.note)||'')}${T.pending?' '+T.pending+' still waiting on a result.':''}</div></div>`;
- // 4. Which signals pay
- h+=`<div class="sec"><span>Which signals pay</span></div>`+trSlices(T);
- return h;
+ if(!T)return TR.err?`<div class="card"><div class="foot" style="margin:0">Ledger unavailable. The reads above still load from live prices.</div></div>`:'<div class="skel" style="height:220px"></div><div class="skel" style="height:180px"></div>';
+ const H=T.headline,hold=H.meter==='Holding';
+ let h=`<section class="card trm"><div class="ph" style="margin:0"><span>Is it making money?</span>${hold?'<span class="badge good">Holding</span>':''}</div><div class="hint">Every read, graded at a real US sportsbook price</div>`;
+ h+=H.n?`<div class="trbig cond">${trU(H.units)}</div><div class="hint">${trRec(H)} · n=${H.n}</div>
+ <div class="trvs"><div class="trvr"><span>Won</span><div class="brr"><i style="width:${Math.round((H.win||0)*100)}%;background:${hold?'var(--good)':'var(--acc)'}"></i></div><span class="cond">${trP(H.win)}</span></div>
+ <div class="trvr"><span>Needed</span><div class="brr"><i style="width:${Math.round((H.breakeven||0)*100)}%;background:var(--mut)"></i></div><span class="cond">${trP(H.breakeven)}</span></div></div>
+ <div class="hint" style="margin-top:12px">${hold?'Holding above what it needed':'Too close to call an edge yet'}</div>`:`<div class="hint" style="margin-top:10px">No bets settled at a US-book price yet · n=0</div>`;
+ if(H.unpriced_n)h+=`<div class="foot" style="margin:6px 0 0">${H.unpriced_n} more settled with no US-book price, not in units.</div>`;
+ h+='</section>';
+ const R=(T.rules||[]).slice().sort((a,b)=>(TRSO[a.stage]??9)-(TRSO[b.stage]??9));
+ h+=`<section class="card trm"><div class="ph" style="margin:0"><span>Rules on trial</span><span>${R.filter(r=>r.stage!=='retired').length}</span></div><div class="hint">A rule earns plays after 150 bets on games played since it was frozen</div><div class="trlist">`;
+ h+=R.length?R.map(r=>{const P=r.progress||{},need=P.need||150,n=P.n||0;return `<div class="trrule"${r.stage==='retired'?' style="opacity:.6"':''}>${trRing(n/need)}<div style="min-width:0"><p>${esc(trShort(r))}</p><span class="hint">${esc(TRSTAGE[r.stage]||r.stage)} · ${n} of ${need}</span></div></div>`}).join(''):'<div class="hint" style="padding:12px 0">No rules on trial.</div>';
+ h+='</div></section>';
+ const sl=((T.slices||{}).kind_sport||[]).filter(s=>s.n>=20&&s.win!=null&&s.breakeven!=null).sort((a,b)=>b.n-a.n);
+ h+=`<section class="card trm"><div class="ph" style="margin:0"><span>Which signals pay</span></div><div class="hint">Win rate at real prices. White tick = what you needed to win.</div><div class="trlist">`;
+ h+=sl.length?sl.map(s=>{const c=s.meter==='Holding'?'var(--good)':s.win<s.breakeven?'var(--bad)':'var(--acc)';return `<div class="trsig"><span>${esc(TRKS[s.kind]||s.kind)} <span class="trbk">${SPORT[s.sport]||esc(s.sport)}</span></span><div class="trdual" title="Won ${trP(s.win)}, needed ${trP(s.breakeven)}"><i style="width:${Math.round(s.win*100)}%;background:${c}"></i><u style="left:${(s.breakeven*100).toFixed(1)}%"></u></div><span class="trbk" style="text-align:right">n=${s.n}</span></div>`}).join(''):'<div class="hint" style="padding:12px 0">No signal has 20 settled bets yet.</div>';
+ return h+'</div></section>';
 }
 function topPage(){
  loadAux();loadTR();
- const stale=REF-D.ts>3600,d=stale?D.ts:REF,groups=topGroups(D),sp=st.tsp||'all',mf=y=>sp==='all'||y.sport===sp;
- const alertTs={};for(const a of D.alerts||[])(alertTs[a.game]||(alertTs[a.game]=[])).push(a.ts);
- // live reads: market context, listed by start time (no ranking by how many signals agree)
- const v=G.filter(g=>g.start>d-4*3600&&(sp==='all'||g.sport===sp)).map(g=>({g,r:readFor(g)})).filter(x=>x.r).map(x=>{const f=Math.max(0,...(alertTs[x.g.key]||[]),...(x.g.accts||[]).filter(a=>a.m===x.r.m&&a.side===x.r.side).map(a=>a.last||0));return {...x,left:f?Math.max(0,WIN-(d-f)/60):0}}).filter(x=>st.texp||x.left>0).sort((a,b)=>a.g.start-b.g.start||b.left-a.left).slice(0,12);
- const settled=groups.filter(y=>y.graded&&!y.contested&&mf(y)).sort((a,b)=>b.start-a.start).slice(0,30);
- const cnt={all:0,nfl:0,cfb:0,nba:0};G.filter(g=>g.start>d-4*3600).forEach(g=>{cnt.all++;cnt[g.sport]++});
- let h=head('Top Reads');
- // 1 to 4: plays, rules on trial, the priced record, which signals pay
- h+=trSections();
- // 5. the live reads, as market context
- h+=`<div class="sec" style="margin-top:22px"><span>Market context, not picks</span><span>${v.length}</span></div><div class="sub">Line moves, money splits and book prices on upcoming games. None of these is a play, and none is on trial. ${snap()}</div>`;
- h+=`<div class="chips">${Object.keys(SPORT).map(k=>`<button class="chip ${sp===k?'on':''}" data-set="tsp" data-v="${k}">${SPORT[k]}<small>${cnt[k]}</small></button>`).join('')}<button class="chip ${st.texp?'on':''}" data-toggle="texp" style="margin-left:6px">${st.texp?'Including expired':'Still gettable'}</button></div>`;
- h+=v.length?v.map(x=>readCard(x,groups,d)).join(''):`<div class="card"><b>Nothing gettable right now.</b><div class="foot" style="margin-top:4px">Turn on "Including expired" to see games whose window has closed.</div></div>`;
- if(st.texp){h+=`<div class="sec"><span>Settled reads</span><span>last ${settled.length}</span></div><div class="card">${settled.length?settled.map(settledRow).join(''):'<div class="empty">No graded reads yet.</div>'}</div>`}
- const C=TR.d&&TR.d.context;
- if(C&&C.record)h+=`<div class="card"><div class="foot" style="margin:0">${esc(C.label)} ${C.record.n?'Its own record at US-book prices: n='+C.record.n+', '+trRec(C.record)+', '+trU(C.record.units)+', needed '+trP(C.record.breakeven)+', won '+trP(C.record.win)+'.':'No priced rows yet.'}</div></div>`;
+ const stale=REF-D.ts>3600,d=stale?D.ts:REF,sp=st.tsp||'all',mf=y=>sp==='all'||y.sport===sp;
+ const {one,split}=trReads(d),reads=one.filter(x=>mf(x.g)),splits=split.filter(x=>mf(x.g));
+ const T=TR.d,proven=new Set(((T&&T.rules)||[]).filter(r=>r.stage==='proven').map(r=>r.id));
+ const plays=T?(T.plays||[]).filter(f=>proven.has(f.rule)&&trUp(f)&&mf(f)):[];
+ const cnt={all:one.length,nfl:0,cfb:0,nba:0};one.forEach(x=>cnt[x.g.sport]=(cnt[x.g.sport]||0)+1);
+ let h=`<div class="trb">`+head('Top Reads',snap());
+ // 1. one-line verdict
+ const vd=!T?(TR.err?['off','Ledger unavailable. These are the strongest one-sided reads right now.']:['off','These are the strongest one-sided reads right now.']):plays.length?['ok',plays.length+' play'+(plays.length===1?'':'s')+' today']:['','No rule has earned a play yet. These are the strongest one-sided reads right now.'];
+ h+=`<div class="trv"><span class="dt ${vd[0]}"></span><span>${vd[1]}</span></div>`;
+ h+=`<div class="chips">${Object.keys(SPORT).map(k=>`<button class="chip ${sp===k?'on':''}" data-set="tsp" data-v="${k}">${SPORT[k]}<small>${cnt[k]||0}</small></button>`).join('')}<button class="chip ${st.texp?'on':''}" data-toggle="texp" style="margin-left:6px">${st.texp?'Including expired':'Still gettable'}</button></div>`;
+ // 2. plays first, then the top three reads
+ h+=plays.map(trPlayCard).join('');
+ h+=reads.length?reads.slice(0,3).map((x,i)=>trTop(x,i,d)).join(''):`<div class="card"><b>No one-sided reads ${st.texp?'right now':'still gettable'}.</b><div class="foot" style="margin-top:4px">${st.texp?'Reads show up here when line moves, money splits or book prices line up on one side.':'Turn on "Including expired" to see reads whose window has closed.'}</div></div>`;
+ // 3. the ledger
+ h+=`<div class="sec" style="margin-top:18px"><span>The record</span>${T&&T.generated_ct?`<span>${esc(T.generated_ct)}</span>`:''}</div>`+trModules();
+ // 4. more reads, by kickoff
+ const rest=reads.slice(3);
+ if(rest.length||splits.length){
+  h+=`<div class="sec" style="margin-top:18px"><span>More reads</span><span>${rest.length}</span></div><div class="card trmore">`;
+  // The next 20 by kickoff; the rest behind Show all, so a busy college Saturday does not bury the page.
+  const sorted=rest.slice().sort((a,b)=>a.g.start-b.g.start),shown=st.trall?sorted:sorted.slice(0,20);
+  const by=[];for(const x of shown){const k=when(x.g.start),l=by[by.length-1];if(l&&l.k===k)l.xs.push(x);else by.push({k,xs:[x]})}
+  h+=by.map(b=>`<div class="wh">${esc(b.k)}</div>${b.xs.map(trRow).join('')}`).join('');
+  if(sorted.length>20)h+=`<button class="trsplit" data-toggle="trall" aria-expanded="${st.trall?'true':'false'}"><span>${st.trall?'Showing all '+sorted.length+' reads':'Show all '+sorted.length+' reads ('+(sorted.length-20)+' more)'}</span><span aria-hidden="true">${st.trall?'Less':'Show'}</span></button>`;
+  if(splits.length){
+   h+=`<button class="trsplit" data-toggle="trsplit" aria-expanded="${st.trsplit?'true':'false'}"><span>${splits.length} split market${splits.length===1?'':'s'} hidden: signals on both sides</span><span aria-hidden="true">${st.trsplit?'Hide':'Show'}</span></button>`;
+   if(st.trsplit)h+=splits.slice().sort((a,b)=>a.g.start-b.g.start).map(x=>`<div class="trrow" tabindex="0" data-go="game/${esc(x.g.key)}"><i class="trd ${esc(x.g.sport)}"></i><div class="trnm"><b>${trGame(x.g)}</b> <span>${MKU[x.m]}</span><small>${when(x.g.start)}</small></div><div></div>${trPill('split')}</div>`).join('');
+  }
+  h+='</div>';
+ }
+ if(st.texp){const settled=topGroups(D).filter(y=>y.graded&&!y.contested&&mf(y)).sort((a,b)=>b.start-a.start).slice(0,30);h+=`<div class="sec"><span>Settled reads</span><span>last ${settled.length}</span></div><div class="card">${settled.length?settled.map(settledRow).join(''):'<div class="empty">No graded reads yet.</div>'}</div>`}
+ h+='</div>';
  // what to look for
  const cards=sigCards();
  h+=`<div class="sec"><span>What to look for</span><span>${cards.length} signals</span></div><div class="sub"><b style="color:#fff">Trust it</b> = 50+ games and clearly beating its price. <b style="color:#fff">Watch it</b> = looks good but too few games, so bet small or skip. <b style="color:#fff">Ignore it</b> = winning less often than its price says. A card only counts once it has 50 games.</div>`;
