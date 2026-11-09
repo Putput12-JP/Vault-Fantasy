@@ -3694,7 +3694,7 @@ window.PBX = (() => {
     if (f.starters) o.push(['starters', 'Starters only']);
     if (f.watch) o.push(['watch', 'Watching only']);
     if (f.sig !== 'any') o.push(['sig', {strong: 'Signals: Strong', lean: 'Signals: Lean or Strong', notag: 'Signals: not Against'}[f.sig] || 'Signals']);
-    if (f.agree != null) o.push(['agree', `${f.agree}+ checks agree`]);
+    if (f.agree != null) o.push(['agree', f.agree === 5 ? 'All 5 checks agree' : `${f.agree}+ of 5 checks agree`]);
     if (f.moved !== 'any') o.push(['moved', f.moved === 'with' ? 'Line moved toward side' : 'Line moved against side']);
     return o;
   }
@@ -3766,7 +3766,7 @@ window.PBX = (() => {
       <div><h6>Best odds (American)</h6><div class="rng"><input data-fodds="oMin" placeholder="-200" value="${esc(f.oMin)}" aria-label="Shortest price">to<input data-fodds="oMax" placeholder="+200" value="${esc(f.oMax)}" aria-label="Longest price"></div></div>
       <div><h6>Line move since open</h6><div>${o('moved', 'any', 'Any', f.moved === 'any')}${o('moved', 'with', 'Toward side', f.moved === 'with')}${o('moved', 'against', 'Against side', f.moved === 'against')}</div></div>
       <div><h6>Prop signals (model's side)</h6><div>${o('sig', 'any', 'Any', f.sig === 'any')}${o('sig', 'strong', 'Strong', f.sig === 'strong')}${o('sig', 'lean', 'Lean or Strong', f.sig === 'lean')}${o('sig', 'notag', 'Not Against', f.sig === 'notag')}</div></div>
-      <div><h6>Checks agreeing</h6><div>${o('agree', 'null', 'Any', f.agree == null)}${[2, 3, 4].map(v => o('agree', v, v + '+', f.agree === v)).join('')}</div></div>
+      <div><h6>Checks agreeing (of 5)</h6><div>${o('agree', 'null', 'Any', f.agree == null)}${[1, 2, 3, 4].map(v => o('agree', v, v + '+', f.agree === v)).join('')}${o('agree', 5, 'All 5', f.agree === 5)}</div></div>
       <div><h6>Player and matchup</h6><div>${o('oppFav', 1, 'Soft matchup', f.oppFav)}${o('healthy', 1, 'No injury tag', f.healthy)}${o('starters', 1, 'Starters only', f.starters)}${o('watch', 1, '★ Watching only', f.watch)}</div></div>
       <div class="ft"><span class="muted">${n.toLocaleString()} props match. Venues change which price counts as best.</span><button type="button" class="btn" data-freset="1">Reset</button><button type="button" class="btn primary" data-fdone="1">Done</button></div></div>`;
   }
