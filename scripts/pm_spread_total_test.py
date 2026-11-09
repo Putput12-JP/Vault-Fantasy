@@ -15,22 +15,16 @@ def best(e, kind):
 
 
 def market_trades(m, start):
-    cid, big, off = m["conditionId"], [], 0
-    while off < 10000:
-        r = B.get(f"https://data-api.polymarket.com/trades?market={cid}&limit=500&offset={off}&takerOnly=true&filterType=CASH&filterAmount={B.BIG}")
-        if not r: break
-        big += [[t["proxyWallet"], t["timestamp"], t["outcomeIndex"], t["side"], round(t["price"], 4)] for t in r if t["timestamp"] < start]
-        if len(r) < 500: break
-        off += 500
-    close, off = None, 0
-    while off < 10000 and close is None:
-        r = B.get(f"https://data-api.polymarket.com/trades?market={cid}&limit=500&offset={off}")
-        if not r: break
+    # Data API v2 (v1 retired 2026-11-02): cursor walk, newest first; a failed page raises B.PMDataError.
+    cid = m["conditionId"]
+    big = [[t["proxyWallet"], t["timestamp"], t["outcomeIndex"], t["side"], round(t["price"], 4)]
+           for t in B.fetch_trades(cid, start, {"taker_only": True, "filter_type": "CASH", "filter_amount": B.BIG}, page_cap=20)]
+    close = None
+    for r, _more in B.pm_pages(B.get, "/trades", {"condition": cid, "limit": B.PAGE}, 40):
         pre = [t for t in r if t["timestamp"] < start]
         if pre:
             t = max(pre, key=lambda t: t["timestamp"]); close = t["price"] if t["outcomeIndex"] == 0 else 1 - t["price"]
-        if len(r) < 500: break
-        off += 500
+            break
     if close is None and big:
         b = max(big, key=lambda x: x[1]); close = b[4] if b[2] == 0 else 1 - b[4]
     return close, big

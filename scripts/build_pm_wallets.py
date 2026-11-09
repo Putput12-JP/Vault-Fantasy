@@ -15,11 +15,12 @@
 #  The last single trade is only a fallback, and it is labeled as such: a
 #  tiny fill is not a close. Score = close of the side bought / price paid - 1.
 #
-#  The trades API only returns the newest 10k rows for an offset. In-game
-#  trading fills that window, so a plain offset walk never reaches kickoff on
-#  a busy market. `end=<unix>` is a real upper bound (unlike `before` /
-#  `endTs`, which the API ignores). When the offset cap is hit, the walk
-#  restarts at the oldest timestamp it has seen.
+#  Data API v2 (v1 retired 2026-11-02): a market's trades come newest-first
+#  and page by cursor with no offset cap, so the walk simply follows the
+#  cursor back past kickoff (`end` is honored only on a per-user feed). A page
+#  that cannot be fetched raises, and that game is left unprocessed for the
+#  next run: the 2026-11-03 run read the retired API as "no trades" and marked
+#  80 NFL / 200 CFB / 40 NBA games done with nothing in them.
 #
 #  Rule (schema 2): 5+ games, 10+ trades, t >= 3 on the per-game samples.
 #  t >= 2 on per-trade samples flagged ~2.3% of qualifying wallets by luck
@@ -40,6 +41,8 @@
 import json, math, os, re, sys, time, urllib.request, glob
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pm_data_api import pm_pages, PMDataError
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPORTS = {"nfl": {"series": 12185, "out": "pm_wallets.json", "skip_months": ("07", "08")},
@@ -62,8 +65,8 @@ MIN_TRADES, MIN_GAMES, T_SHARP = 10, 5, 3.0
 FDR_Q = 0.05
 CLOSE_WINDOWS = (600, 1800)    # 10 min, then 30 min
 CLOSE_MIN_USD = 500
-OFFSET_CAP = 10000             # data-api rejects offset >= 10000
-PAGE = 500
+PAGE = 1000                    # v2 maximum
+FAILED = []                    # games whose trades could not be fetched this run
 
 
 def get(url, tries=3):
@@ -97,27 +100,16 @@ def bh_q(pairs, q=FDR_Q):
     return passed, qs
 
 
-def fetch_trades(cid, end_ts, extra="", page_cap=40, getter=None):
-    """Trades with timestamp < end_ts, newest first.
+def fetch_trades(cid, end_ts, params=None, page_cap=40, getter=None, stop_before=None):
+    """Trades with timestamp < end_ts, newest first, following the v2 cursor.
 
-    Walks offset up to the API cap, then restarts with `end` set to the oldest
-    timestamp already seen. `end` is the parameter the API actually honors.
+    stop_before: stop once a page is entirely older than this (the close only
+    needs the last half hour). Raises PMDataError if a page cannot be fetched.
     """
-    getter = getter or get
-    out, cursor, off, pages = [], int(end_ts), 0, 0
-    while pages < page_cap:
-        url = (f"https://data-api.polymarket.com/trades?market={cid}&limit={PAGE}&offset={off}&end={cursor}{extra}")
-        r = getter(url)
-        if not r: break
-        rows = [t for t in r if t.get("timestamp", 0) < end_ts]
-        out.extend(rows)
-        pages += 1
-        oldest = min(t["timestamp"] for t in r)
-        if len(r) < PAGE: break
-        off += PAGE
-        if off >= OFFSET_CAP:
-            if oldest >= cursor: break
-            cursor, off = oldest, 0
+    out = []
+    for rows, _more in pm_pages(getter or get, "/trades", {"condition": cid, "limit": PAGE, **(params or {})}, page_cap):
+        out.extend(t for t in rows if t.get("timestamp", 0) < end_ts)
+        if stop_before is not None and rows and max(t["timestamp"] for t in rows) < stop_before: break
     return out
 
 
@@ -174,23 +166,16 @@ def game_record(e):
     try: start = datetime.fromisoformat(gst).timestamp()
     except Exception: return None
     cid = ml["conditionId"]
-    big_rows = fetch_trades(cid, start, f"&takerOnly=true&filterType=CASH&filterAmount={BIG}", page_cap=30)
+    try:
+        big_rows = fetch_trades(cid, start, {"taker_only": True, "filter_type": "CASH", "filter_amount": BIG}, page_cap=30)
+        # The close only needs the last half hour, so stop the walk once a page is entirely older than that.
+        close_rows = fetch_trades(cid, start, page_cap=200, stop_before=start - CLOSE_WINDOWS[-1])
+    except PMDataError as ex:
+        FAILED.append(e.get("slug"))
+        print(f"[pm-wallets:{SPORT}] {e.get('slug')}: trades unavailable ({ex}); left for the next run", file=sys.stderr)
+        return None
     big = [[t["proxyWallet"], t["timestamp"], t["outcomeIndex"], t["side"], round(t["price"], 4), round(t["size"], 2)]
            for t in big_rows if t["timestamp"] < start and t.get("side") in ("BUY", "SELL")]
-    # The close only needs the last half hour, so stop the walk once a page is entirely older than that.
-    close_rows, cursor, off, pages = [], int(start), 0, 0
-    while pages < 40:
-        r = get(f"https://data-api.polymarket.com/trades?market={cid}&limit={PAGE}&offset={off}&end={cursor}")
-        if not r: break
-        close_rows.extend(t for t in r if t["timestamp"] < start)
-        pages += 1
-        oldest = min(t["timestamp"] for t in r)
-        if oldest < start - CLOSE_WINDOWS[-1]: break
-        if len(r) < PAGE: break
-        off += PAGE
-        if off >= OFFSET_CAP:
-            if oldest >= cursor: break
-            cursor, off = oldest, 0
     close, src = close_from_trades(close_rows, start)
     if close is None and big:
         b = max(big, key=lambda x: x[1])
@@ -336,6 +321,9 @@ def main():
     print(f"[pm-wallets:{SPORT}] +{added} games -> {len(done)} total · {len(W)} accounts · {len(sharp)} sharp · {len(dull)} dull · fdr {fdr}")
     if args.get("dry"): return
     json.dump(out, open(OUT, "w"), separators=(",", ":"))
+    if FAILED:
+        print(f"::warning::[pm-wallets:{SPORT}] {len(FAILED)} games could not be fetched and stay unprocessed", file=sys.stderr)
+        if not added: sys.exit(f"[pm-wallets:{SPORT}] every game failed: the Polymarket Data API is down or moved")
 
 
 def selftest():
@@ -395,26 +383,23 @@ def selftest():
     OUT = p
     S = load_state(p)
     assert S["wallets"] == {} and S["processed"] == [] and S["schema"] == 2
-    # `end` walk: a getter that only returns rows at or before the requested end, and
-    # refuses offset >= 10000, still reaches a trade older than the cap window.
+    # v2 cursor walk: newest-first pages, no offset cap, reaches trades far older
+    # than the old 10k window; a failed page raises instead of reading as "no trades".
     def fake_get(url):
-        end = int(re.search(r"end=(\d+)", url).group(1))
-        off = int(re.search(r"offset=(\d+)", url).group(1))
-        if off >= OFFSET_CAP: return []
-        # One trade per second, newest at 50_000. A full page is always returned
-        # until the clock runs out, matching the API (it does not return a short
-        # page just because the caller asked for an `end` inside the book).
-        newest = 50000
-        base = max(0, newest - end + 1)
-        rows = []
+        m = re.search(r"cursor=(\d+)", url); pg = int(m.group(1)) if m else 0
+        newest, rows = 50000, []
         for j in range(PAGE):
-            ts = newest - (base + off + j)
+            ts = newest - (pg * PAGE + j)
             if ts <= 0: break
-            rows.append({"timestamp": ts, "price": 0.5, "outcomeIndex": 0, "size": 1, "side": "BUY", "proxyWallet": "Z"})
-        return rows
-    rows = fetch_trades("cid", 50000, getter=fake_get, page_cap=40)
-    assert rows, "walk returned nothing"
-    assert min(t["timestamp"] for t in rows) < 50000 - OFFSET_CAP, min(t["timestamp"] for t in rows)
+            rows.append({"timestamp": ts, "price": 0.5, "outcome_index": 0, "size": 1, "side": "BUY", "proxy_wallet": "Z"})
+        more = rows and rows[-1]["timestamp"] > 1
+        return {"data": rows, "pagination": {"has_more": bool(more), "next_cursor": str(pg + 1) if more else None}}
+    rows = fetch_trades("cid", 40000, getter=fake_get, page_cap=60)
+    assert rows and min(t["timestamp"] for t in rows) < 50000 - 10000, "walk did not pass the old 10k window"
+    assert all(t["timestamp"] < 40000 for t in rows) and rows[0]["proxyWallet"] == "Z" and rows[0]["outcomeIndex"] == 0
+    try:
+        fetch_trades("cid", 40000, getter=lambda u: None); raise AssertionError("a failed fetch must raise")
+    except PMDataError: pass
     print("build_pm_wallets selftest ok")
     return 0
 

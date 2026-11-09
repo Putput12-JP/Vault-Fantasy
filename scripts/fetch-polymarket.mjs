@@ -35,6 +35,7 @@
 import { writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pmPages, pmReportDead } from './pm-data-api.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ARG = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -94,14 +95,10 @@ const acctClass = w => PMW.sharp.has(w) ? 'sharp' : PMW.dull.has(w) ? 'dull' : n
 async function takerFlow(conditionId, homeName, awayName) {
   if (!conditionId) return null;
   const cutoff = Math.floor(Date.now() / 1000) - DAY;
-  let net = 0, n = 0, offset = 0, bigNet = 0, bigN = 0;
+  let net = 0, n = 0, bigNet = 0, bigN = 0;
   const acct = { sharp: [0, 0], dull: [0, 0] };
-  for (let page = 0; page < 8; page++) {          // cap ~4k recent trades/game
-    let rows;
-    try {
-      rows = await getJSON(`https://data-api.polymarket.com/trades?market=${conditionId}&takerOnly=true&limit=500&offset=${offset}`);
-    } catch (e) { break; }
-    if (!Array.isArray(rows) || !rows.length) break;
+  try { for await (const { rows, more } of pmPages(getJSON, '/trades', { condition: conditionId, taker_only: true, limit: 500 }, 8)) {   // cap ~4k recent trades/game
+    if (!rows.length) break;
     let hitOld = false;
     for (const t of rows) {
       const ts = num(t.timestamp);
@@ -119,9 +116,8 @@ async function takerFlow(conditionId, homeName, awayName) {
       if (price * size >= BIG_TRADE) { bigNet += usd; bigN++; }
       const ac = acctClass(t.proxyWallet); if (ac) { acct[ac][0] += usd; acct[ac][1]++; }
     }
-    if (hitOld || rows.length < 500) break;        // reached the 24h edge (or last page)
-    offset += 500;
-  }
+    if (hitOld || !more) break;                    // reached the 24h edge (or last page)
+  } } catch (e) { /* counted in PM_FAIL */ }
   return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN,
     sharpNet: Math.round(acct.sharp[0]), sharpN: acct.sharp[1], dullNet: Math.round(acct.dull[0]), dullN: acct.dull[1] } : null;
 }
@@ -133,13 +129,10 @@ async function takerFlowAB(conditionId, outA, outB) {
   if (!conditionId) return null;
   const a = String(outA || '').toLowerCase(), b = String(outB || '').toLowerCase();
   const cutoff = Math.floor(Date.now() / 1000) - DAY;
-  let net = 0, n = 0, offset = 0, bigNet = 0, bigN = 0;
+  let net = 0, n = 0, bigNet = 0, bigN = 0;
   const acct = { sharp: [0, 0], dull: [0, 0] };
-  for (let page = 0; page < 6; page++) {
-    let rows;
-    try { rows = await getJSON(`https://data-api.polymarket.com/trades?market=${conditionId}&takerOnly=true&limit=500&offset=${offset}`); }
-    catch (e) { break; }
-    if (!Array.isArray(rows) || !rows.length) break;
+  try { for await (const { rows, more } of pmPages(getJSON, '/trades', { condition: conditionId, taker_only: true, limit: 500 }, 6)) {
+    if (!rows.length) break;
     let hitOld = false;
     for (const t of rows) {
       const ts = num(t.timestamp);
@@ -154,9 +147,8 @@ async function takerFlowAB(conditionId, outA, outB) {
       if (price * size >= BIG_TRADE) { bigNet += usd; bigN++; }
       const ac = acctClass(t.proxyWallet); if (ac) { acct[ac][0] += usd; acct[ac][1]++; }
     }
-    if (hitOld || rows.length < 500) break;
-    offset += 500;
-  }
+    if (hitOld || !more) break;
+  } } catch (e) { /* counted in PM_FAIL */ }
   return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN,
     sharpNet: Math.round(acct.sharp[0]), sharpN: acct.sharp[1], dullNet: Math.round(acct.dull[0]), dullN: acct.dull[1] } : null;
 }
@@ -291,6 +283,7 @@ function mainMoneyline(ev) {
   writeFileSync(OUT, JSON.stringify(payload));
   log('wrote ' + OUT);
   logSignals(out);
+  await pmReportDead('Money flow and the signal log are empty this run.');
 })();
 
 /* ── Sharp-vs-crowd signal log → data/pm_signal_log.json ─────────────────

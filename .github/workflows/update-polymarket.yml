@@ -43,3 +43,11 @@ jobs:
               echo "push race, retrying ($i)…"; sleep 3
             done
           fi
+
+      # The collector never fails the fetch step (prices still have to land), but if every Data API
+      # call failed it leaves .pm-dead. Fail AFTER the commit so a retired or moved API is a red run,
+      # not a silent week of empty money flow (Data API v1 retired 2026-11-02 that way).
+      - name: Fail the run if the Polymarket Data API was dead
+        if: always()
+        run: |
+          if [ -f .pm-dead ]; then cat .pm-dead; exit 1; fi
