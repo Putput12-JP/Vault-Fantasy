@@ -3702,6 +3702,7 @@ window.PBX = (() => {
 
   const SORTS = {
     prop: x => x.r.name, line: x => x.r.line, odds: x => x.edge, proj: x => x.diff, fair: x => x.fair, edge: x => x.edge,
+    sig: x => { const g = rowSig(x); return g && (x.side === 'o' ? 'O' : 'U') === g.ms ? g.kf - g.ka / 10 : null; },
     opp: x => x.orank ? (x.side === 'o' ? x.orank[0] : 31 - x.orank[0]) : null,
     L5: x => (hits(x).L5 || {}).pct, L10: x => (hits(x).L10 || {}).pct, L20: x => (hits(x).L20 || {}).pct, H2H: x => (hits(x).H2H || {}).pct, S0: x => (hits(x).S0 || {}).pct, S1: x => (hits(x).S1 || {}).pct,
   };
@@ -3753,6 +3754,10 @@ window.PBX = (() => {
   const oppC = x => { const k = x.orank; if (!k) return '<span class="muted">-</span>'; const gd = oppGood(k[0], x.side);
     return `<span class="pbx-opp ${gd > 0 ? 'h1' : gd < 0 ? 'l1' : ''}" title="${x.opp} allow ${fmt(k[1])} ${SLABEL[x.r.e.s]} a game to ${x.grp === 'G' ? 'guards' : x.grp === 'C' ? 'centers' : 'forwards'} this season (${k[2]} games). 1st allows the fewest.">${ord(k[0])}<small>${x.opp}</small></span>`; };
   const lineC = x => { const d = x.sc.dm; return `<span class="pbx-two"><b>${x.r.line}</b>${d ? `<small class="${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)} from ${x.r.line - d}</small>` : ''}</span>`; };
+  // signal count for the list: how many of the 5 counted checks back this side (shown on the model's side only)
+  const sigC = x => { const g = rowSig(x); if (!g) return '<span class="muted" title="No model price">-</span>';
+    if ((x.side === 'o' ? 'O' : 'U') !== g.ms) return `<span class="muted" title="The model is on the ${g.ms === 'O' ? 'over' : 'under'}">-</span>`;
+    return `<span class="pbx-sigc ${g.tier}" title="${TIER[g.tier][0]}: ${g.kf} of 5 checks agree${g.ka ? `, ${g.ka} against` : ''}"><b>${g.kf}</b><small>/5</small></span>`; };
   const projC = x => x.r.mu == null ? '<span class="muted">-</span>' : `<span class="pbx-two"><b>${fmt(x.r.mu)}</b><small class="${x.diff > 0 ? 'pos' : 'neg'}">${sgn(x.diff)}</small></span>`;
 
   function filterPanel(n){
@@ -4313,13 +4318,13 @@ window.PBX = (() => {
           <span class="pbx-star${w ? ' on' : ''}" title="${w ? 'Watching' : ''}">${w ? '★' : ''}</span>
           <span class="pbx-prop">${face(x)}<span class="who"><b>${esc(r.name)} ${injTag(r)}<small>${who}</small></b><span>${sideW(x.side)} <b>${r.line}</b> ${esc(SLABEL[r.e.s])}</span></span></span>
           <span class="c">${lineC(x)}</span><span>${odds(x)}</span>
-          <span class="c v">${projC(x)}</span><span class="c v"><b>${pc0(x.fair)}</b></span><span class="c v">${edgeC(x)}</span>
+          <span class="c v">${projC(x)}</span><span class="c v"><b>${pc0(x.fair)}</b></span><span class="c v">${edgeC(x)}</span><span class="c">${sigC(x)}</span>
           <span class="c">${oppC(x)}</span>${WIN.map(([k]) => `<span class="c">${hcell(h[k])}</span>`).join('')}
         </button>
         <button type="button" class="pbx-card press" aria-expanded="${open}">
           <span class="t">${face(x)}<span class="who"><b>${esc(r.name)} ${injTag(r)}</b><small>${who}</small></span></span>
           <span class="m"><span>${sideW(x.side)} <b>${r.line}</b> ${esc(SLABEL[r.e.s])}</span>${odds(x)}</span>
-          <span class="q"><span><small>Proj</small><b>${r.mu == null ? '-' : fmt(r.mu)}</b></span><span><small>Fair</small><b>${pc0(x.fair)}</b></span><span><small>Edge</small><b class="${x.edge > 0 ? 'pos' : x.edge != null ? 'neg' : ''}">${x.edge == null ? '-' : sgn(x.edge * 100) + '%'}</b></span><span><small>Opp</small><b>${x.orank ? ord(x.orank[0]) : '-'}</b></span></span>
+          <span class="q"><span><small>Proj</small><b>${r.mu == null ? '-' : fmt(r.mu)}</b></span><span><small>Fair</small><b>${pc0(x.fair)}</b></span><span><small>Edge</small><b class="${x.edge > 0 ? 'pos' : x.edge != null ? 'neg' : ''}">${x.edge == null ? '-' : sgn(x.edge * 100) + '%'}</b></span><span><small>Signals</small>${sigC(x)}</span><span><small>Opp</small><b>${x.orank ? ord(x.orank[0]) : '-'}</b></span></span>
           <span class="hh">${WIN.map(([k, l]) => `<span><small>${l}</small>${hcell(h[k])}</span>`).join('')}</span>
         </button>
         </article>`; };
@@ -4340,7 +4345,7 @@ window.PBX = (() => {
       ${act.length ? `<div class="pbx-chips">${act.map(([k, l]) => `<span>${esc(l)}<button type="button" data-fclear="${k}" aria-label="Remove ${esc(l)}">×</button></span>`).join('')}</div>` : ''}
       <p class="pbx-key"><span class="v">Vault model columns</span><span>Hit rates: share of games over (or under) tonight's line</span><span>Opp rank: 1st allows the fewest to his position, 30th the most</span></p>
       <div class="pbx-tbl"><div class="pbx-scroll">
-        <div class="pbx-th"><span></span>${th('prop', 'Proposition')}${th('line', 'Line', 1)}${th('odds', 'Best odds')}${th('proj', 'Vault proj', 1, 1)}${th('fair', 'Fair', 1, 1)}${th('edge', 'Edge', 1, 1)}${th('opp', 'Opp rank', 1)}${WIN.map(([k, l]) => th(k, l, 1)).join('')}</div>
+        <div class="pbx-th"><span></span>${th('prop', 'Proposition')}${th('line', 'Line', 1)}${th('odds', 'Best odds')}${th('proj', 'Vault proj', 1, 1)}${th('fair', 'Fair', 1, 1)}${th('edge', 'Edge', 1, 1)}${th('sig', 'Signals', 1)}${th('opp', 'Opp rank', 1)}${WIN.map(([k, l]) => th(k, l, 1)).join('')}</div>
         ${show.map(row).join('') || `<p class="empty" style="padding:24px">${!all.length ? 'Nothing on the board yet.' : S.f.watch && !nWatch ? 'Nothing on your watch list. Open a prop and tap Watch to add it here.' : 'No props match these filters.'}</p>`}
       </div></div>
       ${rows.length > S.limit ? `<div class="pbx-more"><button type="button" class="btn" data-more="1">Show ${Math.min(60, rows.length - S.limit)} more</button></div>` : ''}`;
@@ -4428,7 +4433,7 @@ window.PBX = (() => {
 .pbx-key .v{color:var(--pbx-v);font-weight:600}
 .pbx-tbl{border-radius:16px;background:var(--surface);border:1px solid rgb(var(--ink) / .06);overflow:hidden}
 .pbx-scroll{overflow-x:auto}
-.pbx-th,.pbx-tr{display:grid;grid-template-columns:28px minmax(240px,1fr) 92px 118px 74px 56px 74px 76px repeat(6,52px);align-items:center;min-width:1110px}
+.pbx-th,.pbx-tr{display:grid;grid-template-columns:28px minmax(240px,1fr) 92px 118px 74px 56px 74px 76px 64px repeat(6,52px);align-items:center;min-width:1174px}
 .pbx-th{background:var(--surface2);height:38px;position:sticky;top:0;z-index:1}
 .pbx-th button{display:flex;align-items:center;gap:4px;height:100%;padding:0 8px;background:none;border:0;color:var(--fg3);font-size:11px;font-weight:600;white-space:nowrap}
 .pbx-th button.c{justify-content:center}
@@ -4611,6 +4616,11 @@ window.PBX = (() => {
 .pbx-dt tr.on td{font-weight:700}
 /* prop signals card: verdict, agreement meter, agree ladder, check tiles */
 .pbx-sig header{margin-bottom:4px}
+.pbx-sigc{display:inline-flex;align-items:baseline;gap:1px;padding:2px 7px;border-radius:999px;background:rgb(var(--ink) / .06);color:var(--fg2);font:600 12px var(--font-mono)}
+.pbx-sigc small{font-size:10px;color:var(--fg3)}
+.pbx-sigc.strong{background:color-mix(in srgb,var(--pbx-g) 18%,transparent);color:var(--pbx-g)}
+.pbx-sigc.lean{color:color-mix(in srgb,var(--pbx-g) 70%,var(--fg))}
+.pbx-sigc.against{background:color-mix(in srgb,var(--pbx-r) 14%,transparent);color:var(--pbx-r)}
 .pbx-sv{margin:8px 16px 12px;padding:14px;border-radius:14px;background:rgb(var(--ink) / .035);border:1px solid rgb(var(--ink) / .08)}
 .pbx-sv.strong{background:color-mix(in srgb,var(--pbx-g) 9%,transparent);border-color:color-mix(in srgb,var(--pbx-g) 32%,transparent)}
 .pbx-sv.against{background:color-mix(in srgb,var(--pbx-r) 7%,transparent);border-color:color-mix(in srgb,var(--pbx-r) 28%,transparent)}
@@ -4695,7 +4705,7 @@ window.PBX = (() => {
   .pbx-card .who b{display:flex;gap:6px;align-items:center;font-weight:600}
   .pbx-card .who small{color:var(--fg3);font-size:11.5px}
   .pbx-card .m{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:9px;background:var(--surface2);font-size:12.5px}
-  .pbx-card .q{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .pbx-card .q{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
   .pbx-card .q > span{display:flex;flex-direction:column;padding:6px 8px;border-radius:8px;background:var(--surface2)}
   .pbx-card .q small,.pbx-card .hh small{font-size:10px;color:var(--fg3)}
   .pbx-card .q b{font-weight:600;font-variant-numeric:tabular-nums}
