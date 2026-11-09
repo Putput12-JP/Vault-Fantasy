@@ -6,15 +6,15 @@ _Week 1 of the model-upgrade plan. Every number compares Vault's probability wit
 
 ```
 market        at the CLOSE                                        at the OPEN                                         verdict (close)
-all           n=5239  LL 0.7009 vs 0.6857  skill -0.022 z -5.0    n=4783  LL 0.7002 vs 0.6857  skill -0.021 z -4.7    market better than Vault
-pass_att      n= 194  LL 0.7062 vs 0.6893  skill -0.024 z -1.2    n= 197  LL 0.7094 vs 0.6944  skill -0.022 z -1.0    level with the market (within noise)
-pass_cmp      n= 210  LL 0.7089 vs 0.6870  skill -0.032 z -1.8    n= 209  LL 0.7130 vs 0.6857  skill -0.040 z -2.1    level with the market (within noise)
-pass_td       n= 249  LL 0.6616 vs 0.6688  skill +0.011 z +0.6    n= 251  LL 0.6717 vs 0.6788  skill +0.011 z +0.6    level with the market (within noise)
-pass_yd       n= 219  LL 0.7374 vs 0.6908  skill -0.068 z -3.4    n= 218  LL 0.7367 vs 0.6927  skill -0.064 z -3.2    market better than Vault
-rec           n=1543  LL 0.6871 vs 0.6747  skill -0.018 z -2.4    n=1569  LL 0.6904 vs 0.6765  skill -0.021 z -2.7    market better than Vault
-rec_yd        n=1587  LL 0.7035 vs 0.6906  skill -0.019 z -2.5    n=1224  LL 0.7014 vs 0.6903  skill -0.016 z -2.0    market better than Vault
-rush_att      n= 636  LL 0.7062 vs 0.6948  skill -0.016 z -1.3    n= 613  LL 0.6948 vs 0.6890  skill -0.008 z -0.7    level with the market (within noise)
-rush_yd       n= 601  LL 0.7219 vs 0.6952  skill -0.038 z -2.3    n= 502  LL 0.7243 vs 0.6968  skill -0.039 z -2.2    market better than Vault
+all           n=5277  LL 0.7005 vs 0.6858  skill -0.021 z -4.9    n=4818  LL 0.6999 vs 0.6859  skill -0.020 z -4.6    market better than Vault
+pass_att      n= 196  LL 0.7064 vs 0.6891  skill -0.025 z -1.2    n= 199  LL 0.7095 vs 0.6946  skill -0.021 z -1.0    level with the market (within noise)
+pass_cmp      n= 212  LL 0.7095 vs 0.6876  skill -0.032 z -1.8    n= 211  LL 0.7135 vs 0.6864  skill -0.040 z -2.1    level with the market (within noise)
+pass_td       n= 251  LL 0.6614 vs 0.6677  skill +0.009 z +0.5    n= 253  LL 0.6715 vs 0.6777  skill +0.009 z +0.5    level with the market (within noise)
+pass_yd       n= 221  LL 0.7378 vs 0.6912  skill -0.067 z -3.4    n= 220  LL 0.7373 vs 0.6927  skill -0.065 z -3.3    market better than Vault
+rec           n=1553  LL 0.6869 vs 0.6751  skill -0.018 z -2.2    n=1579  LL 0.6900 vs 0.6770  skill -0.019 z -2.5    market better than Vault
+rec_yd        n=1597  LL 0.7030 vs 0.6906  skill -0.018 z -2.4    n=1232  LL 0.7009 vs 0.6903  skill -0.015 z -1.9    market better than Vault
+rush_att      n= 641  LL 0.7058 vs 0.6945  skill -0.016 z -1.3    n= 618  LL 0.6945 vs 0.6891  skill -0.008 z -0.6    level with the market (within noise)
+rush_yd       n= 606  LL 0.7209 vs 0.6951  skill -0.037 z -2.2    n= 506  LL 0.7234 vs 0.6968  skill -0.038 z -2.1    market better than Vault
 ```
 
 ### 0.5 lines: market vs. result (capture watch)
@@ -23,8 +23,8 @@ _0.5 lines were excluded until the price capture was fixed; this checks they sta
 
 ```
 market            n  market P(over)  over rate      z
-all             575             51%        55%   +1.6
-pass_int        261             49%        51%   +0.6
+all             577             51%        55%   +1.7
+pass_int        263             49%        51%   +0.7
 pass_td          42             64%        62%   -0.3
 rec             203             55%        61%   +1.8
 rec_yd           45             40%        44%   +0.6
@@ -35,24 +35,24 @@ rush_yd          22             45%        46%   +0.0
 
 ```
 market         beat close  avg CLV    open: win   units    close: win   units
-all                   58%   +0.1pp        53%   -166.7u         51%   -247.5u
-pass_att              65%   +0.2pp        54%     +6.9u         54%     +5.1u
-pass_cmp              61%   +0.2pp        46%    -27.0u         47%    -22.6u
-pass_td               48%   -0.1pp        58%     -2.9u         57%     -4.3u
-pass_yd               56%   +0.1pp        46%    -31.9u         45%    -32.9u
-rec                   59%   +0.1pp        57%    +18.0u         54%     +6.0u
-rec_yd                55%   -0.1pp        52%    -39.4u         51%    -65.8u
-rush_att              62%   +0.6pp        53%     -2.3u         50%    -30.8u
-rush_yd               60%   +0.1pp        47%    -56.3u         47%    -69.7u
+all                   58%   +0.1pp        53%   -158.2u         51%   -239.3u
+pass_att              65%   +0.2pp        55%     +8.8u         54%     +6.8u
+pass_cmp              61%   +0.2pp        46%    -29.0u         47%    -24.6u
+pass_td               48%   -0.1pp        58%     -3.4u         57%     -4.7u
+pass_yd               56%   +0.1pp        46%    -32.0u         46%    -32.8u
+rec                   59%   +0.1pp        57%    +19.0u         54%     +6.7u
+rec_yd                55%   -0.1pp        52%    -36.2u         51%    -61.7u
+rush_att              62%   +0.6pp        53%     -1.5u         50%    -30.0u
+rush_yd               60%   +0.1pp        47%    -56.5u         47%    -71.0u
 ```
 
 ## Game markets (at the close)
 
 ```
-games   n= 365  LL 0.6965 vs 0.6772  skill -0.029 z -2.3    market better than Vault                 beat close   29%  units  -20.4u
-ml      n= 107  LL 0.6450 vs 0.6382  skill -0.011 z -0.4    level with the market (within noise)     beat close   45%  units   +2.8u
-spread  n= 127  LL 0.7138 vs 0.6945  skill -0.028 z -1.6    level with the market (within noise)     beat close   25%  units  -18.2u
-total   n= 131  LL 0.7219 vs 0.6924  skill -0.043 z -1.9    level with the market (within noise)     beat close   20%  units   -5.0u
+games   n= 368  LL 0.6958 vs 0.6764  skill -0.029 z -2.3    market better than Vault                 beat close   29%  units  -21.5u
+ml      n= 108  LL 0.6431 vs 0.6356  skill -0.012 z -0.5    level with the market (within noise)     beat close   45%  units   +1.8u
+spread  n= 128  LL 0.7128 vs 0.6943  skill -0.027 z -1.5    level with the market (within noise)     beat close   25%  units  -17.3u
+total   n= 132  LL 0.7224 vs 0.6924  skill -0.043 z -1.9    level with the market (within noise)     beat close   20%  units   -6.0u
 ```
 
 ## News triggers (plan Week 3)
@@ -62,14 +62,14 @@ _Does fresh role news beat what the market already priced? Pre-game info only: a
 ```
 trigger                   OPEN: over hit vs market said     CLOSE: over hit vs market said
 mixed                     n= 237  46.4% vs  49.3%           n= 272  45.2% vs  49.3%
-no news                   n=2016  48.3% vs  49.3%           n=2222  48.6% vs  49.4%
-usage down                n= 621  49.8% vs  49.2%           n= 718  49.6% vs  48.8%
-usage up / teammate out   n=2722  49.8% vs  49.5%           n=2901  48.9% vs  49.4%
+no news                   n=2030  48.6% vs  49.3%           n=2237  48.8% vs  49.4%
+usage down                n= 632  49.8% vs  49.2%           n= 730  49.7% vs  48.8%
+usage up / teammate out   n=2738  49.8% vs  49.5%           n=2918  48.9% vs  49.4%
 
 Vault vs market disagreements of 8+ pts (close):
-  against the news         n= 818  Vault's side won 416-402  skill -0.062 z -3.7
-  agrees with the news     n= 465  Vault's side won 254-211  skill +0.002 z +0.1
-  no news                  n= 759  Vault's side won 383-376  skill -0.044 z -2.6
+  against the news         n= 822  Vault's side won 419-403  skill -0.062 z -3.7
+  agrees with the news     n= 467  Vault's side won 256-211  skill +0.003 z +0.1
+  no news                  n= 765  Vault's side won 387-378  skill -0.043 z -2.5
 ```
 
 ## Sharp-book lead: does Pinnacle move first?
@@ -95,7 +95,7 @@ _Logged live before kickoff, graded here. Context only until a row says GO (50+ 
 
 ```
 Kalshi vs books (5+ pts apart)     n= 44  side won  28, price said   21.8  -> tracking (44 of 50)
-  all Kalshi-priced lines: n=1262  log-loss Kalshi 0.6827  books 0.6855
+  all Kalshi-priced lines: n=1274  log-loss Kalshi 0.6829  books 0.6857
 Vault vs Kalshi (10+ pts, Kalshi)  n=168  side won  78, price said   89.6  -> no edge yet (z -1.8)
 PM sharp $25k+ (all)               n= 23  side won  18, price said   11.3  -> tracking (23 of 50)
 PM sharp vs crowd disagree         n=  5  side won   4, price said    1.8  -> tracking (5 of 50)
@@ -116,9 +116,9 @@ Wk 5     566       57-57 -1.6u     56-58 -7.0u        14-8 +5.2u      14-8 +4.2u
 Wk 6     547       44-55 -9.8u     47-52 -7.0u         6-6 +0.7u       6-6 +1.2u
 Wk 7     541       40-40 +1.4u     41-39 +1.6u         3-6 -2.5u       3-6 -2.4u
 Wk 8     550       38-45 -5.1u     39-44 -6.1u         4-8 -3.9u       4-8 -4.0u
-Wk 9     466       40-32 +6.0u     42-30 +6.9u         3-2 +0.6u       3-2 +0.2u
-all     4311    441-417 +23.6u   440-418 +4.4u       62-58 +7.5u     63-57 +7.0u
-log-loss at the open, same 4311 props: market 0.6850  live model 0.6978  anchored 0.6847
+Wk 9     501      47-34 +10.9u    49-32 +11.7u         3-2 +0.6u       3-2 +0.2u
+all     4346    448-419 +28.5u   447-420 +9.3u       62-58 +7.5u     63-57 +7.0u
+log-loss at the open, same 4346 props: market 0.6852  live model 0.6975  anchored 0.6848
 ```
 
 ## Timing: Best Bets by how early they posted (plan Weeks 3-4)
@@ -127,7 +127,7 @@ _Every Best Bets play (the locked card plus the background log), graded at the l
 
 ```
 posted                 record  units posted  units at close  beat close
-3+ days before          17-10         +6.7u           +5.3u       15/26
+3+ days before          17-11         +5.7u           +4.3u       15/27
 1-3 days before         18-15         +4.5u           +4.6u        8/32
 6-24 hours before       12-14         -2.3u           -2.9u       10/24
 under 6 hours           23-13         +8.3u           +4.5u        8/29
@@ -146,7 +146,7 @@ Wk  5  props n= 597  LL 0.6944 vs 0.6794  skill -0.022 z -1.9     games n=  42  
 Wk  6  props n= 585  LL 0.7006 vs 0.6834  skill -0.025 z -2.0     games n=  37  LL 0.7670 vs 0.7216  skill -0.063 z -2.3
 Wk  7  props n= 587  LL 0.6877 vs 0.6835  skill -0.006 z -0.5     games n=  41  LL 0.7066 vs 0.6723  skill -0.051 z -1.2
 Wk  8  props n= 608  LL 0.7138 vs 0.6850  skill -0.042 z -3.4     games n=  38  LL 0.6593 vs 0.6433  skill -0.025 z -0.9
-Wk  9  props n= 529  LL 0.6999 vs 0.6841  skill -0.023 z -2.0     games n=  36  LL 0.6512 vs 0.6243  skill -0.043 z -1.2
+Wk  9  props n= 567  LL 0.6968 vs 0.6849  skill -0.017 z -1.6     games n=  39  LL 0.6480 vs 0.6204  skill -0.044 z -1.4
 ```
 
 ## How to read this
