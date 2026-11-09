@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "note": "Frozen Top Reads trial rules. A rule only counts signals FIRST fired strictly after its frozen_at. rule_hash covers id, version, predicate and frozen_at. Changing any of them means a new rule id with a new frozen_at and rule_hash; build_topreads_ledger.py refuses a registry whose hash does not match, and refuses a frozen_at or version that differs from the one its ledger first saw. Set \"retired\": true by hand to retire a rule.",
+  "us_books": ["DraftKings", "FanDuel", "BetMGM", "Caesars", "Fanatics", "BetRivers", "bet365"],
+  "rules": [
+    {
+      "id": "nfl_prop_under_us_book",
+      "version": 1,
+      "plain": "NFL player-prop Unders called on the Props page, first call per player, stat and game, bet at the called price at a major US sportsbook.",
+      "predicate": {"source": "prop_call", "sport": "nfl", "side": "under", "first": "player|prop|game|side", "price_venue": "us_book"},
+      "frozen_at": "2026-11-09T12:00:00-06:00",
+      "rule_hash": "76a2370cf5bfa4b4ef67e7a09fb7568c387fe3e1c3140bab417dc1d0747e530e",
+      "read_note": "Lead from the Nov 9 edge hunt, not proven. Mined on games before Oct 26 and checked on Oct 26 to Nov 9; it did not clear review at a real price. Judge the win rate against the price it fired at."
+    },
+    {
+      "id": "behind_spread_24h",
+      "version": 1,
+      "plain": "A major US sportsbook is still behind Pinnacle's fair price on a spread a day or more before kickoff: bet that side at that book's price, first alert per game and side.",
+      "predicate": {"source": "alert", "type": "behind", "market": "sp", "first": "game|market|side", "min_hours_before": 24, "price_venue": "us_book"},
+      "frozen_at": "2026-11-09T12:00:00-06:00",
+      "rule_hash": "7f57606a96cad228b1f905bcfb335acd01e624b0238ffd38dbecc0fd3965a278",
+      "read_note": "Lead from the Nov 9 edge hunt, not proven. Mined on games before Oct 26 and checked on Oct 26 to Nov 9; it did not clear review at a real price. Judge the win rate against the price it fired at."
+    },
+    {
+      "id": "cfb_behind_spread_24h",
+      "version": 1,
+      "plain": "College football only: a major US sportsbook is still behind Pinnacle's fair price on a spread a day or more before kickoff: bet that side at that book's price, first alert per game and side.",
+      "predicate": {"source": "alert", "type": "behind", "sport": "cfb", "market": "sp", "first": "game|market|side", "min_hours_before": 24, "price_venue": "us_book"},
+      "frozen_at": "2026-11-09T12:00:00-06:00",
+      "rule_hash": "ca45548b45443de23dff07164bab279177389ce2311775426384553234e16586",
+      "read_note": "Lead from the Nov 9 edge hunt, not proven. Mined on games before Oct 26 and checked on Oct 26 to Nov 9; it did not clear review at a real price. Judge the win rate against the price it fired at."
+    }
+  ]
+}

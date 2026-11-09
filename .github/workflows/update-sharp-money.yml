@@ -72,7 +72,12 @@ jobs:
         if: steps.gate.outputs.go == '1'
         run: |
           mkdir -p sharp-out
-          if git ls-remote --exit-code --heads origin sharp-data >/dev/null 2>&1; then
+          # ls-remote exits 2 only when the branch is missing. Any other failure (network, auth) must fail the job: treating it as a
+          # first run would rebuild the append-only ledgers from this run's state alone and force-push them over the full history.
+          rc=0
+          git ls-remote --exit-code --heads origin sharp-data >/dev/null 2>&1 || rc=$?
+          if [ $rc -ne 0 ] && [ $rc -ne 2 ]; then echo "::error::git ls-remote for sharp-data failed (exit $rc); refusing to treat it as a first run"; exit 1; fi
+          if [ $rc -eq 0 ]; then
             git fetch --depth=1 origin sharp-data
             git show FETCH_HEAD:state.json > sharp-out/state.json || true
             git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
@@ -82,6 +87,11 @@ jobs:
             if git cat-file -e FETCH_HEAD:prop_close_tape.json 2>/dev/null; then git show FETCH_HEAD:prop_close_tape.json > sharp-out/prop_close_tape.json; fi
             # The V2 play ledger is append-only history with one copy here: if it exists on the branch it must load (a failed read fails the job).
             if git cat-file -e FETCH_HEAD:v2_plays.json 2>/dev/null; then git show FETCH_HEAD:v2_plays.json > sharp-out/v2_plays.json; fi
+            # The Top Reads ledger is append-only history with one copy here (state.json prunes picks at 60 days): if it exists on the branch it
+            # must load (a failed read fails the job instead of starting an empty ledger that would then be published over it).
+            if git cat-file -e FETCH_HEAD:topreads_ledger.json 2>/dev/null; then git show FETCH_HEAD:topreads_ledger.json > sharp-out/topreads_ledger.json; fi
+            # Last record, so a failed ledger step republishes it instead of dropping it from the branch.
+            git show FETCH_HEAD:topreads_record.json > sharp-out/topreads_record.json 2>/dev/null || rm -f sharp-out/topreads_record.json
             for f in v2_watch.json v2_passed.json; do if git cat-file -e FETCH_HEAD:$f 2>/dev/null; then git show FETCH_HEAD:$f > sharp-out/$f; fi; done
             git show FETCH_HEAD:ev_alert_history.json > sharp-out/ev_alert_history.json || rm -f sharp-out/ev_alert_history.json
             # Rows parked by a run that found the history file broken; build_ev_history.py folds them in and deletes them.
@@ -178,6 +188,16 @@ jobs:
           node scripts/track-v2-plays.mjs --dir=sharp-out
           node scripts/track-v2-plays.mjs --dir=sharp-out --tier=watch
           node scripts/track-v2-plays.mjs --dir=sharp-out --tier=pass
+      # Top Reads ledger and forward-test ladder: one row per signal written once at first sight (price at a real US book only, from the signal or the
+      # book tape), settled later, and the frozen trial rules in data/topreads_rules.json scored on signals first fired after their freeze. Runs after
+      # the poll (state.json and prop_plays.json are this run's) and after the line tape step (fresh CFB/NBA tape). Never blocks the publish: a ledger
+      # that exists but does not parse stops the step without being replaced, and the old file is published unchanged.
+      - name: Top Reads ledger
+        id: topreads
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          python3 scripts/build_topreads_ledger.py --dir=sharp-out --rules=data/topreads_rules.json --tape=data/book_tape
       # Permanent graded +EV log. data.json keeps only the newest 1500 alerts, so graded ones age out; this file never drops an entry.
       # Published next to data.json. Never blocks the publish: on failure the previous file is carried forward untouched.
       - name: Append graded +EV alerts to history
@@ -202,6 +222,8 @@ jobs:
           if [ -f v2_plays.json ]; then git add v2_plays.json; fi
           if [ -f v2_watch.json ]; then git add v2_watch.json; fi
           if [ -f v2_passed.json ]; then git add v2_passed.json; fi
+          if [ -f topreads_ledger.json ]; then git add topreads_ledger.json; fi
+          if [ -f topreads_record.json ]; then git add topreads_record.json; fi
           # The publish dir is rebuilt as one fresh commit, so a pending file merged this run (deleted from sharp-out) simply drops off the branch.
           if compgen -G "ev_alert_history.pending*.json" > /dev/null; then git add ev_alert_history.pending*.json; fi
           if compgen -G "g/*.json" > /dev/null; then git add g/*.json; fi
@@ -212,6 +234,12 @@ jobs:
         if: steps.evhist.outcome == 'failure'
         run: |
           echo "::error::ev_alert_history.json was broken; new graded rows were parked in ev_alert_history.pending*.json on sharp-data. Repair the history file, the next run merges them."
+          exit 1
+      # Same for the Top Reads ledger: the previous ledger and record were republished unchanged, so the forward test collected no rows this run.
+      - name: Fail the run if the Top Reads ledger step failed
+        if: steps.topreads.outcome == 'failure'
+        run: |
+          echo "::error::Top Reads ledger step failed; the previous topreads_ledger.json/topreads_record.json were republished unchanged"
           exit 1
       # Same for Polymarket: the poll publishes without it, then the run goes red so a dead Data API is noticed.
       - name: Fail the run if the Polymarket Data API was dead
