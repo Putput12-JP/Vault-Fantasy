@@ -97,9 +97,9 @@ _Logged live before kickoff, graded here. Context only until a row says GO (50+ 
 Kalshi vs books (5+ pts apart)     n= 44  side won  28, price said   21.8  -> tracking (44 of 50)
   all Kalshi-priced lines: n=1278  log-loss Kalshi 0.6825  books 0.6853
 Vault vs Kalshi (10+ pts, Kalshi)  n=168  side won  78, price said   89.6  -> no edge yet (z -1.8)
-PM sharp $25k+ (all)               n= 23  side won  18, price said   11.3  -> tracking (23 of 50)
-PM sharp vs crowd disagree         n=  5  side won   4, price said    1.8  -> tracking (5 of 50)
-PM sharp with crowd                n= 13  side won  10, price said    7.0  -> tracking (13 of 50)
+PM sharp $25k+ (all)               n= 26  side won  20, price said   12.9  -> tracking (26 of 50)
+PM sharp vs crowd disagree         n=  7  side won   5, price said    2.7  -> tracking (7 of 50)
+PM sharp with crowd                n= 14  side won  11, price said    7.7  -> tracking (14 of 50)
 Withheld props (teammate out)      lines=562  model lean won 278  overs hit 266  | would-be plays 6-10 -4.4u
 ```
 
