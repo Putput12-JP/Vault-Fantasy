@@ -43,6 +43,9 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+import sys  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'scripts'))
+from pm_data_api import pm_pages, PMDataError   # noqa: E402  Polymarket Data API v2 (v1 retired 2026-11-02)
 REPO_DATA = os.path.join(HERE, '..', '..', 'data')            # pm_wallets_*.json live in the repo's data/
 STEAM = {'sp': 1.0, 'tot': 1.5, 'ml': 0.03}                  # NBA thresholds from the watch (points, win-prob points)
 STEAM_WIN, GAP_MAX, STEAM_COOL = 30 * 60, 25 * 60, 3 * 3600
@@ -69,6 +72,14 @@ except Exception:  # pragma: no cover
 
 
 # ── prices ───────────────────────────────────────────────────────────────────────────────────────
+
+def _pm_safe(pages):
+    """Pages from pm_pages; a page that cannot be fetched ends the walk, loudly."""
+    try:
+        yield from pages
+    except PMDataError as e:
+        print(f'[sharp] Polymarket trades unavailable: {e}', file=sys.stderr)
+
 def am(x):
     try:
         x = float(x)
@@ -190,10 +201,10 @@ def poll_tapes(root, day, slate, now, curl, parse_event, team):
         src, k, m = job
         if src == 'pmb':                                # batched props: the oldest cursor of the batch, dedup by id
             since, out = min([cur.get(x) or now - 86400 for x in k]), []
-            for page in range(5):
-                r = curl(f"https://data-api.polymarket.com/trades?market={','.join(m['cids'])}&takerOnly=true&limit=500&offset={page * 500}"
-                         f"&filterType=CASH&filterAmount={TAPE_MIN['pm']}")
-                if not isinstance(r, list) or not r:
+            pages = pm_pages(curl, '/trades', {'condition': ','.join(m['cids']), 'taker_only': True, 'limit': 500,
+                                               'filter_type': 'CASH', 'filter_amount': TAPE_MIN['pm']}, 5)
+            for r, more in _pm_safe(pages):
+                if not r:
                     break
                 old = False
                 for x in r:
@@ -208,14 +219,13 @@ def poll_tapes(root, day, slate, now, curl, parse_event, team):
                     oi = x.get('outcomeIndex') if buy else 1 - (x.get('outcomeIndex') or 0)
                     out.append({'t': x['timestamp'], 's': 'pm', 'k': kk, 'o': oi, 'usd': round(usd), 'px': round(x['price'] if buy else 1 - x['price'], 4),
                                 'w': x.get('proxyWallet'), 'who': x.get('pseudonym') or x.get('name'), 'id': f"{(x.get('transactionHash') or '')[:18]}:{oi}:{round(x.get('size') or 0)}"})
-                if old or len(r) < 500:
+                if old or not more:
                     break
             return out
         since, out = cur.get(k) or now - 86400, []
         if src == 'pm':
-            for page in range(10):
-                r = curl(f"https://data-api.polymarket.com/trades?market={m['cid']}&takerOnly=true&limit=500&offset={page * 500}")
-                if not isinstance(r, list) or not r:
+            for r, more in _pm_safe(pm_pages(curl, '/trades', {'condition': m['cid'], 'taker_only': True, 'limit': 500}, 10)):
+                if not r:
                     break
                 old = False
                 for x in r:
@@ -229,7 +239,7 @@ def poll_tapes(root, day, slate, now, curl, parse_event, team):
                     oi = x.get('outcomeIndex') if buy else 1 - (x.get('outcomeIndex') or 0)
                     out.append({'t': x['timestamp'], 's': 'pm', 'k': k, 'o': oi, 'usd': round(usd), 'px': round(x['price'] if buy else 1 - x['price'], 4),
                                 'w': x.get('proxyWallet'), 'who': x.get('pseudonym') or x.get('name'), 'id': f"{(x.get('transactionHash') or '')[:18]}:{oi}:{round(x.get('size') or 0)}"})
-                if old or len(r) < 500:
+                if old or not more:
                     break
         else:
             r = curl(f"https://api.elections.kalshi.com/trade-api/v2/markets/trades?ticker={k}&limit=1000&min_ts={since + 1}")

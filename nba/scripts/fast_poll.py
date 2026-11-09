@@ -16,6 +16,8 @@ import datetime as dt, glob, json, os, subprocess, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sharp import day_dirs, ET                                    # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'scripts'))
+from pm_data_api import pm_pages, PMDataError   # noqa: E402  Polymarket Data API v2 (v1 retired 2026-11-02)
 
 TYPES = ('moneyline', 'spreads', 'totals')
 AHEAD_H = 6                                                       # markets whose game tips within this many hours
@@ -96,10 +98,14 @@ def trade_rows(ms, since, now, seen, get=curl):
     cids, rows, ok = sorted(bycid), [], True
     for i in range(0, len(cids), CHUNK_T):
         chunk = cids[i:i + CHUNK_T]
-        for page in range(PAGES):
-            r = get(f"https://data-api.polymarket.com/trades?market={','.join(chunk)}&takerOnly=true&limit=500&offset={page * 500}"
-                    f"&filterType=CASH&filterAmount={MIN_USD}")
-            if not isinstance(r, list):
+        pages = pm_pages(get, '/trades', {'condition': ','.join(chunk), 'taker_only': True, 'limit': 500,
+                                          'filter_type': 'CASH', 'filter_amount': MIN_USD}, PAGES)
+        while True:
+            try:
+                r, more = next(pages)
+            except StopIteration:
+                break
+            except PMDataError:
                 ok = False
                 break
             old = False
@@ -114,7 +120,7 @@ def trade_rows(ms, since, now, seen, get=curl):
                 if row['usd'] >= MIN_USD and row['t'] < ms[k]['start'] and row['id'] not in seen:
                     seen.add(row['id'])
                     rows.append(row)
-            if old or len(r) < 500:
+            if old or not more:
                 break
     return rows, ok
 

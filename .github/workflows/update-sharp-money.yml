@@ -213,3 +213,8 @@ jobs:
         run: |
           echo "::error::ev_alert_history.json was broken; new graded rows were parked in ev_alert_history.pending*.json on sharp-data. Repair the history file, the next run merges them."
           exit 1
+      # Same for Polymarket: the poll publishes without it, then the run goes red so a dead Data API is noticed.
+      - name: Fail the run if the Polymarket Data API was dead
+        if: always()
+        run: |
+          if [ -f .pm-dead ]; then echo "::error::$(cat .pm-dead)"; exit 1; fi

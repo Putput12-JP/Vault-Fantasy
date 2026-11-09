@@ -37,6 +37,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { buildPropsBoard } from './build-props-board.mjs';
+import { pmPages, pmAll, pmReportDead } from './pm-data-api.mjs';
 import { trackPlays, recordOf, loadLedger, overlayEspn } from './track-prop-plays.mjs';
 import { makeModelProbe } from './prop-model-probe.mjs';
 import { loadModelIndex, learnAbbrs, modelSideFor } from './sharp_model_side.mjs';
@@ -321,22 +322,14 @@ function ledIngest(L, rows, dir) {
   if (L.lo == null || mn < L.lo) { L.edgeLo = fresh.filter(x => x.timestamp === mn).map(actId); L.lo = mn; } else if (mn === L.lo) L.edgeLo = [...new Set([...L.edgeLo, ...fresh.filter(x => x.timestamp === mn).map(actId)])];
   return fresh.length;
 }
-// Walk newest-first from `from` down to `stop`, one 5,500-row window at a time. Returns rows (deduped across windows), whether it reached `stop`, and whether the account has nothing older.
+// Walk newest-first from `from` down to `stop`, at most maxWin windows of 5,500 rows (the v2 cursor has no offset cap, so a window is only a budget). Returns rows (deduped), whether it reached `stop`, and whether the account has nothing older.
 async function actWalk(w, from, stop, maxWin) {
-  const rows = [], seen = new Set(); let end = from, reached = false, exhausted = false;
-  for (let win = 0; win < maxWin && !reached && !exhausted; win++) {
-    let oldest = null, full = true;
-    for (let p = 0; p < LED_PAGES; p++) {
-      let r; try { r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&limit=${LED_PAGE}&offset=${p * LED_PAGE}&end=${end}&sortBy=TIMESTAMP&sortDirection=DESC`); } catch (e) { if (/HTTP 400/.test(e.message)) break; throw e; }
-      if (!Array.isArray(r) || !r.length) { full = false; break; }
-      for (const x of r) { const id = x.timestamp + '|' + actId(x); if (!seen.has(id)) { seen.add(id); rows.push(x); } }
-      oldest = r[r.length - 1].timestamp;
-      if (r.length < LED_PAGE) { full = false; break; }
-    }
-    if (!full) { exhausted = true; break; }
-    if (oldest == null || oldest >= end) { exhausted = true; break; }
-    if (oldest <= stop) reached = true;
-    end = oldest;
+  const rows = [], seen = new Set(); let reached = false, exhausted = false;
+  for await (const { rows: r, more } of pmPages(getJSON, '/activity', { user: w, limit: LED_PAGE, end: from, sort_by: 'TIMESTAMP', sort_direction: 'DESC' }, LED_PAGES * maxWin)) {
+    for (const x of r) { const id = x.timestamp + '|' + actId(x); if (!seen.has(id)) { seen.add(id); rows.push(x); } }
+    if (r.length && r[r.length - 1].timestamp <= stop) reached = true;
+    if (!more || !r.length) { exhausted = true; break; }
+    if (reached) break;
   }
   return { rows, reached, exhausted };
 }
@@ -346,13 +339,12 @@ async function walletPoll(S, wallets) {
   await pool(wallets, 6, async w => {
     const A = S.acct[w] ||= { cur: 0, who: null, trades: [], pos: [] };
     const cur = A.cur || t - 3 * DAY;
-    let off = 0, newest = cur; const rows = [];
-    for (let p = 0; p < 6; p++) {
-      const r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&type=TRADE&limit=100&offset=${off}&sortBy=TIMESTAMP&sortDirection=DESC`);
-      if (!Array.isArray(r) || !r.length) break;
+    let newest = cur; const rows = [];
+    for await (const { rows: r, more } of pmPages(getJSON, '/activity', { user: w, type: 'TRADE', limit: 100, sort_by: 'TIMESTAMP', sort_direction: 'DESC' }, 6)) {
+      if (!r.length) break;
       let old = false;
       for (const x of r) { if (x.timestamp <= cur) { old = true; continue; } rows.push(x); newest = Math.max(newest, x.timestamp); }
-      if (old || r.length < 100) break; off += 100;
+      if (old || !more) break;
     }
     A.cur = newest;
     for (const x of rows) {
@@ -365,7 +357,7 @@ async function walletPoll(S, wallets) {
     A.trades = A.trades.filter(x => x.ts > t - 7 * DAY).sort((a, b) => b.ts - a.ts).slice(0, 200);
     // Holdings: only for accounts that traded in the last 3 days.
     if (A.trades[0] && A.trades[0].ts > t - 3 * DAY) {
-      const ps = await getJSON(`https://data-api.polymarket.com/positions?user=${w}&sizeThreshold=1&limit=40&sortBy=CURRENT&sortDirection=DESC`);
+      const ps = await pmAll(getJSON, '/positions', { user: w, filter_type: 'TOKENS', filter_amount: 1, limit: 40, sort_by: 'CURRENT_VALUE', sort_direction: 'DESC' });
       if (Array.isArray(ps)) A.pos = ps.filter(x => x.currentValue >= 100 && !x.redeemable).slice(0, 15)
         .map(x => ({ title: x.title, slug: x.slug, ev: x.eventSlug, out: x.outcome, size: Math.round(x.size), avg: r3(x.avgPrice), cur: r3(x.curPrice), val: Math.round(x.currentValue), cost: Math.round(x.initialValue), pnl: Math.round(x.cashPnl), end: x.endDate }));
     } else A.pos = [];
@@ -390,7 +382,9 @@ async function walletPoll(S, wallets) {
         }
       }
       for (const [id, c] of Object.entries(L.m)) if (c[1] < t - LED_KEEP) delete L.m[id];
-      const hp = await getJSON(`https://data-api.polymarket.com/positions?user=${w}&sizeThreshold=1&limit=500&sortBy=CURRENT&sortDirection=DESC`);
+      // v1 listed open and redeemable positions together; v2 splits them by status, and an unredeemed winner still holds its value.
+      const hp = [];
+      for (const status of ['OPEN', 'REDEEMABLE']) hp.push(...await pmAll(getJSON, '/positions', { user: w, status, filter_type: 'TOKENS', filter_amount: 1, limit: 500, sort_by: 'CURRENT_VALUE', sort_direction: 'DESC' }));
       const held = {}, live = new Set();
       for (const x of Array.isArray(hp) ? hp : []) { held[x.conditionId] = (held[x.conditionId] || 0) + x.currentValue; if (x.curPrice > 0.03 && x.curPrice < 0.97) live.add(x.conditionId); }
       const t0 = L.done ? 0 : L.lo, C = {};
@@ -428,13 +422,12 @@ async function polymarket(sk, cfg, games, S, W) {
   // Pull each market's trades newer than the cursor (first run: 24h back).
   await pool(todo, 6, async ([g, k, m]) => {
     const cur = S.cursors['pm:' + m.cid] || t - DAY;
-    let off = 0, newest = cur; const rows = [];
-    for (let p = 0; p < 10; p++) {
-      const r = await getJSON(`https://data-api.polymarket.com/trades?market=${m.cid}&takerOnly=true&limit=500&offset=${off}`);
-      if (!Array.isArray(r) || !r.length) break;
+    let newest = cur; const rows = [];
+    for await (const { rows: r, more } of pmPages(getJSON, '/trades', { condition: m.cid, taker_only: true, limit: 500 }, 10)) {
+      if (!r.length) break;
       let old = false;
       for (const x of r) { if (x.timestamp <= cur) { old = true; continue; } rows.push(x); newest = Math.max(newest, x.timestamp); }
-      if (old || r.length < 500) break; off += 500;
+      if (old || !more) break;
     }
     S.cursors['pm:' + m.cid] = newest;
     const G = S.games[g.key] ||= {};
@@ -486,9 +479,8 @@ async function polymarket(sk, cfg, games, S, W) {
   }
   await pool(ptodo, 6, async ([cid, r]) => {
     let newest = r.cur;
-    for (let off = 0; off < 1500; off += 500) {
-      const rows = await getJSON(`https://data-api.polymarket.com/trades?market=${cid}&takerOnly=true&limit=500&offset=${off}`).catch(() => null);
-      if (!Array.isArray(rows) || !rows.length) break;
+    try { for await (const { rows, more } of pmPages(getJSON, '/trades', { condition: cid, taker_only: true, limit: 500 }, 3)) {
+      if (!rows.length) break;
       let old = false;
       for (const x of rows) {
         if (x.timestamp <= r.cur) { old = true; continue; }
@@ -496,8 +488,8 @@ async function polymarket(sk, cfg, games, S, W) {
         const oi = x.side === 'BUY' ? x.outcomeIndex : 1 - x.outcomeIndex;
         r.usd[oi] += usd; r.ct = (r.ct || 0) + x.size; r.n++; if (W.sharp.has(x.proxyWallet)) r.sharp[oi] += usd;
       }
-      if (old || rows.length < 500) break;
-    }
+      if (old || !more) break;
+    } } catch (e) { /* counted in PM_FAIL */ }
     r.cur = newest; r.usd = r.usd.map(Math.round); r.sharp = r.sharp.map(Math.round); if (r.ct) r.ct = Math.round(r.ct);
   });
   return out;
@@ -1584,4 +1576,6 @@ if (ARG.loop) {
   for (;;) { try { await pollOnce(); } catch (e) { log('poll failed', e.message); } await new Promise(s => setTimeout(s, every)); }
 } else {
   await pollOnce();
+  // Polymarket answered nothing: the run still wrote the other books, but fail loudly so a dead API is not silent for a week (v1 retired 2026-11-02 that way).
+  await pmReportDead('Sharp accounts, the Polymarket tape and prop money are empty this run.');
 }
