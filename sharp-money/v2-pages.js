@@ -512,7 +512,9 @@
       var pr = rows.filter(function (r) { return r.promoted; }), nbaOn = !sport || sport === 'all' || sport === 'nba';
       if (hbS.length) hbNote += ' Held back by the strict gates (a price under ' + Math.round(G().GATES.MIN_PRICE * 100) + '% or a call ' + G().GATES.EARLY_H + 'h+ out): ' + line(hbS, 'earlier play') + '.';
       if (hbC.length) hbNote += ' Held back by NBA rule C (fair prices ' + Math.round(G().GATES.NBA_FAIR_AGREE * 100) + ' point or more apart, Kalshi not quoting, or under ' + Math.round(G().GATES.NBA_MIN_EDGE * 100) + '% over the exchange): ' + line(hbC, 'earlier NBA prop play') + '.';
-      var cp = capSplit(F).capped.filter(function (r) { return !sport || sport === 'all' || r.p.sport === sport; });
+      var cpAll = capSplit(F).capped.filter(function (r) { return !sport || sport === 'all' || r.p.sport === sport; }), so = G().sideOut ? G().sideOut(cpAll.map(function (r) { return r.p; }).concat(capSplit(F).keep.map(function (r) { return r.p; }))) : new Set();
+      var sd = cpAll.filter(function (r) { return so.has(r.p.id); }), cp = cpAll.filter(function (r) { return !so.has(r.p.id); });
+      if (sd.length) hbNote += ' Held back as the second side of a market already played (one side per market, the side logged first stands): ' + line(sd, 'play') + '.';
       if (cp.length) hbNote += ' Held back by the nightly cap (each night\u2019s top ' + G().GATES.NBA_CAP + ' NBA props by edge, locked an hour before the first tip): ' + line(cp, 'NBA prop') + '.';
       if (hb.length || cp.length) hbNote += ' They now sit in Passed.';
       if (pr.length) hbNote += ' Added by rule C from Passed: ' + line(pr, 'NBA prop') + ', rebuilt from stored prices.';

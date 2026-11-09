@@ -295,11 +295,45 @@
     }
     return n;
   }
+  /* ---- one side per market, across runs ----
+     build() already passes a market whose two sides clear at the same read (contradicted). This covers the other case: one side logged as a Play,
+     and the other side clearing on a later run. A player prop is the player and stat in one game, at any line (Under 2.5 then Over 2.5, or Over 3.5);
+     a game market is the game and ml / sp / tot. The side logged first stands; the later side is a Pass live, and held out of the Play record. */
+  const SIDE_GAME = 6 * 3600;                                          // one game when the starts sit within this (scripts/track-v2-plays.mjs SAME_GAME)
+  const mktOfRow = p => p && p.prop ? 'p|' + p.prop.pid + '|' + p.prop.mkt : p && p.game ? 'g|' + p.game.gk + '|' + p.game.m : null;
+  const sideOfRow = p => p.prop ? p.prop.side : p.game ? p.game.side : null;
+  const mktOfCand = c => c.kind === 'prop' ? 'p|' + c.row.pid + '|' + c.row.mkt : 'g|' + c.gk + '|' + c.m;
+  function sideOfCand(c) {                                            // scripts/track-v2-plays.mjs gamePick, for the side alone
+    if (c.kind === 'prop' || c.kind === 'book') return c.side;
+    const r = c.edgeRow || {}, up = r.sg != null ? r.sg === 1 : null;
+    if (r.m === 'tot') return (up != null ? up : /^over/i.test(r.label)) ? 'over' : 'under';
+    if (r.m === 'ml') return (up != null ? up : r.label === r.home) ? 'home' : 'away';
+    return (up != null ? up : String(r.label).split(' ')[0] === r.home) ? 'home' : 'away';
+  }
+  /* Stored rows, oldest first sight first: the ids of rows whose market already holds a kept row on the other side. Void rows neither hold nor go. */
+  function sideOut(rows) {
+    const kept = {}, out = new Set();
+    rows.filter(p => p && p.status !== 'void' && mktOfRow(p)).sort((a, b) => a.firstSeen - b.firstSeen).forEach(p => {
+      const k = mktOfRow(p), s = sideOfRow(p), list = kept[k] || (kept[k] = []);
+      if (list.some(x => x.side !== s && Math.abs(x.start - p.start) <= SIDE_GAME)) out.add(p.id); else list.push({ side: s, start: p.start, title: (p.first || {}).title });
+    });
+    out.kept = kept; return out;
+  }
+  const SIDE_WHY = t => 'The other side' + (t ? ' (' + t + ')' : '') + ' is already a play, logged first. One side per market: a bet is never both Over and Under.';
+  function sideLive(all, X) {
+    const rows = Object.values((X.L && X.L.plays) || {}).filter(r => !heldBack(r).length), kept = sideOut(rows).kept;
+    all.forEach(c => {
+      if (c.tier !== 'play' || !c.start) return;
+      const s = sideOfCand(c), hit = (kept[mktOfCand(c)] || []).find(x => x.side !== s && Math.abs(x.start - c.start) <= SIDE_GAME);
+      if (hit) { c.tier = 'pass'; c.sideOut = true; c.reasons = [SIDE_WHY(hit.title)] }
+    });
+  }
   function capNba(all, X) {
     const N = X.N, plays = all.filter(c => c.sport === 'nba' && c.kind === 'prop' && c.tier === 'play');
     if (!plays.length) return;
     const tips = nightTips(N);
-    const logged = {}; for (const r of Object.values((X.L && X.L.plays) || {})) if (r.sport === 'nba' && r.kind === 'prop' && r.status !== 'void' && !heldBack(r).length && !r.capOut && !preCap(r, tips)) (logged[nightOf(r.start)] || (logged[nightOf(r.start)] = new Set())).add(r.id);
+    const lrows = Object.values((X.L && X.L.plays) || {}).filter(r => !heldBack(r).length), so = sideOut(lrows);
+    const logged = {}; for (const r of lrows) if (r.sport === 'nba' && r.kind === 'prop' && r.status !== 'void' && !so.has(r.id) && !r.capOut && !preCap(r, tips)) (logged[nightOf(r.start)] || (logged[nightOf(r.start)] = new Set())).add(r.id);
     const by = {}; plays.forEach(c => (by[nightOf(c.start)] || (by[nightOf(c.start)] = [])).push(c));
     for (const [k, cs] of Object.entries(by)) {
       const done = logged[k] || new Set(), lock = (tips[k] || Math.min(...cs.map(c => c.start))) - GATES.NBA_LOCK_MIN * 60;
@@ -315,10 +349,12 @@
   /* The stored record through the same cap: per night, the top NBA_CAP rows by first-sight edge among those seen by the lock (an hour before the
      night's first tip in the record), then later rows by time into the slots left. Returns the ids the cap holds back. Pass rows that already
      clear heldBack (and promoted Passed rows), so the count is the plays the record would otherwise show. */
+  /* The later side of a two-sided market (sideOut) is held back here too, before the cap ranks the night, so it neither counts nor takes a slot. */
   function capOut(rows) {
-    const by = {}, out = new Set();
+    const by = {}, out = new Set(), so = sideOut(rows);
+    so.forEach(id => out.add(id));
     rows.forEach(p => { if (p && p.capOut) out.add(p.id) });      // a pre-cap row the lock passed over (capStamp)
-    rows.filter(p => p && p.sport === 'nba' && p.kind === 'prop' && p.status !== 'void' && !p.capOut).forEach(p => (by[nightOf(p.start)] || (by[nightOf(p.start)] = [])).push(p));
+    rows.filter(p => p && p.sport === 'nba' && p.kind === 'prop' && p.status !== 'void' && !p.capOut && !so.has(p.id)).forEach(p => (by[nightOf(p.start)] || (by[nightOf(p.start)] = [])).push(p));
     for (const rs of Object.values(by)) {
       const lock = Math.min(...rs.map(p => p.start)) - GATES.NBA_LOCK_MIN * 60, w = p => (p.first && p.first.worst) != null ? p.first.worst : -9;
       const early = rs.filter(p => p.firstSeen <= lock).sort((a, b) => w(b) - w(a)), late = rs.filter(p => p.firstSeen > lock).sort((a, b) => a.firstSeen - b.firstSeen);
@@ -335,6 +371,7 @@
     const seen = {};
     all.forEach(c => { if (c.refs.some(r => r.p / c.price.p - 1 >= GATES.MIN_EDGE)) { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; (seen[k] || (seen[k] = new Set())).add(c.side) } });
     all.forEach(c => { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; c.contradicted = (seen[k] && seen[k].size > 1) || false; c.hoursOut = c.start ? (c.start - X.now) / 3600 : null; judge(c) });
+    sideLive(all, X);
     capNba(all, X);
     const cand = all.filter(c => c.tier !== 'none').sort((a, b) => (b.worst == null ? -9 : b.worst) - (a.worst == null ? -9 : a.worst));
     cand.noneCount = all.length - cand.length;
@@ -351,5 +388,5 @@
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, capStamp, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
+  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, sideOut, capStamp, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });
