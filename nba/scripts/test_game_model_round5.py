@@ -186,6 +186,16 @@ def write_md(rep):
           f"- **Total: {'GO (for accuracy)' if v['total'] else 'NO-GO'}.** Bar: pooled out-of-sample t 2.5, closer in each fold and on this season.",
           '- A GO here is a more accurate Vault line. It is not an edge: read the spread and over/under records above, which stay at a coin flip.',
           '- `game_model.json` is unchanged by this script. Shipping is its own pull request (the daily state build has no closing lines today).']
+    t = rep['total']['pooled']
+    L += ['', '## Notes', '',
+          f"- Margin: both seasons chose the same parameters on their own (W {rep['margin']['ship'][0]}, KL {rep['margin']['ship'][1]}), so the fold \"2025-26 parameters on 2024-25\" "
+          'is numerically the 2024-25 fit round 3 reported as in sample. What the cross-fit adds is that 2025-26 picks that point without seeing 2024-25.',
+          f"- Total: the line-taught total is closer on average ({t['mae_s']} to {t['mae_v']}) but not in both seasons and not this season, and against the closing total it leans the wrong way "
+          f"(information test t {t['info_v']['t']}). Option LT stays off."]
+    if sea:
+        m = sea['margin']
+        L += ['', f"**Flagged for close monitoring** (replays, n = {m['n']}): margin MAE {m['mae_s']} to {m['mae_v']}; spread record at the locked line "
+              f"{m['ats_s']['0'][0]}-{m['ats_s']['0'][1]} to {m['ats_v']['0'][0]}-{m['ats_v']['0'][1]}; at a 5+ gap {m['ats_s']['5'][0]}-{m['ats_s']['5'][1]} to {m['ats_v']['5'][0]}-{m['ats_v']['5'][1]}."]
     open(OUT_MD, 'w').write('\n'.join(L) + '\n')
 
 
