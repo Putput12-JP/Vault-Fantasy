@@ -190,7 +190,7 @@ def write_md(rep):
     L += ['', '## Notes', '',
           f"- Margin: both seasons chose the same parameters on their own (W {rep['margin']['ship'][0]}, KL {rep['margin']['ship'][1]}), so the fold \"2025-26 parameters on 2024-25\" "
           'is numerically the 2024-25 fit round 3 reported as in sample. What the cross-fit adds is that 2025-26 picks that point without seeing 2024-25.',
-          f"- Total: the line-taught total is closer on average ({t['mae_s']} to {t['mae_v']}) but not in both seasons and not this season, and against the closing total it leans the wrong way "
+          f"- Total: the line-taught total is closer on average ({t['mae_s']} to {t['mae_v']}) and in both folds, but short of the bar (t {t['t']}) and worse this season, and against the closing total it leans the wrong way "
           f"(information test t {t['info_v']['t']}). Option LT stays off."]
     if sea:
         m = sea['margin']

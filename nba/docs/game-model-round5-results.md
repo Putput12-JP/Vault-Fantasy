@@ -1,6 +1,6 @@
 # Game model round 5: results
 
-Generated 2026-11-10T23:02Z by `nba/scripts/test_game_model_round5.py`. Rules: [game-model-round5.md](game-model-round5.md) (committed before this ran).
+Generated 2026-11-10T23:04Z by `nba/scripts/test_game_model_round5.py`. Rules: [game-model-round5.md](game-model-round5.md) (committed before this ran).
 
 ## Margin (option L)
 
@@ -65,6 +65,6 @@ Spread record at the locked line: shipped 68-85 (44.4%), variant 69-85 (44.8%); 
 ## Notes
 
 - Margin: both seasons chose the same parameters on their own (W 0.75, KL 0.16), so the fold "2025-26 parameters on 2024-25" is numerically the 2024-25 fit round 3 reported as in sample. What the cross-fit adds is that 2025-26 picks that point without seeing 2024-25.
-- Total: the line-taught total is closer on average (14.852 to 14.713) but not in both seasons and not this season, and against the closing total it leans the wrong way (information test t -2.82). Option LT stays off.
+- Total: the line-taught total is closer on average (14.852 to 14.713) and in both folds, but short of the bar (t 2.1) and worse this season, and against the closing total it leans the wrong way (information test t -2.82). Option LT stays off.
 
 **Flagged for close monitoring** (replays, n = 154): margin MAE 11.673 to 11.426; spread record at the locked line 68-85 to 69-85; at a 5+ gap 12-4 to 4-3.
