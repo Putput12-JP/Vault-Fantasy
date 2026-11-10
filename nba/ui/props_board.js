@@ -7,7 +7,7 @@
 window.PBX = (() => {
   const LS = 'nba-pbx-f';
   try{ localStorage.removeItem('nba-pbx-classic'); }catch(e){}   // the classic table is gone; forget a saved choice of it
-  const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any', watch: false, sig: 'any', agree: null};
+  const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any', watch: false, sig: 'any', agree: null, lvl: null};
   const load = () => { try{ const f = JSON.parse(localStorage.getItem(LS)); return f ? {...FDEF, ...f, ven: {...FDEF.ven, ...(f.ven || {})}} : JSON.parse(JSON.stringify(FDEF)); }catch(e){ return JSON.parse(JSON.stringify(FDEF)); } };
   const S = {stat: 'all', side: 'all', game: 'all', q: '', sort: 'edge', dir: -1, limit: 60, fOpen: false, f: load(), open: null};
   const save = () => { try{ localStorage.setItem(LS, JSON.stringify(S.f)); }catch(e){} };
@@ -100,6 +100,7 @@ window.PBX = (() => {
     if (f.watch) o.push(['watch', 'Watching only']);
     if (f.sig !== 'any') o.push(['sig', {strong: 'Signals: Strong', lean: 'Signals: Lean or Strong', notag: 'Signals: not Against'}[f.sig] || 'Signals']);
     if (f.agree != null) o.push(['agree', f.agree === 5 ? 'All 5 checks agree' : `${f.agree}+ of 5 checks agree`]);
+    if (f.lvl != null) o.push(['lvl', f.lvl === 4 ? 'Props Sim L4' : `Props Sim L${f.lvl}+`]);
     if (f.moved !== 'any') o.push(['moved', f.moved === 'with' ? 'Line moved toward side' : 'Line moved against side']);
     return o;
   }
@@ -130,12 +131,13 @@ window.PBX = (() => {
       if (f.healthy && r.inj && !/^available$/i.test(r.inj)) return false;
       if (f.starters && r.lu !== 's') return false;
       if (f.watch && !watched(r, x.side)) return false;
-      if (f.sig !== 'any' || f.agree != null){               // signals describe the model's side: the other side of the prop never passes
+      if (f.sig !== 'any' || f.agree != null || f.lvl != null){               // signals describe the model's side: the other side of the prop never passes
         const S2 = rowSig(x); if (!S2 || (x.side === 'o' ? 'O' : 'U') !== S2.ms) return false;
         if (f.sig === 'strong' && S2.tier !== 'strong') return false;
         if (f.sig === 'lean' && S2.tier !== 'strong' && S2.tier !== 'lean') return false;
         if (f.sig === 'notag' && S2.tier === 'against') return false;
         if (f.agree != null && S2.kf < f.agree) return false;
+        if (f.lvl != null && S2.lv < f.lvl) return false;
       }
       if (f.moved !== 'any'){ const d = x.sc.dm; if (!d) return false; if ((f.moved === 'with') !== (x.side === 'o' ? d < 0 : d > 0)) return false; }   // a falling line makes the over easier
       return true;
@@ -177,6 +179,7 @@ window.PBX = (() => {
       <div><h6>Line move since open</h6><div>${o('moved', 'any', 'Any', f.moved === 'any')}${o('moved', 'with', 'Toward side', f.moved === 'with')}${o('moved', 'against', 'Against side', f.moved === 'against')}</div></div>
       <div><h6>Prop signals (model's side)</h6><div>${o('sig', 'any', 'Any', f.sig === 'any')}${o('sig', 'strong', 'Strong', f.sig === 'strong')}${o('sig', 'lean', 'Lean or Strong', f.sig === 'lean')}${o('sig', 'notag', 'Not Against', f.sig === 'notag')}</div></div>
       <div><h6>Checks agreeing (of 5)</h6><div>${o('agree', 'null', 'Any', f.agree == null)}${[1, 2, 3, 4].map(v => o('agree', v, v + '+', f.agree === v)).join('')}${o('agree', 5, 'All 5', f.agree === 5)}</div></div>
+      <div><h6>Props Sim level (model's side)</h6><div>${o('lvl', 'null', 'Any', f.lvl == null)}${[2, 3].map(v => o('lvl', v, `L${v}+`, f.lvl === v)).join('')}${o('lvl', 4, 'L4', f.lvl === 4)}</div></div>
       <div><h6>Player and matchup</h6><div>${o('oppFav', 1, 'Soft matchup', f.oppFav)}${o('healthy', 1, 'No injury tag', f.healthy)}${o('starters', 1, 'Starters only', f.starters)}${o('watch', 1, '★ Watching only', f.watch)}</div></div>
       <div class="ft"><span class="muted">${n.toLocaleString()} props match. Venues change which price counts as best.</span><button type="button" class="btn" data-freset="1">Reset</button><button type="button" class="btn primary" data-fdone="1">Done</button></div></div>`;
   }
