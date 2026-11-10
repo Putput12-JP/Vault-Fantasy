@@ -162,8 +162,13 @@ class Model:
         err = (g['hs'] - g['as']) - margin
         cap = P.get('ERR_CAP')                               # round 2 option M: a blowout moves the ratings no more than a cap-point miss
         rerr = max(-cap, min(cap, err)) if cap else err
-        self.R[g['home']] += self.k_team(g['home']) * rerr
-        self.R[g['away']] -= self.k_team(g['away']) * rerr
+        kh, ka = self.k_team(g['home']), self.k_team(g['away'])
+        mk = g.get('mk') if P.get('MK_W') else None          # round 3 option L (docs/game-model-round3.md), off unless MK_W is set:
+        if mk is not None:                                   # the ratings also learn from this game's closing line, known once it has tipped
+            rerr = P['MK_W'] * (mk - margin) + (1 - P['MK_W']) * err
+            kh = ka = P.get('MK_K') or P['K']
+        self.R[g['home']] += kh * rerr
+        self.R[g['away']] -= ka * rerr
         eh, ea = g['hs'] - ph, g['as'] - pa
         if not (P.get('TOT_RESET') and g['playoff']):       # option T: playoff games do not move scoring
             self.O[g['home']] += P['KP'] * eh
@@ -212,6 +217,9 @@ def run(P, seasons, box, lines=None, inj=None, record_from=None):
         rows = box.get(g['game_id'], [])
         if not rows:
             continue
+        if P.get('MK_W') and lines:                           # option L: the closing home margin, read only by update(), after the game
+            ln = lines.get(g['game_id']) or {}
+            g['mk'] = -ln['spread_close'] if ln.get('spread_close') is not None else None
         if record_from and g['season'] >= record_from:
             day = g['tip_et'].strftime('%Y-%m-%d')
             rec = {'g': g, 'actual_margin': g['hs'] - g['as'], 'actual_total': g['hs'] + g['as']}
