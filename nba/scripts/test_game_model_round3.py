@@ -157,7 +157,20 @@ def write_md(rep):
             L.append(f"| {k} | {x['mae']} | {x['d']:+.3f} | {x['t']:+.2f} | " + ' | '.join(f"{x['ats'][t][0]}-{x['ats'][t][1]}" for t in ('0', '3', '5'))
                      + f" | {x['winner'][0]}-{x['winner'][1]} | {x['disagree'][0]} ({x['disagree'][1]}) | {x['flips']} | {x['gap']['mean']} | {100 * x['gap']['ge3']:.0f}% | {100 * x['gap']['ge5']:.0f}% | {x['gap']['sd_model']} / {x['gap']['sd_line']} |")
         L += ['', f"The locked line's MAE on these games is {rows['S']['line_mae']}. Row S is the shipped model and equals the locked record. Row L is a replay, not a record: no pick was locked with it."]
-    L += ['', '## Verdict', '', f"**{rep['verdict']}.**"]
+    t, f, sh = rep['test']['L'], rep['fit']['L'], rep['test']['S']
+    L += ['', '## Verdict', '', f"**{rep['verdict']}{'' if rep['verdict'] == 'Better' else ': not shipped'}.**", '',
+          f"- The bar was a margin-MAE t of 2.5 on 2025-26. L scored {t['t']:+.2f} there ({sh['mae']} to {t['mae']} points), {f['t']:+.2f} on the season it was fitted on"
+          + (f", and {rows['L']['t']:+.2f} on this season's {rows['L']['n']} games ({rows['S']['mae']} to {rows['L']['mae']})." if rows else '.')
+          + (' Closer in every season, and short of the bar that was set before it ran. The bar stands.' if rep['verdict'] != 'Better' and t['d'] > 0 else ''),
+          f"- It closes about a third of the distance to the closing line (2025-26: shipped {sh['mae']}, L {t['mae']}, the line {t['close_mae']}) and sits closer to it: "
+          f"mean gap {sh['gap']['mean']} to {t['gap']['mean']} points, games at a 5-point gap {100 * sh['gap']['ge5']:.0f}% to {100 * t['gap']['ge5']:.0f}%.",
+          f"- **It does nothing for the picks.** Against the closing spread L is {pct(t['ats']['0'])} on 2025-26 (shipped {pct(sh['ats']['0'])}), {pct(t['ats']['5'])} at a 5-point gap, "
+          f"and its winner pick is {pct(t['winner'])} where the market's favourite is {pct(t['fav'])}. A more accurate margin moved the model toward the line; it did not put it on the right side of the line.",
+          '- `game_model.json`, the Slate and the Game Picks record are unchanged. Option L stays in `build_game_model.py`, off unless `MK_W` is set.']
+    if rows:
+        L += ['', f"**Flagged for close monitoring** (CLAUDE.md), all replays on n = {rows['L']['n']}: L margin MAE {rows['S']['mae']} to {rows['L']['mae']}; "
+              f"L winner {rows['S']['winner'][0]}-{rows['S']['winner'][1]} to {rows['L']['winner'][0]}-{rows['L']['winner'][1]}; "
+              f"L spread {rows['S']['ats']['0'][0]}-{rows['S']['ats']['0'][1]} to {rows['L']['ats']['0'][0]}-{rows['L']['ats']['0'][1]}. One standard error on a win rate at this n is 4 points."]
     open(OUT_MD, 'w').write('\n'.join(L) + '\n')
 
 

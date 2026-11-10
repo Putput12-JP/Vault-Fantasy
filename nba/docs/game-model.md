@@ -145,3 +145,13 @@ Test seasons, same games, shipped then candidate:
 | Kalshi 1pm Brier, total ladder | 0.2189 | 0.2182 | 1.97 |
 
 Total MAE and the total-ladder Brier improved. Monitor closely: neither reached 2 SE, and the spread, moneyline and spread ladder moved the other way. CT at 0.2 would make `scripts/paper_bot/signals/nba_total.py` stop trading NBA totals, because that bot does not read an injury report. The candidate was not written to `game_model.json`. The paper bot's ratings and sigma stay what they are today.
+
+## Follow-ups scored 2026-11-10
+
+After the Game Picks record reached 68-85 against the spread on 153 picks. Rules were committed before each run. The parameters on this page are unchanged.
+
+**Audit: the record is right.** `nba/docs/game-picks-audit.md`: all 154 finals match the box scores, every pick regrades to the stored result and units, every pick has a stored DraftKings price, and all 126 live picks match the recorder's tape and locked inside the 4-hour window (median 3.91 hours before tip). The loss is one week (Oct 27 to Nov 2: 17-38; the other two weeks 51-47) and it is not a grade: spread grade A is 12-4 this season on 16 picks and 132-147 on its 279-pick history.
+
+**Round 2, early step and blowout cap: NO-GO.** `nba/docs/game-model-round2-results.md`. On the tune seasons no larger early rating step and no cap on a blowout's update beat the shipped model, so the registered grid chose no change.
+
+**Round 3, learn from the closing line: not shipped.** `nba/docs/game-model-round3-results.md`. Ratings that also move toward each game's closing line were closer to the final margin in all three seasons (2025-26, the test: 11.294 to 11.193, t 2.21; this season, 154 games: 11.673 to 11.421, t 2.11) and missed the 2.5 bar. Against the closing spread they are 49.7%, the same as the shipped model. Monitor closely: n = 154 this season.
