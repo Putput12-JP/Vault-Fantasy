@@ -36,6 +36,8 @@ def paired_t(es, ev):
     if len(d) < 2:
         return 0.0, 0.0
     sd = statistics.stdev(d)
+    if abs(statistics.mean(d)) < 1e-9:                       # the variant is the shipped model: float dust, not a difference
+        return 0.0, 0.0
     return statistics.mean(d), (statistics.mean(d) / (sd / math.sqrt(len(d))) if sd else 0.0)
 
 
@@ -221,6 +223,14 @@ def write_md(rep):
             L.append(f"| {k} | {b['mae']} | {b['d']:+.3f} | {b['t']:+.2f} | " + ' | '.join(f"{a[t][0]}-{a[t][1]}" for t in ('0', '3', '5'))
                      + f" | {b['winner'][0]}-{b['winner'][1]} | {b['flips']} |")
         L += ['', f"The locked line's MAE on these games is {rows['S']['line_mae']}. Row S is the shipped model replayed and equals the locked record."]
+    v = rep['verdict']
+    same = e['B'] == 0 and m['CAP'] is None
+    L += ['', '## Verdict', '',
+          ('**NO-GO, both.** On the tune seasons no early step and no cap beat the shipped model over the whole season, so the grid chose no change for E and for M '
+           'and the scored variants are the shipped model. A bigger step early did not even help the first four weeks (it was worse at every B). The cap helped the first four weeks '
+           'by about 0.03 points and was no better over the whole season at any value. `game_model.json` is unchanged.') if same else
+          f"E: **{v['E']}**. M: **{v['M']}**. EM: **{v['EM']}**. `game_model.json` is unchanged by this script; a Better variant ships in its own pull request.",
+          '', 'The audit tables this round promised (the record by grade, injury adjustment, favourite or underdog and stage of the season, this season and in the two test seasons) are in [game-picks-audit.md](game-picks-audit.md).']
     open(OUT_MD, 'w').write('\n'.join(L) + '\n')
 
 
