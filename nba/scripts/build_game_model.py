@@ -170,11 +170,17 @@ class Model:
         self.R[g['home']] += kh * rerr
         self.R[g['away']] -= ka * rerr
         eh, ea = g['hs'] - ph, g['as'] - pa
+        kp, mt = P['KP'], (g.get('mt') if P.get('MT_W') else None)
+        if mt is not None:                                   # round 5 option LT (docs/game-model-round5.md), off unless MT_W is set: scoring
+            sm = g['mk'] if g.get('mk') is not None else margin   # also learns from the closing total, split by the closing margin
+            eh = P['MT_W'] * ((mt + sm) / 2 - ph) + (1 - P['MT_W']) * eh
+            ea = P['MT_W'] * ((mt - sm) / 2 - pa) + (1 - P['MT_W']) * ea
+            kp = P.get('MT_K') or P['KP']
         if not (P.get('TOT_RESET') and g['playoff']):       # option T: playoff games do not move scoring
-            self.O[g['home']] += P['KP'] * eh
-            self.D[g['away']] -= P['KP'] * eh
-            self.O[g['away']] += P['KP'] * ea
-            self.D[g['home']] -= P['KP'] * ea
+            self.O[g['home']] += kp * eh
+            self.D[g['away']] -= kp * eh
+            self.O[g['away']] += kp * ea
+            self.D[g['home']] -= kp * ea
             self.base += 0.002 * (eh + ea) / 2
         if not g['playoff']:
             self.pts[0] += g['hs'] + g['as']
@@ -217,9 +223,10 @@ def run(P, seasons, box, lines=None, inj=None, record_from=None):
         rows = box.get(g['game_id'], [])
         if not rows:
             continue
-        if P.get('MK_W') and lines:                           # option L: the closing home margin, read only by update(), after the game
+        if (P.get('MK_W') or P.get('MT_W')) and lines:        # options L / LT: the closing home margin and total, read only by update(), after the game
             ln = lines.get(g['game_id']) or {}
             g['mk'] = -ln['spread_close'] if ln.get('spread_close') is not None else None
+            g['mt'] = ln.get('total_close')
         if record_from and g['season'] >= record_from:
             day = g['tip_et'].strftime('%Y-%m-%d')
             rec = {'g': g, 'actual_margin': g['hs'] - g['as'], 'actual_total': g['hs'] + g['as']}

@@ -1,6 +1,6 @@
 # Game model round 4: results
 
-Generated 2026-11-10T22:56Z by `nba/scripts/test_game_model_round4.py`. Rules: [game-model-round4.md](game-model-round4.md) (committed before this ran).
+Generated 2026-11-10T22:58Z by `nba/scripts/test_game_model_round4.py`. Rules: [game-model-round4.md](game-model-round4.md) (committed before this ran).
 
 Ratings only in every row: no injury report, no lineups, no line. N = the shipped ratings. NL = round 3's line-taught ratings.
 
@@ -62,6 +62,6 @@ For reference, the locked 4-hour record on the same games (shipped model with th
 
 - **The line does move toward the ratings, in every sample.** Held-out 2025-26 at the 2+ gap: +0.34 points for the shipped ratings (t +3.8), +0.49 for the line-taught ones (t +5.0). This season's tape: +0.25 and +0.59. That part of the 2024-25 look was real.
 - **It is too small to win with.** A third to a half of a point of line value is worth about one point of win rate. Against the open the picks went 352-340 (50.9%) and 316-302 (51.1%) on 2025-26, under the 52.4% break-even. The 54 to 56% of 2024-25 did not repeat: with ratings held 36 hours back that season still shows it, so it was the season, not look-ahead.
-- Locking earlier would have cost nothing and gained nothing. The pick clock stays at 4 hours.
+- Locking earlier is not a fix. The pick clock stays at 4 hours.
 
-**Flagged for close monitoring**, tape, n as shown: NL at the 3+ gap 23-15 (+5.88u, n 38); N at the 5+ gap 14-6 (+6.74u, n 20). Neither cut was the registered one and neither is above break-even on 2025-26.
+**Flagged for close monitoring**, tape, n as shown: NL at the 3+ gap 23-15 (+5.88u, n 38); N at the 5+ gap 14-6 (+6.74u, n 20). Neither cut was the registered one. On 2025-26 the same cuts were 184-197 (48.3%) and 94-84 (52.8%).

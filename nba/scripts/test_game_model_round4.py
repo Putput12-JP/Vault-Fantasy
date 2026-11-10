@@ -98,6 +98,13 @@ def score(rows, t):
             'units': round(units, 2) if n_px else None, 'priced': n_px}
 
 
+def num(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
 def build_looks(tape):
     meta, ser = {}, defaultdict(list)
     for p in sorted(glob.glob(os.path.join(tape, '*.meta.jsonl'))):
@@ -119,7 +126,8 @@ def build_looks(tape):
             continue
         f, c = pre[0], pre[-1]
         out[str(m['game'])] = {'tip': m['tip'], 'away': m['away'], 'home': m['home'], 't0': f[0], 'spread': float(f[1][0]), 'home_px': f[1][1], 'away_px': f[1][2],
-                               't1': c[0], 'spread_last': float(c[1][0]), 'looks': len(pre)}
+                               't1': c[0], 'spread_last': float(c[1][0]), 'looks': len(pre),
+                               'total': num(f[1][5]), 'total_last': num(c[1][5])}
     json.dump({'source': 'nba-data snapshots/<day>/espn.jsonl, DraftKings game rows', 'cols': 'first and last look before tip', 'games': out},
               open(LOOKS, 'w'), separators=(',', ':'))
     return out
@@ -238,10 +246,12 @@ def write_md(rep):
           f"- **It is too small to win with.** A third to a half of a point of line value is worth about one point of win rate. Against the open the picks went "
           f"{hN['w']}-{hN['l']} ({100 * hN['win']:.1f}%) and {hL['w']}-{hL['l']} ({100 * hL['win']:.1f}%) on 2025-26, under the 52.4% break-even. "
           'The 54 to 56% of 2024-25 did not repeat: with ratings held 36 hours back that season still shows it, so it was the season, not look-ahead.',
-          '- Locking earlier would have cost nothing and gained nothing. The pick clock stays at 4 hours.']
+          '- Locking earlier is not a fix. The pick clock stays at 4 hours.']
     if T.get('N'):
         L += ['', f"**Flagged for close monitoring**, tape, n as shown: NL at the 3+ gap {T['NL']['3']['w']}-{T['NL']['3']['l']} ({T['NL']['3']['units']:+.2f}u, n {T['NL']['3']['picks']}); "
-              f"N at the 5+ gap {T['N']['5']['w']}-{T['N']['5']['l']} ({T['N']['5']['units']:+.2f}u, n {T['N']['5']['picks']}). Neither cut was the registered one and neither is above break-even on 2025-26."]
+              f"N at the 5+ gap {T['N']['5']['w']}-{T['N']['5']['l']} ({T['N']['5']['units']:+.2f}u, n {T['N']['5']['picks']}). Neither cut was the registered one. On 2025-26 the same cuts were "
+              f"{rep['history']['NL'][str(TEST)]['cuts']['3']['w']}-{rep['history']['NL'][str(TEST)]['cuts']['3']['l']} ({100 * rep['history']['NL'][str(TEST)]['cuts']['3']['win']:.1f}%) and "
+              f"{rep['history']['N'][str(TEST)]['cuts']['5']['w']}-{rep['history']['N'][str(TEST)]['cuts']['5']['l']} ({100 * rep['history']['N'][str(TEST)]['cuts']['5']['win']:.1f}%)."]
     open(OUT_MD, 'w').write('\n'.join(L) + '\n')
 
 
