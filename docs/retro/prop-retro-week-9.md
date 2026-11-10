@@ -1,20 +1,20 @@
 # Player-prop retro — week 9
 
-_763 graded props (763 with a projection to score)._
+_765 graded props (765 with a projection to score)._
 
 ## Headline
 
-- **Record:** 382-381 (50.1%) vs 52.4% break-even → below break-even
-- **CLV beat-rate:** 51.5% — how often we land on the right side of the closing line
-- **Model vs market log-loss:** 0.6989 vs 0.6929 → **market prices probability better** by 0.0060
+- **Record:** 384-381 (50.2%) vs 52.4% break-even → below break-even
+- **CLV beat-rate:** 51.6% — how often we land on the right side of the closing line
+- **Model vs market log-loss:** 0.6979 vs 0.6930 → **market prices probability better** by 0.0049
 
 The closing line is the sharpest number the market posts, so it is our stand-in for "industry tools." Beating it on CLV = real side-selection edge; a worse log-loss = our confidence numbers are still less calibrated than consensus.
 
 ## By market
 
 ```
-rec_yd         n= 188   100-88 53.2% | CLV 51.1% | MAE  19.2 bias -0.99 | edge -0.005
-rec            n= 187    90-97 48.1% | CLV 51.9% | MAE   1.4 bias -0.04 | edge -0.012
+rec_yd         n= 189   101-88 53.4% | CLV 51.3% | MAE  19.1 bias -0.98 | edge -0.004
+rec            n= 188    91-97 48.4% | CLV 52.1% | MAE   1.4 bias -0.04 | edge -0.010
 rush_yd        n=  85    49-36 57.6% | CLV 57.6% | MAE  17.5 bias +3.27 | edge +0.030
 rush_att       n=  83    38-45 45.8% | CLV 56.6% | MAE   3.0 bias +0.02 | edge -0.017
 rush_rec_yd    n=  51    28-23 54.9% | CLV 45.1% | MAE  23.9 bias +3.09 | edge   -  
@@ -33,14 +33,14 @@ rush_td        n=  10      8-2 80.0% | CLV  0.0% | MAE   0.4 bias -0.00 | edge +
 RB     n= 273  146-127 53.5% | CLV 53.1% | MAE  11.8 bias +1.22 | edge +0.011
 QB     n= 219   98-121 44.7% | CLV 51.6% | MAE  14.2 bias +4.41 | edge -0.019
 WR     n= 179    87-92 48.6% | CLV 53.6% | MAE  13.2 bias -1.48 | edge -0.010
-TE     n=  92    51-41 55.4% | CLV 42.4% | MAE   8.4 bias +0.08 | edge -0.014
+TE     n=  94    53-41 56.4% | CLV 43.6% | MAE   8.2 bias +0.09 | edge -0.006
 ```
 
 ## Over vs under
 
 ```
 over   n= 478  227-251 47.5% | CLV 50.0% | MAE  13.9 bias +3.58 | edge -0.012
-under  n= 285  155-130 54.4% | CLV 54.0% | MAE   9.8 bias -2.35 | edge +0.004
+under  n= 287  157-130 54.7% | CLV 54.4% | MAE   9.7 bias -2.33 | edge +0.006
 ```
 
 ## Calibration (model P(over) → realized)
@@ -49,9 +49,9 @@ under  n= 285  155-130 54.4% | CLV 54.0% | MAE   9.8 bias -2.35 | edge +0.004
       bucket    n   pred  actual
 0.50-0.55    186  0.526   0.457
 0.55-0.60    184  0.576   0.446  << overconfident
-0.60-0.65    101  0.625   0.535  << overconfident
+0.60-0.65    102  0.625   0.539  << overconfident
 0.65-0.70     42  0.670   0.619
-0.70-0.80     28  0.739   0.643  << overconfident
+0.70-0.80     29  0.738   0.655  << overconfident
 0.80-1.01      3  0.869   1.000
 ```
 
