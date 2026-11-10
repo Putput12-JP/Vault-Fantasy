@@ -17,6 +17,7 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_common as C
 import build_game_model as GM
+import test_game_model_round2 as R2
 
 FIT, TEST = 2025, 2026
 LAG_H, BUILD_LAG_H, B2B_H, PRIMARY = 36, 12, 30, 2
@@ -134,7 +135,7 @@ def build_looks(tape):
 
 
 def main(argv):
-    P0 = dict(GM.DEFAULT, **json.load(open(GM.OUT_JSON))['params'])
+    P0 = R2.base_params()
     variants = {'N': dict(P0), 'NL': dict(P0, MK_W=0.75, MK_K=0.16)}
     lines = C.closing_lines()
     rep = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'history': {}, 'tape': {}}

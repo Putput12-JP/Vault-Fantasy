@@ -5623,7 +5623,7 @@ function simJoint(G, c){
 // A game margin or total is NEAR when the pre-tip number lands within NEAR_GAME points of the final; a prop projection when it lands within
 // track.json near_prop (1) of the box score. Every number here was stored before tip; nothing is rebuilt from today's model.
 const nearRec = {limit: 15, day: null, stat: 'all', plimit: 25, edim: 'ss', estat: 'all'};
-const NEAR_GAME = 3, NEAR_ENVS = [['vault', 'Vault line', 'The game model (Game Picks): team ratings, home court, rest and who is out'], ['players', "Players' own sum", "The simulation built from each player's projection, added up"], ['market', 'The books', "The sportsbook spread and total, simulated the same way. The yardstick, not ours"]];
+const NEAR_GAME = 3, NEAR_ENVS = [['vault', 'Vault line', 'The game model (Game Picks): team ratings taught by results and closing lines, home court, rest and who is out'], ['players', "Players' own sum", "The simulation built from each player's projection, added up"], ['market', 'The books', "The sportsbook spread and total, simulated the same way. The yardstick, not ours"]];
 function renderNearRecord(){
   const d = TR && TR.data, np = (d && d.near_prop) || 1;
   const G = simGames(), P = d && d.near_days ? Object.values(d.near_days).flat() : [], byG = new Map(P.map(g => [String(g.game), g]));
@@ -8581,7 +8581,7 @@ function renderGamePicks(){
   if (G.length) gp2Seen = true;
   $('gpres').innerHTML = items.map(x => gp2Res(x, {ats: rk.ats[x.gid], ml: rk.ml[x.gid]})).join('');
   $('gpfoot').innerHTML = `<div class="gp2-how">
-    <div><b>1 &middot; The model</b><p>The Vault line from the Slate page: team ratings, home court, back-to-backs and the injury report, in points.</p></div>
+    <div><b>1 &middot; The model</b><p>The Vault line from the Slate page: team ratings, home court, back-to-backs and the injury report, in points. The ratings learn from each final and from each closing line, which makes the margin more accurate, not the picks.</p></div>
     <div><b>2 &middot; The line</b><p>DraftKings' spread and moneyline, at the price it posted. The spread pick is the side the model likes against it; the winner pick is the team it gives better than even odds.</p></div>
     <div><b>3 &middot; The lock</b><p>Written once, 4 hours before tip, never re-priced. The last look before tip is kept to measure closing-line value. No rate is quoted under ${GP_MIN} graded picks.</p></div></div>
     <p class="gp2-fine"><b>Shadow grades.</b> Spread: A is an edge of 5 or more points, B is 3 to 5, C is under 3. Winner: A is a 70% chance or more, B is 60 to 70%, C is under 60%. #1 to #3 is the day's most confident. They are labels to track, fixed in advance, and the record by grade is on Track Record. Over 2,641 games against the closing line, spread A won 47.3% and the top 3 spread picks of each day 49.3%; winner A won 80.5% where the market implied 79.2%, and the top 3 of each day 76.1% where it implied 76.1% (nba/docs/pick-grades.md). So a grade says how far the model sits from the line, or how sure it is, not that the pick is better.</p>

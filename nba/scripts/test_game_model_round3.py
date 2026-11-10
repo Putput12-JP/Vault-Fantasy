@@ -91,7 +91,7 @@ def this_season(variants, lines, cur):
 def main():
     S = GM.WARM + GM.TUNE + [FIT, TEST]
     box = C.player_games(S)
-    P0 = dict(GM.DEFAULT, **json.load(open(GM.OUT_JSON))['params'])
+    P0 = R2.base_params()
     lines = C.closing_lines()
     inj = C.InjuryAsOf([FIT, TEST], C.player_index(box))
     fit_seasons = GM.WARM + GM.TUNE + [FIT]

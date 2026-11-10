@@ -16,6 +16,7 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_common as C
 import build_game_model as GM
+import test_game_model_round2 as R2
 
 DATA = os.path.join(C.HERE, '..', 'data')
 OUT_MD = os.path.join(C.HERE, '..', 'docs', 'game-picks-audit.md')
@@ -76,7 +77,7 @@ def main(argv):
     df = load_record()
     first = {r['game']: r for r in df if r['clock'] == 'f'}
     close = {r['game']: r for r in df if r['clock'] == 'c'}
-    P = dict(GM.DEFAULT, **json.load(open(GM.OUT_JSON))['params'])
+    P = R2.base_params()                                      # the model that locked these picks (before the line-taught ratings)
     cur = max(GM.TEST) + 1
     box = C.player_games([cur - 2, cur - 1, cur])
     _, recs = GM.run(P, [cur - 2, cur - 1, cur], box, record_from=cur)

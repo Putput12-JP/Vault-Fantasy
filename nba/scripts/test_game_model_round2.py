@@ -25,6 +25,15 @@ GRID_CAP = [None, 10, 13, 16, 20, 25, 30]
 EARLY_DAYS = 28
 
 
+LINE_KEYS = ('MK_W', 'MK_K', 'MT_W', 'MT_K')
+
+
+def base_params():
+    """The model these rounds call "shipped": data/game_model.json without the line-taught options, which shipped after rounds 2 to 5 were
+    scored (docs/game-model-round5-results.md). Keeps every round reproducible as it was run."""
+    return dict(GM.DEFAULT, **{k: v for k, v in json.load(open(GM.OUT_JSON))['params'].items() if k not in LINE_KEYS})
+
+
 def mae(xs):
     xs = list(xs)
     return statistics.mean(abs(x) for x in xs) if xs else float('nan')
@@ -170,7 +179,7 @@ def pct(w, l):
 
 def main():
     box = C.player_games(WARM + TUNE + TEST)
-    P0 = dict(GM.DEFAULT, **json.load(open(GM.OUT_JSON))['params'])
+    P0 = base_params()
     grids, e, m = choose(P0, box)
     variants = {'S': dict(P0), 'E': dict(P0, EK_B=e['B'], EK_N=e['N'] or 20), 'M': dict(P0, ERR_CAP=m['CAP']),
                 'EM': dict(P0, EK_B=e['B'], EK_N=e['N'] or 20, ERR_CAP=m['CAP'])}

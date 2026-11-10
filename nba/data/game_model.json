@@ -9,7 +9,9 @@
   "B2B": 2.0,
   "ALPHA": 0.06,
   "ROT_MIN": 12.0,
-  "ROT_DAYS": 21
+  "ROT_DAYS": 21,
+  "MK_W": 0.75,
+  "MK_K": 0.16
  },
  "tune_mae": [
   10.525173010163748,
@@ -719,5 +721,12 @@
   "Questionable": 0.477,
   "Doubtful": 0.023
  },
- "generated": "2026-09-30T02:23Z"
+ "generated": "2026-09-30T02:23Z",
+ "line_taught": {
+  "decided": "2026-11-10",
+  "W": 0.75,
+  "KL": 0.16,
+  "doc": "nba/docs/game-model-round5-results.md",
+  "closes": "nba/data/game_closes.json"
+ }
 }

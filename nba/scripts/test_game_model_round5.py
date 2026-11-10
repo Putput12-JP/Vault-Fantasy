@@ -122,7 +122,7 @@ def this_season(P0, ship_l, ship_t, lines, cur):
 def main():
     S = GM.WARM + GM.TUNE + [A, B]
     box = C.player_games(S)
-    P0 = dict(GM.DEFAULT, **json.load(open(GM.OUT_JSON))['params'])
+    P0 = R2.base_params()
     lines = C.closing_lines()
     inj = C.InjuryAsOf([A, B], C.player_index(box))
     rep = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'),

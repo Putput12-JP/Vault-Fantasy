@@ -87,6 +87,10 @@ Closing-line value: 1 of 28 spread picks beat the last look (the line barely mov
 **Nothing improves on its baseline, so nothing is flagged for monitoring.** On these 27 games the model's winner pick did worse than simply taking the market favourite (14-13 against 18-9); n is
 tiny, and it is the comparison the page keeps in front of the record. The forward record decides.
 
+## Model change, 2026-11-10: line-taught ratings
+
+From the first daily build after `MK_W` reached `data/game_model.json`, the Vault line's team ratings also learn from each finished game's closing spread (`docs/game-model.md`, "Line-taught ratings"; test: `docs/game-model-round5-results.md`). It makes the margin more accurate (t 3.91 out of sample) and does not make the spread pick better (50.8% against the closing spread before and after). Picks locked before the change stay as locked and are not re-priced. Expect fewer large gaps: games at a 5-point gap fall from about 11% to about 5%, so spread grade A becomes rarer.
+
 ## Audit, 2026-11-10
 
 `docs/game-picks-audit.md` (`scripts/audit_game_picks.py`): the record through 2026-11-09 checked end to end (finals, regrades, prices, lock times against the recorder's tape) with nothing to correct, and the same cuts shown on the two test seasons. Two model changes were tested after it and neither shipped (`docs/game-model-round2-results.md`, `docs/game-model-round3-results.md`).

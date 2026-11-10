@@ -89,7 +89,11 @@ def game_state(box, seasons, cur, roster=None, names=None):
     current rosters (the Minutes Lab's ESPN rosters): at a season start players take their new team, the moves are
     exported (who joined and left each team, with the model's value), and with ROSTER_K they move team ratings."""
     gm = json.load(open(GM.OUT_JSON))
-    m, _ = GM.run(gm['params'], seasons, box)
+    lines = None
+    if gm['params'].get('MK_W'):                              # line-taught ratings (docs/game-model-round5-results.md): each finished game's closing spread
+        import game_closes
+        lines = game_closes.load()
+    m, _ = GM.run(gm['params'], seasons, box, lines)
     if m.season is not None and cur != m.season:              # the season-start carry the backtest applies
         m.new_season(cur, roster)
     rates = gm.get('status_play_rates') or {}
@@ -109,6 +113,11 @@ def game_state(box, seasons, cur, roster=None, names=None):
             'season_start': min((int(g['tip'].timestamp()) for g in C.games([cur]) if box.get(g['game_id'])), default=None)
                             if os.path.exists(os.path.join(C.RAW, 'hoopr', f'schedule_{cur}.csv')) else None,
             'sd_margin': round(tune[0] * (3.14159265 / 2) ** 0.5, 2), 'sd_total': round(tune[1] * (3.14159265 / 2) ** 0.5, 2),
+            # line-taught ratings: [W, KL] and how many of this season's finished games had a closing spread to learn from
+            'line_taught': ([gm['params']['MK_W'], gm['params'].get('MK_K'),
+                             sum(1 for g in C.games([cur]) if box.get(g['game_id']) and g['game_id'] in lines),
+                             sum(1 for g in C.games([cur]) if box.get(g['game_id']))]
+                            if lines is not None and os.path.exists(os.path.join(C.RAW, 'hoopr', f'schedule_{cur}.csv')) else None),
             'season': cur}
 
 
