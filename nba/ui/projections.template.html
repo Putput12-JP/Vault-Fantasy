@@ -3111,6 +3111,8 @@ rd-x.go>rd-n{opacity:1;transform:none}
       </section>
     </main>
     <footer id="stfoot" hidden></footer>
+    <main id="v-sharps" hidden><div id="provsharps"></div></main>
+    <footer id="pvsfoot" hidden></footer>
     <main id="v-backtests" hidden>
       <div class="wk-sec-wrap" id="wk-works"></div>
       <div class="wk-sec-wrap" id="wk-finder" hidden></div>
@@ -3157,6 +3159,7 @@ rd-x.go>rd-n{opacity:1;transform:none}
 
 <script src="../sharp-money/line-chart.js?v=2" defer></script>
 <script src="../sharp-money/v2/gates.js?v=cap2" defer></script>
+<script src="../sharp-money/side-cards.js?v=4" defer></script>
 <script>/*HALASKA*/</script>
 <script>
 const D = /*DATA*/null;
@@ -3198,7 +3201,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['summary', 'combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'steam', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile', 'checks', 'pickrec'];
+const VIEWS = ['summary', 'combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'steam', 'sharps', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile', 'checks', 'pickrec'];
 const isTrack = v => v === 'track' || v === 'checks' || v === 'pickrec';
 const viewOf = h => h === 'WORKS' ? 'backtests' : h === 'COMBO' ? 'bankroll' : /^PLAYER\/\d+$/.test(h) ? 'player' : /^PROPBOARD\/\d+\/[A-Z0-9]+\/[OU]$/.test(h) ? 'propboard' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || (hashT ? 'lab' : 'summary');   // no hash: the Summary is home; a team hash (#okc) is that team's Lab
@@ -3444,7 +3447,7 @@ const PAGES = [
 const FAMILIES = [
   ['propboard', [['propboard', 'Table'], ['props', 'Picks'], ['edges', 'All edges']]],
   ['lab', [['lab', 'Minutes Lab'], ['tonight', 'Tonight']]],
-  ['sharp', [['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser']]],
+  ['sharp', [['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser'], ['sharps', 'Proven Sharps']]],
   ['pairs', [['pairs', 'Tonight\'s slip'], ['pickrec', 'Record']]],
   ['track', [['track', 'Record'], ['backtests', 'What Works']]],
   ['btlab', [['btlab', 'Backtest Lab'], ['checks', 'Model checks'], ['finder', 'Edge Finder']]],
@@ -3756,6 +3759,7 @@ function show(v){
   $('v-wallets').hidden = $('fwfoot').hidden = v !== 'wallets';
   $('v-tells').hidden = $('tlfoot').hidden = v !== 'tells';
   $('v-steam').hidden = $('stfoot').hidden = v !== 'steam';
+  $('v-sharps').hidden = $('pvsfoot').hidden = v !== 'sharps';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-player').hidden = $('plfoot').hidden = v !== 'player';
   $('v-bankroll').hidden = $('bkfoot').hidden = v !== 'bankroll';
@@ -3838,6 +3842,14 @@ function show(v){
     renderTells();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'sharps'){
+    // Proven-sharps side cards: the card is sharp-money/side-cards.js (one file for Sharp Money and this page), drawn with this page's theme.
+    $('tname').textContent = 'Proven Sharps';
+    $('tsub').textContent = 'WHO HOLDS EACH SIDE ON POLYMARKET · CONTEXT · SUGGESTED SIZE FROM AN UNTESTED RULE';
+    const go = () => window.VaultSideCards ? (VaultSideCards.mountPage($('provsharps'), {skin: 'nba', sport: 'nba'}), true) : false;
+    if (!go()) document.addEventListener('DOMContentLoaded', go, {once: true});
     return;
   }
   if (v === 'steam'){
