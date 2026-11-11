@@ -1,0 +1,64 @@
+# Polymarket holders scan (scripts/scan_pm_holders.py, docs/pm-holders.md): who holds which side of every upcoming full-game
+# NBA / NFL / CFB market, with a frozen T-15 keyframe per game. Writes pm_holders/<sport>/ on the never-force-pushed
+# `pm-holders-data` branch. Each job loops while a game of its sports starts within 3h (5-min reads near tip, a freeze read at
+# T-18), otherwise it runs one cycle and the hourly cron takes over. Each sport is its own job with its own concurrency group and
+# folder, so one sport's slow cycle can never push another sport's freeze read past its cut, and pushes never conflict.
+name: Polymarket holders scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      sports:
+        description: Which job to run
+        type: choice
+        options: [all, nba, nfl, cfb]
+        default: all
+  schedule:
+    - cron: '41 * * * *'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  scan:
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJSON((github.event_name == 'schedule' || inputs.sports == 'all') && '["nba","nfl","cfb"]' || format('["{0}"]', inputs.sports)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    concurrency:
+      group: pm-holders-${{ matrix.job }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python3 -m unittest tests.test_pm_holders tests.test_pm_ledger
+      - name: Check out pm-holders-data
+        run: |
+          set +e
+          git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; rc=$?
+          set -e
+          if [ $rc -eq 0 ]; then
+            git fetch --depth=50 origin pm-holders-data
+            git worktree add -f data FETCH_HEAD
+          elif [ $rc -eq 2 ]; then
+            git worktree add --detach data
+            cd data && git checkout -q --orphan pm-holders-data && (git rm -rqf . 2>/dev/null || true)
+          else
+            echo "::error::could not reach origin (ls-remote exit $rc)"; exit 1
+          fi
+          git -C "$GITHUB_WORKSPACE/data" config user.name  "vault-bot"
+          git -C "$GITHUB_WORKSPACE/data" config user.email "vault-bot@users.noreply.github.com"
+      - name: Scan
+        id: scan
+        run: python3 scripts/scan_pm_holders.py --out data/pm_holders --sports "${{ matrix.job }}" --loop --commit --max-minutes 330
+      - name: Hand off to a fresh run
+        if: always() && steps.scan.outputs.handoff == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pm-holders.yml --ref "${GITHUB_REF_NAME}" -f sports=${{ matrix.job }}
