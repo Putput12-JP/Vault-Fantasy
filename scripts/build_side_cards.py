@@ -28,6 +28,11 @@ Every rule constant below is SharpFlow's, read from its public source (docs/shar
           out), a wallet for (any class) with book n >= 15 pressing >= 1.5x, no proven wallet against, at least one proven wallet
           for. Units at a clean price step: biggest press >= 3x 5u, >= 2x 2u, else 3u; a side priced under 0.50 is capped at 1u on
           every market type. Vault records only this clean-step ladder (no price steps, no rescue rungs) and labels it so.
+  SCORE   AGS-Unified v12 (src/lib/ags.js): wallet quality = 3 x clamp(prior ROI %, 0, 30) x clamp(size ratio, 0.5, 2.5) x
+          min(1, sqrt(n / 20)), proven wallets only; side score = (mean for - mean against) / (for + against + 0.5); a score <= 0 is
+          FADE, and positive scores are labelled by the fallback cut points 0.781 / 0.916 / 0.957 / 0.981 (WEAK, LEAN, LOCK,
+          PREMIUM, ELITE). SharpFlow's live cut points sit in its private calibration store, so Vault uses the published fallback.
+          Recorded per side as `ags`, a shadow field. It does not set the units: those stay the press ladder.
   Vault approximations of SharpFlow admission filters (they filter discovery; Vault applies them on the card):
   HEDGER  hedged-at-cutoff share of the wallet's ledger markets >= 25% with >= 8 markets (BOTH_SIDES_REJECT, MIN_SPORTS_MARKETS;
           SharpFlow counts both-sides over all closed sports positions, early exits included)
@@ -62,6 +67,9 @@ LOCK_SHARE, LOCK_PRESSER_N = 0.60, 15
 HEDGE_FLOOR = 1.0                          # ags.js V12_HEDGE_FLOOR
 BAND5, BAND4, BAND4_UNITS, BAND3_UNITS, BAND5_UNITS, DOG_PX, DOG_UNITS = 3.0, 2.0, 2, 3, 5, 0.50, 1
 LAST_N = 20
+# AGS-Unified v12 (src/lib/ags.js): per-wallet quality and the positive-score cut points of AGS_V12_FALLBACK_CALIBRATION
+AGS_TIER_W, AGS_ROI_CAP, AGS_SIZE_LO, AGS_SIZE_HI, AGS_N_REF = 3, 30.0, 0.5, 2.5, 20
+AGS_CUTS = ((0.981, "ELITE"), (0.957, "PREMIUM"), (0.916, "LOCK"), (0.781, "LEAN"))
 SHOW_PROVEN, SHOW_LOSERS = 4, 3            # wallets listed per side (index.js DN=4, zW=3)
 GROUP = {"moneyline": "ml", "spreads": "spread", "totals": "total"}
 EVENT_RE = re.compile(r"^(.*?-\d{4}-\d{2}-\d{2})")
@@ -168,6 +176,8 @@ def book(rows, asof, markets):
          "wr": wins / (wins + losses) if wins + losses else None,
          "stake": round(stake, 2), "pnl": round(pnl, 2), "roi": pnl / stake if stake > 0 else None,
          "usual": stake / len(cash) if cash else None,
+         "flat_roi": (sum(p["pnl"] / p["stake"] for p in cash if p["stake"] > 0) / sum(1 for p in cash if p["stake"] > 0))
+         if any(p["stake"] > 0 for p in cash) else None,
          "l30_n": sum(p["res"] in ("win", "loss") for p in l30),
          "l30_roi": (sum(r["pnl"] for r in l30) / l30_stake) if l30_stake > 0 else None,
          "legs": sorted(([r["settled_at"], r["res"]] for r in legs.values()), reverse=True)[:LAST_N]}
@@ -282,11 +292,48 @@ def card(kf, ledger, sport, vault=None, frozen=True):
                                sorted((x for x in mine if cls[x["w"]] == "loser"), key=lambda x: -x["usd"])[:SHOW_LOSERS]],
                     "counts": {k: sum(1 for x in mine if cls[x["w"]] == k) for k in ("hc", "sharp", "unproven", "loser", "excluded")},
                 }
+                side_out["ags"] = ags_side(side, ws, cls, variant)
                 p = side_out["proven"]
                 p["win_pct"] = round(100 * p["w"] / (p["w"] + p["l"]), 1) if p["w"] + p["l"] else None
                 out["markets"][g]["sides"].setdefault(side, {})[variant] = side_out
             out["markets"][g]["lock_shadow"][variant] = lock_shadow(g, ws, cls, variant, kf)
     return out
+
+
+def ags_quality(x, variant, k):
+    """SharpFlow agsV12WalletQuality. Only a proven (CONFIRMED) wallet scores; FLAT is no longer assigned (whitelistTier.js)."""
+    if k not in ("hc", "sharp"):
+        return 0.0
+    b = x["s"][variant]
+    flat, dollar = b.get("flat_roi"), b["roi"]       # priorRoi: flat ROI of the sport book, else its dollar ROI (actionLockPin.js)
+    roi = flat if flat is not None and flat > 0 else dollar if dollar is not None and dollar > 0 else 0.0
+    roi = max(0.0, min(AGS_ROI_CAP, roi * 100))
+    size = max(AGS_SIZE_LO, min(AGS_SIZE_HI, x["usd"] / b["usual"] if b["usual"] else 0.0))
+    return AGS_TIER_W * roi * size * min(1.0, math.sqrt(max(0, b["n"]) / AGS_N_REF))
+
+
+def ags_tier(score):
+    if score is None:
+        return None
+    if score <= 0:
+        return "FADE"
+    return next((name for cut, name in AGS_CUTS if score > cut), "WEAK")
+
+
+def ags_side(side, ws, cls, variant):
+    """SharpFlow's AGS-Unified v12 score for one side: (mean quality for - mean quality against) / (for + against + 0.5).
+    Every tracked wallet with a book counts in its side's mean (a wallet that is not proven counts as 0, as in aggregateSideV12);
+    excluded wallets and wallets with no book are left out. The tier uses SharpFlow's fallback cut points, which were fitted on
+    SharpFlow's picks, not Vault's: Vault has no calibration of its own. A shadow field: it never sets a size or a pick."""
+    pool = [x for x in ws if cls[x["w"]] != "excluded" and x["s"][variant]["n"] > 0]
+    f = [ags_quality(x, variant, cls[x["w"]]) for x in pool if x["side"] == side]
+    a = [ags_quality(x, variant, cls[x["w"]]) for x in pool if x["side"] != side]
+    if not f and not a:
+        return None
+    fm, am = (sum(f) / len(f) if f else 0.0), (sum(a) / len(a) if a else 0.0)
+    score = 0.0 if fm == 0 and am == 0 else (fm - am) / (fm + am + 0.5)
+    return {"score": round(score, 3), "tier": ags_tier(score), "for_mean": round(fm, 2), "against_mean": round(am, 2),
+            "for_n": len(f), "against_n": len(a), "contributors": sum(1 for q in f + a if q > 0)}
 
 
 def classify(x, variant):

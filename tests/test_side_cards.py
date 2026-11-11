@@ -120,6 +120,34 @@ class Cards(unittest.TestCase):
         self.assertIsNone(C.vault_join(games, "nba-x-y-2027-01-15", CUT))
 
 
+class Score(unittest.TestCase):
+    """SharpFlow's AGS-Unified v12 side score and tier (the `ags` field)."""
+
+    def test_quality_formula_and_bounds(self):
+        b = {"flat_roi": 0.20, "roi": 0.10, "usual": 100.0, "n": 5}
+        x = {"usd": 400.0, "s": {"all": b}}
+        self.assertAlmostEqual(C.ags_quality(x, "all", "sharp"), 3 * 20 * 2.5 * (5 / 20) ** 0.5)    # size capped at 2.5, n under 20
+        self.assertEqual(C.ags_quality(x, "all", "unproven"), 0.0)                                    # only proven wallets score
+        b2 = {"flat_roi": -0.05, "roi": 0.80, "usual": 100.0, "n": 50}
+        self.assertAlmostEqual(C.ags_quality({"usd": 10.0, "s": {"all": b2}}, "all", "hc"), 3 * 30 * 0.5 * 1)   # dollar ROI fallback, capped
+
+    def test_tiers_use_the_published_cut_points(self):
+        got = [C.ags_tier(v) for v in (None, -0.2, 0, 0.5, 0.781, 0.8, 0.92, 0.96, 0.99)]
+        self.assertEqual(got, [None, "FADE", "FADE", "WEAK", "WEAK", "LEAN", "LOCK", "PREMIUM", "ELITE"])
+
+    def test_side_score_is_mean_for_against(self):
+        mk = lambda w, side, usd, flat, n=20: {"w": w, "side": side, "usd": usd, "s": {"all": {"flat_roi": flat, "roi": flat, "usual": 100.0, "n": n}}}
+        ws = [mk("a", "X", 100, 0.10), mk("b", "X", 100, 0.0), mk("c", "Y", 100, 0.0), mk("d", "Y", 100, 0.5, n=0), mk("e", "X", 900, 0.3)]
+        cls = {"a": "sharp", "b": "unproven", "c": "loser", "d": "unproven", "e": "excluded"}
+        g = C.ags_side("X", ws, cls, "all")                       # for: a = 3*10*1*1 = 30 and b = 0, mean 15; against: c = 0 (d has no book)
+        self.assertEqual((g["for_n"], g["against_n"], g["contributors"]), (2, 1, 1))
+        self.assertAlmostEqual(g["score"], round(15 / 15.5, 3))
+        self.assertEqual(g["tier"], "PREMIUM")
+        y = C.ags_side("Y", ws, cls, "all")
+        self.assertEqual((y["tier"], y["score"]), ("FADE", round(-15 / 15.5, 3)))
+        self.assertIsNone(C.ags_side("X", [mk("d", "X", 100, 0.5, n=0)], {"d": "unproven"}, "all"))
+
+
 class ReviewFixes(unittest.TestCase):
     def test_wallet_selected_after_the_cut_is_untracked(self):
         rows = proven("0xp")
