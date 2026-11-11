@@ -24,8 +24,9 @@ for out, (skin, title, sub) in PAGES.items():
 </style></head>
 <body>
 <div class="mk">
-  <div class="mk-h"><div><h1>{title}</h1><p>{sub} Context only: no units, no pick.</p></div>
+  <div class="mk-h"><div><h1>{title}</h1><p>{sub} Units appear only where the stored forward-test rule fires.</p></div>
     <div class="vseg sm" id="theme" aria-label="Theme"><i class="v-pill"></i><button type="button" data-v="dark">Dark</button><button type="button" data-v="light">Light</button></div></div>
+  <div class="sl" id="slate"></div>
   <div class="mk-grid" id="grid"></div>
 </div>
 <script>window.SIDE_SAMPLE={sample};</script>

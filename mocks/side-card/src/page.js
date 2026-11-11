@@ -1,14 +1,14 @@
 /* Mock gallery: every state is a real game from the sample. ?state=<id> shows one card. */
 (function(){
 var STATES = [
-  {id:'proven',   ev:'nba-was-ind-2026-11-11', g:'ml',     cap:'Proven money on one side', note:'One proven wallet on Wizards. Pacers carry a loser wallet, Wizards carry excluded money.'},
-  {id:'star',     ev:'nba-den-mem-2026-11-11', g:'spread', cap:'Spread, a sized-up wallet (gold star) and the tracked-rule marker', note:'The only game in the sample that meets the pre-registered gates. The marker stays small and collapsed.'},
-  {id:'total',    ev:'nba-den-mem-2026-11-11', g:'total',  cap:'Total (Over and Under)', note:'Proven money on the Over, excluded money on the Under.'},
-  {id:'none',     ev:'nba-gsw-hou-2026-11-11', g:'ml',     cap:'No proven money (the common case today)', note:'The stats block becomes one quiet panel that says why. The money flow still has real content.'},
+  {id:'proven',   ev:'nba-was-ind-2026-11-11', g:'ml',     cap:'Proven money, no play', note:'A proven wallet is on Wizards, but the side holds under 60% of the money, so the rule suggests nothing.'},
+  {id:'star',     ev:'nba-den-mem-2026-11-11', g:'spread', cap:'Suggested units (the one play in the sample)', note:'Nuggets spread clears all four gates. The card shows the stored 3u, the price and why.'},
+  {id:'total',    ev:'nba-den-mem-2026-11-11', g:'total',  cap:'Total selected', note:'Proven money on the Over without a play. The spread row above still shows its 3u.'},
+  {id:'none',     ev:'nba-gsw-hou-2026-11-11', g:'ml',     cap:'No proven money (the common case today)', note:'Quiet climate. The balance bars still show where the money sits.'},
   {id:'losers',   ev:'nba-bos-tor-2026-11-11', g:'ml',     cap:'Loser-heavy side', note:'Five loser wallets on Celtics, one proven wallet on Raptors.'},
-  {id:'excluded', ev:'nba-orl-uta-2026-11-11', g:'spread', cap:'Excluded-heavy side', note:'Most of the Magic money is excluded. It is drawn dashed and never counted.'},
+  {id:'excluded', ev:'nba-orl-uta-2026-11-11', g:'spread', cap:'Excluded-heavy side', note:'Most of the Magic spread money is excluded. It is hatched and never counted.'},
   {id:'frozen',   ev:'nba-cle-nyk-2026-11-11', g:'spread', frozen:1, cap:'Frozen at the lock', note:'Real card data. The sample has no frozen card yet, so the mock sets the frozen flag to show the locked state.'},
-  {id:'thin',     ev:'nba-okc-lac-2026-11-13', g:'ml',     cap:'Two days out, thin money', note:'Only the moneyline has been read. Spread and Total are disabled.'},
+  {id:'thin',     ev:'nba-okc-lac-2026-11-13', g:'ml',     cap:'Two days out, thin money', note:'Only the moneyline has been read. Spread and Total wait as dashed rows.'},
   {id:'empty',    ev:'nba-mil-orl-2026-11-13', g:'ml',     cap:'Nothing read yet', note:'A game with no holders at $250 or more.'}
 ];
 var q = new URLSearchParams(location.search), one = q.get('state'), th = q.get('theme');
@@ -23,6 +23,7 @@ STATES.forEach(function(s){
   cell.innerHTML = '<p class="mk-cap"><b>' + s.cap + '</b>' + s.note + '</p><div class="sc"></div>';
   grid.appendChild(cell); SideCard.mount(cell.lastChild, g, {group: s.g}); cards.push(cell.lastChild);
 });
+var sl = document.getElementById('slate'); if (sl && !one) SideCard.slate(sl, SIDE_SAMPLE);
 var tseg = document.getElementById('theme');
 if (tseg){
   var cur = document.documentElement.dataset.theme || 'dark';

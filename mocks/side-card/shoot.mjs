@@ -18,8 +18,9 @@ await send('Page.enable');
 const STATES = ['proven', 'star', 'total', 'none', 'losers', 'excluded', 'frozen', 'thin', 'empty'];
 const jobs = [];
 for (const page of ['sharp-money', 'nba']) {
+  jobs.push([`${page}-desktop-star`, `${page}.html?state=star`, 1280, 900, 1]);
   jobs.push([`${page}-desktop-all`, `${page}.html`, 1280, 900, 1]);
-  jobs.push([`${page}-desktop-light`, `${page}.html?theme=light&state=proven`, 1280, 900, 1]);
+  jobs.push([`${page}-desktop-light`, `${page}.html?theme=light&state=star`, 1280, 900, 1]);
   for (const s of STATES) jobs.push([`${page}-mobile-${s}`, `${page}.html?state=${s}`, 390, 844, 2]);
 }
 for (const [name, path, w, h, dpr] of jobs) {
