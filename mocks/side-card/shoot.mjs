@@ -19,6 +19,8 @@ const STATES = ['proven', 'star', 'total', 'none', 'losers', 'excluded', 'frozen
 const jobs = [];
 for (const page of ['sharp-money', 'nba']) {
   jobs.push([`${page}-desktop-star`, `${page}.html?state=star`, 1280, 900, 1]);
+  jobs.push([`${page}-desktop-open`, `${page}.html?state=frozen&open=1`, 1280, 900, 1]);
+  jobs.push([`${page}-mobile-open`, `${page}.html?state=losers&open=1`, 390, 844, 2]);
   jobs.push([`${page}-desktop-all`, `${page}.html`, 1280, 900, 1]);
   jobs.push([`${page}-desktop-light`, `${page}.html?theme=light&state=star`, 1280, 900, 1]);
   for (const s of STATES) jobs.push([`${page}-mobile-${s}`, `${page}.html?state=${s}`, 390, 844, 2]);

@@ -79,97 +79,84 @@ function half(s, max, dir){
   var seg = function(k, v){ return v > 0 ? '<i class="' + k + '" style="width:' + Math.max(1.2, v / max * 100).toFixed(2) + '%"></i>' : ''; };
   return '<div class="sc-half ' + dir + '">' + seg('hc', s.hc_usd) + seg('sharp', s.sharp_usd - s.hc_usd) + seg('unp', s.unproven_usd) + seg('loser', s.loser_usd) + seg('exc', s.excluded_usd) + '</div>';
 }
-function unitChip(ls){
-  if (!ls) return '<span class="sc-u off">no play</span>';
-  return '<span class="sc-u on num">' + (ls.units_clean_ladder == null ? 'n/a' : ls.units_clean_ladder + 'u') + '</span>';
-}
-function marketRow(g, key, label, st){
-  var m = g.markets[key];
-  if (!m) return '<div class="sc-mk off"><div class="sc-mk1"><b>' + label + '</b><span class="sc-u off">not read yet</span></div></div>';
-  var names = sideOrder(g, m, key), a = m.sides[names[0]][st.variant], b = m.sides[names[1]][st.variant], ls = shadow(m, st.variant);
-  var max = Math.max(counted(a) + a.excluded_usd, counted(b) + b.excluded_usd) || 1;
-  var nm = function(n, s){ return '<span' + (ls && ls.side === n ? ' class="pk"' : '') + '>' + esc(n) + ' <em class="num">' + usd(counted(s)) + '</em></span>'; };
-  return '<button type="button" class="sc-mk press press-row' + (st.group === key ? ' on' : '') + '" data-g="' + key + '" aria-pressed="' + (st.group === key) + '">' +
-    '<div class="sc-mk1"><b>' + label + '</b>' + unitChip(ls) + '</div>' +
-    '<div class="sc-mk2">' + nm(names[0], a) + nm(names[1], b) + '</div>' +
-    '<div class="sc-bar">' + half(a, max, 'l') + '<u></u>' + half(b, max, 'r') + '</div></button>';
-}
-
-/* the suggested-units block. Units are the stored units_clean_ladder of the pre-registered rule; nothing is computed here. */
-function signal(g, m, key, names, v){
+/* v3: a stack of small modules. Verdict, money split, proven record, wallets (collapsed), data notes (collapsed). */
+function verdict(g, m, key, names, v){
   var ls = shadow(m, v), S = {}; names.forEach(function(n){ S[n] = m.sides[n][v]; });
-  var gate = function(ok, t){ return '<span class="sc-gate ' + (ok == null ? 'na' : ok ? 'ok' : 'no') + '">' + (ok == null ? '' : ok ? CHK : XX) + t + '</span>'; };
+  var tick = function(ok, t){ return '<span class="sc-tick ' + (ok ? 'ok' : 'no') + '">' + (ok ? CHK : XX) + t + '</span>'; };
   if (ls){
-    var q = ls.gates, u = ls.units_clean_ladder, pips = '';
-    for (var i = 1; i <= 5; i++) pips += '<i' + (u != null && i <= u ? ' class="on"' : '') + '></i>';
-    return '<div class="sc-sig on"><div class="sc-sig1">' + logo(ls.side, g) + '<div class="sc-hl"><div class="sc-eyebrow">Suggested units · ' + (g.frozen ? 'locked' : 'live, can change until ' + ct(g.cut) + ' CT') + '</div>' +
-      '<div class="sc-side">' + esc(sideLabel(ls.side, key, ls)) + '</div><div class="sc-price">' +
-      (ls.price != null ? '<span class="num">' + trim((ls.price * 100).toFixed(1)) + '¢</span> Polymarket' + (ls.price_t ? ' · read ' + ct(ls.price_t) + ' CT' : '') : '<span class="na">price n/a</span>') + '</div></div>' +
-      '<div class="sc-units"><b class="num">' + (u == null ? 'n/a' : u + '<small>u</small>') + '</b><div class="sc-pips">' + pips + '</div></div></div>' +
-      '<div class="sc-gates">' + gate(true, '<span class="num">' + trim((q.share_for * 100).toFixed(1)) + '%</span> of counted money (needs 60%)') +
-      gate(true, '<span class="num">' + q.proven_for + '</span> proven for') + gate(true, '<span class="num">' + q.proven_against + '</span> proven against') +
-      gate(true, '<span class="num">' + q.pressers_n15 + '</span> sized up' + (ls.top_press != null ? ', top <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>' +
-      '<p class="sc-fine">Size comes from the biggest press on the side: 3x or more is 5u, 2x or more is 2u, otherwise 3u, and any side priced under 50¢ is capped at 1u. ' +
-      'This rule is in its forward test and has no graded record yet.</p></div>';
+    var q = ls.gates, u = ls.units_clean_ladder;
+    return '<section class="sc-mod sc-v on"><div class="sc-v1"><b class="sc-vu num">' + (u == null ? 'n/a' : u + '<small>u</small>') + '</b>' +
+      '<div class="sc-vt"><span class="sc-cap">Suggested ' + (g.frozen ? '· locked' : '· live until ' + ct(g.cut) + ' CT') + '</span>' +
+      '<strong>' + esc(sideLabel(ls.side, key, ls)) + '</strong><span class="sc-vs">' +
+      (ls.price != null ? '<span class="num">' + trim((ls.price * 100).toFixed(1)) + '¢</span> on Polymarket' + (ls.price_t ? ', read ' + ct(ls.price_t) + ' CT' : '') : 'price n/a') + '</span></div>' +
+      logo(ls.side, g) + '</div>' +
+      '<div class="sc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> proven for') +
+      tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>' +
+      '<details class="sc-more"><summary>How the size is set</summary><p>Size follows the biggest press on the side: 3x or more is 5u, 2x or more is 2u, otherwise 3u. A side priced under 50¢ is capped at 1u. ' +
+      'The rule is in its forward test and has no graded record yet.</p></details></section>';
   }
-  /* no play: show how far the leading side is from the gates, using stored money and counts only */
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
   var other = names.filter(function(n){ return n !== lead; })[0], tot = counted(S[lead]) + counted(S[other]);
-  var share = tot ? counted(S[lead]) / tot : null, pf = nProven(S[lead]), pa = nProven(S[other]);
-  var why = v === 'fwd' ? 'Forward only counts results from after a wallet was first tracked, and no wallet clears the bar on those alone yet.'
-    : pf ? 'A proven wallet is here, but the side does not clear every gate.' : tot ? 'No wallet on this market has a graded book of 6 bets, 55% wins and +3% ROI yet. The ledger is still filling.' : 'No wallet holds $250 or more on this market yet.';
-  return '<div class="sc-sig off"><div class="sc-sig1"><div class="sc-logo none">0u</div><div class="sc-hl"><div class="sc-eyebrow">Suggested units</div>' +
-    '<div class="sc-side quiet">No play on the ' + GNAME[key] + '</div><div class="sc-price">' + why + '</div></div></div>' +
-    (tot ? '<div class="sc-gates"><span class="sc-gl">' + esc(lead) + '</span>' +
-      gate(share >= .6, '<span class="num">' + trim((share * 100).toFixed(1)) + '%</span> of counted money (needs 60%)') +
-      gate(pf >= 1, '<span class="num">' + pf + '</span> proven for') + gate(pa === 0, '<span class="num">' + pa + '</span> proven against') +
-      gate(null, 'sized up: n/a') + '</div>' : '') + '</div>';
+  var share = tot ? counted(S[lead]) / tot : null, pf = nProven(S[lead]), pa = nProven(S[other]), why;
+  if (!tot) why = 'No wallet holds $250 or more here yet.';
+  else if (!pf) why = v === 'fwd' ? 'No wallet is proven on forward-only results yet.' : 'No proven wallet on either side yet. The ledger is still filling.';
+  else if (pa) why = 'Proven wallets are on both sides.';
+  else if (share < .6) why = 'Proven money is on ' + esc(lead) + ', but it holds <span class="num">' + Math.round(share * 100) + '%</span> of the money. The rule needs 60%.';
+  else why = esc(lead) + ' has the money and a proven wallet. No wallet is sized up to 1.5x its usual stake yet.';
+  return '<section class="sc-mod sc-v off"><div class="sc-v1"><b class="sc-vu num zero">0<small>u</small></b><div class="sc-vt"><span class="sc-cap">Suggested</span>' +
+    '<strong>No play</strong><span class="sc-vs">' + why + '</span></div></div></section>';
 }
-
+function sideTile(g, n, s, pick){
+  var line = function(k, v, t){ return v > 0 ? '<span class="sc-ln ' + k + '"><i></i><b class="num">' + usd(v) + '</b> ' + t + '</span>' : ''; };
+  var lines = line('hc', s.hc_usd, 'sized up') + line('sharp', s.sharp_usd - s.hc_usd, 'proven') + line('loser', s.loser_usd, 'losers') + line('exc', s.excluded_usd, 'excluded');
+  return '<div class="sc-mod sc-st' + (pick ? ' pk' : '') + '"><div class="sc-sth">' + logo(n, g).replace('sc-logo', 'sc-logo sm') + '<b>' + esc(n) + '</b></div>' +
+    '<div class="sc-big num">' + usd(counted(s)) + '</div><div class="sc-lns">' + (lines || '<span class="sc-ln none">no proven or loser money</span>') + '</div></div>';
+}
 function walletRow(w, k){
-  var p = w.press, fill = p == null ? 0 : Math.min(p / 3, 1) * 100;
   return '<div class="sc-w ' + k + '"><span class="sc-wd">' + (w.star ? ICON.star : '<i></i>') + '</span><b class="num">' + tail(w.w) + '</b>' +
-    '<span class="sc-wu num">' + usd(w.usd) + '</span>' +
-    '<span class="sc-pm" title="position vs usual stake"><span class="tr"><i style="width:' + fill.toFixed(1) + '%"></i><u></u></span><em class="num">' + (p == null ? 'n/a' : p + 'x') + '</em></span>' +
+    '<span class="sc-wu num">' + usd(w.usd) + (w.press != null ? ' <em>' + w.press + 'x</em>' : '') + '</span>' +
     '<span class="sc-wr num">' + w.w_ + '-' + w.l_ + ' · L30 ' + roi(w.l30_roi) + ' · ' + susd(w.pnl) + '</span></div>';
 }
-function aggRow(k, t, v, note){ return '<div class="sc-w agg ' + k + '"><span class="sc-wd"><i></i></span><b>' + t + '</b><span class="sc-wu num">' + usd(v) + '</span><span class="sc-wr">' + (note || '') + '</span></div>'; }
-function sideBlock(g, n, s){
-  var sum = function(a){ return a.reduce(function(t, x){ return t + x.usd; }, 0); }, c = s.counts, p = s.proven, h = '';
-  h += '<div class="sc-sd"><div class="sc-sdh">' + logo(n, g).replace('sc-logo', 'sc-logo sm') + '<b>' + esc(n) + '</b><span class="num">' + usd(counted(s)) + ' counted</span></div>';
-  if (p.wallets){
-    h += '<div class="sc-rec"><span><b class="num">' + (p.win_pct == null ? 'n/a' : p.win_pct + '%') + '</b> win</span><span><b class="num">' + p.w + '-' + p.l + '</b> record</span>' +
-      '<span><b class="num">' + roi(p.l30_roi) + '</b> L30 ROI</span><span><b class="num">' + susd(p.lifetime_pnl) + '</b> lifetime</span></div>';
-    if (p.last20.length) h += '<div class="sc-form" aria-label="last ' + p.last20.length + ' results">' + p.last20.map(function(r){ return '<i class="' + r + '"></i>'; }).join('') + '<span>LAST ' + p.last20.length + '</span></div>';
-  }
+function walletList(n, s){
+  var sum = function(a){ return a.reduce(function(t, x){ return t + x.usd; }, 0); }, c = s.counts, np = nProven(s), h = '<div class="sc-wg"><span class="sc-cap">' + esc(n) + '</span>';
+  var agg = function(k, t, v){ return '<div class="sc-w agg ' + k + '"><span class="sc-wd"><i></i></span><b>' + t + '</b><span class="sc-wu num">' + usd(v) + '</span></div>'; };
   s.list.forEach(function(w){ h += walletRow(w, w.star ? 'hc' : 'sharp'); });
-  var np = nProven(s);
-  if (np > s.list.length) h += aggRow('sharp', '+' + (np - s.list.length) + ' more proven', Math.max(0, s.sharp_usd - sum(s.list)));
-  if (!np) h += '<div class="sc-w none"><span class="sc-wd"><i></i></span><b>No proven wallets on this side</b></div>';
+  if (np > s.list.length) h += agg('sharp', '+' + (np - s.list.length) + ' more proven', Math.max(0, s.sharp_usd - sum(s.list)));
   s.losers.forEach(function(w){ h += walletRow(w, 'loser'); });
-  if (c.loser > s.losers.length) h += aggRow('loser', '+' + (c.loser - s.losers.length) + ' more losers', Math.max(0, s.loser_usd - sum(s.losers)));
-  if (c.unproven) h += aggRow('unp', c.unproven + ' unproven', s.unproven_usd);
-  if (c.excluded) h += aggRow('exc', c.excluded + ' excluded', s.excluded_usd, 'not counted');
+  if (c.loser > s.losers.length) h += agg('loser', '+' + (c.loser - s.losers.length) + ' more losers', Math.max(0, s.loser_usd - sum(s.losers)));
+  if (c.unproven) h += agg('unp', c.unproven + ' unproven', s.unproven_usd);
+  if (c.excluded) h += agg('exc', c.excluded + ' excluded, not counted', s.excluded_usd);
+  if (!(np + c.loser + c.unproven + c.excluded)) h += '<div class="sc-w agg exc"><span class="sc-wd"><i></i></span><b>No holders at $250 or more</b></div>';
   return h + '</div>';
 }
-
 function body(g, st){
-  var h = '<div class="sc-mks">' + GROUPS.map(function(x){ return marketRow(g, x[0], x[1], st); }).join('') + '</div>' +
-    '<div class="sc-key"><span class="hc">sized up</span><span class="sharp">proven</span><span class="unp">unproven</span><span class="loser">losers</span><span class="exc">excluded</span></div>';
-  var m = g.markets[st.group], names = sideOrder(g, m, st.group);
-  h += signal(g, m, st.group, names, st.variant);
-  h += '<div class="sc-lab"><span>Who holds each side</span><span>press vs usual stake</span></div><div class="sc-sides">' +
-    names.map(function(n){ return sideBlock(g, n, m.sides[n][st.variant]); }).join('') + '</div>';
-  var cv = g.coverage, bits = ['<b>Sharp money is context.</b> Units come from a rule still in its forward test. Money is mark value ' + (g.frozen ? 'at the lock' : 'now') + ' (shares x price), not cost.',
+  var m = g.markets[st.group], names = sideOrder(g, m, st.group), v = st.variant, ls = shadow(m, v);
+  var a = m.sides[names[0]][v], b = m.sides[names[1]][v], max = Math.max(counted(a) + a.excluded_usd, counted(b) + b.excluded_usd) || 1;
+  var h = verdict(g, m, st.group, names, v);
+  h += '<div class="sc-split">' + sideTile(g, names[0], a, ls && ls.side === names[0]) + sideTile(g, names[1], b, ls && ls.side === names[1]) +
+    '<div class="sc-bar">' + half(a, max, 'l') + '<u></u>' + half(b, max, 'r') + '</div></div>';
+  var best = names.slice().sort(function(x, y){ return m.sides[y][v].sharp_usd - m.sides[x][v].sharp_usd; })[0], p = m.sides[best][v].proven;
+  if (p.wallets){
+    h += '<section class="sc-mod sc-pr"><span class="sc-cap">Proven wallets on ' + esc(best) + ' · ' + p.wallets + '</span><div class="sc-kp">' +
+      '<div><b class="num">' + (p.win_pct == null ? 'n/a' : p.win_pct + '%') + '</b><span>win</span></div><div><b class="num">' + p.w + '-' + p.l + '</b><span>record</span></div>' +
+      '<div><b class="num">' + roi(p.l30_roi) + '</b><span>last 30 days</span></div><div><b class="num">' + susd(p.lifetime_pnl) + '</b><span>lifetime</span></div></div>' +
+      (p.last20.length ? '<div class="sc-form">' + p.last20.map(function(r){ return '<i class="' + r + '"></i>'; }).join('') + '<span>last ' + p.last20.length + '</span></div>' : '') + '</section>';
+  }
+  var nW = names.reduce(function(t, n){ var c = m.sides[n][v].counts; return t + c.hc + c.sharp + c.unproven + c.loser + c.excluded; }, 0);
+  h += '<details class="sc-mod sc-dt" data-d="w"' + (st.open.w ? ' open' : '') + '><summary>Wallets<em class="num">' + nW + '</em></summary><div class="sc-dtb">' +
+    names.map(function(n){ return walletList(n, m.sides[n][v]); }).join('') +
+    '<div class="sc-hist"><span class="sc-cap">Wallet history</span><div class="vseg sm" data-k="variant"><i class="v-pill"></i><button type="button" data-v="all"' + (v === 'all' ? ' class="on"' : '') +
+    '>All</button><button type="button" data-v="fwd"' + (v === 'fwd' ? ' class="on"' : '') + '>Forward only</button></div></div></div></details>';
+  var cv = g.coverage, bits = ['Money is mark value ' + (g.frozen ? 'at the lock' : 'now') + ' (shares x price), not cost.',
     cv.markets_read + ' markets read, ' + cv.markets_missed + ' missed' + (cv.late_reads ? ', ' + cv.late_reads + ' late' : '') + '.',
     'Oldest read ' + dur(cv.max_read_lag_s) + ' before ' + (g.frozen ? 'the lock' : 'this build') + '.', 'Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.'];
   if (cv.two_way_dust_dropped) bits.push(cv.two_way_dust_dropped + ' two-way ' + (cv.two_way_dust_dropped === 1 ? 'wallet' : 'wallets') + ' dropped as balanced dust.');
   if (g.vault.start_gap_flag) bits.push('Start times differ by ' + g.vault.start_gap_min + ' min between Polymarket and Vault.');
   if (g.test) bits.push(g.test.counts ? 'Counts for the forward test.' : 'Does not count for the forward test: ' + g.test.why_not.join(', ') + '.');
-  return h + '<div class="sc-foot">' + bits.join(' ') + '</div>';
+  return h + '<details class="sc-mod sc-dt" data-d="n"' + (st.open.n ? ' open' : '') + '><summary>Data notes</summary><div class="sc-dtb"><p>' + bits.join(' ') + '</p></div></details>' +
+    '<p class="sc-foot">Sharp money is context. Units come from a rule still in its forward test.</p>';
 }
 
-/* one travelling pill per strip (vault-ds.css 19.2): seed without animation, then travel on --ease-rail */
 function rail(strip, animate){
   var on = strip.querySelector('button.on'), pill = strip.querySelector('.v-pill');
   if (!on || !pill || !strip.offsetWidth) return;
@@ -181,36 +168,32 @@ function rail(strip, animate){
 function mount(el, g, opt){
   opt = opt || {};
   var keys = GROUPS.filter(function(x){ return g.markets[x[0]]; }).map(function(x){ return x[0]; });
-  var st = {group: keys.indexOf(opt.group) >= 0 ? opt.group : keys[0], variant: 'all'};
+  var st = {group: keys.indexOf(opt.group) >= 0 ? opt.group : keys[0], variant: 'all', open: {}};
   var away = TEAMS[g.vault.away], home = TEAMS[g.vault.home];
-  function head(){
-    var c = climate(g, st.variant);
-    return '<div class="sc-top"><div><div><span class="sc-sport">' + g.sport.toUpperCase() + '</span><span class="sc-match">' +
-      esc(away ? away[0] : g.vault.away) + ' @ ' + esc(home ? home[0] : g.vault.home) + '</span></div><div class="sc-time num">' + ct(g.gst, true) + ' CT</div></div>' +
-      '<div class="sc-tr"><span class="sc-clim ' + c + '"><i></i><i></i><i></i>' + CLIM[c] + '</span>' + (g.frozen
-        ? '<div class="sc-pill locked">' + ICON.lock + 'LOCKED ' + ct(g.cut) + '</div>'
-        : '<div class="sc-pill live"><i></i>LIVE · locks ' + ct(g.cut) + '</div>') + '</div></div>';
-  }
+  var head = '<div class="sc-top"><div><div class="sc-match">' + esc(away ? away[0] : g.vault.away) + ' <i>at</i> ' + esc(home ? home[0] : g.vault.home) + '</div>' +
+    '<div class="sc-time"><span class="sc-sport">' + g.sport.toUpperCase() + '</span><span class="num">' + ct(g.gst, true) + ' CT</span></div></div>' +
+    (g.frozen ? '<div class="sc-pill locked">' + ICON.lock + 'Locked ' + ct(g.cut) + '</div>' : '<div class="sc-pill live"><i></i>Live · locks ' + ct(g.cut) + '</div>') + '</div>';
   if (!keys.length){
-    el.innerHTML = head() + '<div class="sc-empty"><b>Nothing to show yet</b><p>No wallet holds $250 or more on this game. The card fills in as money arrives and locks ' +
-      ct(g.cut, true) + ' CT.</p></div><div class="sc-foot"><b>Sharp money is context.</b> ' + g.coverage.markets_read + ' market read, ' + g.coverage.markets_missed +
-      ' missed. Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.</div>';
+    el.innerHTML = head + '<div class="sc-mod sc-empty"><b>Nothing to show yet</b><p>No wallet holds $250 or more on this game. The card fills in as money arrives and locks ' + ct(g.cut, true) + ' CT.</p></div>';
     return;
   }
-  el.innerHTML = '<div class="sc-hd"></div><div class="sc-ctl"><span class="sc-ctll">Wallet history</span><div class="vseg sm" data-k="variant" aria-label="History"><i class="v-pill"></i>' +
-    '<button type="button" data-v="all" class="on">All history</button><button type="button" data-v="fwd">Forward only</button></div></div><div class="sc-body"></div>';
-  var hd = el.querySelector('.sc-hd'), bodyEl = el.querySelector('.sc-body'), strips = [].slice.call(el.querySelectorAll('.vseg'));
-  function paint(){ hd.innerHTML = head(); bodyEl.innerHTML = body(g, st); }
-  paint(); strips.forEach(function(s){ rail(s, false); });
+  function strip(){
+    return GROUPS.map(function(x){ var m = g.markets[x[0]], ls = m && shadow(m, st.variant);
+      return '<button type="button" data-v="' + x[0] + '"' + (m ? '' : ' disabled') + (x[0] === st.group ? ' class="on"' : '') + '>' + x[1] + (ls ? '<span class="sc-dotu num">' + ls.units_clean_ladder + 'u</span>' : '') + '</button>'; }).join('');
+  }
+  el.innerHTML = head + '<div class="vseg fluid" data-k="group" role="tablist" aria-label="Market"><i class="v-pill"></i>' + strip() + '</div><div class="sc-body"></div>';
+  var bodyEl = el.querySelector('.sc-body'), top = el.querySelector('.vseg[data-k=group]');
+  function paint(){ bodyEl.innerHTML = body(g, st); var h = bodyEl.querySelector('.vseg'); if (h && h.offsetWidth) rail(h, false); }
+  paint(); rail(top, false);
+  el.addEventListener('toggle', function(e){ var d = e.target; if (d.dataset && d.dataset.d){ st.open[d.dataset.d] = d.open; var h = d.querySelector('.vseg'); if (h && d.open) rail(h, false); } }, true);
   el.addEventListener('click', function(e){
-    var b = e.target.closest('.vseg > button'), mk = e.target.closest('button.sc-mk');
-    if (b && !b.disabled){
-      var strip = b.parentNode;
-      [].forEach.call(strip.children, function(c){ c.classList.toggle('on', c === b); });
-      st[strip.dataset.k] = b.dataset.v; rail(strip, true); paint();
-    } else if (mk){ st.group = mk.dataset.g; paint(); }
+    var b = e.target.closest('.vseg > button');
+    if (!b || b.disabled) return;
+    var s = b.parentNode; st[s.dataset.k] = b.dataset.v;
+    if (s === top){ [].forEach.call(s.children, function(c){ c.classList.toggle('on', c === b); }); rail(s, true); paint(); }
+    else { top.innerHTML = '<i class="v-pill"></i>' + strip(); rail(top, false); paint(); }
   });
-  el._repaint = function(){ paint(); strips.forEach(function(s){ rail(s, false); }); };
+  el._repaint = function(){ paint(); rail(top, false); };
 }
 
 /* slate strip: totals over every game in the file, stored fields only */
@@ -223,10 +206,9 @@ function slate(el, data){
         s.list.forEach(function(w){ wallets[w.w] = 1; }); }); });
   });
   var t = function(v, l, sub, cls){ return '<div class="sl-t ' + (cls || '') + '"><span>' + l + '</span><b class="num">' + v + '</b><em>' + sub + '</em></div>'; };
-  el.innerHTML = t(usd(usdSum), 'Proven money on the slate', sides + ' sides · ' + Object.keys(wallets).length + ' proven wallets shown', 'gold') +
-    t(plays, 'Suggested plays', 'sides that meet the tracked rule', 'good') +
-    t(usd(ex), 'Excluded money', 'two-way and churn wallets, not counted') +
-    '<div class="sl-t clim"><span>Sharp climate · ' + data.games.length + ' games</span><div class="sl-dots">' +
+  el.innerHTML = t(plays, 'Suggested plays', 'of ' + data.games.length + ' games', 'good') +
+    t(usd(usdSum), 'Proven money', sides + ' sides, ' + Object.keys(wallets).length + ' wallets', 'gold') +
+    '<div class="sl-t clim"><span>Climate</span><div class="sl-dots">' +
       ['signal', 'building', 'quiet'].map(function(k){ return new Array(cl[k] + 1).join('<i class="' + k + '"></i>'); }).join('') + '</div><em>' +
       cl.signal + ' signal · ' + cl.building + ' building · ' + cl.quiet + ' quiet</em></div>';
 }

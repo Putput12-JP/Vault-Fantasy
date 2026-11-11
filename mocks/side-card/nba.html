@@ -20,16 +20,13 @@
   --c-bg:#f5f5f7;--c-card:#ffffff;--c-line:#e6e6e9;--c-line2:#cfd1d6;--c-ink:#1d1e22;--c-mut:#5a5d66;--c-dim:#767983;
   --c-good:#15803d;--c-on-good:#ffffff;--c-bad:#c62828;--c-warn:#a05a00;--c-gold:#8a6400;
   --c-good-bg:rgba(21,128,61,.08);--c-good-line:rgba(21,128,61,.45);--c-good-box:rgba(21,128,61,.04);
-  --c-bad-line:rgba(198,40,40,.4);--c-bad-box:rgba(198,40,40,.04);--c-box:#fafafb;--c-sel:rgba(29,30,34,.08);
+  --c-bad-line:rgba(198,40,40,.4);--c-bad-box:rgba(198,40,40,.04);--c-box:#f3f3f5;--c-sel:rgba(29,30,34,.08);
   --c-rb-unp:#aeb2bb;--c-tile:#ebebee;--c-tile-ink:#1d1e22;--c-shadow:0 1px 2px rgba(0,0,0,.04);
   --vseg-bg:#ebebee;--vseg-border:#e6e6e9;--vseg-ink:#5a5d66;--vseg-on-ink:#ffffff;--vseg-pill:#1d1e22;
   color-scheme:light;
 }
 html,body{margin:0;background:var(--c-bg);color:var(--c-ink);font-family:var(--c-sans);-webkit-font-smoothing:antialiased}
-.sc-lab,.sc-eyebrow,.sc-mk1 b,.sc-form span,.sc-clim,.sc-ctll,.sl-t span,.sc-sport{font-family:var(--c-num);letter-spacing:.08em}
-.sc-pill{font-family:var(--c-num);letter-spacing:.06em;border-radius:9999px;height:24px;font-size:10.5px}
-.sc-logo{border-radius:10px}.sc-mk{border-radius:10px}.sc-sig{border-radius:12px}
-.sc-side{font-weight:600}
+:root{--c-mr:12px}
 @media (max-width:767px){:root{--c-pad:16px;--c-gutter:12px}.sc-wr{letter-spacing:-.03em}}
 
 /* Proven-sharps side card. Shared by both mocks; each page sets the --c-* skin tokens.
@@ -65,235 +62,139 @@ html,body{margin:0;background:var(--c-bg);color:var(--c-ink);font-family:var(--c
   .vseg>button::after{content:"";position:absolute;inset:-4px 0}
 }
 
-/* ── the card ── */
+/* ── the card: a stack of modules ── */
 .sc{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:var(--c-pad);color:var(--c-ink);
-  font-family:var(--c-sans);font-size:14px;line-height:1.35;min-width:0;box-shadow:var(--c-shadow,none)}
+  font-family:var(--c-sans);font-size:14px;line-height:1.35;min-width:0;box-shadow:var(--c-shadow,none);display:flex;flex-direction:column;gap:10px}
 .sc .num{font-family:var(--c-num);font-variant-numeric:tabular-nums;letter-spacing:var(--c-num-ls,0)}
-.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.sc-sport{color:var(--c-gold);font-weight:700;letter-spacing:.14em;font-size:11.5px;margin-right:8px}
-.sc-match{color:var(--c-mut);font-size:15px;font-weight:500}
-.sc-time{color:var(--c-dim);font-size:13.5px;margin-top:4px;letter-spacing:.02em}
-.sc-pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:99px;font-size:11px;font-weight:700;
-  letter-spacing:.1em;white-space:nowrap;flex:none}
-.sc-pill.live{color:var(--c-mut);border:1px solid var(--c-line2)}
+.sc-body{display:flex;flex-direction:column;gap:10px}
+.sc-cap{display:block;font-size:12px;font-weight:500;color:var(--c-mut)}
+.sc-mod{background:var(--c-box);border-radius:var(--c-mr,16px);padding:16px;min-width:0}
+
+.sc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:2px 2px 4px}
+.sc-match{font-size:19px;font-weight:600;letter-spacing:-.02em}
+.sc-match i{font-style:normal;font-weight:400;color:var(--c-dim);font-size:.8em}
+.sc-time{color:var(--c-mut);font-size:13px;margin-top:2px}
+.sc-sport{color:var(--c-dim);font-weight:600;letter-spacing:.08em;font-size:11px;margin-right:8px}
+.sc-pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;flex:none}
+.sc-pill.live{color:var(--c-mut);background:var(--c-box)}
 .sc-pill.live i{width:7px;height:7px;border-radius:50%;background:var(--c-warn);animation:sc-pulse 1.8s ease-in-out infinite}
 .sc-pill.locked{background:var(--c-good);color:var(--c-on-good)}
 .sc-pill svg{width:12px;height:12px}
-.sc-pillsub{color:var(--c-dim);font-size:11.5px;text-align:right;margin-top:5px;white-space:nowrap}
 @keyframes sc-pulse{50%{opacity:.25}}
 
-.sc-ctl{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-top:14px}
+.vseg.fluid{display:flex}.vseg.fluid>button{flex:1}
+.sc-dotu{font-size:11px;font-weight:700;padding:1px 6px;border-radius:99px;background:var(--c-good);color:var(--c-on-good)}
 
-.sc-head{display:flex;align-items:center;gap:14px;margin-top:18px}
-.sc-logo{width:56px;height:56px;border-radius:14px;background:var(--c-tile);display:grid;place-items:center;flex:none;overflow:hidden;
-  font-weight:700;font-size:15px;color:var(--c-tile-ink);letter-spacing:.02em}
+/* verdict */
+.sc-v.on{background:var(--c-good-box);box-shadow:inset 0 0 0 1px var(--c-good-line)}
+.sc-v1{display:flex;align-items:center;gap:16px}
+.sc-vu{font-size:56px;font-weight:700;letter-spacing:-.05em;line-height:.9;color:var(--c-good);flex:none}
+.sc-vu small{font-size:.45em;font-weight:600;margin-left:1px;letter-spacing:0}
+.sc-vu.zero{color:var(--c-dim)}
+.sc-vt{flex:1;min-width:0}
+.sc-vt strong{display:block;font-size:24px;font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:1px}
+.sc-v.off .sc-vt strong{color:var(--c-mut)}
+.sc-vs{display:block;font-size:13.5px;color:var(--c-mut);margin-top:3px;line-height:1.4}
+.sc-logo{width:48px;height:48px;border-radius:12px;background:var(--c-tile);display:grid;place-items:center;flex:none;overflow:hidden;font-weight:700;font-size:14px;color:var(--c-tile-ink)}
 .sc-logo img{width:78%;height:78%;object-fit:contain}
-.sc-logo.none{background:transparent;border:1.5px dashed var(--c-line2);color:var(--c-dim)}
-.sc-hl{flex:1;min-width:0}
-.sc-eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.14em;color:var(--c-dim);text-transform:uppercase}
-.sc-side{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sc-side.quiet{font-size:22px;color:var(--c-mut);letter-spacing:-.02em}
-.sc-price{color:var(--c-mut);font-size:14px;margin-top:3px}
-.sc-price .na{color:var(--c-dim)}
-.sc-amt{text-align:right;flex:none}
-.sc-amt b{display:block;font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.08;color:var(--c-gold)}
-.sc-amt b.zero{color:var(--c-dim)}
-.sc-amt span{display:block;font-size:12.5px;color:var(--c-good);margin-top:3px;font-weight:500}
-.sc-amt b.zero+span{color:var(--c-dim)}
+.sc-logo.sm{width:24px;height:24px;border-radius:7px;font-size:10px}
+.sc-ticks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--c-line)}
+.sc-tick{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--c-ink)}
+.sc-tick svg{width:13px;height:13px;flex:none;color:var(--c-good)}.sc-tick.no svg{color:var(--c-bad)}
+.sc-more{margin-top:10px;font-size:12.5px;color:var(--c-mut)}
+.sc-more summary{cursor:pointer;list-style:none;color:var(--c-mut);font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.sc-more summary::-webkit-details-marker,.sc-dt summary::-webkit-details-marker{display:none}
+.sc-more summary::after,.sc-dt summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .2s var(--ease-out)}
+.sc-more[open] summary::after,.sc-dt[open] summary::after{transform:rotate(225deg) translateY(-1px)}
+.sc-more p{margin:7px 0 0;line-height:1.5}
 
-.sc-lab{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10.5px;font-weight:600;letter-spacing:.16em;
-  color:var(--c-dim);text-transform:uppercase;margin:20px 0 9px}
-.sc-lab em{font-style:normal;letter-spacing:.02em;text-transform:none;font-weight:500;font-size:12px;color:var(--c-mut)}
-
-.sc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
-.sc-stat{padding:10px 12px;border-left:1px solid var(--c-line)}
-.sc-stat:first-child{border-left:0;background:var(--c-good-bg);border-radius:10px}
-.sc-stat:nth-child(2){border-left:0}
-.sc-stat b{display:block;font-size:22px;font-weight:600;letter-spacing:-.02em;white-space:nowrap}
-.sc-stat b small{font-size:.55em;font-weight:600;margin-left:1px}
-.sc-stat b.na{color:var(--c-dim);font-weight:500}
-.sc-stat span{display:block;font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--c-dim);margin-top:3px}
-.sc-dots{display:flex;align-items:center;gap:5px;margin-top:11px}
-.sc-dots i{width:7px;height:7px;border-radius:50%;background:var(--c-dim);flex:none}
-.sc-dots i.W{background:var(--c-good)}.sc-dots i.L{background:var(--c-bad)}
-.sc-dots span{font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--c-dim);margin-left:8px;white-space:nowrap}
-
-.sc-none{border:1px dashed var(--c-line2);border-radius:12px;padding:13px 14px;display:flex;gap:12px;align-items:flex-start}
-.sc-none svg{width:18px;height:18px;flex:none;color:var(--c-dim);margin-top:1px}
-.sc-none b{display:block;font-size:14px;font-weight:600}
-.sc-none p{margin:3px 0 0;font-size:12.5px;color:var(--c-mut);line-height:1.45}
-
-/* wallets → where it went */
-.sc-flow{display:flex;flex-direction:column;gap:14px}
-.sc-blk{display:grid;grid-template-columns:minmax(0,1fr) var(--sk-w) minmax(0,var(--box-w));align-items:center}
-.sc-rows{display:flex;flex-direction:column;min-width:0}
-.sc-row{height:var(--row-h);display:flex;flex-direction:column;justify-content:center;min-width:0}
-.sc-row b{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
-.sc-row b small{font-weight:500;font-size:11.5px;color:var(--c-mut)}
-.sc-row b svg{width:13px;height:13px;flex:none;color:var(--c-gold)}
-.sc-row.hc b{color:var(--c-gold)}
-.sc-row.agg b{font-weight:600}
-.sc-row.exc b,.sc-row.unp b{color:var(--c-mut)}
-.sc-row>span{font-size:12px;color:var(--c-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sc-sk{display:block;width:var(--sk-w);overflow:visible}
-.sc-sk .rail{stroke:var(--c-line2);stroke-width:1}
-.sc-sk .rb{opacity:.9}
-.sc-sk .rb.hc{fill:var(--c-gold)}.sc-sk .rb.sharp{fill:var(--c-good)}.sc-sk .rb.unp{fill:var(--c-rb-unp)}
-.sc-sk .rb.loser{fill:var(--c-bad)}.sc-sk .rb.exc{fill:none;stroke:var(--c-dim);stroke-width:1.2;stroke-dasharray:3 3}
-.sc-sk circle{fill:var(--c-card);stroke-width:2}
-.sc-sk circle.hc{stroke:var(--c-gold)}.sc-sk circle.sharp{stroke:var(--c-good);fill:var(--c-good)}
-.sc-sk circle.unp{stroke:var(--c-rb-unp)}.sc-sk circle.loser{stroke:var(--c-bad)}.sc-sk circle.exc{stroke:var(--c-dim);stroke-dasharray:2 2}
-
-.sc-box{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;justify-content:center;min-height:var(--box-h);
-  align-self:stretch;border:1.5px solid var(--c-line2);border-radius:18px;padding:12px 14px;background:var(--c-box);min-width:0}
-.sc-box:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
-.sc-box.good{border-color:var(--c-good-line);background:var(--c-good-box)}
-.sc-box.bad{border-color:var(--c-bad-line);background:var(--c-bad-box)}
-.sc-box.sel{box-shadow:0 0 0 3px var(--c-sel)}
-.sc-box u{text-decoration:none;font-size:10.5px;font-weight:600;letter-spacing:.16em;color:var(--c-dim);text-transform:uppercase;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sc-box .big{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15;margin-top:2px}
-.sc-box .big small,.sc-box .ln small{font-family:var(--c-sans);font-size:12.5px;font-weight:500;letter-spacing:.01em;color:var(--c-mut);margin-left:4px}
-.sc-box .big.zero{color:var(--c-dim)}
-.sc-box .big.red{color:var(--c-bad)}
-.sc-box .pc{font-size:14px;font-weight:600;line-height:1.2}
-.sc-box .pc small{display:block;font-family:var(--c-sans);font-weight:500;font-size:12px;color:var(--c-mut)}
-.sc-box .ln{font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1.3}
-.sc-box .ln.red,.sc-box .ln.red small{color:var(--c-bad)}
-.sc-box .ln.dim,.sc-box .ln.dim small{color:var(--c-dim);font-weight:600}
-.sc-mix{display:flex;height:4px;border-radius:2px;overflow:hidden;margin-top:9px;background:var(--c-line)}
-.sc-mix i{display:block;height:100%}
-.sc-mix .sharp{background:var(--c-good)}.sc-mix .hc{background:var(--c-gold)}.sc-mix .unp{background:var(--c-rb-unp)}.sc-mix .loser{background:var(--c-bad)}
-.sc-mix .exc{background:repeating-linear-gradient(90deg,var(--c-dim) 0 2px,transparent 2px 4px)}
-
-.sc-rule{margin-top:14px;border:1px dashed var(--c-line2);border-radius:12px;font-size:12.5px;color:var(--c-mut)}
-.sc-rule summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 12px;font-weight:600;color:var(--c-mut)}
-.sc-rule summary::-webkit-details-marker{display:none}
-.sc-rule summary svg{width:13px;height:13px;flex:none}
-.sc-rule summary span{margin-left:auto;font-weight:500;color:var(--c-dim);font-size:11.5px}
-.sc-rule p{margin:0;padding:0 12px 11px;line-height:1.5}
-
-.sc-foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--c-line);font-size:11.5px;color:var(--c-dim);line-height:1.55}
-.sc-foot b{color:var(--c-mut);font-weight:600}
-.sc-empty{margin-top:18px;border:1px dashed var(--c-line2);border-radius:14px;padding:22px 16px;text-align:center}
-.sc-empty b{display:block;font-size:15px;font-weight:600}
-.sc-empty p{margin:5px auto 0;font-size:13px;color:var(--c-mut);max-width:34ch;line-height:1.45}
-
-/* v2: header right, climate, market balance rows, suggested units, holders */
-.sc-tr{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none}
-.sc-clim{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--c-dim)}
-.sc-clim i{width:5px;height:11px;border-radius:2px;background:var(--c-line2)}
-.sc-clim i:last-of-type{margin-right:5px}
-.sc-clim.building{color:var(--c-warn)}.sc-clim.building i:nth-child(-n+2){background:var(--c-warn)}
-.sc-clim.signal{color:var(--c-good)}.sc-clim.signal i{background:var(--c-good)}
-.sc-ctl{justify-content:flex-end}
-.sc-ctll{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--c-dim);margin-right:2px}
-
-.sc-mks{display:flex;flex-direction:column;gap:6px;margin-top:12px}
-.sc-mk{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;padding:10px 12px 12px;border-radius:12px;border:1px solid var(--c-line);background:transparent;
-  transition:transform var(--dur-release) var(--ease-spring),background-color .12s ease,border-color .12s ease}
-.sc-mk:active{transform:scale(var(--press-row));transition:transform var(--dur-press) ease-out}
-.sc-mk.on{background:var(--c-box);border-color:var(--c-line2);box-shadow:inset 3px 0 0 var(--c-ink)}
-.sc-mk.off{cursor:default;opacity:.55;border-style:dashed}
-.sc-mk:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}
-.sc-mk1{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.sc-mk1 b{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--c-mut)}
-.sc-u{font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--c-dim);white-space:nowrap}
-.sc-u.on{color:var(--c-on-good);background:var(--c-good);border-radius:99px;padding:2px 9px;font-size:12.5px;font-weight:700}
-.sc-mk2{display:flex;justify-content:space-between;gap:10px;margin-top:5px;font-size:14px;font-weight:600}
-.sc-mk2 span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.sc-mk2 em{font-style:normal;font-weight:500;color:var(--c-mut);font-size:13px}
-.sc-mk2 .pk{color:var(--c-good)}
-.sc-bar{display:flex;align-items:center;height:10px;margin-top:7px}
-.sc-bar>u{width:2px;height:16px;background:var(--c-ink);border-radius:1px;flex:none;text-decoration:none}
+/* money split: two side tiles and one balance bar */
+.sc-split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sc-st.pk{box-shadow:inset 0 0 0 1px var(--c-good-line)}
+.sc-sth{display:flex;align-items:center;gap:8px}
+.sc-sth b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-big{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.1;margin-top:10px}
+.sc-lns{display:flex;flex-direction:column;gap:3px;margin-top:8px;min-height:20px}
+.sc-ln{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--c-mut)}
+.sc-ln b{font-weight:600;color:var(--c-ink)}
+.sc-ln i{width:8px;height:8px;border-radius:50%;flex:none}
+.sc-ln.hc i{background:var(--c-gold)}.sc-ln.sharp i{background:var(--c-good)}.sc-ln.loser i{background:var(--c-bad)}
+.sc-ln.exc i{background:transparent;border:1.5px dashed var(--c-dim)}.sc-ln.exc b{color:var(--c-mut)}
+.sc-ln.none{color:var(--c-dim)}
+.sc-bar{grid-column:1 / -1;display:flex;align-items:center;height:8px}
+.sc-bar>u{width:2px;height:14px;background:var(--c-ink);border-radius:1px;flex:none}
 .sc-half{flex:1;display:flex;height:100%;gap:1px;min-width:0}
 .sc-half.l{flex-direction:row-reverse}
 .sc-half i{display:block;height:100%;flex:none}
-.sc-half.l i:last-child{border-radius:3px 0 0 3px}.sc-half.r i:last-child{border-radius:0 3px 3px 0}
-.sc-half .hc,.sc-key .hc::before{background:var(--c-gold)}.sc-half .sharp,.sc-key .sharp::before{background:var(--c-good)}
-.sc-half .unp,.sc-key .unp::before{background:var(--c-rb-unp)}.sc-half .loser,.sc-key .loser::before{background:var(--c-bad)}
-.sc-half .exc,.sc-key .exc::before{background:repeating-linear-gradient(90deg,var(--c-dim) 0 2px,transparent 2px 4px)}
-.sc-key{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:9px;font-size:11px;color:var(--c-dim)}
-.sc-key span{display:inline-flex;align-items:center;gap:5px}
-.sc-key span::before{content:"";width:10px;height:6px;border-radius:2px}
+.sc-half.l i:last-child{border-radius:4px 0 0 4px}.sc-half.r i:last-child{border-radius:0 4px 4px 0}
+.sc-half .hc{background:var(--c-gold)}.sc-half .sharp{background:var(--c-good)}.sc-half .unp{background:var(--c-rb-unp)}.sc-half .loser{background:var(--c-bad)}
+.sc-half .exc{background:repeating-linear-gradient(90deg,var(--c-dim) 0 2px,transparent 2px 4px)}
 
-.sc-sig{margin-top:16px;border-radius:14px;padding:14px;border:1px solid var(--c-line2);background:var(--c-box)}
-.sc-sig.on{border-color:var(--c-good-line);background:var(--c-good-box)}
-.sc-sig.off{border-style:dashed;background:transparent}
-.sc-sig1{display:flex;align-items:center;gap:13px}
-.sc-sig .sc-side{font-size:26px}.sc-sig .sc-side.quiet{font-size:20px}
-.sc-sig.off .sc-price{font-size:12.5px;line-height:1.45}
-.sc-units{text-align:right;flex:none}
-.sc-units b{display:block;font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:.95;color:var(--c-good)}
-.sc-units b small{font-size:.5em;font-weight:600;margin-left:1px}
-.sc-pips{display:flex;gap:3px;justify-content:flex-end;margin-top:7px}
-.sc-pips i{width:11px;height:5px;border-radius:2px;background:var(--c-line2)}.sc-pips i.on{background:var(--c-good)}
-.sc-gates{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
-.sc-gl{font-size:12px;font-weight:600;color:var(--c-mut);margin-right:2px}
-.sc-gate{display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:500;border:1px solid var(--c-line2);color:var(--c-mut)}
-.sc-gate svg{width:11px;height:11px;flex:none}
-.sc-gate.ok{color:var(--c-ink)}.sc-gate.ok svg{color:var(--c-good)}
-.sc-gate.no svg{color:var(--c-bad)}.sc-gate.na{border-style:dashed;color:var(--c-dim)}
-.sc-fine{margin:11px 0 0;font-size:11.5px;line-height:1.5;color:var(--c-mut)}
-
-.sc-sides{display:flex;flex-direction:column;gap:16px}
-.sc-sdh{display:flex;align-items:center;gap:9px;padding-bottom:7px;border-bottom:1px solid var(--c-line)}
-.sc-sdh b{font-size:15px;font-weight:600}.sc-sdh span{margin-left:auto;font-size:12.5px;color:var(--c-mut)}
-.sc-logo.sm{width:26px;height:26px;border-radius:7px;font-size:10px}
-.sc-rec{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:9px;font-size:12px;color:var(--c-dim)}
-.sc-rec b{font-size:15px;font-weight:600;color:var(--c-ink);margin-right:3px}
-.sc-form{display:flex;align-items:center;gap:2px;height:18px;margin:8px 0 4px}
-.sc-form i{width:6px;height:8px;border-radius:1.5px;background:var(--c-dim);align-self:center}
+/* proven record */
+.sc-kp{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.sc-kp b{display:block;font-size:20px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+.sc-kp span{display:block;font-size:12px;color:var(--c-mut);margin-top:1px}
+.sc-form{display:flex;align-items:center;gap:3px;height:16px;margin-top:12px}
+.sc-form i{flex:1;max-width:14px;height:7px;border-radius:2px;background:var(--c-dim);align-self:center}
 .sc-form i.W{background:var(--c-good);align-self:flex-start}.sc-form i.L{background:var(--c-bad);align-self:flex-end}
-.sc-form span{font-size:10px;font-weight:600;letter-spacing:.14em;color:var(--c-dim);margin-left:8px}
-.sc-w{display:grid;grid-template-columns:16px 74px 62px 96px minmax(0,1fr);gap:8px;align-items:center;min-height:34px;font-size:13px;border-bottom:1px solid var(--c-line)}
-.sc-w:last-child{border-bottom:0}
+.sc-form span{font-size:12px;color:var(--c-mut);margin-left:8px;white-space:nowrap}
+
+/* collapsed modules */
+.sc-dt{padding:0}
+.sc-dt summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:13px 16px;font-size:14px;font-weight:600}
+.sc-dt summary em{font-style:normal;font-weight:500;color:var(--c-mut);font-size:13px;margin-right:auto}
+.sc-dt summary::after{margin-left:auto;color:var(--c-mut)}
+.sc-dt summary em+::after{margin-left:0}
+.sc-dtb{padding:0 16px 14px}
+.sc-dtb p{margin:0;font-size:12.5px;line-height:1.55;color:var(--c-mut)}
+.sc-wg{margin-bottom:12px}
+.sc-w{display:grid;grid-template-columns:14px 74px minmax(0,auto) minmax(0,1fr);gap:10px;align-items:center;min-height:34px;font-size:13px;border-top:1px solid var(--c-line)}
+.sc-wg .sc-cap{margin-bottom:6px}
 .sc-w b{font-weight:600;white-space:nowrap}
-.sc-w.agg b,.sc-w.none b{grid-column:2 / span 1;font-weight:500;color:var(--c-mut)}
-.sc-w.agg{grid-template-columns:16px minmax(0,1fr) 62px minmax(0,auto)}
-.sc-w.none{grid-template-columns:16px minmax(0,1fr)}.sc-w.none b{color:var(--c-dim)}
+.sc-w.agg{grid-template-columns:14px minmax(0,1fr) auto}.sc-w.agg b{font-weight:500;color:var(--c-mut)}
 .sc-wd{display:grid;place-items:center}.sc-wd i{width:8px;height:8px;border-radius:50%;background:var(--c-dim)}
 .sc-wd svg{width:13px;height:13px;color:var(--c-gold)}
 .sc-w.hc b{color:var(--c-gold)}.sc-w.sharp .sc-wd i{background:var(--c-good)}.sc-w.loser .sc-wd i{background:var(--c-bad)}
-.sc-w.unp .sc-wd i{background:var(--c-rb-unp)}.sc-w.exc .sc-wd i,.sc-w.none .sc-wd i{background:transparent;border:1.5px dashed var(--c-dim)}
-.sc-wu{text-align:right;font-weight:600}
-.sc-pm{display:flex;align-items:center;gap:6px}
-.sc-pm .tr{position:relative;flex:1;height:4px;border-radius:2px;background:var(--c-line2)}
-.sc-pm .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--c-rb-unp)}
-.sc-pm .tr u{position:absolute;left:50%;top:-3px;bottom:-3px;width:1.5px;background:var(--c-mut)}
-.sc-w.hc .sc-pm .tr i{background:var(--c-gold)}
-.sc-pm em{font-style:normal;font-size:11.5px;color:var(--c-mut);width:38px;text-align:right}
-.sc-wr{font-size:11.5px;color:var(--c-dim);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-w.unp .sc-wd i{background:var(--c-rb-unp)}.sc-w.exc .sc-wd i{background:transparent;border:1.5px dashed var(--c-dim)}
+.sc-wu{font-weight:600;white-space:nowrap}.sc-wu em{font-style:normal;font-weight:500;color:var(--c-mut);font-size:12px;margin-left:3px}
+.sc-wr{font-size:12px;color:var(--c-mut);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-hist{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid var(--c-line)}
+
+.sc-foot{margin:2px 2px 0;font-size:12px;color:var(--c-dim);line-height:1.5}
+.sc-empty{text-align:center;padding:26px 16px}
+.sc-empty b{display:block;font-size:16px;font-weight:600}
+.sc-empty p{margin:6px auto 0;font-size:13.5px;color:var(--c-mut);max-width:34ch;line-height:1.45}
 
 /* slate strip (page level) */
-.sl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
-.sl-t{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:14px 16px;min-width:0}
-.sl-t span{display:block;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--c-dim)}
-.sl-t b{display:block;font-size:26px;font-weight:700;letter-spacing:-.03em;margin-top:4px}
+.sl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}
+.sl-t{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:16px 18px;min-width:0}
+.sl-t span{display:block;font-size:12.5px;font-weight:500;color:var(--c-mut)}
+.sl-t b{display:block;font-size:30px;font-weight:700;letter-spacing:-.03em;margin-top:2px}
 .sl-t.gold b{color:var(--c-gold)}.sl-t.good b{color:var(--c-good)}
-.sl-t em{display:block;font-style:normal;font-size:12px;color:var(--c-mut);margin-top:2px}
-.sl-dots{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0 8px}
-.sl-dots i{width:9px;height:9px;border-radius:50%;background:var(--c-line2)}
+.sl-t em{display:block;font-style:normal;font-size:12.5px;color:var(--c-mut)}
+.sl-dots{display:flex;flex-wrap:wrap;gap:5px;margin:14px 0 9px}
+.sl-dots i{width:10px;height:10px;border-radius:50%;background:var(--c-line2)}
 .sl-dots i.signal{background:var(--c-good)}.sl-dots i.building{background:var(--c-warn)}
 
 @media (max-width:767px){
-  .sc-logo{width:46px;height:46px;border-radius:12px}
-  .sc-top{flex-direction:column;gap:9px}.sc-tr{flex-direction:row-reverse;align-items:center;justify-content:space-between;width:100%}
-  .sc-sig{padding:12px}.sc-sig1{gap:10px}.sc-sig .sc-side{font-size:21px;white-space:normal}.sc-sig .sc-side.quiet{font-size:18px}
-  .sc-units b{font-size:38px}
-  .sc-eyebrow{letter-spacing:.08em;font-size:10px}
-  .sc-price{font-size:12.5px;line-height:1.35}
-  .sc-w{grid-template-columns:16px 70px minmax(0,1fr) 92px;row-gap:0;padding:6px 0}
-  .sc-wu{text-align:left}
-  .sc-wr{grid-column:2 / -1;text-align:left;margin-top:1px}
-  .sc-w.agg{grid-template-columns:16px minmax(0,1fr) auto}.sc-w.agg .sc-wr{grid-column:2 / -1}
-  .sc-w.agg .sc-wr:empty{display:none}
+  .sc{gap:8px}.sc-body{gap:8px}.sc-split{gap:8px}
+  .sc-mod{padding:14px}
+  .sc-match{font-size:17px}
+  .sc-top{flex-wrap:wrap;gap:8px}.sc-time{white-space:nowrap}
+  .sc-pill{height:26px;padding:0 10px;font-size:11.5px}
+  .sc-vu{font-size:48px}.sc-vt strong{font-size:21px}.sc-v1{gap:12px}
+  .sc-v.on .sc-logo{display:none}
+  .sc-big{font-size:26px}
+  .sc-kp{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px}
+  .sc-w{grid-template-columns:14px 70px minmax(0,1fr);padding:6px 0}
+  .sc-wr{grid-column:2 / -1;text-align:left}
+  .sc-dt{padding:0}
   .sl{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 16px 0}
-  .sl-t{padding:11px 12px;border-radius:16px}.sl-t b{font-size:21px}.sl-t.clim{grid-column:1 / -1}
+  .sl-t{padding:12px 14px}.sl-t b{font-size:24px}.sl-t.clim{grid-column:1 / -1}
 }
 @media (prefers-reduced-motion:reduce){
-  .press,.press:active,.sc-mk,.sc-mk:active{transition:none;transform:none}
-  .vseg .v-pill{transition:none}
+  .press,.press:active{transition:none;transform:none}
+  .vseg .v-pill,.sc-more summary::after,.sc-dt summary::after{transition:none}
   .sc-pill.live i{animation:none}
 }
 
@@ -301,7 +202,6 @@ html,body{margin:0;background:var(--c-bg);color:var(--c-ink);font-family:var(--c
 .mk{max-width:1180px;margin:0 auto;padding:28px 24px 80px}
 .mk-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:6px}
 .mk-h h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em}
-.sc-pill{height:26px;font-size:10.5px;letter-spacing:.08em}
 .mk-h p{margin:4px 0 0;color:var(--c-mut);font-size:13.5px;max-width:70ch}
 .mk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 28px;margin-top:22px;align-items:start}
 .mk-cell{min-width:0}
@@ -403,97 +303,84 @@ function half(s, max, dir){
   var seg = function(k, v){ return v > 0 ? '<i class="' + k + '" style="width:' + Math.max(1.2, v / max * 100).toFixed(2) + '%"></i>' : ''; };
   return '<div class="sc-half ' + dir + '">' + seg('hc', s.hc_usd) + seg('sharp', s.sharp_usd - s.hc_usd) + seg('unp', s.unproven_usd) + seg('loser', s.loser_usd) + seg('exc', s.excluded_usd) + '</div>';
 }
-function unitChip(ls){
-  if (!ls) return '<span class="sc-u off">no play</span>';
-  return '<span class="sc-u on num">' + (ls.units_clean_ladder == null ? 'n/a' : ls.units_clean_ladder + 'u') + '</span>';
-}
-function marketRow(g, key, label, st){
-  var m = g.markets[key];
-  if (!m) return '<div class="sc-mk off"><div class="sc-mk1"><b>' + label + '</b><span class="sc-u off">not read yet</span></div></div>';
-  var names = sideOrder(g, m, key), a = m.sides[names[0]][st.variant], b = m.sides[names[1]][st.variant], ls = shadow(m, st.variant);
-  var max = Math.max(counted(a) + a.excluded_usd, counted(b) + b.excluded_usd) || 1;
-  var nm = function(n, s){ return '<span' + (ls && ls.side === n ? ' class="pk"' : '') + '>' + esc(n) + ' <em class="num">' + usd(counted(s)) + '</em></span>'; };
-  return '<button type="button" class="sc-mk press press-row' + (st.group === key ? ' on' : '') + '" data-g="' + key + '" aria-pressed="' + (st.group === key) + '">' +
-    '<div class="sc-mk1"><b>' + label + '</b>' + unitChip(ls) + '</div>' +
-    '<div class="sc-mk2">' + nm(names[0], a) + nm(names[1], b) + '</div>' +
-    '<div class="sc-bar">' + half(a, max, 'l') + '<u></u>' + half(b, max, 'r') + '</div></button>';
-}
-
-/* the suggested-units block. Units are the stored units_clean_ladder of the pre-registered rule; nothing is computed here. */
-function signal(g, m, key, names, v){
+/* v3: a stack of small modules. Verdict, money split, proven record, wallets (collapsed), data notes (collapsed). */
+function verdict(g, m, key, names, v){
   var ls = shadow(m, v), S = {}; names.forEach(function(n){ S[n] = m.sides[n][v]; });
-  var gate = function(ok, t){ return '<span class="sc-gate ' + (ok == null ? 'na' : ok ? 'ok' : 'no') + '">' + (ok == null ? '' : ok ? CHK : XX) + t + '</span>'; };
+  var tick = function(ok, t){ return '<span class="sc-tick ' + (ok ? 'ok' : 'no') + '">' + (ok ? CHK : XX) + t + '</span>'; };
   if (ls){
-    var q = ls.gates, u = ls.units_clean_ladder, pips = '';
-    for (var i = 1; i <= 5; i++) pips += '<i' + (u != null && i <= u ? ' class="on"' : '') + '></i>';
-    return '<div class="sc-sig on"><div class="sc-sig1">' + logo(ls.side, g) + '<div class="sc-hl"><div class="sc-eyebrow">Suggested units · ' + (g.frozen ? 'locked' : 'live, can change until ' + ct(g.cut) + ' CT') + '</div>' +
-      '<div class="sc-side">' + esc(sideLabel(ls.side, key, ls)) + '</div><div class="sc-price">' +
-      (ls.price != null ? '<span class="num">' + trim((ls.price * 100).toFixed(1)) + '¢</span> Polymarket' + (ls.price_t ? ' · read ' + ct(ls.price_t) + ' CT' : '') : '<span class="na">price n/a</span>') + '</div></div>' +
-      '<div class="sc-units"><b class="num">' + (u == null ? 'n/a' : u + '<small>u</small>') + '</b><div class="sc-pips">' + pips + '</div></div></div>' +
-      '<div class="sc-gates">' + gate(true, '<span class="num">' + trim((q.share_for * 100).toFixed(1)) + '%</span> of counted money (needs 60%)') +
-      gate(true, '<span class="num">' + q.proven_for + '</span> proven for') + gate(true, '<span class="num">' + q.proven_against + '</span> proven against') +
-      gate(true, '<span class="num">' + q.pressers_n15 + '</span> sized up' + (ls.top_press != null ? ', top <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>' +
-      '<p class="sc-fine">Size comes from the biggest press on the side: 3x or more is 5u, 2x or more is 2u, otherwise 3u, and any side priced under 50¢ is capped at 1u. ' +
-      'This rule is in its forward test and has no graded record yet.</p></div>';
+    var q = ls.gates, u = ls.units_clean_ladder;
+    return '<section class="sc-mod sc-v on"><div class="sc-v1"><b class="sc-vu num">' + (u == null ? 'n/a' : u + '<small>u</small>') + '</b>' +
+      '<div class="sc-vt"><span class="sc-cap">Suggested ' + (g.frozen ? '· locked' : '· live until ' + ct(g.cut) + ' CT') + '</span>' +
+      '<strong>' + esc(sideLabel(ls.side, key, ls)) + '</strong><span class="sc-vs">' +
+      (ls.price != null ? '<span class="num">' + trim((ls.price * 100).toFixed(1)) + '¢</span> on Polymarket' + (ls.price_t ? ', read ' + ct(ls.price_t) + ' CT' : '') : 'price n/a') + '</span></div>' +
+      logo(ls.side, g) + '</div>' +
+      '<div class="sc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> proven for') +
+      tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>' +
+      '<details class="sc-more"><summary>How the size is set</summary><p>Size follows the biggest press on the side: 3x or more is 5u, 2x or more is 2u, otherwise 3u. A side priced under 50¢ is capped at 1u. ' +
+      'The rule is in its forward test and has no graded record yet.</p></details></section>';
   }
-  /* no play: show how far the leading side is from the gates, using stored money and counts only */
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
   var other = names.filter(function(n){ return n !== lead; })[0], tot = counted(S[lead]) + counted(S[other]);
-  var share = tot ? counted(S[lead]) / tot : null, pf = nProven(S[lead]), pa = nProven(S[other]);
-  var why = v === 'fwd' ? 'Forward only counts results from after a wallet was first tracked, and no wallet clears the bar on those alone yet.'
-    : pf ? 'A proven wallet is here, but the side does not clear every gate.' : tot ? 'No wallet on this market has a graded book of 6 bets, 55% wins and +3% ROI yet. The ledger is still filling.' : 'No wallet holds $250 or more on this market yet.';
-  return '<div class="sc-sig off"><div class="sc-sig1"><div class="sc-logo none">0u</div><div class="sc-hl"><div class="sc-eyebrow">Suggested units</div>' +
-    '<div class="sc-side quiet">No play on the ' + GNAME[key] + '</div><div class="sc-price">' + why + '</div></div></div>' +
-    (tot ? '<div class="sc-gates"><span class="sc-gl">' + esc(lead) + '</span>' +
-      gate(share >= .6, '<span class="num">' + trim((share * 100).toFixed(1)) + '%</span> of counted money (needs 60%)') +
-      gate(pf >= 1, '<span class="num">' + pf + '</span> proven for') + gate(pa === 0, '<span class="num">' + pa + '</span> proven against') +
-      gate(null, 'sized up: n/a') + '</div>' : '') + '</div>';
+  var share = tot ? counted(S[lead]) / tot : null, pf = nProven(S[lead]), pa = nProven(S[other]), why;
+  if (!tot) why = 'No wallet holds $250 or more here yet.';
+  else if (!pf) why = v === 'fwd' ? 'No wallet is proven on forward-only results yet.' : 'No proven wallet on either side yet. The ledger is still filling.';
+  else if (pa) why = 'Proven wallets are on both sides.';
+  else if (share < .6) why = 'Proven money is on ' + esc(lead) + ', but it holds <span class="num">' + Math.round(share * 100) + '%</span> of the money. The rule needs 60%.';
+  else why = esc(lead) + ' has the money and a proven wallet. No wallet is sized up to 1.5x its usual stake yet.';
+  return '<section class="sc-mod sc-v off"><div class="sc-v1"><b class="sc-vu num zero">0<small>u</small></b><div class="sc-vt"><span class="sc-cap">Suggested</span>' +
+    '<strong>No play</strong><span class="sc-vs">' + why + '</span></div></div></section>';
 }
-
+function sideTile(g, n, s, pick){
+  var line = function(k, v, t){ return v > 0 ? '<span class="sc-ln ' + k + '"><i></i><b class="num">' + usd(v) + '</b> ' + t + '</span>' : ''; };
+  var lines = line('hc', s.hc_usd, 'sized up') + line('sharp', s.sharp_usd - s.hc_usd, 'proven') + line('loser', s.loser_usd, 'losers') + line('exc', s.excluded_usd, 'excluded');
+  return '<div class="sc-mod sc-st' + (pick ? ' pk' : '') + '"><div class="sc-sth">' + logo(n, g).replace('sc-logo', 'sc-logo sm') + '<b>' + esc(n) + '</b></div>' +
+    '<div class="sc-big num">' + usd(counted(s)) + '</div><div class="sc-lns">' + (lines || '<span class="sc-ln none">no proven or loser money</span>') + '</div></div>';
+}
 function walletRow(w, k){
-  var p = w.press, fill = p == null ? 0 : Math.min(p / 3, 1) * 100;
   return '<div class="sc-w ' + k + '"><span class="sc-wd">' + (w.star ? ICON.star : '<i></i>') + '</span><b class="num">' + tail(w.w) + '</b>' +
-    '<span class="sc-wu num">' + usd(w.usd) + '</span>' +
-    '<span class="sc-pm" title="position vs usual stake"><span class="tr"><i style="width:' + fill.toFixed(1) + '%"></i><u></u></span><em class="num">' + (p == null ? 'n/a' : p + 'x') + '</em></span>' +
+    '<span class="sc-wu num">' + usd(w.usd) + (w.press != null ? ' <em>' + w.press + 'x</em>' : '') + '</span>' +
     '<span class="sc-wr num">' + w.w_ + '-' + w.l_ + ' · L30 ' + roi(w.l30_roi) + ' · ' + susd(w.pnl) + '</span></div>';
 }
-function aggRow(k, t, v, note){ return '<div class="sc-w agg ' + k + '"><span class="sc-wd"><i></i></span><b>' + t + '</b><span class="sc-wu num">' + usd(v) + '</span><span class="sc-wr">' + (note || '') + '</span></div>'; }
-function sideBlock(g, n, s){
-  var sum = function(a){ return a.reduce(function(t, x){ return t + x.usd; }, 0); }, c = s.counts, p = s.proven, h = '';
-  h += '<div class="sc-sd"><div class="sc-sdh">' + logo(n, g).replace('sc-logo', 'sc-logo sm') + '<b>' + esc(n) + '</b><span class="num">' + usd(counted(s)) + ' counted</span></div>';
-  if (p.wallets){
-    h += '<div class="sc-rec"><span><b class="num">' + (p.win_pct == null ? 'n/a' : p.win_pct + '%') + '</b> win</span><span><b class="num">' + p.w + '-' + p.l + '</b> record</span>' +
-      '<span><b class="num">' + roi(p.l30_roi) + '</b> L30 ROI</span><span><b class="num">' + susd(p.lifetime_pnl) + '</b> lifetime</span></div>';
-    if (p.last20.length) h += '<div class="sc-form" aria-label="last ' + p.last20.length + ' results">' + p.last20.map(function(r){ return '<i class="' + r + '"></i>'; }).join('') + '<span>LAST ' + p.last20.length + '</span></div>';
-  }
+function walletList(n, s){
+  var sum = function(a){ return a.reduce(function(t, x){ return t + x.usd; }, 0); }, c = s.counts, np = nProven(s), h = '<div class="sc-wg"><span class="sc-cap">' + esc(n) + '</span>';
+  var agg = function(k, t, v){ return '<div class="sc-w agg ' + k + '"><span class="sc-wd"><i></i></span><b>' + t + '</b><span class="sc-wu num">' + usd(v) + '</span></div>'; };
   s.list.forEach(function(w){ h += walletRow(w, w.star ? 'hc' : 'sharp'); });
-  var np = nProven(s);
-  if (np > s.list.length) h += aggRow('sharp', '+' + (np - s.list.length) + ' more proven', Math.max(0, s.sharp_usd - sum(s.list)));
-  if (!np) h += '<div class="sc-w none"><span class="sc-wd"><i></i></span><b>No proven wallets on this side</b></div>';
+  if (np > s.list.length) h += agg('sharp', '+' + (np - s.list.length) + ' more proven', Math.max(0, s.sharp_usd - sum(s.list)));
   s.losers.forEach(function(w){ h += walletRow(w, 'loser'); });
-  if (c.loser > s.losers.length) h += aggRow('loser', '+' + (c.loser - s.losers.length) + ' more losers', Math.max(0, s.loser_usd - sum(s.losers)));
-  if (c.unproven) h += aggRow('unp', c.unproven + ' unproven', s.unproven_usd);
-  if (c.excluded) h += aggRow('exc', c.excluded + ' excluded', s.excluded_usd, 'not counted');
+  if (c.loser > s.losers.length) h += agg('loser', '+' + (c.loser - s.losers.length) + ' more losers', Math.max(0, s.loser_usd - sum(s.losers)));
+  if (c.unproven) h += agg('unp', c.unproven + ' unproven', s.unproven_usd);
+  if (c.excluded) h += agg('exc', c.excluded + ' excluded, not counted', s.excluded_usd);
+  if (!(np + c.loser + c.unproven + c.excluded)) h += '<div class="sc-w agg exc"><span class="sc-wd"><i></i></span><b>No holders at $250 or more</b></div>';
   return h + '</div>';
 }
-
 function body(g, st){
-  var h = '<div class="sc-mks">' + GROUPS.map(function(x){ return marketRow(g, x[0], x[1], st); }).join('') + '</div>' +
-    '<div class="sc-key"><span class="hc">sized up</span><span class="sharp">proven</span><span class="unp">unproven</span><span class="loser">losers</span><span class="exc">excluded</span></div>';
-  var m = g.markets[st.group], names = sideOrder(g, m, st.group);
-  h += signal(g, m, st.group, names, st.variant);
-  h += '<div class="sc-lab"><span>Who holds each side</span><span>press vs usual stake</span></div><div class="sc-sides">' +
-    names.map(function(n){ return sideBlock(g, n, m.sides[n][st.variant]); }).join('') + '</div>';
-  var cv = g.coverage, bits = ['<b>Sharp money is context.</b> Units come from a rule still in its forward test. Money is mark value ' + (g.frozen ? 'at the lock' : 'now') + ' (shares x price), not cost.',
+  var m = g.markets[st.group], names = sideOrder(g, m, st.group), v = st.variant, ls = shadow(m, v);
+  var a = m.sides[names[0]][v], b = m.sides[names[1]][v], max = Math.max(counted(a) + a.excluded_usd, counted(b) + b.excluded_usd) || 1;
+  var h = verdict(g, m, st.group, names, v);
+  h += '<div class="sc-split">' + sideTile(g, names[0], a, ls && ls.side === names[0]) + sideTile(g, names[1], b, ls && ls.side === names[1]) +
+    '<div class="sc-bar">' + half(a, max, 'l') + '<u></u>' + half(b, max, 'r') + '</div></div>';
+  var best = names.slice().sort(function(x, y){ return m.sides[y][v].sharp_usd - m.sides[x][v].sharp_usd; })[0], p = m.sides[best][v].proven;
+  if (p.wallets){
+    h += '<section class="sc-mod sc-pr"><span class="sc-cap">Proven wallets on ' + esc(best) + ' · ' + p.wallets + '</span><div class="sc-kp">' +
+      '<div><b class="num">' + (p.win_pct == null ? 'n/a' : p.win_pct + '%') + '</b><span>win</span></div><div><b class="num">' + p.w + '-' + p.l + '</b><span>record</span></div>' +
+      '<div><b class="num">' + roi(p.l30_roi) + '</b><span>last 30 days</span></div><div><b class="num">' + susd(p.lifetime_pnl) + '</b><span>lifetime</span></div></div>' +
+      (p.last20.length ? '<div class="sc-form">' + p.last20.map(function(r){ return '<i class="' + r + '"></i>'; }).join('') + '<span>last ' + p.last20.length + '</span></div>' : '') + '</section>';
+  }
+  var nW = names.reduce(function(t, n){ var c = m.sides[n][v].counts; return t + c.hc + c.sharp + c.unproven + c.loser + c.excluded; }, 0);
+  h += '<details class="sc-mod sc-dt" data-d="w"' + (st.open.w ? ' open' : '') + '><summary>Wallets<em class="num">' + nW + '</em></summary><div class="sc-dtb">' +
+    names.map(function(n){ return walletList(n, m.sides[n][v]); }).join('') +
+    '<div class="sc-hist"><span class="sc-cap">Wallet history</span><div class="vseg sm" data-k="variant"><i class="v-pill"></i><button type="button" data-v="all"' + (v === 'all' ? ' class="on"' : '') +
+    '>All</button><button type="button" data-v="fwd"' + (v === 'fwd' ? ' class="on"' : '') + '>Forward only</button></div></div></div></details>';
+  var cv = g.coverage, bits = ['Money is mark value ' + (g.frozen ? 'at the lock' : 'now') + ' (shares x price), not cost.',
     cv.markets_read + ' markets read, ' + cv.markets_missed + ' missed' + (cv.late_reads ? ', ' + cv.late_reads + ' late' : '') + '.',
     'Oldest read ' + dur(cv.max_read_lag_s) + ' before ' + (g.frozen ? 'the lock' : 'this build') + '.', 'Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.'];
   if (cv.two_way_dust_dropped) bits.push(cv.two_way_dust_dropped + ' two-way ' + (cv.two_way_dust_dropped === 1 ? 'wallet' : 'wallets') + ' dropped as balanced dust.');
   if (g.vault.start_gap_flag) bits.push('Start times differ by ' + g.vault.start_gap_min + ' min between Polymarket and Vault.');
   if (g.test) bits.push(g.test.counts ? 'Counts for the forward test.' : 'Does not count for the forward test: ' + g.test.why_not.join(', ') + '.');
-  return h + '<div class="sc-foot">' + bits.join(' ') + '</div>';
+  return h + '<details class="sc-mod sc-dt" data-d="n"' + (st.open.n ? ' open' : '') + '><summary>Data notes</summary><div class="sc-dtb"><p>' + bits.join(' ') + '</p></div></details>' +
+    '<p class="sc-foot">Sharp money is context. Units come from a rule still in its forward test.</p>';
 }
 
-/* one travelling pill per strip (vault-ds.css 19.2): seed without animation, then travel on --ease-rail */
 function rail(strip, animate){
   var on = strip.querySelector('button.on'), pill = strip.querySelector('.v-pill');
   if (!on || !pill || !strip.offsetWidth) return;
@@ -505,36 +392,32 @@ function rail(strip, animate){
 function mount(el, g, opt){
   opt = opt || {};
   var keys = GROUPS.filter(function(x){ return g.markets[x[0]]; }).map(function(x){ return x[0]; });
-  var st = {group: keys.indexOf(opt.group) >= 0 ? opt.group : keys[0], variant: 'all'};
+  var st = {group: keys.indexOf(opt.group) >= 0 ? opt.group : keys[0], variant: 'all', open: {}};
   var away = TEAMS[g.vault.away], home = TEAMS[g.vault.home];
-  function head(){
-    var c = climate(g, st.variant);
-    return '<div class="sc-top"><div><div><span class="sc-sport">' + g.sport.toUpperCase() + '</span><span class="sc-match">' +
-      esc(away ? away[0] : g.vault.away) + ' @ ' + esc(home ? home[0] : g.vault.home) + '</span></div><div class="sc-time num">' + ct(g.gst, true) + ' CT</div></div>' +
-      '<div class="sc-tr"><span class="sc-clim ' + c + '"><i></i><i></i><i></i>' + CLIM[c] + '</span>' + (g.frozen
-        ? '<div class="sc-pill locked">' + ICON.lock + 'LOCKED ' + ct(g.cut) + '</div>'
-        : '<div class="sc-pill live"><i></i>LIVE · locks ' + ct(g.cut) + '</div>') + '</div></div>';
-  }
+  var head = '<div class="sc-top"><div><div class="sc-match">' + esc(away ? away[0] : g.vault.away) + ' <i>at</i> ' + esc(home ? home[0] : g.vault.home) + '</div>' +
+    '<div class="sc-time"><span class="sc-sport">' + g.sport.toUpperCase() + '</span><span class="num">' + ct(g.gst, true) + ' CT</span></div></div>' +
+    (g.frozen ? '<div class="sc-pill locked">' + ICON.lock + 'Locked ' + ct(g.cut) + '</div>' : '<div class="sc-pill live"><i></i>Live · locks ' + ct(g.cut) + '</div>') + '</div>';
   if (!keys.length){
-    el.innerHTML = head() + '<div class="sc-empty"><b>Nothing to show yet</b><p>No wallet holds $250 or more on this game. The card fills in as money arrives and locks ' +
-      ct(g.cut, true) + ' CT.</p></div><div class="sc-foot"><b>Sharp money is context.</b> ' + g.coverage.markets_read + ' market read, ' + g.coverage.markets_missed +
-      ' missed. Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.</div>';
+    el.innerHTML = head + '<div class="sc-mod sc-empty"><b>Nothing to show yet</b><p>No wallet holds $250 or more on this game. The card fills in as money arrives and locks ' + ct(g.cut, true) + ' CT.</p></div>';
     return;
   }
-  el.innerHTML = '<div class="sc-hd"></div><div class="sc-ctl"><span class="sc-ctll">Wallet history</span><div class="vseg sm" data-k="variant" aria-label="History"><i class="v-pill"></i>' +
-    '<button type="button" data-v="all" class="on">All history</button><button type="button" data-v="fwd">Forward only</button></div></div><div class="sc-body"></div>';
-  var hd = el.querySelector('.sc-hd'), bodyEl = el.querySelector('.sc-body'), strips = [].slice.call(el.querySelectorAll('.vseg'));
-  function paint(){ hd.innerHTML = head(); bodyEl.innerHTML = body(g, st); }
-  paint(); strips.forEach(function(s){ rail(s, false); });
+  function strip(){
+    return GROUPS.map(function(x){ var m = g.markets[x[0]], ls = m && shadow(m, st.variant);
+      return '<button type="button" data-v="' + x[0] + '"' + (m ? '' : ' disabled') + (x[0] === st.group ? ' class="on"' : '') + '>' + x[1] + (ls ? '<span class="sc-dotu num">' + ls.units_clean_ladder + 'u</span>' : '') + '</button>'; }).join('');
+  }
+  el.innerHTML = head + '<div class="vseg fluid" data-k="group" role="tablist" aria-label="Market"><i class="v-pill"></i>' + strip() + '</div><div class="sc-body"></div>';
+  var bodyEl = el.querySelector('.sc-body'), top = el.querySelector('.vseg[data-k=group]');
+  function paint(){ bodyEl.innerHTML = body(g, st); var h = bodyEl.querySelector('.vseg'); if (h && h.offsetWidth) rail(h, false); }
+  paint(); rail(top, false);
+  el.addEventListener('toggle', function(e){ var d = e.target; if (d.dataset && d.dataset.d){ st.open[d.dataset.d] = d.open; var h = d.querySelector('.vseg'); if (h && d.open) rail(h, false); } }, true);
   el.addEventListener('click', function(e){
-    var b = e.target.closest('.vseg > button'), mk = e.target.closest('button.sc-mk');
-    if (b && !b.disabled){
-      var strip = b.parentNode;
-      [].forEach.call(strip.children, function(c){ c.classList.toggle('on', c === b); });
-      st[strip.dataset.k] = b.dataset.v; rail(strip, true); paint();
-    } else if (mk){ st.group = mk.dataset.g; paint(); }
+    var b = e.target.closest('.vseg > button');
+    if (!b || b.disabled) return;
+    var s = b.parentNode; st[s.dataset.k] = b.dataset.v;
+    if (s === top){ [].forEach.call(s.children, function(c){ c.classList.toggle('on', c === b); }); rail(s, true); paint(); }
+    else { top.innerHTML = '<i class="v-pill"></i>' + strip(); rail(top, false); paint(); }
   });
-  el._repaint = function(){ paint(); strips.forEach(function(s){ rail(s, false); }); };
+  el._repaint = function(){ paint(); rail(top, false); };
 }
 
 /* slate strip: totals over every game in the file, stored fields only */
@@ -547,10 +430,9 @@ function slate(el, data){
         s.list.forEach(function(w){ wallets[w.w] = 1; }); }); });
   });
   var t = function(v, l, sub, cls){ return '<div class="sl-t ' + (cls || '') + '"><span>' + l + '</span><b class="num">' + v + '</b><em>' + sub + '</em></div>'; };
-  el.innerHTML = t(usd(usdSum), 'Proven money on the slate', sides + ' sides · ' + Object.keys(wallets).length + ' proven wallets shown', 'gold') +
-    t(plays, 'Suggested plays', 'sides that meet the tracked rule', 'good') +
-    t(usd(ex), 'Excluded money', 'two-way and churn wallets, not counted') +
-    '<div class="sl-t clim"><span>Sharp climate · ' + data.games.length + ' games</span><div class="sl-dots">' +
+  el.innerHTML = t(plays, 'Suggested plays', 'of ' + data.games.length + ' games', 'good') +
+    t(usd(usdSum), 'Proven money', sides + ' sides, ' + Object.keys(wallets).length + ' wallets', 'gold') +
+    '<div class="sl-t clim"><span>Climate</span><div class="sl-dots">' +
       ['signal', 'building', 'quiet'].map(function(k){ return new Array(cl[k] + 1).join('<i class="' + k + '"></i>'); }).join('') + '</div><em>' +
       cl.signal + ' signal · ' + cl.building + ' building · ' + cl.quiet + ' quiet</em></div>';
 }
@@ -562,13 +444,13 @@ window.SideCard = {mount: mount, slate: slate};
 (function(){
 var STATES = [
   {id:'proven',   ev:'nba-was-ind-2026-11-11', g:'ml',     cap:'Proven money, no play', note:'A proven wallet is on Wizards, but the side holds under 60% of the money, so the rule suggests nothing.'},
-  {id:'star',     ev:'nba-den-mem-2026-11-11', g:'spread', cap:'Suggested units (the one play in the sample)', note:'Nuggets spread clears all four gates. The card shows the stored 3u, the price and why.'},
-  {id:'total',    ev:'nba-den-mem-2026-11-11', g:'total',  cap:'Total selected', note:'Proven money on the Over without a play. The spread row above still shows its 3u.'},
-  {id:'none',     ev:'nba-gsw-hou-2026-11-11', g:'ml',     cap:'No proven money (the common case today)', note:'Quiet climate. The balance bars still show where the money sits.'},
+  {id:'star',     ev:'nba-den-mem-2026-11-11', g:'spread', cap:'Suggested units (the one play in the sample)', note:'Nuggets spread clears all four gates. One number, the side, the price and four ticks.'},
+  {id:'total',    ev:'nba-den-mem-2026-11-11', g:'total',  cap:'Total selected', note:'Proven money on the Over without a play. The Spread tab carries its 3u badge.'},
+  {id:'none',     ev:'nba-gsw-hou-2026-11-11', g:'ml',     cap:'No proven money (the common case today)', note:'The verdict says why in one line. The two side tiles still show where the money sits.'},
   {id:'losers',   ev:'nba-bos-tor-2026-11-11', g:'ml',     cap:'Loser-heavy side', note:'Five loser wallets on Celtics, one proven wallet on Raptors.'},
-  {id:'excluded', ev:'nba-orl-uta-2026-11-11', g:'spread', cap:'Excluded-heavy side', note:'Most of the Magic spread money is excluded. It is hatched and never counted.'},
+  {id:'excluded', ev:'nba-orl-uta-2026-11-11', g:'spread', cap:'Excluded-heavy side', note:'Most of the Magic spread money is excluded. It is listed apart and never counted.'},
   {id:'frozen',   ev:'nba-cle-nyk-2026-11-11', g:'spread', frozen:1, cap:'Frozen at the lock', note:'Real card data. The sample has no frozen card yet, so the mock sets the frozen flag to show the locked state.'},
-  {id:'thin',     ev:'nba-okc-lac-2026-11-13', g:'ml',     cap:'Two days out, thin money', note:'Only the moneyline has been read. Spread and Total wait as dashed rows.'},
+  {id:'thin',     ev:'nba-okc-lac-2026-11-13', g:'ml',     cap:'Two days out, thin money', note:'Only the moneyline has been read. Spread and Total are disabled.'},
   {id:'empty',    ev:'nba-mil-orl-2026-11-13', g:'ml',     cap:'Nothing read yet', note:'A game with no holders at $250 or more.'}
 ];
 var q = new URLSearchParams(location.search), one = q.get('state'), th = q.get('theme');
@@ -584,6 +466,7 @@ STATES.forEach(function(s){
   grid.appendChild(cell); SideCard.mount(cell.lastChild, g, {group: s.g}); cards.push(cell.lastChild);
 });
 var sl = document.getElementById('slate'); if (sl && !one) SideCard.slate(sl, SIDE_SAMPLE);
+if (q.get('open')) [].forEach.call(document.querySelectorAll('details.sc-dt'), function(d){ d.open = true; });
 var tseg = document.getElementById('theme');
 if (tseg){
   var cur = document.documentElement.dataset.theme || 'dark';
