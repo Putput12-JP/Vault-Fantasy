@@ -174,6 +174,7 @@ a.btn{text-decoration:none}
 <script src="../edge-board.js"></script>
 <script src="../v2/gates.js?v=side1"></script>
 <script src="../v2-pages.js?v=side1"></script>
+<script src="../side-cards.js?v=1"></script>
 <script>
 let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
@@ -1104,7 +1105,7 @@ function topPage(){
 const V2P={key:'',built:null};
 const v2c=()=>window.VaultV2&&window.V2Gates?VaultV2.core:null;
 const v2pct=(x,d=1)=>V2Gates.pct(x,d),v2spct=(x,d=1)=>V2Gates.spct(x,d);
-const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],['vrecord','Play record']].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-v2nav="${v}">${l}</button>`).join('')}</div>`;
+const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],['vrecord','Play record'],['sharps','Sharps']].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-v2nav="${v}">${l}</button>`).join('')}</div>`;
 function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){const b=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,N:F.nba,L:F.plays,now:Date.now()/1000});V2P.built={all:c.stance(b.all),cand:c.stance(b.cand)};V2P.key=k}return V2P.built}
 const v2wait=(t,s,cur)=>head(t,s)+v2nav(cur)+'<div class="skel"></div><div class="skel"></div>';
 function v2when(ts){return v2c().when(ts)}
@@ -1181,13 +1182,15 @@ function route(){
  const r=(location.hash||'#plays').slice(1),sc=$('scr');let html,tab;
  if(!D){sc.innerHTML=loadErr?'<div class="title">Sharp Money</div><div class="card"><b>Could not load the data</b><div style="color:var(--mut);font-size:13px;margin-top:6px">The data file did not load. Check your connection and try again.</div><button class="btn" data-retry style="margin:10px 0 0">Try again</button></div>':skeleton();return}
  if(r==='plays'||r==='signals'||r==='vrecord'){tab='plays';html=r==='plays'?v2Plays():r==='signals'?v2Signals():v2Record()}
- else if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)));tab='board'}
+ else if(r==='sharps'){tab='plays';html=head('Sharps','Who holds each side on Polymarket. Context, with a suggested size from an untested rule')+v2nav('sharps')+'<div data-side-cards></div>'}
+ else if(r.startsWith('game/')){const gk=decodeURIComponent(r.slice(5));html=gamePage(gk)+(GM[gk]?'<div data-side-card="'+gk.replace(/"/g,'&quot;')+'"></div>':'');tab='board'}
  else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='reads'}
  else if(r==='models'||r.startsWith('pick/')){['nfl','cfb','sb'].forEach(k=>loadModel(k));tab='models';if(r==='models')html=modelsPage();else{const q=r.split('/');html=pickPage(q[1],decodeURIComponent(q.slice(2).join('/')))}}
  else{tab=r==='accounts'?'reads':r;html=({board,props,reads:topPage,accounts:topPage,alerts,record,edge}[r]||board)()}
  sc.innerHTML=html;
  sc.querySelectorAll('[data-go]').forEach(x=>{x.tabIndex=0;x.setAttribute('role','button')});
  if(window.VaultLineChart)VaultLineChart.scan(sc,k=>GM[k]);
+ if(window.VaultSideCards){const so={skin:'new',logo:(c,n)=>{const g=GM[c.vault&&c.vault.key];if(!g)return null;const t=[g.away,g.home].find(x=>x&&(x.name===n||x.abbr===n||String(x.name||'').endsWith(' '+n)));return t?teamUrl(g.sport,t):null}};const sp=sc.querySelector('[data-side-cards]');if(sp)VaultSideCards.mountPage(sp,so);const sg=sc.querySelector('[data-side-card]');if(sg)VaultSideCards.mountGame(sg,sg.dataset.sideCard,so)}
  if(window.VaultEdgeBoard){const eh=sc.querySelector('[data-edge-host]');if(eh)VaultEdgeBoard.mount(eh,{games:G,logo:(g,side)=>teamUrl(g.sport,g[side])})}
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
 }
