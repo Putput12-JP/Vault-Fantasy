@@ -38,6 +38,7 @@ jobs:
           python-version: '3.11'
       - name: Unit tests
         run: python3 -m unittest tests.test_pm_holders tests.test_pm_ledger
+      # The worktree is `pmdata`, not `data`: the repo already has a data/ folder, and git refuses to put a worktree on it.
       - name: Check out pm-holders-data
         run: |
           set +e
@@ -45,18 +46,18 @@ jobs:
           set -e
           if [ $rc -eq 0 ]; then
             git fetch --depth=50 origin pm-holders-data
-            git worktree add -f data FETCH_HEAD
+            git worktree add -f pmdata FETCH_HEAD
           elif [ $rc -eq 2 ]; then
-            git worktree add --detach data
-            cd data && git checkout -q --orphan pm-holders-data && (git rm -rqf . 2>/dev/null || true)
+            git worktree add --detach pmdata
+            cd pmdata && git checkout -q --orphan pm-holders-data && (git rm -rqf . 2>/dev/null || true)
           else
             echo "::error::could not reach origin (ls-remote exit $rc)"; exit 1
           fi
-          git -C "$GITHUB_WORKSPACE/data" config user.name  "vault-bot"
-          git -C "$GITHUB_WORKSPACE/data" config user.email "vault-bot@users.noreply.github.com"
+          git -C "$GITHUB_WORKSPACE/pmdata" config user.name  "vault-bot"
+          git -C "$GITHUB_WORKSPACE/pmdata" config user.email "vault-bot@users.noreply.github.com"
       - name: Scan
         id: scan
-        run: python3 scripts/scan_pm_holders.py --out data/pm_holders --sports "${{ matrix.job }}" --loop --commit --max-minutes 330
+        run: python3 scripts/scan_pm_holders.py --out pmdata/pm_holders --sports "${{ matrix.job }}" --loop --commit --max-minutes 330
       - name: Hand off to a fresh run
         if: always() && steps.scan.outputs.handoff == 'true'
         env:

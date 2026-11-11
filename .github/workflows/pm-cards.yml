@@ -37,27 +37,27 @@ jobs:
             +pm-holders-data:refs/remotes/origin/pm-holders-data \
             +sharp-history:refs/remotes/origin/sharp-history \
             +sharp-data:refs/remotes/origin/sharp-data
-          git worktree add -q --detach data origin/pm-holders-data
+          git worktree add -q --detach pmdata origin/pm-holders-data   # not `data`: the repo has a data/ folder
           git worktree add -q --detach hist origin/sharp-history
           git show origin/sharp-data:data.json > sharp_data.json || echo '{"games":[]}' > sharp_data.json
-          git -C data config user.name  "vault-bot"
-          git -C data config user.email "vault-bot@users.noreply.github.com"
+          git -C pmdata config user.name  "vault-bot"
+          git -C pmdata config user.email "vault-bot@users.noreply.github.com"
       - name: Build
         if: env.SKIP != '1'
         run: |
-          python3 scripts/build_side_cards.py --holders data/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
-            --frozen-out data/pm_cards --live-out live/live.json
+          python3 scripts/build_side_cards.py --holders pmdata/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
+            --frozen-out pmdata/pm_cards --live-out live/live.json
       - name: Commit frozen cards (append-only)
         if: env.SKIP != '1'
         run: |
           python3 - <<'PY'
           import sys; sys.path.insert(0, "scripts")
           import os, scan_pm_holders as H, datetime as dt
-          sports = [s for s in ("nba", "nfl", "cfb") if os.path.isdir(os.path.join("data", "pm_cards", s))]   # git add fails on a missing path
+          sports = [s for s in ("nba", "nfl", "cfb") if os.path.isdir(os.path.join("pmdata", "pm_cards", s))]   # git add fails on a missing path
           if not sports:
               sys.exit(0)
-          ok = H.commit_push("data", "pm_cards", sports, "pm cards: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
-          sys.exit(0 if ok and H.remote_has_head("data") else 1)
+          ok = H.commit_push("pmdata", "pm_cards", sports, "pm cards: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
+          sys.exit(0 if ok and H.remote_has_head("pmdata") else 1)
           PY
       - name: Publish live cards (single commit, force-pushed)
         if: env.SKIP != '1'
