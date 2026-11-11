@@ -1,0 +1,70 @@
+# Proven-sharps side cards (scripts/build_side_cards.py, docs/side-cards.md). Every 10 minutes:
+#   - frozen cards: one per new T-15 keyframe, committed once to pm_cards/ on `pm-holders-data` (never force-pushed)
+#   - live cards: every upcoming game, published as ONE parentless commit holding live.json on `pm-cards-live` (force-pushed,
+#     like nba-live), so a file rewritten every 10 minutes never grows any history
+# Sharp money is context only: the cards never feed Top Reads, SM_GATE or an agree total. lock_shadow is the pre-registered
+# forward test of docs/sharp-card-prereg.md.
+name: Proven-sharps side cards
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'
+
+concurrency:
+  group: pm-cards
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python3 -m unittest tests.test_side_cards
+      - name: Inputs (holders, ledger, Vault games)
+        run: |
+          if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then
+            echo "No holders data yet; nothing to build."; echo "SKIP=1" >> "$GITHUB_ENV"; exit 0
+          fi
+          git fetch -q --depth=1 origin \
+            +pm-holders-data:refs/remotes/origin/pm-holders-data \
+            +sharp-history:refs/remotes/origin/sharp-history \
+            +sharp-data:refs/remotes/origin/sharp-data
+          git worktree add -q --detach data origin/pm-holders-data
+          git worktree add -q --detach hist origin/sharp-history
+          git show origin/sharp-data:data.json > sharp_data.json || echo '{"games":[]}' > sharp_data.json
+          git -C data config user.name  "vault-bot"
+          git -C data config user.email "vault-bot@users.noreply.github.com"
+      - name: Build
+        if: env.SKIP != '1'
+        run: |
+          python3 scripts/build_side_cards.py --holders data/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
+            --frozen-out data/pm_cards --live-out live/live.json
+      - name: Commit frozen cards (append-only)
+        if: env.SKIP != '1'
+        run: |
+          python3 - <<'PY'
+          import sys; sys.path.insert(0, "scripts")
+          import os, scan_pm_holders as H, datetime as dt
+          sports = [s for s in ("nba", "nfl", "cfb") if os.path.isdir(os.path.join("data", "pm_cards", s))]   # git add fails on a missing path
+          if not sports:
+              sys.exit(0)
+          ok = H.commit_push("data", "pm_cards", sports, "pm cards: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
+          sys.exit(0 if ok and H.remote_has_head("data") else 1)
+          PY
+      - name: Publish live cards (single commit, force-pushed)
+        if: env.SKIP != '1'
+        run: |
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          blob=$(git hash-object -w live/live.json)
+          tree=$(printf '100644 blob %s\tlive.json\n' "$blob" | git mktree)
+          c=$(git commit-tree "$tree" -m "pm cards live $(date -u +%FT%TZ)")
+          git push -q --force origin "$c:refs/heads/pm-cards-live"
