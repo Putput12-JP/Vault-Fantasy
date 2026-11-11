@@ -50,6 +50,7 @@ pre-registered forward test in `docs/sharp-card-prereg.md`, recorded so it can b
 | `proven.last20` | the newest 20 results across those wallets, one per wallet per game |
 | `list`, `losers` | up to 4 proven and 3 loser wallets: record, ROI, L30, PnL, press, star |
 | `counts` | wallets per class |
+| `ags` | SharpFlow's AGS-Unified v12 side score (`score`, -1 to +1) and its label (`tier`: FADE at 0 or below, then WEAK, LEAN, LOCK, PREMIUM, ELITE at SharpFlow's published cut points 0.781 / 0.916 / 0.957 / 0.981), with the mean wallet quality for and against, the tracked wallets counted on each side, and how many of them scored. Null when no tracked wallet with a book is on the market. A shadow field: it does not set the units. The cut points were fitted on SharpFlow's picks, not Vault's. |
 | `lock_shadow` | the pre-registered gates (money share over ALL money, any-class presser with n >= 15, no proven against, at least one proven for), the locked side, the graded rung and its price at the cut, and the clean-step ladder units (>= 3x 5u, >= 2x 2u, else 3u, capped at 1u under 0.50) |
 
 Each card also carries:
