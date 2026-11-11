@@ -21,7 +21,7 @@ rush_rec_yd    n=  51    28-23 54.9% | CLV 45.1% | MAE  23.9 bias +3.09 | edge  
 pass_td        n=  30    14-16 46.7% | CLV 53.3% | MAE   0.9 bias +0.11 | edge -0.012
 pass_att       n=  30    14-16 46.7% | CLV 76.7% | MAE   4.7 bias +1.84 | edge -0.027
 pass_int       n=  30    14-16 46.7% | CLV 40.0% | MAE   0.8 bias -0.21 | edge   -  
-pass_yd        n=  30     8-22 26.7% | CLV 46.7% | MAE  61.3 bias +10.73 | edge -0.096
+pass_yd        n=  30     8-22 26.7% | CLV 46.7% | MAE  61.3 bias +10.70 | edge -0.096
 pass_cmp       n=  28    14-14 50.0% | CLV 53.6% | MAE   3.2 bias +1.82 | edge -0.019
 pass_rush_yd   n=  11      5-6 45.5% | CLV  9.1% | MAE  47.3 bias +33.86 | edge   -  
 rush_td        n=  10      8-2 80.0% | CLV  0.0% | MAE   0.4 bias -0.00 | edge +0.220
@@ -33,7 +33,7 @@ rush_td        n=  10      8-2 80.0% | CLV  0.0% | MAE   0.4 bias -0.00 | edge +
 RB     n= 273  146-127 53.5% | CLV 53.1% | MAE  11.8 bias +1.22 | edge +0.011
 QB     n= 219   98-121 44.7% | CLV 51.6% | MAE  14.2 bias +4.41 | edge -0.019
 WR     n= 179    87-92 48.6% | CLV 53.6% | MAE  13.2 bias -1.48 | edge -0.010
-TE     n=  94    53-41 56.4% | CLV 43.6% | MAE   8.2 bias +0.09 | edge -0.006
+TE     n=  94    53-41 56.4% | CLV 43.6% | MAE   8.2 bias +0.08 | edge -0.006
 ```
 
 ## Over vs under
