@@ -1,0 +1,25 @@
+/* Vault NBA skin: "Graphite" (nba/ui/projections.template.html). Geist with Geist Mono numbers on cool off-black,
+   16px cards with a hairline border, mono uppercase section labels like the Follow Board header row. */
+:root{
+  --c-bg:#0b0c0e;--c-card:#131418;--c-line:#22252b;--c-line2:#343841;--c-ink:#f3f4f6;--c-mut:#a2a7b1;--c-dim:#6e7380;
+  --c-good:#5fcf8c;--c-on-good:#0b0c0e;--c-bad:#ec7f7f;--c-warn:#e5b955;--c-gold:#e5c877;
+  --c-good-bg:rgba(95,207,140,.10);--c-good-line:rgba(95,207,140,.5);--c-good-box:rgba(95,207,140,.05);
+  --c-bad-line:rgba(236,127,127,.45);--c-bad-box:rgba(236,127,127,.05);--c-box:#191b20;--c-sel:rgba(243,244,246,.09);
+  --c-rb-unp:#7b818d;--c-tile:#f3f4f6;--c-tile-ink:#0b0c0e;
+  --c-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 32px -14px rgba(0,0,0,.6);
+  --c-r:16px;--c-pad:24px;--c-sans:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;--c-num:'Geist Mono','SFMono-Regular',Menlo,monospace;--c-num-ls:-.02em;
+  --vseg-bg:#191b20;--vseg-border:#22252b;--vseg-ink:#a2a7b1;--vseg-on-ink:#0b0c0e;--vseg-pill:#f3f4f6;
+  color-scheme:dark;
+}
+:root[data-theme=light]{
+  --c-bg:#f5f5f7;--c-card:#ffffff;--c-line:#e6e6e9;--c-line2:#cfd1d6;--c-ink:#1d1e22;--c-mut:#5a5d66;--c-dim:#767983;
+  --c-good:#15803d;--c-on-good:#ffffff;--c-bad:#c62828;--c-warn:#a05a00;--c-gold:#8a6400;
+  --c-good-bg:rgba(21,128,61,.08);--c-good-line:rgba(21,128,61,.45);--c-good-box:rgba(21,128,61,.04);
+  --c-bad-line:rgba(198,40,40,.4);--c-bad-box:rgba(198,40,40,.04);--c-box:#f3f3f5;--c-sel:rgba(29,30,34,.08);
+  --c-rb-unp:#aeb2bb;--c-tile:#ebebee;--c-tile-ink:#1d1e22;--c-shadow:0 1px 2px rgba(0,0,0,.04);
+  --vseg-bg:#ebebee;--vseg-border:#e6e6e9;--vseg-ink:#5a5d66;--vseg-on-ink:#ffffff;--vseg-pill:#1d1e22;
+  color-scheme:light;
+}
+html,body{margin:0;background:var(--c-bg);color:var(--c-ink);font-family:var(--c-sans);-webkit-font-smoothing:antialiased}
+:root{--c-mr:12px}
+@media (max-width:767px){:root{--c-pad:16px;--c-gutter:12px}.sc-wr{letter-spacing:-.03em}}

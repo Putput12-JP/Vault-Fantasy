@@ -1,0 +1,36 @@
+/* Sharp Money skin. Desktop = the classic page (Halaska kit palette, Geist + Geist Mono, light and dark).
+   Phone = the new/ layout (black page, #1c1c1e cards, 24px radius, Barlow Condensed numbers). One page, two files. */
+:root{
+  --c-bg:#1a1a1a;--c-card:#222222;--c-line:#2f2f2f;--c-line2:#3a3a3a;--c-ink:#d8d8d8;--c-mut:#999999;--c-dim:#6a6a6a;
+  --c-good:#4ade80;--c-on-good:#0d2416;--c-bad:#f87171;--c-warn:#fbbf24;--c-gold:#e8c66a;
+  --c-good-bg:rgba(74,222,128,.10);--c-good-line:rgba(74,222,128,.55);--c-good-box:rgba(74,222,128,.06);
+  --c-bad-line:rgba(248,113,113,.5);--c-bad-box:rgba(248,113,113,.06);--c-box:#2a2a2a;--c-sel:rgba(216,216,216,.10);
+  --c-rb-unp:#8a8f98;--c-tile:#f1f1f1;--c-tile-ink:#1a1a1a;
+  --c-r:16px;--c-pad:22px;--c-sans:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--c-num:'Geist Mono','SF Mono',monospace;--c-num-ls:-.02em;
+  --vseg-bg:#2a2a2a;--vseg-border:transparent;--vseg-ink:#999999;--vseg-on-ink:#1a1a1a;--vseg-pill:#d8d8d8;
+  color-scheme:dark;
+}
+:root[data-theme=light]{
+  --c-bg:#fafafa;--c-card:#ffffff;--c-line:#eeeeee;--c-line2:#dcdcdc;--c-ink:#2b2b2b;--c-mut:#777777;--c-dim:#a0a0a0;
+  --c-good:#16a34a;--c-on-good:#ffffff;--c-bad:#dc2626;--c-warn:#d97706;--c-gold:#a8780a;
+  --c-good-bg:#f0fdf4;--c-good-line:rgba(22,163,74,.5);--c-good-box:#f0fdf4;--c-bad-line:rgba(220,38,38,.4);--c-bad-box:#fff7f7;--c-box:#f5f5f5;
+  --c-sel:rgba(0,0,0,.07);--c-rb-unp:#b4b8bf;--c-tile:#f3f3f3;--c-tile-ink:#2b2b2b;--c-shadow:0 1px 2px rgba(0,0,0,.04);
+  --vseg-bg:#f0f0f0;--vseg-border:#e5e5e5;--vseg-ink:#888888;--vseg-on-ink:#ffffff;--vseg-pill:#3d3d3d;
+  color-scheme:light;
+}
+@media (max-width:767px){
+  :root,:root[data-theme=light]{
+    --c-bg:#0b0b0d;--c-card:#1c1c1e;--c-line:rgba(255,255,255,.09);--c-line2:rgba(255,255,255,.16);--c-ink:#fff;--c-mut:#98989f;--c-dim:#636366;
+    --c-good:#32d583;--c-on-good:#04200f;--c-bad:#ff6b6b;--c-warn:#f5b84a;--c-gold:#f0cf7a;
+    --c-mr:18px;--c-box:#2c2c2e;--c-good-bg:rgba(50,213,131,.12);--c-good-line:rgba(50,213,131,.55);--c-good-box:rgba(50,213,131,.07);
+    --c-bad-line:rgba(255,107,107,.5);--c-bad-box:rgba(255,107,107,.07);--c-sel:rgba(255,255,255,.10);
+    --c-rb-unp:#8e8e93;--c-tile:#f2f2f7;--c-tile-ink:#000;--c-shadow:none;
+    --c-r:24px;--c-pad:16px;--c-bw:0px;--c-gutter:16px;--c-sans:-apple-system,'SF Pro Text',Geist,system-ui,sans-serif;
+    --c-num:'Barlow Condensed','SF Pro Rounded',Geist,sans-serif;--c-num-ls:.01em;
+    --vseg-bg:#2c2c2e;--vseg-border:transparent;--vseg-ink:#98989f;--vseg-on-ink:#000;--vseg-pill:#fff;
+    color-scheme:dark;
+  }
+  .sc-time .num{font-size:15px}.sc-w .num,.sc-ln .num,.sc-tick .num{font-size:15px}.sc-w .sc-wr.num{font-size:13.5px}
+  #theme{display:none}
+}
+html,body{margin:0;background:var(--c-bg);color:var(--c-ink);font-family:var(--c-sans);-webkit-font-smoothing:antialiased}
