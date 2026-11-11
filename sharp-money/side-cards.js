@@ -7,11 +7,11 @@
    untested rule, and it never feeds Top Reads, SM_GATE or an agree total. The rule is the pre-registered lock of
    docs/sharp-card-prereg.md. Every number on the card is a stored field; a null prints "n/a".
 
-   Size: the card stores SharpFlow's clean-step press ladder (units_clean_ladder: 3u base, 5u at a 3x press, 2u at 2x to 3x, 1u under
-   50 cents). Vault shows that ladder scaled so its base size is 1u, which is the flat unit the forward test grades. */
+   Size: the card shows SharpFlow's clean-step press ladder exactly as the builder stores it (units_clean_ladder): 3u base, 2u at a
+   2x to 3x press, 5u at 3x or more, 1u for any side priced under 50 cents. SharpFlow's live picks also step the size down when the
+   price has moved and add rescue rungs; the builder does not record those, so the card can read higher than SharpFlow's own pick. */
 (function(){
 'use strict';
-var BASE_UNITS = 3;                      /* SharpFlow's base rung; Vault's base is 1u */
 var OPT = {}, UI = {}, SHOWN = {};
 /* the phone layout has its own global .num and .hc rules; these undo them inside the card (lowest precedence of the card's own rules) */
 var RESET = '.vsc .num{min-width:0;text-align:inherit;font-size:inherit;font-weight:inherit}.vsc .hc{width:auto;margin:0;padding:0}';
@@ -109,8 +109,8 @@ function verdict(g, m, key, names, v){
       logo(ls.side, g) + '</div>' +
       '<div class="sc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> proven for') +
       tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>' +
-      '<details class="sc-more"><summary>How the size is set</summary><p>The base size is 1u. It moves with the biggest press on the side, on SharpFlow\'s press ladder scaled so its base size is 1u: a press of 3x or more is ' + UNIT_TXT[5] + 'u, 2x to 3x is ' + UNIT_TXT[2] + 'u, and any side priced under 50\u00a2 is ' + UNIT_TXT[1] + 'u. ' +
-      'SharpFlow\'s own size here is <span class="num">' + ls.units_clean_ladder + 'u</span>. This rule is in its forward test and has no graded record yet.</p></details></section>';
+      '<details class="sc-more"><summary>How the size is set</summary><p>This is SharpFlow\'s press ladder, sized by the biggest press on the side: a press under 2x is 3u, 2x to 3x is 2u, 3x or more is 5u, and any side priced under 50\u00a2 is 1u. ' +
+      'SharpFlow also lowers the size when the price has moved, which this card does not track. This rule is in its forward test and has no graded record yet.</p></details></section>';
   }
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
   var other = names.filter(function(n){ return n !== lead; })[0], tot = counted(S[lead]) + counted(S[other]);
@@ -217,9 +217,7 @@ function mount(el, g, opt){
 }
 
 
-function unitFmt(x){ return trim((x / BASE_UNITS).toFixed(2)); }
-function units(ls){ return ls.units_clean_ladder == null ? null : unitFmt(ls.units_clean_ladder); }
-var UNIT_TXT = {5: unitFmt(5), 2: unitFmt(2), 1: unitFmt(1)};
+function units(ls){ return ls.units_clean_ladder == null ? null : String(ls.units_clean_ladder); }
 /* slate strip: totals over every game in the file, stored fields only */
 function slate(el, data){
   var usdSum = 0, sides = 0, wallets = {}, cl = {quiet:0, building:0, signal:0}, plays = 0, ex = 0;
