@@ -1,0 +1,66 @@
+# Daily Polymarket sharp-wallet ledger (scripts/build_pm_ledger.py, docs/pm-ledger.md).
+# Writes pm_ledger/ on the ordinary, never-force-pushed `sharp-history` branch, whose git history is the append-only log.
+# The first runs are the backfill: each run stops cleanly at --max-req and the next one resumes from pm_ledger/state.json.
+name: Polymarket wallet ledger
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_req:
+        description: Request cap for this run
+        default: '20000'
+      discover_only:
+        description: Only run fat-ticket discovery (adds new wallets, grades nothing)
+        type: boolean
+        default: false
+  schedule:
+    - cron: '20 9 * * *'           # 3:20 AM Central (CST): full run, after the 3:17 sharp-ledger snapshot
+    - cron: '20 18,22,2 * * *'     # 12:20, 4:20 and 8:20 PM Central: fat-ticket discovery only, while the day's holders build up
+
+concurrency:
+  group: sharp-history     # shared with snapshot-sharp-ledgers.yml so two jobs never push the branch at once
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python3 -m unittest tests.test_pm_ledger
+      - name: Check out sharp-history
+        run: |
+          if git ls-remote --exit-code --heads origin sharp-history >/dev/null 2>&1; then
+            git fetch --depth=1 origin sharp-history
+            git worktree add -f hist FETCH_HEAD
+            cd hist && git checkout -q -B sharp-history
+          else
+            git worktree add --detach hist
+            cd hist && git checkout -q --orphan sharp-history && git rm -rqf . 2>/dev/null || true
+          fi
+      - name: Build the ledger
+        run: |
+          if [ "${{ github.event.schedule }}" = "20 18,22,2 * * *" ] || [ "${{ github.event.inputs.discover_only }}" = "true" ]; then
+            python3 scripts/build_pm_ledger.py --out hist/pm_ledger --discover-only
+          else
+            python3 scripts/build_pm_ledger.py --out hist/pm_ledger --max-req "${{ github.event.inputs.max_req || '20000' }}"
+          fi
+      - name: Commit and push (never forced)
+        run: |
+          cd hist
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add -A pm_ledger
+          if git diff --staged --quiet; then echo "No change."; exit 0; fi
+          git commit -q -m "pm ledger: $(date -u +%F)"
+          for i in 1 2 3; do
+            git push origin sharp-history && exit 0
+            git pull -q --rebase origin sharp-history || exit 1
+          done
+          exit 1
