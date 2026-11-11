@@ -2664,6 +2664,41 @@ th{font-weight:500}
   .sm-tiles{grid-template-columns:minmax(0,1fr)}
   .sm-b .w span:last-child{white-space:normal}
 }
+/* Summary motion. Numbers roll only between two stored values; nothing counts up from zero and nothing loops.
+   Overshoot (the spring curve) is on transform only. Travel between two known points rides the rail curve. */
+@keyframes smFade{from{opacity:0}}
+@keyframes smRise{from{transform:translateY(8px) scale(var(--in-s,.97))}}
+@keyframes smTint{from{background-color:color-mix(in srgb,var(--primary) 20%,transparent)}to{background-color:transparent}}
+@keyframes smPop{from{opacity:0;transform:scale(.6)}}
+@keyframes smHit{0%{opacity:0;transform:scale(.985)}25%{opacity:1}100%{opacity:0;transform:scale(1.012)}}
+.sm-i{animation:smFade .3s var(--ease-out,cubic-bezier(.23,1,.32,1)) backwards,smRise var(--dur-release,.5s) var(--ease-spring,cubic-bezier(.34,1.56,.64,1)) backwards;animation-delay:calc(var(--i,0) * 32ms - var(--el,0ms))}
+.sm-next.sm-i{--in-s:.985}.sm-b.sm-i{--in-s:.975}.sm-scrub.sm-i{--in-s:1}
+rd-v{white-space:pre;font-variant-numeric:tabular-nums}
+rd-c{display:inline-block;position:relative;clip-path:inset(0);max-width:1.2em;transition:max-width .28s var(--ease-out,cubic-bezier(.23,1,.32,1)),opacity .2s ease}
+rd-g{visibility:hidden}
+rd-s{position:absolute;left:0;top:0;width:100%;height:100%;display:block;transform:translateY(calc((var(--d) + 1) * -100%));transition:transform var(--dur-release,.5s) var(--ease-spring,cubic-bezier(.34,1.56,.64,1));transition-delay:calc(var(--i) * 45ms)}
+rd-d{display:block;height:100%;text-align:center}
+rd-c.gone{max-width:0;opacity:0}
+rd-x{display:inline-grid}
+rd-x>*{grid-area:1/1;transition:opacity .22s ease,transform .32s var(--ease-out,cubic-bezier(.23,1,.32,1));transition-delay:calc(var(--i) * 45ms)}
+rd-x>rd-n{opacity:0;transform:translateY(35%)}
+rd-x.go>rd-o{opacity:0;transform:translateY(-35%)}
+rd-x.go>rd-n{opacity:1;transform:none}
+.rd-seed,.rd-seed *{transition:none!important}
+.sm-t .tm .n{border-radius:6px}
+.sm-t .tm .n.sm-mvd{animation:smTint 1.4s ease-out}
+.sm-dot.sm-pop{animation:smPop var(--dur-release,.5s) var(--ease-spring,cubic-bezier(.34,1.56,.64,1)) backwards}
+.sm-gauge .mk.bk{transition:left var(--dur-rail,.4s) var(--ease-rail,cubic-bezier(.65,0,.35,1))}
+.sm-gauge .seg{transition:left var(--dur-rail,.4s) var(--ease-rail,cubic-bezier(.65,0,.35,1)),width var(--dur-rail,.4s) var(--ease-rail,cubic-bezier(.65,0,.35,1))}
+.sm-tiles{position:relative}
+.sm-t{position:relative}
+.sm-t.sm-go,.sm-low.sm-go{transition:transform var(--dur-rail,.4s) var(--ease-rail,cubic-bezier(.65,0,.35,1))}
+.sm-enter:not(.sm-go){opacity:0;transform:scale(.96)}
+.sm-empty.sm-enter:not(.sm-go){transform:none}
+.sm-enter.sm-go{transition:opacity .2s ease,transform var(--dur-release,.5s) var(--ease-spring,cubic-bezier(.34,1.56,.64,1))}
+.sm-t.sm-ghost{position:absolute;margin:0;pointer-events:none}
+.sm-t.sm-ghost.sm-go{opacity:0;transform:scale(.96);transition:opacity .18s ease,transform .18s ease-out}
+.sm-t.sm-hit::after{content:'';position:absolute;inset:-1px;border-radius:inherit;border:1.5px solid var(--primary);pointer-events:none;opacity:0;animation:smHit .9s var(--ease-out,cubic-bezier(.23,1,.32,1))}
 /* ── UI cleanup (Nov 2026): method notes behind the About button, merged pages as sub-tabs, Track Record modes, tighter spacing.
    Sits last so it wins ties with the earlier blocks. ── */
 .inset > footer{display:none!important}
@@ -2689,7 +2724,8 @@ th{font-weight:500}
 .ab-sec > i[aria-hidden]{display:none}.ab-sec .ps-lbl{font-weight:600;color:var(--fg)}.ab-sec .gp2-ctx{display:block;padding:0;border:0}.ab-sec .gp2-ctx i{display:none}
 .ab-sec dl{margin:0;display:grid;gap:6px}.ab-sec dt{color:var(--fg);font-weight:600}.ab-sec dd{margin:0 0 4px}
 @keyframes ab-in{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){ .aboutsheet[open]{animation:ab-fade .15s ease} @keyframes ab-fade{from{opacity:0}to{opacity:1}} }
+@media (prefers-reduced-motion:reduce){ .aboutsheet[open]{animation:ab-fade .15s ease} @keyframes ab-fade{from{opacity:0}to{opacity:1}}
+  .sm-i,.sm-t .tm .n.sm-mvd,.sm-dot.sm-pop,.sm-t.sm-hit::after{animation:none} rd-c,rd-s,rd-x>*,.sm-gauge .mk.bk,.sm-gauge .seg,.sm-t.sm-go,.sm-low.sm-go,.sm-enter.sm-go,.sm-t.sm-ghost.sm-go{transition:none} }
 /* Spacing: one step tighter everywhere; Compact is one step tighter again */
 :root{--pad:18px;--gap:12px}
 :root[data-density="compact"]{--pad:14px;--gap:8px}
@@ -12923,13 +12959,14 @@ function smGame(g, B, status, now){
     news: (B.news || []).filter(n => (n[3] === g.away || n[3] === g.home) && n[0] > now - 6 * 3600).length, started: g.tip <= now,
     fav: !!PRO.team && (g.away === PRO.team || g.home === PRO.team)};
 }
+const smGAt = x => { const R = Math.max(6, Math.ceil(Math.max(Math.abs(x.sp), Math.abs(x.vl))) + 2); return v => (Math.min(1, Math.max(0, (v + R) / (2 * R))) * 100).toFixed(2) + '%'; };
 function smGauge(x){                         // the home side's line: the book's number and the Vault line on one symmetric scale
-  const g = x.g, R = Math.max(6, Math.ceil(Math.max(Math.abs(x.sp), Math.abs(x.vl))) + 2), at = v => ((v + R) / (2 * R) * 100).toFixed(2) + '%';
+  const g = x.g, at = smGAt(x);
   const lo = Math.min(x.sp, x.vl), hi = Math.max(x.sp, x.vl);
   return `<div class="sm-k" style="position:relative">${esc(D.teams[g.home] ? D.teams[g.home].name.split(' ').pop() : g.home)}' line: book vs Vault</div>
     <div class="sm-gauge" role="img" aria-label="Book ${g.home} ${smSp(x.sp)}, Vault ${g.home} ${smSp(x.vl)}"><div class="ax"></div><div class="mid"></div>
       <div class="seg" style="left:${at(lo)};width:calc(${at(hi)} - ${at(lo)})"></div>
-      <div class="mk bk" style="left:${at(x.sp)}"><em>Book ${g.home} ${smSp(x.sp)}</em></div><div class="mk vl" style="left:${at(x.vl)}"><em>Vault ${g.home} ${smSp(x.vl)}</em></div></div>
+      <div class="mk bk" style="left:${at(x.sp)}"><em>Book ${g.home} <rd-v>${smSp(x.sp)}</rd-v></em></div><div class="mk vl" style="left:${at(x.vl)}"><em>Vault ${g.home} ${smSp(x.vl)}</em></div></div>
     <div class="sm-gends"><span>${g.home} by more</span><span>even</span><span>${g.away} by more</span></div>`;
 }
 function smHero(X, B, status, now){
@@ -12944,10 +12981,10 @@ function smHero(X, B, status, now){
   const outs = (B.outs || []).filter(o => o[1] === team).map(o => (P.find(p => p.id === +o[0]) || {}).name || ((B.players || {})[o[0]] || [])[0] || ((B.news || []).find(n => +n[1] === +o[0]) || [])[2]).filter(Boolean);
   const nOut = (B.outs || []).filter(o => o[1] === team).length;
   const next = (B.games || []).filter(y => (y.away === team || y.home === team) && y.tip > g.tip).sort((a, b) => a.tip - b.tip)[0];
-  return `<section class="sm-mod sm-next" style="${tc ? `--tc:${tc}` : ''}">${lgImg(team, 230) ? `<div class="wm" aria-hidden="true">${lgImg(team, 230)}</div>` : ''}
-    <div class="sm-r1"><span class="sm-k">${T ? 'Your team · next up' : 'Next up'}</span><span class="sm-tag">${x.started ? 'in progress' : `tips in ${smDur(g.tip - now)}`}</span>${pickSel}</div>
+  return `<section class="sm-mod sm-next" data-gid="${g.id}" style="${tc ? `--tc:${tc}` : ''}">${lgImg(team, 230) ? `<div class="wm" aria-hidden="true">${lgImg(team, 230)}</div>` : ''}
+    <div class="sm-r1"><span class="sm-k">${T ? 'Your team · next up' : 'Next up'}</span><span class="sm-tag">${x.started ? 'in progress' : `<span>tips in <rd-v data-k="tip" data-tip="${g.tip}">${smDur(g.tip - now)}</rd-v></span>`}</span>${pickSel}</div>
     <div class="sm-mu"><div class="t">${lgImg(g.away, 52)}${g.away}</div>
-      <div class="c"><b>${clock(g.tip)}</b><span>${etFmt(g.tip, {weekday: 'short'})} ${TZL}${g.total != null ? ` · O/U ${g.total}${x.openT != null && x.openT !== g.total ? ` (opened ${x.openT})` : ''}` : ''}</span></div>
+      <div class="c"><b>${clock(g.tip)}</b><span>${etFmt(g.tip, {weekday: 'short'})} ${TZL}${g.total != null ? ` · O/U <rd-v data-k="ou">${g.total}</rd-v>${x.openT != null && x.openT !== g.total ? ` (opened ${x.openT})` : ''}` : ''}</span></div>
       <div class="t">${lgImg(g.home, 52)}${g.home}</div></div>
     ${x.sp != null && x.vl != null ? smGauge(x) : `<p class="sm-note" style="padding:0">${x.vl == null ? 'No Vault line for this game yet.' : 'No book line posted yet.'}</p>`}
     <div class="sm-foot"><span class="sm-five">${five.map(p => smFace(p.id, p.name, 28)).join('')}</span><span>${five.map(p => esc(last(p.name))).join(', ')}${lu && lu.confirmed ? ' · confirmed' : lu ? ' · expected' : ' · by projected minutes'}</span>
@@ -12976,12 +13013,12 @@ function smTile(x, now){
   const fuP = x.fu.flatMap(t => t.p.map(p => ({t, p})));
   if (fuP.length) dots.push(`<span class="sm-dot fu" title="Favorite unders: a watch list, shadow-tracked, not a bet">${fuP.length} fav under${fuP.length > 1 ? 's' : ''} · watch</span>`);
   if (x.bets.length) dots.push(`<span class="sm-dot b">● ${x.bets.length} bet${x.bets.length > 1 ? 's' : ''}</span>`);
-  if (x.moved) dots.push(`<span class="sm-dot" title="Spread at open ${g.home} ${smSp(x.open)}, now ${smSp(x.sp)}">moved ${Math.abs(x.moved)}</span>`);
+  if (x.moved) dots.push(`<span class="sm-dot mv" title="Spread at open ${g.home} ${smSp(x.open)}, now ${smSp(x.sp)}">moved ${Math.abs(x.moved)}</span>`);
   if (x.news) dots.push(`<span class="sm-dot n" title="Injury report updates in the last 6 hours">${x.news} injury update${x.news > 1 ? 's' : ''}</span>`);
   const bk = t => x.sp == null ? DASH : smSp(t === g.home ? x.sp : -x.sp), vl = t => x.vl == null ? DASH : smSp(t === g.home ? x.vl : -x.vl);
   const on = p => pvBets.some(b => !b.res && smBetOn(b, p));
-  return `<article class="sm-mod sm-t${x.fav ? ' fav' : ''}${x.bets.length ? ' mine' : ''}${x.started ? ' past' : ''}" data-tip="${clock(g.tip)}" style="${tc ? `--tc:${tc}` : ''}">
-    <div class="hd"><b>${clock(g.tip)}</b>${x.fav ? '<span class="sm-tag">★ Your team</span>' : ''}<span class="sm-k">${g.total != null ? `O/U ${g.total}` : ''}</span></div>
+  return `<article class="sm-mod sm-t${x.fav ? ' fav' : ''}${x.bets.length ? ' mine' : ''}${x.started ? ' past' : ''}" data-gid="${g.id}" data-tip="${clock(g.tip)}" style="${tc ? `--tc:${tc}` : ''}">
+    <div class="hd"><b>${clock(g.tip)}</b>${x.fav ? '<span class="sm-tag">★ Your team</span>' : ''}<span class="sm-k">${g.total != null ? `O/U <rd-v data-k="ou">${g.total}</rd-v>` : ''}</span></div>
     <div class="tm h"><span></span><span>Book</span><span>Vault</span></div>
     ${[g.away, g.home].map(t => `<div class="tm"><span class="nm">${lgImg(t, 20)}${t}</span><span class="n">${bk(t)}</span><span class="n v">${vl(t)}</span></div>`).join('')}
     <div class="pks"><div class="${x.locked ? '' : 'lean'}" title="${x.locked ? 'Locked 4 hours before tip' : 'Live lean: locks 4 hours before tip'}"><span class="sm-k">Spread${x.locked ? '' : ' · lean'}</span>${x.ats ? `<b>${x.ats.team} ${smSp(x.ats.line)}${gpBadge('ats', x.ats.edge, null, `edge ${x.ats.edge.toFixed(1)} points`)}</b>` : `<b class="dim">${x.sp == null ? 'No line' : 'No pick'}</b>`}</div>
@@ -13016,7 +13053,107 @@ function smLow(X, B, now){
       : '<p class="sm-note">No injury news for tonight\'s teams in the last day.</p>'}</section>`;
   return `<div class="sm-low">${bets}${recs}${news}</div>`;
 }
+// ── Summary motion ───────────────────────────────────────────────────────
+// A number rolls only from the value this page last drew to the value it draws now, both stored: nothing counts up from zero.
+// No requestAnimationFrame: a tab that is not painting never runs it. Every change is flushed with a forced reflow and cleaned up on a timer.
+const smM = {seen: false, t0: 0, prev: new Map(), tag: null, flip: false}, SM_IN = 16 * 32 + 500;
+const smMoOn = () => !muReduced() && !document.hidden && $('v-summary').offsetWidth > 0;
+const RD_STRIP = '<rd-s>' + [9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => `<rd-d>${d}</rd-d>`).join('') + '</rd-s>';
+// Line two values up run by run. Digit runs pad on the left; the other runs must be the same length. null when the shapes differ.
+function rdAlign(a, b){
+  const A = a.match(/\d+|\D+/g) || [], B = b.match(/\d+|\D+/g) || [], out = []; if (A.length !== B.length) return null;
+  for (let i = 0; i < A.length; i++){
+    const da = /^\d/.test(A[i]), db = /^\d/.test(B[i]); if (da !== db || (!da && A[i].length !== B[i].length)) return null;
+    const n = Math.max(A[i].length, B[i].length), x = A[i].padStart(n, ' '), y = B[i].padStart(n, ' '), dir = da ? Math.sign(+B[i] - +A[i]) : 0;
+    for (let j = 0; j < n; j++) out.push([x[j], y[j], dir]);
+  }
+  return out;
+}
+function rdSettle(el, v){ clearTimeout(el._rd); el.textContent = v; el._rv = v; }
+// Roll el to `to`. `from` defaults to what it shows; `way` (-1 down, 1 up) picks the short way round when a 0 becomes a 9 or a 9 a 0.
+function rdRoll(el, to, way, from){
+  if (from == null) from = el._rv != null ? el._rv : el.textContent;
+  if (from === to || muReduced() || document.hidden){ rdSettle(el, to); return; }
+  const P = rdAlign(from, to), D = c => /\d/.test(c); clearTimeout(el._rd);
+  el.classList.add('rd-seed');
+  el.innerHTML = `<span class="sr">${esc(to)}</span>` + (!P ? `<rd-x aria-hidden="true" style="--i:0"><rd-o>${esc(from)}</rd-o><rd-n>${esc(to)}</rd-n></rd-x>` : P.map(([a, b, dir], i) => {
+    const da = D(a), db = D(b); dir = way || dir;
+    if (da || db) return `<rd-c aria-hidden="true" class="${da ? '' : 'gone'}" style="--d:${da ? a : b};--i:${i}" data-to="${!db ? '' : da && dir < 0 && a === '0' && b === '9' ? -1 : da && dir > 0 && a === '9' && b === '0' ? 10 : b}"><rd-g>${da ? a : b}</rd-g>${RD_STRIP}</rd-c>`;
+    return a === b ? `<span aria-hidden="true">${esc(a)}</span>` : `<rd-x aria-hidden="true" style="--i:${i}"><rd-o>${esc(a)}</rd-o><rd-n>${esc(b)}</rd-n></rd-x>`;
+  }).join(''));
+  void el.offsetWidth; el.classList.remove('rd-seed');
+  el.querySelectorAll('rd-c').forEach(c => { const d = c.dataset.to; if (d === '') c.classList.add('gone'); else { c.classList.remove('gone'); c.style.setProperty('--d', d); } });
+  el.querySelectorAll('rd-x').forEach(x => x.classList.add('go'));
+  el._rv = to; el._rd = setTimeout(() => rdSettle(el, to), 760 + (P ? P.length : 1) * 45);   // back to plain text once it lands
+}
+// where every tile sits, taken before a filter redraw, so the tiles that stay can travel and the ones that leave can fade
+function smSnap(){
+  const grid = document.querySelector('#v-summary .sm-tiles'), low = document.querySelector('#v-summary .sm-low'); if (!grid) return null;
+  const rect = new Map(), node = new Map();
+  grid.querySelectorAll('.sm-t[data-gid]').forEach(t => { rect.set(t.dataset.gid, t.getBoundingClientRect()); node.set(t.dataset.gid, t); });
+  return {rect, node, grid: grid.getBoundingClientRect(), low: low ? low.getBoundingClientRect().top : null};
+}
+// runs after every Summary draw: the first-paint intro, the numbers that changed since the last draw, and the filter travel
+function smMotion(X, snap){
+  const V = $('v-summary'), on = smMoOn(), by = new Map(X.map(x => [String(x.g.id), x]));
+  if (!smM.seen){ smM.seen = true; smM.t0 = on ? Date.now() : 0; }
+  const el = Date.now() - smM.t0;                // a redraw inside the intro window picks the intro up where it was
+  if (on && !snap && el < SM_IN) V.querySelectorAll('.sm-next, .sm-b, .sm-scrub, .sm-t, .sm-low > .sm-mod').forEach((n, i) => { n.classList.add('sm-i'); n.style.setProperty('--i', Math.min(i, 16)); n.style.setProperty('--el', el + 'ms'); });
+  const ou = (root, p, x) => { const o = root.querySelector('rd-v[data-k="ou"]'); if (o && p.total != null && x.g.total != null && p.total !== x.g.total) rdRoll(o, o.textContent, 0, String(p.total)); };
+  if (on) V.querySelectorAll('.sm-t[data-gid]').forEach(t => {
+    const x = by.get(t.dataset.gid), p = x && smM.prev.get(t.dataset.gid); if (!p) return;
+    if (p.sp != null && x.sp != null && p.sp !== x.sp){
+      t.querySelectorAll('.tm:not(.h)').forEach((r, i) => { const c = r.querySelector('.n:not(.v)'); rdRoll(c, c.textContent, 0, smSp(i ? p.sp : -p.sp)); c.classList.add('sm-mvd'); });   // row 0 is the away team
+      const d = t.querySelector('.sm-dot.mv'); if (d) d.classList.add('sm-pop');
+    }
+    ou(t, p, x);
+  });
+  const h = V.querySelector('.sm-next[data-gid]'), hx = h && by.get(h.dataset.gid), hp = hx && smM.prev.get(h.dataset.gid);
+  if (on && hp){
+    const bk = h.querySelector('.sm-gauge .mk.bk'), seg = h.querySelector('.sm-gauge .seg');
+    if (bk && seg && hp.sp != null && hx.sp != null && hx.vl != null && hp.sp !== hx.sp){
+      const now = [bk.style.left, seg.style.left, seg.style.width], at = smGAt(hx), lo = Math.min(hp.sp, hx.vl), hi = Math.max(hp.sp, hx.vl);
+      bk.classList.add('rd-seed'); seg.classList.add('rd-seed');
+      bk.style.left = at(hp.sp); seg.style.left = at(lo); seg.style.width = `calc(${at(hi)} - ${at(lo)})`;
+      void bk.offsetWidth; bk.classList.remove('rd-seed'); seg.classList.remove('rd-seed');
+      [bk.style.left, seg.style.left, seg.style.width] = now;
+      const n = bk.querySelector('rd-v'); if (n) rdRoll(n, n.textContent, 0, smSp(hp.sp));
+    }
+    ou(h, hp, hx);
+  }
+  const tg = h && h.querySelector('rd-v[data-k="tip"]'), txt = tg ? tg.textContent : null;
+  if (tg && on && smM.tag && smM.tag.gid === h.dataset.gid && smM.tag.txt !== txt) rdRoll(tg, txt, -1, smM.tag.txt);
+  smM.tag = tg ? {gid: h.dataset.gid, txt} : null;
+  X.forEach(x => smM.prev.set(String(x.g.id), {sp: x.sp, total: x.g.total}));
+  if (!snap || !on) return;
+  const grid = V.querySelector('.sm-tiles'), low = V.querySelector('.sm-low'), mv = []; if (!grid) return;
+  grid.querySelectorAll('.sm-t[data-gid]').forEach(t => {
+    const a = snap.rect.get(t.dataset.gid); if (!a){ t.classList.add('sm-enter'); mv.push(t); return; }
+    const b = t.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (dx || dy){ t.style.transform = `translate(${dx}px,${dy}px)`; mv.push(t); }
+  });
+  const em = grid.querySelector('.sm-empty'); if (em){ em.classList.add('sm-enter'); mv.push(em); }
+  if (low && snap.low != null){ const dy = snap.low - low.getBoundingClientRect().top; if (dy){ low.style.transform = `translateY(${dy}px)`; mv.push(low); } }
+  const ghosts = [...snap.node].filter(([id]) => !grid.querySelector(`.sm-t[data-gid="${id}"]`)).map(([id, n]) => {
+    const r = snap.rect.get(id); n.classList.remove('sm-go', 'sm-enter', 'sm-hit', 'sm-i'); n.classList.add('sm-ghost'); n.setAttribute('aria-hidden', 'true'); n.inert = true; n.removeAttribute('data-gid'); n.removeAttribute('data-tip');
+    Object.assign(n.style, {transform: '', left: r.left - snap.grid.left + 'px', top: r.top - snap.grid.top + 'px', width: r.width + 'px', height: r.height + 'px'}); grid.appendChild(n); return n; });
+  void grid.offsetWidth;
+  mv.forEach(t => { t.classList.add('sm-go'); t.style.transform = ''; }); ghosts.forEach(n => n.classList.add('sm-go'));
+  setTimeout(() => { ghosts.forEach(n => n.remove()); mv.forEach(t => t.classList.remove('sm-go', 'sm-enter')); }, 560);
+}
+function smHit(tip){
+  if (!smMoOn()) return;
+  document.querySelectorAll(`#v-summary .sm-t[data-tip="${tip}"]`).forEach(t => { t.classList.remove('sm-hit'); void t.offsetWidth; t.classList.add('sm-hit'); clearTimeout(t._hit); t._hit = setTimeout(() => t.classList.remove('sm-hit'), 950); });
+}
+// the countdown to the next tip ticks on its own; when the game tips the page redraws
+setInterval(() => {
+  if (view !== 'summary' || document.hidden) return;
+  const el = document.querySelector('#v-summary .sm-next rd-v[data-k="tip"]'); if (!el) return;
+  const left = +el.dataset.tip - Date.now() / 1000; if (left <= 0){ renderSummary(); return; }
+  const s = smDur(left); if (s === (el._rv != null ? el._rv : el.textContent)) return;
+  rdRoll(el, s, -1); if (smM.tag) smM.tag.txt = s;
+}, 15000);
 function renderSummary(){
+  const snap = smM.flip && smMoOn() ? smSnap() : null; smM.flip = false;
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, status = statusFromBoard(B);
   const all = (B.games || []).filter(g => g.tip > now - 3 * 3600).sort((a, b) => a.tip - b.tip);
   const day = all.length ? etDay(all[0].tip) : null, games = all.filter(g => etDay(g.tip) === day);
@@ -13041,15 +13178,17 @@ function renderSummary(){
       ${nB ? `<button type="button" class="sm-chip" data-smf="bets" aria-pressed="${smF === 'bets'}">My bets<i>${nB}</i></button>` : ''}</div>
     <div class="sm-tiles">${shown.length ? shown.map(x => smTile(x, now)).join('') : '<section class="sm-mod sm-empty"><b>No games match.</b><p>Clear the filter to see every game.</p></section>'}</div>
     ${smLow(X, B, now)}`;
+  smMotion(X.concat(favX), snap);
   $('smfoot').innerHTML = `<div><b>How to read it.</b> Book is DraftKings' spread for each team; Vault is the Vault line from the Slate page. Spread and Winner are the Game Picks, locked 4 hours before tip (dashed until then). A, B and C are their shadow grades, labels fixed in advance, not recommendations. Sharp Plays are logged on Sharp Money and pass its strict price and timing gates; sharp-account money is context only and never counts toward a play. <span class="sm-tag fu">Fav under</span> marks a watch list, not a bet: the under on a player whose team is favored by 4.5 to 8.5, when the model gives the under 5+ points more than the price (the small number after the price). Fixed an hour before tip at the best DraftKings or Pinnacle price and tracked from Nov 4. It was found by searching many splits of 13 nights, so expect it to fade; a team's unders win or lose together.</div>`;
 }
 $('v-summary').addEventListener('change', e => { const s = e.target.closest('[data-smfav]'); if (!s || !s.value) return; PRO.team = s.value; proSave(); renderNav(); renderSummary(); });
 $('v-summary').addEventListener('click', e => {
   const go = e.target.closest('[data-go]'); if (go){ e.preventDefault(); goView(go.dataset.go); return; }
   const hr = e.target.closest('[data-href]'); if (hr){ window.open(hr.dataset.href, '_blank', 'noopener'); return; }
-  const f = e.target.closest('[data-smf]'); if (f){ smF = smF === f.dataset.smf ? null : f.dataset.smf; renderSummary(); return; }
+  const f = e.target.closest('[data-smf]'); if (f){ smF = smF === f.dataset.smf ? null : f.dataset.smf; smM.flip = true; renderSummary(); return; }
   const j = e.target.closest('[data-smjump]');
-  if (j){ if (smF){ smF = null; renderSummary(); } const t = document.querySelector(`#v-summary .sm-t[data-tip="${j.dataset.smjump}"]`); if (t) t.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'});
+  if (j){ if (smF){ smF = null; smM.flip = true; renderSummary(); } const t = document.querySelector(`#v-summary .sm-t[data-tip="${j.dataset.smjump}"]`); if (t) t.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'});
+    smHit(j.dataset.smjump);
     document.querySelectorAll('#v-summary [data-smjump]').forEach(b => b.setAttribute('aria-pressed', b === document.querySelector(`#v-summary [data-smjump="${j.dataset.smjump}"]`))); }
 });
 
