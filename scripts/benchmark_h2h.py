@@ -149,6 +149,22 @@ def play_rows(g, arc, fin, mk, money, now):
     return out
 
 
+def open_picks(games, root, graded, now, days=7):
+    """The benchmark's real plays at our cut that have no graded row yet (game not final or market unresolved), for the Record page."""
+    out = []
+    for g in games:
+        arc = jload(os.path.join(root, g["sport"], g["date"], g["fn"]), None)
+        if not arc or g["gst"] < now - days * 86400:
+            continue
+        for p in (arc.get("picks_at_cut") or {}).get("picks") or []:
+            mt = p.get("marketType")
+            if not real_play(p) or mt not in GROUP or f"{g['ev']}@{g['gst']}|at_cut|{mt}|{p.get('team')}" in graded:
+                continue
+            out.append({"sport": g["sport"], "ev": g["ev"], "gst": g["gst"], "group": GROUP[mt], "team": p.get("team"),
+                        "units": p.get("units"), "odds_lock": p.get("oddsLock")})
+    return sorted(out, key=lambda r: (-r["gst"], r["ev"], r["group"]))
+
+
 def summarize(rows, units_key="units", pl_key="units_pl"):
     g = [r for r in rows if r.get("res") in ("win", "loss", "push") and r.get("flat") is not None]
     flat = [r["flat"] for r in g]
@@ -426,6 +442,7 @@ def main():
     sf_rows = list(have.values()) + new
     card_rows = [r for r in load_jsonl(os.path.join(a.out, "cards", "*", "*.jsonl")).values() if r.get("kind") != "close"]
     rec = h2h(sf_rows, card_rows, now)
+    rec["open"] = open_picks(games, root, {r["key"] for r in sf_rows}, now)
     rec["archive"] = {"games_in_window": len(games), "archived_now": archived, "finals_now": finals, "problems": problems[:20]}
     save_record(os.path.join(a.out, "h2h_record.json"), rec)
     print(json.dumps({"archived": archived, "finals": finals, "new_rows": len(new), "problems": problems[:5]}))

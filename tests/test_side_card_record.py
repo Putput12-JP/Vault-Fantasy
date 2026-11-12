@@ -121,6 +121,19 @@ class Grade(unittest.TestCase):
         h = H.h2h([], rows, 0)["sports"]["nba"]["spread"]
         self.assertEqual((h["vault_sfx"]["n"], h["vault_shown_size"]["n"]), (1, 0))
 
+    def test_open_plays_list_locked_unsettled_plays_only(self):
+        c = card(LOCK)
+        c["markets"]["spread"]["sf"] = {"all": {"side": "Jazz", "units": 2, "line": -4.5, "price": 0.515, "price_t": CUT - 60, "cid": "c1",
+                                                "outs": ["Magic", "Jazz"]}}
+        todo = [("nba/frozen/d/x.json", c, None)]
+        got = G.open_plays(todo, set(), GST + 3600)
+        self.assertEqual(sorted((r["play"], r["side"], r["units"]) for r in got), [("lock", "Jazz", 3), ("sf", "Jazz", 2)])
+        graded = {"nba/frozen/d/x.json|spread|all|sf", "nba/frozen/d/x.json|spread|all|lock"}
+        self.assertEqual(G.open_plays(todo, graded, GST + 3600), [])                 # settled: gone from the open list
+        self.assertEqual(G.open_plays(todo, set(), GST + 8 * 86400), [])             # older than 7 days: dropped
+        c["test"]["counts"] = False
+        self.assertEqual([r["play"] for r in G.open_plays(todo, set(), GST + 3600)], ["sf"])   # a lock that does not count is not listed
+
     def test_bootstrap_is_seeded(self):
         xs = [1.0, -1.0, 0.9, -1.0, 0.5]
         self.assertEqual(G.boot_ci(xs), G.boot_ci(xs))

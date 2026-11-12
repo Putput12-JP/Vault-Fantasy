@@ -96,3 +96,12 @@ The head-to-head (`vault_shown_size`, `vault_sfx`, `benchmark`) and the Record p
 whichever Vault rule set is beating SharpFlow once both have a usable sample. That switch is a decision made with the user, not
 automatic, and the pre-registered lock is unchanged either way.
 
+## Open plays
+
+`cards_record.json` and `h2h_record.json` each carry an `open` list: locked plays with no graded row yet (the game is not final or the
+market has not resolved), from the last 7 days. Vault's list has the shown size (variant `all`) on every frozen card and the
+pre-registered lock on counted cards; the benchmark's has its real plays as shown at our cut. The Record page adds Vault's live
+suggested sizes from the live cards (games not yet locked) and shows them all under "Open plays", each with its status: locks at,
+locked, or awaiting result. A play leaves the list once its row is graded. The benchmark's plays appear only after our lock, because
+its picks are archived at the cut.
+
