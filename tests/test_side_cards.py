@@ -242,5 +242,65 @@ class ReviewFixes(unittest.TestCase):
         self.assertEqual(stale["test"]["why_not"], ["ledger run not before the cut"])
 
 
+class Detail(unittest.TestCase):
+    """The play-detail fields: price skill from stored closes, the at-this-size record, the first-flagged price."""
+    def test_price_skill_counts_bets_bought_below_the_stored_close(self):
+        rows = [dict(row("0xa", i, "win"), avg=0.50) for i in range(4)]
+        closes = {(r["cid"], 0): (0.55 if i < 3 else 0.45) for i, r in enumerate(rows)}      # 3 bought below the close, 1 above
+        L = C.Ledger(rows, {}, {"0xa": CUT - 86400 * 100}, [], CUT - 3600, closes)
+        b = L.stats("0xa", CUT)["all"]
+        self.assertEqual((b["clv_n"], b["clv_beat"]), (4, 3))
+        self.assertAlmostEqual(b["clv_mean"], (0.05 * 3 - 0.05) / 4)
+
+    def test_split_positions_are_left_out_of_price_skill(self):
+        rows = [dict(row("0xa", 0, "win", split=True), avg=0.5), dict(row("0xa", 1, "win"), avg=0.4)]
+        closes = {(r["cid"], 0): 0.6 for r in rows}
+        b = C.Ledger(rows, {}, {"0xa": CUT - 86400 * 100}, [], CUT - 3600, closes).stats("0xa", CUT)["all"]
+        self.assertEqual(b["clv_n"], 1)
+
+    def test_no_close_means_no_price_skill(self):
+        b = ledger([dict(row("0xa", 0, "win"), avg=0.5)]).stats("0xa", CUT)["all"]
+        self.assertEqual((b["clv_n"], b["clv_mean"]), (0, None))
+
+    def test_closes_from_keyframe_need_a_fresh_price_and_pm_closes_need_identical_outcomes(self):
+        import json, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "nba", "frozen", "x"))
+            with open(os.path.join(d, "nba", "frozen", "x", "k.json"), "w") as f:
+                json.dump({"cut": CUT, "mk": {"fresh": {"px": [0.6, 0.4], "px_t": CUT - 60},
+                                              "stale": {"px": [0.6, 0.4], "px_t": CUT - C.CLOSE_STALE - 1}}}, f)
+            with open(os.path.join(d, "nba", "frozen", "x", "j.json"), "w") as f:     # postponed: a later cut for the same market
+                json.dump({"cut": CUT + 86400, "mk": {"fresh": {"px": [0.7, 0.3], "px_t": CUT + 86400 - 60}}}, f)
+            markets = {"m1": {"slug": "nba-a-b-2026-11-11", "mt": "spreads", "line": -4.5, "outs": ["A", "B"]},
+                       "m2": {"slug": "nba-a-b-2026-11-11", "mt": "spreads", "line": -4.5, "outs": ["B", "A"]}}
+            pmc = {"games": {"nba|nba-a-b-2026-11-11": {"spreads": [{"line": -4.5, "outcomes": ["A", "B"], "p": 0.52}]}}}
+            got = C.load_closes(d, "nba", markets, pmc)
+        self.assertEqual(got[("fresh", 1)], 0.3)                # the latest cut wins
+        self.assertNotIn(("stale", 0), got)
+        self.assertAlmostEqual(got[("m1", 1)], 0.48)
+        self.assertNotIn(("m2", 0), got)                     # outcome order differs: not the same market
+
+    def test_at_size_band(self):
+        b = {"usual": 100.0, "sizes": [[50, True], [90, True], [110, False], [200, True], [400, False]]}
+        a = C.at_size(b, 1.2)                                # 0.75x to 1.5x band: the 90 and 110 positions
+        self.assertEqual((a["lo"], a["hi"], a["w"], a["l"], a["share"]), (0.75, 1.5, 1, 1, 0.4))
+        self.assertEqual(C.at_size(b, 3.7)["hi"], None)      # 3x and up is open-ended
+
+    def test_flagged_price_is_carried_while_the_side_holds(self):
+        new = {"markets": {"ml": {"sf": {"all": {"side": "A", "price": 0.6}}, "lock_shadow": {}}}}
+        old = {"markets": {"ml": {"sf": {"all": {"side": "A", "flagged": {"price": 0.55, "t": 1}}}}}}
+        C.carry_flagged(new, old, 99)
+        self.assertEqual(new["markets"]["ml"]["sf"]["all"]["flagged"], {"price": 0.55, "t": 1})
+        flip = {"markets": {"ml": {"sf": {"all": {"side": "B", "price": 0.4}}}}}
+        C.carry_flagged(flip, old, 99)
+        self.assertEqual(flip["markets"]["ml"]["sf"]["all"]["flagged"], {"price": 0.4, "t": 99})
+        moved = {"markets": {"ml": {"sf": {"all": {"side": "A", "price": 0.5, "cid": "other-rung", "price_t": 77}}}}}
+        C.carry_flagged(moved, old, 99)                      # same team, different market: flagged again, at its own price time
+        self.assertEqual(moved["markets"]["ml"]["sf"]["all"]["flagged"], {"price": 0.5, "t": 77})
+        frozen = {"markets": {"ml": {"sf": {"all": {"side": "B", "price": 0.4}}}}}
+        C.carry_flagged(frozen, None, None)                  # a frozen card only inherits
+        self.assertNotIn("flagged", frozen["markets"]["ml"]["sf"]["all"])
+
+
 if __name__ == "__main__":
     unittest.main()

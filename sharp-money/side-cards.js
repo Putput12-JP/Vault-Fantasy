@@ -15,6 +15,7 @@
 'use strict';
 var OPT = {}, UI = {}, SHOWN = {};
 /* Vault NBA skin: every colour comes from the NBA page's own theme variables, so light, dark and charcoal follow the page */
+var DETAIL = '.vd-wrap{position:fixed;inset:0;z-index:1000;margin:0!important;--ease-sheet:cubic-bezier(0.32,0.72,0,1)}\n.vd-scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s ease}\n.vd-wrap.on .vd-scrim{opacity:1}\n.vd{position:absolute;top:0;right:0;bottom:0;width:min(560px,100%);overflow-y:auto;overscroll-behavior:contain;background:var(--c-card);color:var(--c-ink);font-family:var(--c-sans);font-size:14px;line-height:1.4;padding:20px 20px 32px;border-left:1px solid var(--c-line);transform:translateX(100%);transition:transform var(--dur-rail,400ms) var(--ease-sheet)}\n.vd-wrap.on .vd{transform:none}\n.vd .num{font-family:var(--c-num);font-variant-numeric:tabular-nums;letter-spacing:var(--c-num-ls,0)}\n.vd .vd-cap{display:block;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-mut)}\n.vd-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}\n.vd-top h2{margin:6px 0 4px;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.1}\n.vd-px{display:flex;align-items:baseline;gap:10px;font-size:15px}.vd-px b{font-size:20px}.vd-px span{color:var(--c-mut)}\n.vd-px em{font-style:normal;font-weight:600;color:var(--c-mut)}.vd-px em.up{color:var(--c-good)}.vd-px em.dn{color:var(--c-bad)}\n.vd-sub{display:block;margin-top:3px;font-size:12.5px;color:var(--c-dim)}\n.vd-x{all:unset;box-sizing:border-box;cursor:pointer;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--c-box);color:var(--c-mut);flex:none}\n.vd-x svg{width:16px;height:16px}.vd-x:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}\n.vd-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:18px}\n.vd-hero b{font-size:40px;font-weight:700;letter-spacing:-.04em;line-height:1}\n.vd-op{margin-left:10px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.vd-op.ok{color:var(--c-good)}.vd-op.no{color:var(--c-warn)}\n.vd-u{text-align:right}.vd-u b{display:block;font-size:24px;color:var(--c-gold)}\n.vd-mix{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--c-box);margin-top:12px;gap:1px}\n.vd-mix i{display:block;height:100%}.vd-mix .sharp{background:var(--c-good)}.vd-mix .unp{background:var(--c-rb-unp)}.vd-mix .loser{background:var(--c-bad)}\n.vd-mixl{display:flex;gap:14px;margin-top:6px;font-size:12px;color:var(--c-mut)}\n.vd-sec,.vd-lead{margin-top:18px;padding:16px;border-radius:var(--c-mr,14px);background:var(--c-box)}\n.vd-key{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0 4px;font-size:12px;color:var(--c-mut)}\n.vd-key span{display:inline-flex;align-items:center;gap:5px}.vd-key em{font-style:normal;margin-left:auto;color:var(--c-dim)}\n.vd-key i{width:9px;height:9px;border-radius:50%}.vd-key .sharp{background:var(--c-good)}.vd-key .gold{background:var(--c-gold)}\n.vd-key .unp{background:transparent;border:1.5px dashed var(--c-rb-unp)}.vd-key .loser{background:var(--c-bad)}.vd-key .opp{background:transparent;border:1.5px solid var(--c-mut)}\n.vd-sc{display:block;width:100%;height:auto;margin-top:4px}\n.vd-sc .gl{stroke:var(--c-line2);stroke-width:1}.vd-sc .gl.z{stroke:var(--c-mut);stroke-dasharray:3 4}\n.vd-sc .ax{fill:var(--c-dim);font-size:11px;font-family:var(--c-num)}.vd-sc .axt{fill:var(--c-mut);font-size:11.5px;font-family:var(--c-sans)}\n.vd-sc .b circle{stroke-width:1.5;fill-opacity:.85}.vd-sc .b.sharp circle{fill:var(--c-good);stroke:var(--c-good)}.vd-sc .b.gold circle{fill:var(--c-gold);stroke:var(--c-gold)}\n.vd-sc .b.unp circle{fill:var(--c-rb-unp);fill-opacity:.25;stroke:var(--c-rb-unp);stroke-dasharray:3 3}.vd-sc .b.loser circle{fill:var(--c-bad);stroke:var(--c-bad)}\n.vd-sc .b.opp circle{fill-opacity:0}.vd-sc .bl{fill:var(--c-gold);font-size:13px;font-weight:700;font-family:var(--c-num)}\n.vd-held{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--c-mut)}\n.vd-lead{box-shadow:inset 3px 0 0 var(--c-gold)}\n.vd-lh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:8px}\n.vd-lh b{font-size:18px}.vd-lu{text-align:right}.vd-lu b{display:block;font-size:24px;color:var(--c-gold)}.vd-lu span{font-size:12px;color:var(--c-mut)}\n.vd-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700;vertical-align:2px;border:1px solid currentColor}\n.vd-tag.sharp{color:var(--c-good)}.vd-tag.gold{color:var(--c-gold)}.vd-tag.unp{color:var(--c-mut)}.vd-tag.loser{color:var(--c-bad)}\n.vd-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}\n.vd-box{padding:12px;border-radius:12px;background:var(--c-card);min-width:0}.vd-box b{display:block;font-size:24px;margin-top:4px}.vd-box span.num{font-size:12.5px;color:var(--c-mut)}\n.vd-box.good{box-shadow:inset 0 0 0 1px var(--c-good-line)}.vd-box.good b{color:var(--c-good)}\n.vd-size{margin-top:14px}.vd-szh{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--c-mut)}.vd-szh b{color:var(--c-good);font-size:15px}\n.vd-bar{position:relative;height:6px;border-radius:3px;background:var(--c-card);margin:8px 0 6px}.vd-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--c-good)}\n.vd-bar u{position:absolute;top:-3px;width:2px;height:12px;background:var(--c-ink)}\n.vd-size p{margin:6px 0 0;font-size:12.5px;color:var(--c-mut)}\n.vd-who{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}\n.vd-col{padding:12px;border-radius:12px;background:var(--c-card);min-width:0;border-top:2px solid var(--c-bad)}.vd-col.own{border-top-color:var(--c-good)}\n.vd-ch{display:flex;justify-content:space-between;align-items:baseline}.vd-ch b{font-size:16px}.vd-cn{display:block;margin:2px 0 6px;font-size:15px}\n.vd-w{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--c-line)}\n.vd-w>i{width:8px;height:8px;border-radius:50%;background:var(--c-dim)}.vd-w.sharp>i{background:var(--c-good)}.vd-w.gold>i{background:var(--c-gold)}.vd-w.loser>i{background:var(--c-bad)}\n.vd-w.unp>i{background:transparent;border:1.5px dashed var(--c-rb-unp)}\n.vd-w b{font-size:13px}.vd-w div span{display:block;font-size:11.5px;color:var(--c-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.vd-wr{text-align:right}.vd-wr span{display:block;font-size:11.5px;color:var(--c-mut)}\n.vd-none,.vd-more{margin:6px 0 0;font-size:12px;color:var(--c-dim)}\n.vd-p{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--c-mut)}.vd-p b{color:var(--c-ink)}\n.vd-foot{margin:16px 2px 0;font-size:12px;color:var(--c-dim);line-height:1.5}\n.vsc .vc-open{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;margin-top:14px;border-radius:12px;background:var(--c-card);border:1px solid var(--c-line2);font-size:13.5px;font-weight:600;color:var(--c-ink)}\n.vsc .vc-open:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}\n@media (max-width:767px){\n.vd{top:6vh;width:100%;border-left:0;border-radius:20px 20px 0 0;padding:18px 16px 28px;transform:translateY(100%)}\n.vd-top h2{font-size:23px}.vd-hero b{font-size:34px}\n.vd-who{grid-template-columns:1fr}\n.vd-sec,.vd-lead{padding:14px}\n}\n@media (prefers-reduced-motion:reduce){.vd,.vd-scrim{transition:none}}\n';
 var NBA = 'html .vsc.vsc-nba{--c-card:var(--surface);--c-box:var(--surface2,var(--raised));--c-line:var(--border);--c-line2:var(--border2);--c-ink:var(--fg);--c-mut:var(--fg2);--c-dim:var(--fg3);' +
   '--c-good:var(--up);--c-on-good:var(--bg);--c-bad:var(--down);--c-warn:var(--warn);--c-gold:#e5c877;--c-good-line:color-mix(in srgb,var(--up) 50%,transparent);--c-good-box:color-mix(in srgb,var(--up) 7%,transparent);' +
   '--c-rb-unp:var(--fg3);--c-tile:#f3f4f6;--c-tile-ink:#0b0c0e;--c-r:var(--r-card,16px);--c-pad:22px;--c-mr:12px;--c-shadow:none;--c-sans:var(--font-sans);--c-num:var(--font-mono);--c-num-ls:-.02em;' +
@@ -79,7 +80,11 @@ function sideOrder(g, m, key){
 function sideLabel(name, key, ls){
   if (key === 'ml') return name + ' ML';
   if (key === 'total') return name;
-  if (ls && ls.side === name && ls.line != null) return name + ' ' + (ls.line > 0 ? '+' : '') + ls.line;
+  if (ls && ls.side === name && ls.line != null){
+    /* Polymarket's spread line is outcomes[0]'s: the other team gets the opposite sign (Magic -4.5 makes the Jazz +4.5) */
+    var outs = ls.outs || ls._outs, ln = outs && outs.length === 2 && outs[1] === name ? -ls.line : ls.line;
+    return name + ' ' + (ln > 0 ? '+' : '') + ln;
+  }
   return name + ' spread';
 }
 
@@ -90,6 +95,10 @@ function nProven(s){ return s.counts.sharp + s.counts.hc; }
 /* the market's play: SharpFlow's stake policy as the builder replicates it (m.sf), else the older lock rule on cards built before it existed */
 function shadow(m, v){
   var sf = (m.sf || {})[v];
+  if (sf && sf.side && !sf.outs && !sf._outs){                       /* cards built before sf stored its outcome order */
+    var lk = (m.lock_shadow || {})[v] || {};
+    if (lk.outs && (lk.cid === sf.cid || (lk.line === sf.line && lk.outs.indexOf(sf.side) >= 0))) sf._outs = lk.outs;
+  }
   if (sf) return sf.side && sf.units > 0 ? sf : null;
   var ls = (m.lock_shadow || {})[v] || {};
   return ls.side && ls.gates ? ls : null;
@@ -144,7 +153,7 @@ function verdict(g, m, key, names, v){
       tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>'
       : '<p class="vc-why">' + (rg ? rg[1] : 'This side meets one of SharpFlow\'s staking rules.') + '</p>') +
       '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size is what SharpFlow\'s staking rules give this side, rebuilt from Vault\'s own wallet records. ' +
-      'It does not yet use Pinnacle line moves, the odds cap or three of SharpFlow\'s smaller rules, so it can differ from SharpFlow\'s own pick. This rule has no graded record yet.</p></details></section>';
+      'It does not yet use Pinnacle line moves, the odds cap or three of SharpFlow\'s smaller rules, so it can differ from SharpFlow\'s own pick. This rule has no graded record yet.</p></details><button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
   }
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
   var other = names.filter(function(n){ return n !== lead; })[0], tot = counted(S[lead]) + counted(S[other]);
@@ -155,7 +164,7 @@ function verdict(g, m, key, names, v){
   else if (share < .6) why = 'Proven money is on ' + esc(lead) + ', but it holds <span class="num">' + Math.round(share * 100) + '%</span> of the money. The rule needs 60%.';
   else why = esc(lead) + ' has the money and a proven wallet. No wallet is sized up to 1.5x its usual stake yet.';
   return '<section class="vc-mod vc-v off"><div class="vc-v1"><b class="vc-vu num zero">0<small>u</small></b><div class="vc-vt"><span class="vc-cap">Suggested</span>' +
-    '<strong>No play</strong><span class="vc-vs">' + why + '</span></div></div>' + agsRow(m, names, v) + '</section>';
+    '<strong>No play</strong><span class="vc-vs">' + why + '</span></div></div>' + agsRow(m, names, v) + (tot ? '<button type="button" class="vc-open press press-btn">See who\'s on it</button>' : '') + '</section>';
 }
 function sideTile(g, n, s, pick){
   var line = function(k, v, t){ return v > 0 ? '<span class="vc-ln ' + k + '"><i></i><b class="num">' + usd(v) + '</b> ' + t + '</span>' : ''; };
@@ -209,6 +218,130 @@ function body(g, st){
     '<p class="vc-foot">Sharp money is context. The suggested size comes from an untested rule that is still in its forward test.</p>';
 }
 
+/* ---------- play detail: one market, every wallet on it, opened from the verdict ("See who's on it") ----------
+   SharpFlow's play page, built only from stored fields. Price skill is the share of a wallet's past bets bought below the stored close
+   (Vault's T-15 price, or the Pendulum Flow close); it is plotted only once a wallet has CLV_MIN bets with a close, and always shows its n.
+   No "signals aligned" count: sharp money is context, never an agree total (CLAUDE.md). */
+var CLV_MIN = 5;
+function american(p){ if (p == null || p <= 0 || p >= 1) return null; return p >= .5 ? '-' + Math.round(p / (1 - p) * 100) : '+' + Math.round((1 - p) / p * 100); }
+function cents(p){ return p == null ? 'n/a' : trim((p * 100).toFixed(1)) + '¢'; }
+function beat(w){ var c = w.clv; return c && c.n >= CLV_MIN ? c.beat / c.n : null; }
+function beatTxt(w){ var c = w.clv; if (!c || !c.n) return 'no closes yet'; return (c.n >= CLV_MIN ? Math.round(c.beat / c.n * 100) + '%' : c.beat + ' of ' + c.n) + ' beat the close'; }
+function wr(w){ return w.w_ + w.l_ ? Math.round(w.w_ / (w.w_ + w.l_) * 100) + '%' : 'n/a'; }
+function sideWallets(s){
+  return s.list.map(function(w){ return {w: w, k: w.star ? 'gold' : 'sharp'}; })
+    .concat((s.unproven_list || []).map(function(w){ return {w: w, k: 'unp'}; }), s.losers.map(function(w){ return {w: w, k: 'loser'}; }));
+}
+/* where the money sits: x = price skill, y = lifetime ROI, area = $ on this market. This side solid, the other side hollow. */
+function scatter(mine, theirs){
+  var nar = window.innerWidth < 768, W = nar ? 340 : 560, H = nar ? 260 : 300, L = 44, R = 12, T = 28, B = 40, pts = [], held = [];   /* a phone draws narrower, so labels stay legible */
+  mine.forEach(function(x){ pts.push({x: x, own: true}); }); theirs.forEach(function(x){ pts.push({x: x, own: false}); });
+  var plot = pts.filter(function(p){ return beat(p.x.w) != null && p.x.w.roi != null; });
+  pts.forEach(function(p){ if (plot.indexOf(p) < 0) held.push(p); });
+  var xs = plot.map(function(p){ return beat(p.x.w); }), ys = plot.map(function(p){ return p.x.w.roi; });
+  var x0 = Math.min(.4, Math.min.apply(null, xs.concat([.4]))), x1 = Math.max(.65, Math.max.apply(null, xs.concat([.65])));
+  var y0 = Math.min(-.1, Math.min.apply(null, ys.concat([-.1]))), y1 = Math.max(.15, Math.max.apply(null, ys.concat([.15])));
+  var px = (x1 - x0) * .12, py = (y1 - y0) * .18; x0 -= px; x1 += px; y0 -= py; y1 += py;      /* room for the bubbles at the edges */
+  var sx = function(v){ return L + (v - x0) / (x1 - x0) * (W - L - R); }, sy = function(v){ return T + (y1 - v) / (y1 - y0) * (H - T - B); };
+  var maxU = Math.max.apply(null, pts.map(function(p){ return p.x.w.usd; }).concat([1]));
+  var rad = function(u){ return 6 + 22 * Math.sqrt(u / maxU); };
+  var g = '<svg class="vd-sc" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Wallets by price skill and lifetime ROI">';
+  [x0, (x0 + x1) / 2, x1].forEach(function(v){ g += '<line class="gl" x1="' + sx(v) + '" x2="' + sx(v) + '" y1="' + T + '" y2="' + (H - B) + '"/><text class="ax" x="' + sx(v) + '" y="' + (H - B + 18) + '" text-anchor="middle">' + Math.round(v * 100) + '%</text>'; });
+  [y0, 0, y1].forEach(function(v){ g += '<line class="gl' + (v === 0 ? ' z' : '') + '" x1="' + L + '" x2="' + (W - R) + '" y1="' + sy(v) + '" y2="' + sy(v) + '"/><text class="ax" x="' + (L - 8) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + (v > 0 ? '+' : '') + Math.round(v * 100) + '%</text>'; });
+  if (x0 < .5 && x1 > .5) g += '<line class="gl z" x1="' + sx(.5) + '" x2="' + sx(.5) + '" y1="' + T + '" y2="' + (H - B) + '"/>';
+  g += '<text class="axt" x="' + ((L + W - R) / 2) + '" y="' + (H - 4) + '" text-anchor="middle">Beat the close →</text><text class="axt" x="12" y="' + ((T + H - B) / 2) + '" text-anchor="middle" transform="rotate(-90 12 ' + ((T + H - B) / 2) + ')">Lifetime ROI →</text>';
+  plot.sort(function(a, b){ return b.x.w.usd - a.x.w.usd; }).forEach(function(p, i){
+    var w = p.x.w, cx = sx(beat(w)), cy = sy(w.roi), r = rad(w.usd);
+    g += '<g class="b ' + p.x.k + (p.own ? ' own' : ' opp') + '"><title>' + tail(w.w) + ' · ' + usd(w.usd) + ' · ' + w.w_ + '-' + w.l_ + ' · ROI ' + roi(w.roi) + ' · ' + beatTxt(w) + '</title>' +
+      '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + r.toFixed(1) + '"/>' +
+      (p.own && i === 0 ? '<text class="bl" x="' + cx.toFixed(1) + '" y="' + (cy - r - 7).toFixed(1) + '" text-anchor="middle">' + usd(w.usd) + '</text>' : '') + '</g>';
+  });
+  g += '</svg>';
+  var note = held.length ? '<p class="vd-held">' + held.length + ' ' + (held.length === 1 ? 'wallet is' : 'wallets are') + ' not plotted: fewer than ' + CLV_MIN + ' past bets with a stored close. ' +
+    'Closes are stored from Nov 11 (all sports) and late October (NBA, NFL), so this fills in over time.</p>' : '';
+  return g + note;
+}
+function leadCard(x, side){
+  if (!x) return '';
+  var w = x.w, p = w.press, u = w.usual, a = w.at_size, k = {gold: 'Proven, sized up', sharp: 'Proven', unp: 'Unproven', loser: 'Losing'}[x.k];
+  var pos = p == null ? null : Math.min(1, p / 4);
+  return '<section class="vd-lead"><span class="vd-cap">Lead wallet</span><div class="vd-lh"><div><b class="num">' + tail(w.w) + '</b><span class="vd-tag ' + x.k + '">' + k + '</span></div>' +
+    '<div class="vd-lu"><b class="num">' + usd(w.usd) + '</b><span>on ' + esc(side) + '</span></div></div>' +
+    '<div class="vd-two"><div class="vd-box"><span class="vd-cap">Record</span><b class="num">' + w.w_ + '-' + w.l_ + '</b><span class="num">' + roi(w.roi) + ' ROI · ' + wr(w) + ' wins</span></div>' +
+    '<div class="vd-box' + (beat(w) != null && beat(w) > .5 ? ' good' : '') + '"><span class="vd-cap">Price skill</span><b class="num">' + (beat(w) != null ? Math.round(beat(w) * 100) + '%' : 'n/a') + '</b><span class="num">' +
+    (w.clv && w.clv.n ? w.clv.beat + ' of ' + w.clv.n + ' bets beat the close' : 'no past bet has a stored close') + '</span></div></div>' +
+    (p != null && u ? '<div class="vd-size"><div class="vd-szh"><span class="vd-cap">Size vs usual</span><b class="num">' + p + 'x</b></div><div class="vd-bar"><i style="width:' + (pos * 100).toFixed(1) + '%"></i><u style="left:25%"></u></div>' +
+      '<div class="vd-szh"><span class="num">usual ' + usd(u) + '</span><span class="num">this ' + usd(w.usd) + '</span></div>' +
+      (a && a.w + a.l ? '<p class="num">' + Math.round(a.w / (a.w + a.l) * 100) + '% wins at this size (' + a.w + '-' + a.l + ') · ' + Math.round(a.share * 100) + '% of its bets</p>' : '') + '</div>' : '') + '</section>';
+}
+function whoCol(name, s, total, own){
+  var rows = sideWallets(s);
+  return '<div class="vd-col' + (own ? ' own' : '') + '"><div class="vd-ch"><span class="vd-cap">' + (own ? 'This side' : 'Other side') + '</span><b class="num">' + usd(total) + '</b></div><b class="vd-cn">' + esc(name) + '</b>' +
+    (rows.length ? rows.map(function(x){ var w = x.w;
+      return '<div class="vd-w ' + x.k + '"><i></i><div><b class="num">' + tail(w.w) + '</b><span class="num">' + w.w_ + '-' + w.l_ + ' · ' + wr(w) + ' · ' + roi(w.roi) + ' ROI' +
+        (w.clv && w.clv.n ? ' · ' + beatTxt(w) : '') + '</span></div><div class="vd-wr"><b class="num">' + usd(w.usd) + '</b>' + (w.press != null ? '<span class="num">' + w.press + 'x</span>' : '') + '</div></div>'; }).join('')
+      : '<p class="vd-none">No proven, tracked or losing wallet at $250 or more.</p>') +
+    (s.counts.unproven > (s.unproven_list || []).length ? '<p class="vd-more num">+' + (s.counts.unproven - (s.unproven_list || []).length) + ' more unproven or untracked</p>' : '') + '</div>';
+}
+function detail(g, key, v){
+  var m = g.markets[key], names = sideOrder(g, m, key), ls = shadow(m, v);
+  var side = ls ? ls.side : names.slice().sort(function(a, b){ return m.sides[b][v].sharp_usd - m.sides[a][v].sharp_usd; })[0], other = names.filter(function(n){ return n !== side; })[0];
+  var S = m.sides[side][v], O = m.sides[other][v], tot = counted(S), proven = S.sharp_usd, against = nProven(O);
+  var mine = sideWallets(S), theirs = sideWallets(O), lead = mine.filter(function(x){ return x.k === 'gold' || x.k === 'sharp'; })[0] || mine[0];
+  var px = ls ? ls.price : null, fl = ls && ls.flagged, mv = fl && px != null ? (px - fl.price) * 100 : null;
+  var h = '<div class="vd-top"><div><span class="vd-cap">' + g.sport.toUpperCase() + ' · ' + esc(teamName(g, 'away')) + ' at ' + esc(teamName(g, 'home')) + ' · ' + ct(g.gst, true) + ' CT</span>' +
+    '<h2>' + esc(sideLabel(side, key, ls || {side: side})) + '</h2>' +
+    (px != null ? '<div class="vd-px num"><b>' + cents(px) + '</b><span>' + (american(px) || '') + '</span>' + (mv != null ? '<em class="' + (mv > 0 ? 'up' : mv < 0 ? 'dn' : '') + '">' + (mv > 0 ? '+' : '') + mv.toFixed(1) + ' pts</em>' : '') + '</div>' +
+      (fl ? '<span class="vd-sub num">flagged at ' + cents(fl.price) + ', ' + ct(fl.t) + ' CT</span>' : '') : '<span class="vd-sub">No suggested size on this market. Showing the side with the most proven money.</span>') +
+    '</div><button type="button" class="vd-x press press-btn" aria-label="Close">' + XX + '</button></div>';
+  h += '<div class="vd-hero"><div><b class="num">' + usd(tot) + '</b><span class="vd-op ' + (against ? 'no' : 'ok') + '">' + (against ? against + ' proven against' : 'Unopposed') + '</span></div>' +
+    (ls ? '<div class="vd-u"><b class="num">' + units(ls) + 'u</b><span class="vc-tag">untested rule</span></div>' : '') + '</div>' +
+    (tot ? '<div class="vd-mix"><i class="sharp" style="width:' + (proven / tot * 100).toFixed(1) + '%"></i><i class="unp" style="width:' + (S.unproven_usd / tot * 100).toFixed(1) + '%"></i><i class="loser" style="width:' + (S.loser_usd / tot * 100).toFixed(1) + '%"></i></div>' +
+      '<div class="vd-mixl num"><span>Proven ' + Math.round(proven / tot * 100) + '%</span><span>Unproven ' + Math.round(S.unproven_usd / tot * 100) + '%</span>' + (S.loser_usd ? '<span>Losers ' + Math.round(S.loser_usd / tot * 100) + '%</span>' : '') + '</div>' : '');
+  h += '<section class="vd-sec"><span class="vd-cap">Where the money sits</span><div class="vd-key"><span><i class="sharp"></i>proven</span><span><i class="gold"></i>sized up</span><span><i class="unp"></i>unproven</span><span><i class="loser"></i>losing</span><span><i class="opp"></i>other side</span><em>size = $</em></div>' + scatter(mine, theirs) + '</section>';
+  h += leadCard(lead, side);
+  h += '<section class="vd-sec"><span class="vd-cap">Who\'s on it</span><div class="vd-who">' + whoCol(side, S, tot, true) + whoCol(other, O, counted(O), false) + '</div></section>';
+  if (ls){
+    var rg = ls.rung && RUNG[ls.rung];
+    h += '<section class="vd-sec"><span class="vd-cap">How the size is set</span><p class="vd-p"><b>' + (rg ? rg[0] : 'Press ladder') + '.</b> ' + (rg ? rg[1] : 'This side meets the pre-registered press-ladder gates.') +
+      ' The size is SharpFlow\'s staking rule rebuilt from Vault\'s own wallet records. It leaves out Pinnacle line moves, steam and the odds cap, and it has no graded record yet.</p></section>';
+  }
+  return h + '<p class="vd-foot">Sharp money is context. Price skill counts only past bets with a stored close; a wallet with fewer than ' + CLV_MIN + ' is listed but not plotted.</p>';
+}
+var DLG = null;
+function openDetail(from, g, key, v){
+  closeDetail(true);
+  var root = from.closest('.vsc'), wrap = document.createElement('div');
+  wrap.className = (root ? root.className : 'vsc') + ' vd-wrap';
+  wrap.innerHTML = '<div class="vd-scrim"></div><div class="vd" role="dialog" aria-modal="true" aria-label="Play detail">' + detail(g, key, v) + '</div>';
+  document.body.appendChild(wrap);
+  DLG = {wrap: wrap, from: from, prevOverflow: document.documentElement.style.overflow, prevBody: document.body.style.overflow};
+  document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden';
+  void wrap.offsetWidth; wrap.classList.add('on');                     /* forced reflow, never rAF (CLAUDE.md motion trap 2) */
+  wrap.addEventListener('click', function(e){ if (e.target.closest('.vd-x') || e.target.classList.contains('vd-scrim')) closeDetail(); });
+  wrap.querySelector('.vd-x').focus();
+}
+function closeDetail(now){
+  if (!DLG) return;
+  var d = DLG; DLG = null;
+  document.documentElement.style.overflow = d.prevOverflow; document.body.style.overflow = d.prevBody;
+  if (d.from && document.contains(d.from)) d.from.focus();
+  if (now) { d.wrap.remove(); return; }
+  d.wrap.classList.remove('on');
+  setTimeout(function(){ d.wrap.remove(); }, 420);
+}
+document.addEventListener('keydown', function(e){
+  if (!DLG) return;
+  if (e.key === 'Escape'){ closeDetail(); return; }
+  if (e.key !== 'Tab') return;                                         /* keep focus inside the dialog */
+  var f = [].filter.call(DLG.wrap.querySelectorAll('button,[href],[tabindex]:not([tabindex="-1"])'), function(x){ return x.offsetParent !== null; });
+  if (!f.length) return;
+  var first = f[0], last = f[f.length - 1];
+  if (!DLG.wrap.contains(document.activeElement)){ e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+});
+
 function rail(strip, animate){
   var on = strip.querySelector('button.on'), pill = strip.querySelector('.v-pill');
   if (!on || !pill || !strip.offsetWidth) return;
@@ -243,6 +376,7 @@ function mount(el, g, opt){
   paint(); rail(top, false);
   el.addEventListener('toggle', function(e){ var d = e.target; if (d.dataset && d.dataset.d){ st.open[d.dataset.d] = d.open; var h = d.querySelector('.vseg'); if (h && d.open) rail(h, false); } }, true);
   el.addEventListener('click', function(e){
+    if (e.target.closest('.vc-open')){ openDetail(e.target.closest('.vc-open'), g, st.group, st.variant); return; }
     var b = e.target.closest('.vseg > button');
     if (!b || b.disabled) return;
     var s = b.parentNode; st[s.dataset.k] = b.dataset.v;
@@ -301,7 +435,7 @@ function host(el, render){
 }
 function css(){
   if (document.getElementById('vsc-css')) return;
-  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA; document.head.appendChild(s);
+  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA + DETAIL; document.head.appendChild(s);
 }
 function rootClass(el, o){ el.className = 'vsc' + (o.skin === 'new' ? ' vsc-new' : o.skin === 'nba' ? ' vsc-nba' : ''); }
 function card(g, o, folded){

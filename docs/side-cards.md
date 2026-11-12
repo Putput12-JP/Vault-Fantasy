@@ -56,6 +56,19 @@ pre-registered forward test in `docs/sharp-card-prereg.md`, recorded so it can b
 | `sf` (on the market group, per variant) | The size SharpFlow's staking rules give the market: `side`, `units`, `rung` (PRESS, PRESS-X, PRESS-N, PRESS-U, PRESS-R6, FADE-F, TRUST-G, TRUST-S, TRUST-T), `reason`, `price`, `line`, and `missing`, the parts of SharpFlow's policy not ported (steam, TRUST-M, PRESS-M, the odds cap, the edge clamps, GAP-LEAD, ML-DOOR, TOP3-PICK). Built from Vault's own ledger by `scripts/sf_rungs.py`, so wallets and numbers differ from SharpFlow's. One side at most. The card shows this size. `lock_shadow` stays the pre-registered forward test and is unchanged. |
 | `lock_shadow` | the pre-registered gates (money share over ALL money, any-class presser with n >= 15, no proven against, at least one proven for), the locked side, the graded rung and its price at the cut, and the clean-step ladder units (>= 3x 5u, >= 2x 2u, else 3u, capped at 1u under 0.50) |
 
+| `list[].usual`, `list[].at_size` | the wallet's usual stake (mean position), and its record on positions in the same size band vs usual as this one (bands at 0.75x, 1.5x, 3x) with the share of its bets in that band |
+| `list[].clv` | price skill: `n` past positions with a stored close, `beat` of them bought below it, `mean` close minus entry price. Closes are stored values only: Vault's own T-15 keyframe price (read within 30 min of the cut) or the Pendulum Flow close in `data/pm_closes.json`. No close is ever estimated, so `n` starts small (keyframes from 2026-11-11, Pendulum NBA/NFL from late October). |
+| `unproven_list` | up to 4 tracked wallets on the side that are not proven yet (SharpFlow's "secondary"), with their records |
+| `sf.flagged`, `lock_shadow.flagged` | the price and time this side was first flagged, carried from the previous live build while the side stays the same |
+
+## Play detail (`sharp-money/side-cards.js`)
+
+"See who's on it" on a card opens the play detail for that market: price and the move since it was flagged, money and the
+proven / unproven / losing split, a chart of every listed wallet by price skill and lifetime ROI (bubble area = $), the lead wallet
+(record, price skill, size vs usual, record at this size), every wallet on both sides, and how the size is set. A wallet with fewer
+than 5 past positions with a stored close is listed but not plotted. There is no "signals aligned" count: sharp money is context,
+never an agree total.
+
 Each card also carries:
 - `coverage`: markets read, markets missed, late reads, and the oldest read's lag;
 - `vault`: the Vault game key, plus a flag when Polymarket's and Vault's start times are more than 10 minutes apart;
