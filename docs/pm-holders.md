@@ -32,15 +32,17 @@ Each market is read on a schedule set by how far away its game is.
 | Time to game start | Read every |
 |---|---|
 | more than 24 h | 6 h |
-| 3 to 24 h | 1 h |
-| 45 min to 3 h | 15 min |
+| 45 min to 24 h | 15 min |
 | under 45 min | 5 min |
+
+Until 2026-11-12 the 3 to 24 h tier read hourly. It reads every 15 minutes now, so a game-day card is never more than about
+15 minutes behind (the live cards rebuild every 10 minutes and the page reloads them every 2).
 
 - **Freeze read.** One read must land between 20 and 15 minutes before the start; the loop wakes at T-18 to take it.
 - **Nothing after the cut.** A read that finishes after the cut (game start minus 15 minutes) is thrown away.
 - **Horizon.** NBA 72 h, NFL 7 days, CFB 5 days.
 - **Two jobs.** NBA and football run in separate jobs with separate concurrency groups. Each loops while one of its games starts
-  within 3 h. Otherwise it runs one cycle and the hourly cron (:41) takes over.
+  within 24 h. Otherwise it runs one cycle and the hourly cron (:41) takes over.
 
 ## Log rows
 

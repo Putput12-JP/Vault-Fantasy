@@ -43,13 +43,13 @@ from build_pm_ledger import (Budget, Client, COND_BATCH, CUTOFF_SEC, FULL_GAME, 
                              pages, parse_ts, sport_of)
 
 HORIZON_H = {"nba": 72, "nfl": 168, "cfb": 120}   # how far ahead to track (the recorder's ahead_h for NBA; sharp-data's NFL/CFB windows)
-TIERS = ((24 * 3600, 6 * 3600), (3 * 3600, 3600), (45 * 60, 15 * 60), (0, 5 * 60))   # (time to start at least, read every)
+TIERS = ((24 * 3600, 6 * 3600), (45 * 60, 15 * 60), (0, 5 * 60))   # (time to start at least, read every): 15-min cards all game day
 SLACK = 600                   # hourly-or-slower tiers fire 10 min early so cron jitter cannot turn "hourly" into "every 2 hours"
 FREEZE_WIN = 20 * 60          # the freeze read must land in [gst - 20 min, gst - 15 min]
 FREEZE_AIM = 18 * 60          # the loop wakes at gst - 18 min to take it
 RETRY_FREEZE, RETRY = 60, 300 # back-off after a failed read: inside the freeze window, elsewhere
 EVENTS_EVERY = 3600           # re-list Gamma events (new games, moved start times) about hourly
-LOOP_NEAR = 3 * 3600          # keep looping while a game starts within 3h; otherwise one cycle and let the hourly cron cover it
+LOOP_NEAR = 24 * 3600         # keep looping while a game starts within 24h (its 15-min tier); otherwise one cycle, hourly cron
 REPLAY_DAYS = 8               # NFL horizon (7 days) + 1
 KEEP_AFTER = 6 * 3600         # a market stays in memory 6h past its start (its keyframe is written before any prune)
 HOLDER_LIMIT = 1000           # rows per outcome token per read (API max)
@@ -610,7 +610,7 @@ def main():
         wakes = [w for w in (next_wake(states[s], now) for s in sports) if w is not None]
         near = any(m.get("gst") and 0 < m["gst"] - CUTOFF_SEC - now <= LOOP_NEAR for s in sports for m in states[s].m.values())
         if not wakes or not near:
-            print("no game within 3h: done (the hourly cron takes over)")
+            print("no game within 24h: done (the hourly cron takes over)")
             break
         wake = max(now + 5, min(wakes))
         if wake + CYCLE_MAX > end:
