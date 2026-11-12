@@ -1,7 +1,7 @@
 # Polymarket holders scan (scripts/scan_pm_holders.py, docs/pm-holders.md): who holds which side of every upcoming full-game
 # NBA / NFL / CFB market, with a frozen T-15 keyframe per game. Writes pm_holders/<sport>/ on the never-force-pushed
-# `pm-holders-data` branch. Each job loops while a game of its sports starts within 3h (5-min reads near tip, a freeze read at
-# T-18), otherwise it runs one cycle and the hourly cron takes over. Each sport is its own job with its own concurrency group and
+# `pm-holders-data` branch. Each job loops while a game of its sports starts within 24h (15-min reads all game day, 5-min reads in
+# the last 45 min, a freeze read at T-18), otherwise it runs one cycle and the hourly cron takes over. Each sport is its own job with its own concurrency group and
 # folder, so one sport's slow cycle can never push another sport's freeze read past its cut, and pushes never conflict.
 name: Polymarket holders scan
 

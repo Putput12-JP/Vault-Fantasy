@@ -37,6 +37,9 @@ class Cadence(unittest.TestCase):
         m["reads"] = R(GST - 40 * 3600)
         self.assertIsNone(H.due(m, GST - 40 * 3600 + 5 * 3600))             # 6h tier, 5h since last read
         self.assertEqual(H.due(m, GST - 40 * 3600 + 6 * 3600 - 600), "tier")   # 10 min of slack for cron jitter
+        m["reads"] = R(GST - 10 * 3600)                                       # game day, 10h out: 15-min tier (was hourly)
+        self.assertIsNone(H.due(m, GST - 10 * 3600 + 10 * 60))
+        self.assertEqual(H.due(m, GST - 10 * 3600 + 15 * 60), "tier")
         m["reads"] = R(GST - 3600)
         self.assertIsNone(H.due(m, GST - 3600 + 10 * 60))                    # 15-min tier, 10 min since
         self.assertEqual(H.due(m, GST - 3600 + 15 * 60), "tier")
