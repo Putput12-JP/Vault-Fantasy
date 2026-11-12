@@ -11,11 +11,14 @@ Order, as scripts/syncPickStateAuthoritative.js applies it for a pick date in th
   6. ML-DOOR  (NOT PORTED, see MISSING)                                                               src/lib/mlDoorSteamPolicy.js
   7. TOP3-PICK, 8. GAP-LEAD                                                                           src/lib/top3PickRung.js, gapLeadRescue.js
   9. edge under 5 (blended edge x steam from 2026-11-06)                                              src/lib/edgeUnder5.js
-  10. T5-LEAD seats and 11. the press-edge under-5 cap (NOT PORTED, see MISSING)                      src/lib/t5LeadPolicy.js, pressUnder5Cap.js
+  10. T5-LEAD seats with the no-T5 spread / total juice gate, then the odds cap                       src/lib/t5LeadPolicy.js
+  11. the press-edge under-5 cap                                                                      src/lib/pressUnder5Cap.js
 
 Steam (Pinnacle shortening toward the side) is measured by `steam_read` from Vault's book tape (data/book_tape), only from rows at or
 before the cut, the way src/lib/steamMove.js summarizeSteam does at the T-15 freeze. The ladder's steamOn is
-src/lib/unitTierEvSteamOverlay.js isSteamOn: the display tier is 'steam' or 'gold'. Approximations, because the tape is coarser than
+src/lib/unitTierEvSteamOverlay.js isSteamOn: the display tier at the cut is 'steam' or 'gold', OR the ticket's tape-log lock row
+(the t15 row, first cycle within 0.40 h of the start) was juice steam (policySteamOn); see `ladder_steam`. T5-LEAD's no-T5 gate reads
+juice steam only (a line walk does not count). Approximations, because the tape is coarser than
 SharpFlow's Pinnacle history:
   - "since open" is since the first tape row of the game, not Pinnacle's opener (the tape starts when Vault first recorded the game).
   - "last hour" is the last tape row at or before cut - 1 hour against the last row at or before the cut. The tape appends a row only
@@ -24,15 +27,19 @@ SharpFlow's Pinnacle history:
     equals the ticket line, and only when it is still the main at the cut; otherwise the juice part is unknown. The main-line walk
     (0.5 point toward the side) is measured from the main lines and sets steam on by itself (SharpFlow paints it as tier 'steam').
   - pinnapi steam-drop events (a 3%+ drop SharpFlow's drops feed saw, even one that later reverted) are not in Vault's data.
+  - the lock row is read at min(cut, start - 0.40 h) from the tape (SharpFlow's sync cycle times are not known).
   - when steam cannot be read (no tape for the game, a side Vault cannot map to home/away, an off-main ticket line) it is None:
-    STEAM-C and STEAM-S never fire, SOLO-Q never fires, the price step and PRESS-X read it as off (the replica's earlier behaviour),
-    edge-under-5 keeps the stake, and the result says `steam unknown` in its `missing` list.
+    STEAM-C and STEAM-S never fire; SOLO-Q, the price step and PRESS-X read it as off (SharpFlow passes steamOn false when it has no
+    tape); edge-under-5 and the no-T5 spread / total gate keep the stake and say so in `chain`; the card lists `steam unknown`.
 Other approximations, all recorded on the card:
   - wallet books come from Vault's own ledger (build_pm_ledger.py), not SharpFlow's wallet profiles, so the wallets, ranks and numbers
     differ. Prices are the Polymarket price at the cut (SharpFlow uses the wallets' average entry price on the ticket line).
   - TRUST-G's "legacy V12 sizing would have staked it" is read as the side's AGS v12 score > 0 (Vault has no legacy chain).
-  - TOP3-PICK's price test reads Pinnacle's price for the side at the cut (SharpFlow reads the position's stored Pinnacle odds, else its
-    entry price, which Vault's keyframes do not keep: no Pinnacle price means the wallet does not qualify).
+  - TOP3-PICK's price test reads Pinnacle's price for the side at the cut (main line only on spreads / totals, None off the main).
+    Without it SharpFlow reads the wallet's entry price; Vault's keyframes keep none, so the side's Polymarket price at the cut stands
+    in, and `price_src` records which price was read.
+  - trust states and the season tier-5 read date a bet by its game date (the event slug), as SharpFlow does; a bet with no dated slug
+    falls back to its settlement day. The season start is computed over Vault's ledger, not SharpFlow's.
   - opponent units for TOP3-PICK and GAP-LEAD: a side processed earlier in the market (away before home, over before under) passes its
     final units, a later side its units before these two rungs (SharpFlow reads the earlier side fresh and the later one from its
     last stored cycle).
@@ -80,13 +87,23 @@ BLEND_PULL, BLEND_SPORT_MIN_N = 10, 10                                    # BLEN
 # ---- src/lib/t5LeadPolicy.js (the season tier-5 read; only `oppHasT5` is used, by edge-under-5) --------------------------------
 T5_SEASON_GAP, T5_MIN_N, T5_TIER, T5_MIN_AGE = 21, 10, 5, 15              # T5_SEASON_GAP_DAYS, T5_MIN_N, T5_TIER, T5_MIN_AGE_DAYS
 T5_PRICE_LO, T5_PRICE_HI = 0.02, 0.98                                     # trustTuple price window
+T5_FROM, T5_NO_T5_ST_FROM, T5_HOLD_BOOST, T5_HOLD_LONG, T5_RESCUE_UNITS = "2026-11-08", "2026-11-10", 6, 14, 1  # T5_LEAD_FROM, T5_NO_T5_ST_FROM, T5_HOLD_*, T5_RESCUE_UNITS
+T5_SEATS = {"lead14": (3, 6), "lead6": (2, 5), "t5_young": (2, 3), "no_t5": (None, 2), "no_lead": (None, 2)}  # T5_SEAT_* (floor, ceiling)
+# ---- src/lib/pressUnder5Cap.js -----------------------------------------------------------------------------------------------
+PU5_FROM, PU5_MAX, PU5_UNITS, PU5_ML_UNITS = "2026-11-10", 5, 1, 2       # PRESS_UNDER5_CAP_FROM, _MAX, _UNITS, _ML_UNITS
+# ---- src/lib/top3PickRung.js isTop3PickPrice (no odds: the entry price, 45c up to just under 52c) ---------------------------
+TOP3_PX_LO, TOP3_PX_HI = 0.45, 0.52
+# ---- src/lib/ticketTapeCapture.js T15_HOURS: the lock row is the first cycle within 0.40 h of the start --------------------
+T15_LOCK_SEC = 0.40 * 3600
 # ---- src/lib/steamMove.js ----------------------------------------------------------------------------------------------------
 STEAM_EVENT_PCT, STEAM_GOLD_PCT, STEAM_LINE_PTS, STEAM_HOUR, LINE_EPS = 3, 4.5, 0.5, 3600, 0.001  # STEAM_EVENT/GOLD_PCT, STEAM_LINE_MOVE_PTS, STEAM_HOUR_SEC, LINE_STEAM_EPS
 PIN_LINE_EPS = 0.051                                                      # pinnacleMain.js LINE_EPS (ticket-line match)
 
 MISSING = [
     "ML-DOOR (needs the steam state at SharpFlow's first capture of the ticket, i.e. when its pick doc was created, which Vault does not observe)",
-    "T5-LEAD seats and the press-edge under-5 cap (not ported in this pass; they run last in SharpFlow's chain from 2026-11-08 / 2026-11-10)",
+    "T5-LEAD +1u winner-align boost (needs SharpFlow's winner boards; the seats themselves are ported)",
+    "FADE-F loss streak is per sport (Vault's ledger is one sport per build; SharpFlow merges every sport's recent action)",
+    "SharpFlow's create gate (sync: a side with no wallets for or against, no trusted wallet and no TOP3/GAP rung is never created) is not modelled",
     "press-edge-net closers clause (needs net CLV mean prior per wallet; the clamp is dated out from 2026-11-05 anyway)",
     "steam-drop events from SharpFlow's drops feed (Vault reads moves from its own Pinnacle tape)",
 ]
@@ -182,6 +199,11 @@ def trust_state(bets, asof):
     return _walk(sorted((_day(t), p, w) for t, p, w in bets if 0 < p < 1 and t < asof), _day(asof))
 
 
+def trust_state_dated(rows, asof_day):
+    """buildTrustState as SharpFlow keys it: rows (game date 'YYYY-MM-DD', price, won), bets dated before `asof_day` (the pick date)."""
+    return _walk(sorted((_d(d), p, w) for d, p, w in rows if 0 < p < 1 and d < asof_day), _d(asof_day))
+
+
 def trusted(t):
     return bool(t) and t["tier"] >= TIER_MIN and t["status"] in ("STABLE_ON", "REGAINED_ON") and t["age"] >= MIN_AGE
 
@@ -212,6 +234,92 @@ def t5_read(rows, day, start):
         return False
     st = _walk([(d, p / 1000, w) for d, p, w in season], _d(day))
     return st["tier"] == T5_TIER and st["n"] >= T5_MIN_N and st["status"] in ("STABLE_ON", "REGAINED_ON") and st["age"] >= T5_MIN_AGE
+
+
+def t5_hold(rows, day, start):
+    """t5HoldDays: None when the wallet does not qualify on `day`, else the days it has qualified without a break, walking back one
+    morning at a time and stopping at the season start."""
+    if not t5_read(rows, day, start):
+        return None
+    cur, held = _d(day), 0
+    for _ in range(400):
+        prev = cur - dt.timedelta(days=1)
+        if (start and prev.isoformat() < start) or not t5_read(rows, prev.isoformat(), start):
+            break
+        cur, held = prev, held + 1
+    return held
+
+
+def t5_lead(rows):
+    """t5LeadForSide from per-wallet reads on the rows (row t5 = {q, held}). Vault keeps one leg per wallet, so no wallet is on both
+    sides (SharpFlow's both-sides exclusion has nothing to drop). None when no row carries a read (no season ledger)."""
+    if not any(r.get("t5") is not None for r in rows):
+        return None
+    ours = [r["t5"].get("held") for r in rows if r["dir"] == "FOR" and (r.get("t5") or {}).get("q")]
+    theirs = [r["t5"].get("held") for r in rows if r["dir"] == "AG" and (r.get("t5") or {}).get("q")]
+    n = lambda arr, m: sum(1 for h in arr if h is not None and h >= m)
+    return {"f": len(ours), "a": len(theirs), "lead": len(ours) - len(theirs) >= 1, "hold": max(ours) if ours else None,
+            "for14": n(ours, T5_HOLD_LONG), "ag14": n(theirs, T5_HOLD_LONG), "for6": n(ours, T5_HOLD_BOOST), "ag6": n(theirs, T5_HOLD_BOOST)}
+
+
+def t5_seat(lead):
+    """t5Seat."""
+    if lead is None:
+        return None
+    if lead["lead"] and lead["hold"] is not None and lead["hold"] >= T5_HOLD_LONG:
+        return "lead14"
+    if lead["lead"] and lead["hold"] is not None and lead["hold"] >= T5_HOLD_BOOST:
+        return "lead6"
+    if lead["lead"] and lead["f"] > 0:
+        return "t5_young"
+    return "no_t5" if lead["f"] == 0 and lead["a"] == 0 else "no_lead"
+
+
+def apply_t5(units, lead, market, pick_date, juice_steam, press_edge_muted=False, blocked=False, from_rescue=False):
+    """applyT5Lead + applyNoT5StSteamGate. Returns (units, action, seat). The winner-align +1u boost is not ported (MISSING).
+    juice_steam: policySteamOn at the cut (True / False / None); a line walk does not count."""
+    if not _live(pick_date, T5_FROM):
+        return units, "EXEMPT", None
+    seat = t5_seat(lead)
+    pre, action = units, "PASS"
+    if pre > 0 and seat:
+        lo, hi = T5_SEATS[seat]
+        nxt = pre
+        if not from_rescue and lo is not None and 0 < nxt < lo:
+            nxt = float(lo)
+        if hi is not None and nxt > hi:
+            nxt = float(hi)
+        if nxt != pre:
+            units, action = round(nxt, 2), "BAND"
+    elif pre <= 0 and lead is not None:
+        armed = lead["lead"] and lead["hold"] is not None and lead["hold"] >= T5_HOLD_BOOST
+        no_t5 = lead["f"] == 0 and lead["a"] == 0
+        st_mute = _live(pick_date, T5_NO_T5_ST_FROM) and market != "ml" and juice_steam is not True
+        if press_edge_muted and not blocked and (armed or (no_t5 and not st_mute)):
+            units, action = float(T5_RESCUE_UNITS), "RESCUE"
+    if _live(pick_date, T5_NO_T5_ST_FROM) and market != "ml" and seat == "no_t5" and juice_steam is not True and units > 0:
+        if juice_steam is None:
+            return units, "UNDECIDED_STEAM_UNKNOWN", seat
+        return 0.0, "MUTE_NO_T5_ST_STEAM", seat
+    return units, action, seat
+
+
+def press_under5_cap(units, edge, market, pick_date, lead, seat):
+    """applyPressUnder5Cap: a stamped press edge under 5 caps at 1u; a moneyline stays at 2u with a 14-day tier-5 on our side and none
+    against, or a fresh tier 5 (seat t5_young); a spread or total under 0 goes to 0u. A missing edge is left alone."""
+    if not _live(pick_date, PU5_FROM):
+        return units, "EXEMPT"
+    e = stamped(edge)
+    if e is None:
+        return units, "PASS"
+    if market != "ml" and e < 0:
+        return 0.0, ("ZERO" if units > 0 else "HOLD")
+    if e >= PU5_MAX:
+        return units, "HOLD"
+    ceiling = PU5_UNITS
+    if market == "ml" and ((lead is not None and lead["for14"] >= 1 and lead["a"] == 0) or seat == "t5_young"):
+        ceiling = PU5_ML_UNITS
+    return (float(ceiling), "CAP") if units > ceiling else (units, "HOLD")
 
 
 # ---- the ladder ----------------------------------------------------------------------------------------------------------------
@@ -307,7 +415,7 @@ def core(rows, market, implied, steam=None, pick_date=None, dated=True):
     for_max = max((r["ratio"] or 0) for r in fo) if fo else None
     dust = for_max is not None and for_max < SOLO_Q_DUST
     ordinary = for_max is not None and SOLO_Q_ORD_LO <= for_max < SOLO_Q_ORD_HI and any(_hot(r.get("l10")) for r in fo)
-    if (dated and _live(pick_date, SOLO_Q_FROM) and steam is False and not ag and fo and implied is not None
+    if (dated and _live(pick_date, SOLO_Q_FROM) and not steam_on and not ag and fo and implied is not None
             and SOLO_Q_LO <= implied < SOLO_Q_HI and (dust or ordinary)):
         return res("SOLO-Q", SOLO_Q_UNITS, "solo_q_%s" % ("dust" if dust else "ordinary_hot"))
     why = [n for n, f in (("money", gate["money"]), ("no_seasoned_press", gate["press"]), ("door2_against", gate["noag"]),
@@ -507,22 +615,34 @@ def _mirror_shape(c):
     return g["money"] and g["press"] and g["noag"]
 
 
-def top3(rows, pinn_odds, opp_units, pick_date):
+def top3(rows, pinn_odds, opp_units, pick_date, poly_px=None):
     """evaluateTop3Pick: a top-3 wallet (30-day dollar ROI rank in this sport and market) on this side under 1.5x its usual, at a pick'em
-    Pinnacle price, and no top-3 wallet against. 4u from a 1x bet, else 2u."""
+    price, and no top-3 wallet against. 4u from a 1x bet, else 2u. isTop3PickPrice: Pinnacle odds -100 through +120; without odds, the
+    wallet's entry price 45c up to just under 52c. Vault's keyframes keep no entry price (a row's `entry_px` is used when present),
+    so the side's Polymarket price at the cut stands in; `price_src` records which price was read."""
     if not _live(pick_date, TOP3_FROM):
         return {"fires": False, "reason": "not_live"}
     if opp_units > 0:
         return {"fires": False, "reason": "pick_against"}
     if any(r["dir"] == "AG" and (r.get("rank") or 99) <= 3 for r in rows):
         return {"fires": False, "reason": "top3_against"}
-    price_ok = pinn_odds is not None and TOP3_ODDS_LO < pinn_odds <= TOP3_ODDS_HI
-    q = [r for r in rows if r["dir"] == "FOR" and (r.get("rank") or 99) <= 3 and r["ratio"] is not None and r["ratio"] < TOP3_SR_MAX and price_ok]
+    srcs = set()
+
+    def price_ok(r):
+        if pinn_odds is not None and pinn_odds != 0:
+            srcs.add("pinnacle")
+            return TOP3_ODDS_LO < pinn_odds <= TOP3_ODDS_HI
+        px, src = (r["entry_px"], "entry") if r.get("entry_px") is not None else (poly_px, "polymarket_at_cut")
+        if px is None or not 0 < px < 1:
+            return False
+        srcs.add(src)
+        return TOP3_PX_LO <= px < TOP3_PX_HI
+    q = [r for r in rows if r["dir"] == "FOR" and (r.get("rank") or 99) <= 3 and r["ratio"] is not None and r["ratio"] < TOP3_SR_MAX and price_ok(r)]
     if not q:
-        return {"fires": False, "reason": "no_qualifying_wallet" if pinn_odds is not None else "no_pinnacle_price"}
+        return {"fires": False, "reason": "no_qualifying_wallet", "price_src": sorted(srcs)}
     best = max(r["ratio"] for r in q)
     return {"fires": True, "units": TOP3_UNITS_FULL if best >= 1 else TOP3_UNITS_LIGHT, "best_sr": round(best, 2),
-            "wallets": [r.get("w") for r in q], "reason": "top3_pick"}
+            "wallets": [r.get("w") for r in q], "reason": "top3_pick", "price_src": sorted(srcs)}
 
 
 def gap_lead(rows, pick_date):
@@ -553,7 +673,9 @@ def blend_edge(rows, market, odds):
     for r in rows:
         if r["dir"] != "FOR" or not r["invested"] > 0:
             continue
-        n_s, w_s, n_m, w_m = r.get("n") or 0, r.get("wins") or 0, r.get("mkt_n") or 0, r.get("mkt_wins") or 0
+        n_s = r["s_n"] if r.get("s_n") is not None else (r.get("n") or 0)          # sport book from the same bets list as the market one
+        w_s = r["s_wins"] if r.get("s_wins") is not None else (r.get("wins") or 0)
+        n_m, w_m = r.get("mkt_n") or 0, r.get("mkt_wins") or 0
         if not n_s or n_s < BLEND_SPORT_MIN_N:
             continue
         wr_s = round(100 * w_s / n_s, 1)
@@ -611,14 +733,16 @@ def stake_market(sides, market, pick_date=None, order=None, sport=None):
         r, rows = res[s], sides[s]["rows"]
         opp = [o for o in names if o != s]
         opp_units = max([res[o]["units"] if o in done else pre[o] for o in opp] or [0])
-        t3 = top3(rows, sides[s].get("pinn_odds"), opp_units, pick_date)
+        t3 = top3(rows, sides[s].get("pinn_odds"), opp_units, pick_date, sides[s]["implied"])
         r["top3"] = t3
         if t3["fires"] and r["units"] + 0.001 < t3["units"]:
             r["chain"].append("top3_%s" % ("floor" if r["units"] > 0 else "rescue"))
             r.update(units=float(t3["units"]), rung="TOP3-PICK", reason="top3_pick:" + r["reason"])
         g = gap_lead(rows, pick_date)
+        if g["fires"] and opp_units > 0:               # applyGapLeadRescue: a stake on the other side mutes the rung
+            g = dict(g, fires=False, reason="pick_against")
         r["gap"] = g
-        if g["fires"] and opp_units <= 0 and not (odds[s] is not None and odds[s] < GAP_FAV_JUICE):
+        if g["fires"] and not (odds[s] is not None and odds[s] < GAP_FAV_JUICE):
             band = _live(pick_date, EU5_FROM) and EU5_GAP_LO <= r["units"] < EU5_GAP_HI and (stamped(r.get("edge")) or 0) < EU5_MAX
             if not band and r["units"] + 0.001 < GAP_BOOST_UNDER:
                 raw = GAP_RESCUE if r["units"] <= 0 else r["units"] + 1
@@ -652,6 +776,29 @@ def stake_market(sides, market, pick_date=None, order=None, sport=None):
                 continue
             r.update(units=0.0, rung=None, reason="edge_under_5:" + r["reason"])
             r["chain"].append("edge_under_5")
+    for s in names:                          # T5-LEAD seats (+ the no-T5 spread / total juice gate), the odds cap, the press-edge under-5 cap
+        r, rows = res[s], sides[s]["rows"]
+        lead = t5_lead(rows)
+        rescued = any(c in ("top3_rescue", "gap_rescue") for c in r["chain"])
+        blocked = r["reason"].startswith("heavy_favourite_mute") or "edge_under_5" in r["chain"]
+        units, action, seat = apply_t5(r["units"], lead, market, pick_date, sides[s].get("juice"), False, blocked, rescued)
+        r.update(t5_lead=lead, t5_seat=seat, t5_action=action)
+        if units != r["units"]:
+            r["chain"].append("t5_" + action.lower())
+            if units == 0:
+                r.update(rung=None, reason="no_t5_st_steam:" + r["reason"])
+            if units > 0 and odds[s] is not None:
+                units = round(odds_cap(units, odds[s]), 2)
+            r["units"] = float(units)
+        elif action == "UNDECIDED_STEAM_UNKNOWN":
+            r["chain"].append("t5_no_t5_st_undecided_steam_unknown")
+        units, action = press_under5_cap(r["units"], r.get("edge"), market, pick_date, lead, seat)
+        r["under5_action"] = action
+        if units != r["units"]:
+            r["chain"].append("press_under5_" + action.lower())
+            if units == 0:
+                r.update(rung=None, reason="press_under5_zero:" + r["reason"])
+            r["units"] = float(units)
     return res
 
 
@@ -711,6 +858,9 @@ def steam_read(tape, market, side_norm, ticket_line, cut):
         tier = "gold"
     elif (lh is not None and lh >= STEAM_EVENT_PCT) or (so is not None and so >= STEAM_EVENT_PCT):
         tier = "steam"
+    # juice steam (steamMove.js policySteamOn / juiceSteam): a 3%+ shorten on the ticket line; a line walk does not count. Vault reads
+    # juice only while the ticket line is the main, so pinStillMain / nearFavorableMain hold whenever it is known.
+    out["juice"] = tier in ("steam", "gold") if juice_known and hist else None
     walk = False
     if mains:                                # main-line walk toward the ticket (mainLineTowardTicket); paints tier 'steam'
         sign = 1
@@ -739,4 +889,19 @@ def steam_read(tape, market, side_norm, ticket_line, cut):
         out["on"] = False
     else:
         out["why"] = "no_moneyline_rows" if market == "ml" else "ticket_line_not_main_at_cut"
+    return out
+
+
+def ladder_steam(tape, market, side_norm, ticket_line, cut, gst):
+    """The ladder's steamOn (unitTierEvSteamOverlay.js isSteamOn): the display tier at the cut is steam / gold (a 0.5-point walk counts),
+    OR tapeSteamOnLock, policySteamOn on the lock row of the ticket's tape log (ticketTapeCapture.js analyzeTicketTapeLog: the t15 row,
+    taken on the first cycle within 0.40 h of the start, else the last row), read from tape rows at or before min(cut, start - 0.40 h).
+    True when either is on; False only when both are known off; otherwise None. `juice` is policySteamOn at the cut (T5's gate)."""
+    now = steam_read(tape, market, side_norm, ticket_line, cut)
+    lock_t = min(cut, gst - T15_LOCK_SEC) if gst is not None else cut
+    lock = steam_read(tape, market, side_norm, ticket_line, lock_t)
+    on = True if now["on"] is True or lock.get("juice") is True else (False if now["on"] is False and lock.get("juice") is False else None)
+    out = dict(now, on=on, cut_on=now["on"], lock_t=lock_t, lock_juice=lock.get("juice"))
+    if on is None and not out.get("why"):
+        out["why"] = "lock_row_juice_unknown"
     return out

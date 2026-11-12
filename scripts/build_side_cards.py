@@ -253,7 +253,8 @@ class Ledger:
     def t5(self, variant, pick_date, cut, w):
         """Season tier 5 on the pick date (t5LeadPolicy.js t5MorningRead): the wallet's positions priced .02 to .98 with a non-zero
         PnL, dated on or after the sport's season start (the first date after the last 21-day gap, over every wallet's dates) and
-        before the pick date, read as tier 5, ON, n >= 10 and 15+ days old."""
+        before the pick date, read as tier 5, ON, n >= 10 and 15+ days old. Returns {q, held}: held is t5HoldDays, the days it has
+        qualified without a break (walked back one morning at a time to the season start)."""
         k = (variant, pick_date, cut)
         if k not in self._t5:
             wide, rows = self._wide_positions(variant), {}
@@ -266,7 +267,8 @@ class Ledger:
             self._t5[k] = (SF.season_start([d for rs in rows.values() for d, _, _ in rs]), rows, {})
         start, rows, q = self._t5[k]
         if w not in q:
-            q[w] = SF.t5_read(rows.get(w, []), pick_date, start)
+            held = SF.t5_hold(rows.get(w, []), pick_date, start)
+            q[w] = {"q": held is not None, "held": held}
         return q[w]
 
 
@@ -504,8 +506,9 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None
     def trust(w, market_only):
         k = (w, market_only)
         if k not in trust_cache:
-            bets = [(b[0], b[1], b[2]) for b in x_bets[w] if not market_only or GROUP.get(b[3]) == g]
-            t = SF.trust_state(bets, cut) if bets else None
+            # walletTrustStatus.js dates a bet by its game date (bets[6]); a bet with no dated slug falls back to its settlement day
+            bets = [(b[6] or SF._day(b[0]).isoformat(), b[1], b[2]) for b in x_bets[w] if not market_only or GROUP.get(b[3]) == g]
+            t = SF.trust_state_dated(bets, asof_day) if bets else None
             if t and market_only:                    # pressLadderOverlay.js sportBook: the market record carries the sport book's age
                 sport_t = trust(w, False)
                 t = dict(t, age=sport_t["age"]) if sport_t else t
@@ -513,6 +516,7 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None
         return trust_cache[k]
 
     x_bets = {x["w"]: x["s"][variant]["bets"] for x in pool}
+    asof_day = pick or SF._day(cut).isoformat()
     gap, rank = ledger.market_books(variant, pick, cut) if ledger is not None and pick else ({}, {})
     names = team_names(vault, kf["ev"], sport)
     norms = side_norms(g, sides, names)
@@ -534,12 +538,12 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None
             rows.append({"w": x["w"], "dir": "FOR" if x["side"] == side else "AG", "invested": x["usd"],
                          "ratio": x["usd"] / b["usual"] if b["usual"] else None, "n": b["n"], "wins": b["w"],
                          "wr": b["wr"] * 100 if b["wr"] is not None else None, "door2": b["proven"], "streak": streak,
-                         "mkt_n": len(mk_b), "mkt_wins": sum(1 for bet in mk_b if bet[2]),
+                         "s_n": len(bets), "s_wins": sum(1 for bet in bets if bet[2]), "mkt_n": len(mk_b), "mkt_wins": sum(1 for bet in mk_b if bet[2]),
                          "mkt_wr": 100 * sum(1 for bet in mk_b if bet[2]) / len(mk_b) if mk_b else None,
                          "l10": (sum(last10), len(last10) - sum(last10)) if last10 else None,
                          "trust": trust(x["w"], False), "trust_mkt": trust(x["w"], True),
                          "gap": gap.get((x["w"], g)), "rank": rank.get((x["w"], g)),
-                         "t5": {"q": ledger.t5(variant, pick, cut, x["w"])} if ledger is not None and pick and x["s"]["tracked"] else None})
+                         "t5": ledger.t5(variant, pick, cut, x["w"]) if ledger is not None and pick and x["s"]["tracked"] else None})
         mine = [x for x in pool if x["side"] == side]
         cid = max(mine, key=lambda x: x["usd"])["cid"] if mine else None
         mk = kf["mk"].get(cid) if cid else None
@@ -557,15 +561,16 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None
         elif not norm:
             st = {"on": None, "why": "side_not_mapped_to_home_away"}
         else:
-            st = SF.steam_read(game, g, norm, line, cut)
+            st = SF.ladder_steam(game, g, norm, line, cut, kf["gst"])
         ags = (sides_out.get(side, {}).get(variant) or {}).get("ags")
-        ctx[side] = {"rows": rows, "implied": px, "ags": ags["score"] if ags else None, "steam": st["on"],
-                     "pinn_odds": pinnacle_price(game, g, norm, cut) if game and norm else None}
+        ctx[side] = {"rows": rows, "implied": px, "ags": ags["score"] if ags else None, "steam": st["on"], "juice": st.get("juice"),
+                     "pinn_odds": pinnacle_price(game, g, norm, cut, line) if game and norm else None}
         info[side] = {"steam": st, "line": line}
     res = SF.stake_market(ctx, g, pick, order, sport)
     missing = list(SF.MISSING) + ["steam unknown for %s (%s)" % (s, info[s]["steam"].get("why")) for s in order if info[s]["steam"]["on"] is None]
     summary = {s: {"units": res[s]["units"], "rung": res[s]["rung"], "reason": res[s]["reason"], "steam": info[s]["steam"]["on"],
-                   "chain": res[s].get("chain") or []} for s in order}
+                   "juice": info[s]["steam"].get("juice"), "t5_seat": res[s].get("t5_seat"), "chain": res[s].get("chain") or []}
+               for s in order}
     staked = [(r["units"], ctx[s]["ags"] or 0, s) for s, r in res.items() if r["units"] > 0]
     if not staked:
         return {"side": None, "units": 0, "rung": None, "reason": min((r["reason"] for r in res.values()), default="no_wallets"), "missing": missing,
@@ -578,23 +583,29 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None
     return {"side": side, "units": r["units"], "rung": r["rung"], "reason": r["reason"], "price": ctx[side]["implied"], "price_t": mk.get("px_t"),
             "line": mk.get("line"), "outs": mk.get("outs"), "cid": cid, "missing": missing, "pick_date": pick, "sides": summary,
             "chain": r.get("chain") or [], "press_edge": round(e, 1) if e is not None else None, "blend_edge": r.get("blend"),
-            "steam": compact_steam(info[side]["steam"]), "pinnacle_odds": ctx[side]["pinn_odds"]}
+            "steam": compact_steam(info[side]["steam"]), "pinnacle_odds": ctx[side]["pinn_odds"], "t5_seat": r.get("t5_seat"),
+            "top3_price_src": (r.get("top3") or {}).get("price_src")}
 
 
 def compact_steam(st):
-    keep = ("on", "tier", "last_hour_pct", "since_open_pct", "open", "hour", "now", "short_session", "line_open", "line_hour", "line_now",
+    keep = ("on", "cut_on", "juice", "lock_juice", "lock_t", "tier", "last_hour_pct", "since_open_pct", "open", "hour", "now", "short_session", "line_open", "line_hour", "line_now",
             "since_open_pts", "last_hour_pts", "rows", "why")
     return {k: st[k] for k in keep if k in st}
 
 
-def pinnacle_price(game, g, norm, cut):
-    """Pinnacle's price for the side at the cut, from the last tape row at or before it (main line on spreads and totals)."""
+def pinnacle_price(game, g, norm, cut, line=None):
+    """Pinnacle's price for the side at the cut, from the last tape row at or before it. On a spread or total it is the main line's
+    price, and None when the side's ticket line is not Pinnacle's main at the cut (the tape keeps no alt lines)."""
     key = {"ml": "ml", "spread": "sp", "total": "tot"}[g]
     rows = [r for r in game if r.get(key) and r["t"] <= cut]
     if not rows:
         return None
     v = max(rows, key=lambda r: r["t"])[key]
     away = norm in ("away", "under")
+    if g != "ml":
+        main = (-v[0] if away else v[0]) if g == "spread" else v[0]
+        if line is None or abs(main - line) > SF.PIN_LINE_EPS:
+            return None
     return (v[0] if away else v[1]) if g == "ml" else (v[2] if away else v[1])
 
 

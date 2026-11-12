@@ -95,7 +95,7 @@ class SteamRungs(unittest.TestCase):
         e = S.evaluate(dust, "ml", 0.55, 0.5, steam=False)
         self.assertEqual((e["rung"], e["units"]), ("SOLO-Q", 1.0))
         self.assertIsNone(S.evaluate(dust, "ml", 0.55, 0.5, steam=True)["rung"])
-        self.assertIsNone(S.evaluate(dust, "ml", 0.55, 0.5, steam=None)["rung"])              # unknown steam never fires SOLO-Q
+        self.assertEqual(S.evaluate(dust, "ml", 0.55, 0.5, steam=None)["rung"], "SOLO-Q")     # unknown steam reads as off (SharpFlow passes false)
         self.assertIsNone(S.evaluate(dust, "ml", 0.65, 0.5, steam=False)["rung"])             # outside .50-.60
         ordinary = [w("FOR", 400, ratio=1.2, l10=(8, 2))]
         self.assertEqual(S.evaluate(ordinary, "ml", 0.55, 0.5, steam=False)["rung"], "SOLO-Q")
@@ -163,21 +163,21 @@ class MarketRules(unittest.TestCase):
         rows[0]["wr"] = 61.0                                                                   # edge 6: out of the hole
         self.assertEqual(S.stake_market(sides, "ml", "2026-10-30", ["A", "B"])["A"]["units"], 5.0)
         rows[0]["wr"] = 57.0
-        self.assertEqual(S.stake_market(sides, "ml", "2026-11-11", ["A", "B"])["A"]["units"], 5.0)   # edge-under-5 owns it from 11-05
+        self.assertEqual(S.stake_market(sides, "ml", "2026-11-07", ["A", "B"])["A"]["units"], 5.0)   # edge-under-5 owns it from 11-05
 
     def test_edge_under_5(self):
         rows = [w("FOR", 3000, ratio=3.2, door2=True, wr=57.0, n=100), w("AG", 1000, t5={"q": True})]
         sides = {"A": self.side(rows, 0.55, 0.9, steam=False), "B": self.side(flip(rows), 0.45, -0.5)}
-        r = S.stake_market(sides, "ml", "2026-11-11", ["A", "B"])["A"]
+        r = S.stake_market(sides, "ml", "2026-11-07", ["A", "B"])["A"]
         self.assertEqual((r["units"], r["blend"]), (0.0, 2.0))                                  # blend 57 - 55 under 5, steam off, a tier 5 against
         sides["A"]["steam"] = True
-        self.assertEqual(S.stake_market(sides, "ml", "2026-11-11", ["A", "B"])["A"]["units"], 4.0)   # kept (steam on), price step 1
+        self.assertEqual(S.stake_market(sides, "ml", "2026-11-07", ["A", "B"])["A"]["units"], 4.0)   # kept (steam on), price step 1
         sides["A"]["steam"] = None
-        r = S.stake_market(sides, "ml", "2026-11-11", ["A", "B"])["A"]
+        r = S.stake_market(sides, "ml", "2026-11-07", ["A", "B"])["A"]
         self.assertEqual((r["units"], r["chain"]), (5.0, ["edge_under_5_undecided_steam_unknown"]))
         sides["A"]["steam"] = False
         rows[1]["t5"] = {"q": False}                                                            # nobody tier 5 against: no mute
-        self.assertEqual(S.stake_market(sides, "ml", "2026-11-11", ["A", "B"])["A"]["units"], 5.0)
+        self.assertEqual(S.stake_market(sides, "ml", "2026-11-07", ["A", "B"])["A"]["units"], 5.0)
 
     def test_gap_lead(self):
         g = lambda dol: {"n": 8, "dol": dol}
@@ -200,8 +200,10 @@ class MarketRules(unittest.TestCase):
         rows[1]["rank"] = 3                                                                     # a top-3 wallet against
         self.assertEqual(S.stake_market(sides, "ml", "2026-11-11", ["A", "B"])["A"]["units"], 0.0)
         rows[1]["rank"] = 9
-        sides["A"]["pinn_odds"] = None                                                          # no Pinnacle price: does not qualify
-        self.assertEqual(S.top3(rows, None, 0, "2026-11-11")["reason"], "no_pinnacle_price")
+        t = S.top3(rows, None, 0, "2026-11-11", 0.50)                                          # no Pinnacle price: the price at the cut, 45-52c
+        self.assertEqual((t["fires"], t["price_src"]), (True, ["polymarket_at_cut"]))
+        self.assertFalse(S.top3(rows, None, 0, "2026-11-11", 0.55)["fires"])
+        self.assertEqual(S.top3([dict(rows[0], entry_px=0.48), rows[1]], None, 0, "2026-11-11", 0.55)["price_src"], ["entry"])
         self.assertFalse(S.top3(rows, -130, 0, "2026-11-11")["fires"])                          # -130 is not a pick'em
 
 
@@ -269,6 +271,103 @@ class LedgerReads(unittest.TestCase):
         self.assertEqual(gap[("0xb", "ml")], {"n": 6, "dol": 50.0})
         gap2, _ = L.market_books("all", "2027-01-08", T)                                       # only games dated before the pick date
         self.assertNotIn(("0xa", "ml"), gap2)
+
+
+class Tier5Seats(unittest.TestCase):
+    def rows(self, f_held=(), a_held=(), d="FOR"):
+        out = [w("FOR", 500, t5={"q": True, "held": h}) for h in f_held] + [w("AG", 500, t5={"q": True, "held": h}) for h in a_held]
+        return out + [w("AG", 100, t5={"q": False, "held": None})]
+
+    def test_hold_walks_back(self):
+        rows = [("2026-10-%02d" % (1 + i // 2), 0.5, i % 5 != 0) for i in range(30)]
+        held = S.t5_hold(rows, "2026-11-11", "2026-10-01")
+        self.assertGreater(held, 0)
+        self.assertEqual(S.t5_hold(rows, "2026-11-11", "2026-11-05"), None)                   # season starts after the bets: no read
+        self.assertIsNone(S.t5_hold(rows, "2026-10-10", "2026-10-01"))
+
+    def test_seats(self):
+        self.assertEqual(S.t5_seat(S.t5_lead(self.rows([20]))), "lead14")
+        self.assertEqual(S.t5_seat(S.t5_lead(self.rows([8]))), "lead6")
+        self.assertEqual(S.t5_seat(S.t5_lead(self.rows([2]))), "t5_young")
+        self.assertEqual(S.t5_seat(S.t5_lead(self.rows())), "no_t5")
+        self.assertEqual(S.t5_seat(S.t5_lead(self.rows([20], [3]))), "no_lead")
+        self.assertIsNone(S.t5_lead([w("FOR", 500)]))                                           # no season read at all: no seat
+
+    def test_band_and_rescue_floor(self):
+        lead14 = S.t5_lead(self.rows([20]))
+        self.assertEqual(S.apply_t5(1.0, lead14, "ml", "2026-11-11", None)[:2], (3.0, "BAND"))   # floor 3
+        self.assertEqual(S.apply_t5(8.0, lead14, "ml", "2026-11-11", None)[:2], (6.0, "BAND"))   # ceiling 6
+        self.assertEqual(S.apply_t5(1.0, lead14, "ml", "2026-11-11", None, from_rescue=True)[:2], (1.0, "PASS"))   # a rescue keeps 1u
+        self.assertEqual(S.apply_t5(5.0, S.t5_lead(self.rows()), "ml", "2026-11-11", None)[:2], (2.0, "BAND"))   # no tier 5: 2u
+        self.assertEqual(S.apply_t5(5.0, lead14, "ml", "2026-11-07", None)[:2], (5.0, "EXEMPT"))  # before T5_LEAD_FROM
+
+    def test_no_t5_spread_total_needs_juice_steam(self):
+        no_t5 = S.t5_lead(self.rows())
+        self.assertEqual(S.apply_t5(2.0, no_t5, "spread", "2026-11-11", False)[:2], (0.0, "MUTE_NO_T5_ST_STEAM"))
+        self.assertEqual(S.apply_t5(2.0, no_t5, "spread", "2026-11-11", True)[:2], (2.0, "PASS"))
+        self.assertEqual(S.apply_t5(2.0, no_t5, "total", "2026-11-11", None)[:2], (2.0, "UNDECIDED_STEAM_UNKNOWN"))
+        self.assertEqual(S.apply_t5(2.0, no_t5, "ml", "2026-11-11", False)[:2], (2.0, "PASS"))   # moneylines are not gated
+        self.assertEqual(S.apply_t5(2.0, no_t5, "spread", "2026-11-09", False)[:2], (2.0, "PASS"))   # before T5_NO_T5_ST_FROM
+
+    def test_in_the_chain(self):
+        rows = [w("FOR", 3000, ratio=3.2, door2=True, wr=70.0, n=100, t5={"q": False}), w("AG", 1000, t5={"q": False})]
+        sides = {"A": {"rows": rows, "implied": 0.55, "ags": 0.9, "steam": False, "juice": False, "pinn_odds": None},
+                 "B": {"rows": flip(rows), "implied": 0.45, "ags": -0.5, "steam": False, "juice": False, "pinn_odds": None}}
+        r = S.stake_market(sides, "ml", "2026-11-11", ["A", "B"])["A"]
+        self.assertEqual((r["units"], r["t5_seat"]), (2.0, "no_t5"))                              # PRESS 5u, no tier 5 on either side: 2u
+        self.assertEqual(S.stake_market(sides, "ml", "2026-11-07", ["A", "B"])["A"]["units"], 5.0)
+
+
+class PressUnder5Cap(unittest.TestCase):
+    def test_cap(self):
+        self.assertEqual(S.press_under5_cap(3.0, 3.0, "ml", "2026-11-11", None, None), (1.0, "CAP"))
+        self.assertEqual(S.press_under5_cap(3.0, 3.0, "ml", "2026-11-11", {"for14": 1, "a": 0}, "lead14"), (2.0, "CAP"))
+        self.assertEqual(S.press_under5_cap(3.0, 3.0, "ml", "2026-11-11", {"for14": 0, "a": 0}, "t5_young"), (2.0, "CAP"))
+        self.assertEqual(S.press_under5_cap(3.0, 3.0, "spread", "2026-11-11", {"for14": 1, "a": 0}, "lead14"), (1.0, "CAP"))
+        self.assertEqual(S.press_under5_cap(2.0, -0.5, "total", "2026-11-11", None, None), (0.0, "ZERO"))
+        self.assertEqual(S.press_under5_cap(2.0, -0.5, "ml", "2026-11-11", None, None), (1.0, "CAP"))   # a moneyline under 0 takes the cap
+        self.assertEqual(S.press_under5_cap(3.0, 5.0, "ml", "2026-11-11", None, None), (3.0, "HOLD"))
+        self.assertEqual(S.press_under5_cap(3.0, None, "ml", "2026-11-11", None, None), (3.0, "PASS"))
+        self.assertEqual(S.press_under5_cap(3.0, 3.0, "ml", "2026-11-09", None, None), (3.0, "EXEMPT"))
+
+
+class ReviewFixes2(unittest.TestCase):
+    def test_lock_row_juice_counts(self):
+        gst = T + 900
+        tape = [{"t": T - 7200, "ml": [150, -170]}, {"t": gst - 1500, "ml": [130, -150]}, {"t": T - 60, "ml": [152, -172]}]
+        st = S.ladder_steam(tape, "ml", "away", None, T, gst)
+        self.assertEqual((st["cut_on"], st["lock_juice"], st["on"]), (False, True, True))         # shortened by the lock row, faded by the cut
+        flat = [{"t": T - 7200, "ml": [150, -170]}, {"t": T - 60, "ml": [150, -170]}]
+        self.assertIs(S.ladder_steam(flat, "ml", "away", None, T, gst)["on"], False)
+        walk = [{"t": T - 7200, "sp": [-3.5, -110, -110]}, {"t": T - 60, "sp": [-4.5, -110, -110]}]
+        st = S.ladder_steam(walk, "spread", "home", -4.5, T, gst)
+        self.assertEqual((st["on"], st["juice"]), (True, False))                                   # a walk is ladder steam, not juice steam
+
+    def test_pinnacle_price_off_main_is_none(self):
+        game = [{"t": T - 60, "sp": [-4.5, -105, -115], "tot": [220.5, -110, -110]}]
+        self.assertEqual(C.pinnacle_price(game, "spread", "away", T, 4.5), -115)
+        self.assertIsNone(C.pinnacle_price(game, "spread", "away", T, 3.5))
+        self.assertIsNone(C.pinnacle_price(game, "total", "over", T, 221.5))
+
+    def test_gap_does_not_fire_against_a_stake(self):
+        g = lambda dol: {"n": 8, "dol": dol}
+        rows = [w("FOR", 500, gap=g(30)), w("FOR", 500, gap=g(20)), w("AG", 2000, gap=g(-25))]
+        sides = {"A": {"rows": rows, "implied": 0.55, "ags": -0.1, "steam": False, "pinn_odds": None},
+                 "B": {"rows": flip(rows), "implied": 0.45, "ags": 0.9, "steam": False, "pinn_odds": None}}
+        flip_b = sides["B"]["rows"]
+        flip_b[2]["ratio"], flip_b[2]["door2"], flip_b[2]["n"] = 3.2, True, 20                    # B is a PRESS side
+        r = S.stake_market(sides, "ml", "2026-11-07", ["B", "A"])
+        self.assertGreater(r["B"]["units"], 0)
+        self.assertEqual((r["A"]["gap"]["fires"], r["A"]["gap"]["reason"], r["A"]["units"]), (False, "pick_against", 0.0))
+
+    def test_trust_walk_by_game_date(self):
+        rows = [("2026-10-%02d" % (1 + i // 2), 0.5, True) for i in range(20)]
+        self.assertEqual(S.trust_state_dated(rows, "2026-10-05")["n"], 8)                          # games dated Oct 1-4 only
+        self.assertEqual(S.trust_state_dated(rows, "2026-11-01")["n"], 20)
+
+    def test_blend_reads_the_bets_list(self):
+        r = w("FOR", 500, n=40, wr=50.0, s_n=10, s_wins=8)                                         # the bets list: 8 of 10
+        self.assertEqual(S.blend_edge([r], "spread", None), round(80.0 - 52.4, 1))
 
 
 if __name__ == "__main__":
