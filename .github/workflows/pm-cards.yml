@@ -62,7 +62,7 @@ jobs:
           python3 - <<'PY'
           import sys; sys.path.insert(0, "scripts")
           import os, scan_pm_holders as H, datetime as dt
-          sports = [s for s in ("nba", "nfl", "cfb") if os.path.isdir(os.path.join("pmdata", "pm_cards", s))]   # git add fails on a missing path
+          sports = [s for s in ("nba", "nfl", "cfb", "cbb") if os.path.isdir(os.path.join("pmdata", "pm_cards", s))]   # git add fails on a missing path
           if not sports:
               sys.exit(0)
           ok = H.commit_push("pmdata", "pm_cards", sports, "pm cards: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")

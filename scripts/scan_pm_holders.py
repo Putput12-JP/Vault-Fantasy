@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Polymarket holders scan: who holds which side of every upcoming full-game NBA / NFL / CFB market, recorded point in time.
+"""Polymarket holders scan: who holds which side of every upcoming full-game NBA / NFL / CFB / CBB market, recorded point in time.
 
 Step 2 of the proven-sharps side card (docs/pm-holders.md). Step 1 (scripts/build_pm_ledger.py) grades each wallet's past bets;
 this records who is ON each side before a game, and freezes it at the cutoff (game start - 15 min, the benchmark's T-15). Step 3 joins
@@ -34,7 +34,7 @@ Point-in-time rules
   - Keyframes are keyed by slug and game start, so a postponed game gets a new keyframe instead of an edited one.
   - Cut is Gamma's gameStartTime - 900. The side-card step compares it with Vault's own start time and flags a mismatch.
 
-usage: scan_pm_holders.py --out DIR --sports nba|nfl|cfb [--loop --max-minutes 330] [--commit] [--max-req 400] [--dry-run]
+usage: scan_pm_holders.py --out DIR --sports nba|nfl|cfb|cbb [--loop --max-minutes 330] [--commit] [--max-req 400] [--dry-run]
 """
 import argparse, bisect, datetime as dt, glob, gzip, json, math, os, subprocess, sys, time, urllib.parse
 
@@ -42,7 +42,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import (Budget, Client, COND_BATCH, CUTOFF_SEC, FULL_GAME, GAME_TAG, GAMMA, GAMMA_BATCH, PMDataError, SERIES,  # noqa: E402
                              pages, parse_ts, sport_of)
 
-HORIZON_H = {"nba": 72, "nfl": 168, "cfb": 120}   # how far ahead to track (the recorder's ahead_h for NBA; sharp-data's NFL/CFB windows)
+HORIZON_H = {"nba": 72, "nfl": 168, "cfb": 120, "cbb": 48}   # how far ahead to track (the recorder's ahead_h for NBA; sharp-data's NFL/CFB/CBB windows)
 TIERS = ((24 * 3600, 6 * 3600), (45 * 60, 15 * 60), (0, 5 * 60))   # (time to start at least, read every): 15-min cards all game day
 SLACK = 600                   # hourly-or-slower tiers fire 10 min early so cron jitter cannot turn "hourly" into "every 2 hours"
 FREEZE_WIN = 20 * 60          # the freeze read must land in [gst - 20 min, gst - 15 min]
