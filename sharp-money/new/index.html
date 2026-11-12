@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:dark;--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:rgba(255,255,255,.09);--ink:#fff;--mut:#98989f;--dim:#636366;
---acc:#6c9cff;--good:#32d583;--bad:#ff6b6b;--warn:#f5b84a;--nfl:#7aa7ff;--cfb:#f2a65a;--nba:#e57ab3;--ease-spring:cubic-bezier(.34,1.56,.64,1)}
+--acc:#6c9cff;--good:#32d583;--bad:#ff6b6b;--warn:#f5b84a;--nfl:#7aa7ff;--cfb:#f2a65a;--nba:#e57ab3;--cbb:#5cc8b8;--ease-spring:cubic-bezier(.34,1.56,.64,1)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.35 -apple-system,"SF Pro Text",Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .cond{font-family:"Barlow Condensed","SF Pro Rounded",Geist,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
@@ -122,7 +122,7 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .trb .chips{padding:7px 0;margin-top:-3px;margin-bottom:4px}.trb .chips .chip{position:relative}.trb .chips .chip::after{content:"";position:absolute;inset:-7px 0}
 .trsp{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mut)}
 .trsp i,.trd{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none;display:inline-block}
-.trsp.nfl i,.trd.nfl{background:var(--nfl)}.trsp.cfb i,.trd.cfb{background:var(--cfb)}.trsp.nba i,.trd.nba{background:var(--nba)}
+.trsp.nfl i,.trd.nfl{background:var(--nfl)}.trsp.cfb i,.trd.cfb{background:var(--cfb)}.trsp.nba i,.trd.nba{background:var(--nba)}.trsp.cbb i,.trd.cbb{background:var(--cbb)}
 .trmk{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mut)}
 .trc{position:relative;display:flex;flex-direction:column;gap:12px;padding:18px;overflow:hidden}
 .trc .rk{position:absolute;right:16px;top:10px;font:600 44px/1 ui-monospace,"SF Mono",Menlo,monospace;color:var(--card2);pointer-events:none}
@@ -174,7 +174,7 @@ a.btn{text-decoration:none}
 <script src="../edge-board.js"></script>
 <script src="../v2/gates.js?v=side1"></script>
 <script src="../v2-pages.js?v=side1"></script>
-<script src="../side-cards.js?v=16"></script>
+<script src="../side-cards.js?v=17"></script>
 <script>
 let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
@@ -194,7 +194,10 @@ const when=ts=>new Date(ts*1000).toLocaleString('en-US',{...CT,weekday:'short',h
 const day=ts=>new Date(ts*1000).toLocaleString('en-US',{...CT,weekday:'long',month:'short',day:'numeric'});
 const mvTxt=(mv,line)=>{if(!mv||mv.p0==null||mv.p1==null)return'';const m=Math.max(1,Math.round((REF-mv.t)/60)),w=m<60?m+'m':m<1440?Math.round(m/60)+'h':Math.round(m/1440)+'d';return 'Pinnacle '+(mv.line0!=null&&line!=null&&mv.line0!==line?'moved the number, now ':Math.round(mv.p0*100)+'% to ')+Math.round(mv.p1*100)+'% '+w+' ago'};
 const ago=ts=>{const m=Math.max(1,Math.round((REF-ts)/60));return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'};
-const SPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA'};
+const SPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA',cbb:'CBB'};
+/* Top Reads and V2 Plays cover only the sports their rules were registered on. College basketball joined the poll on 2026-11-12,
+   after the Nov 9 Top Reads freeze, so it never becomes a Top Read or a V2 play (the poller and build_topreads_ledger.py drop it too). */
+const TRS=new Set(['nfl','cfb','nba']),TRSPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA'};
 const TYPES={steam:['Pinnacle move','acc',"Pinnacle, the book that takes the biggest limits and moves first, shifted a line past the sport's threshold within about 30 minutes. This is the market reacting to real money."],
  behind:['Book behind','good',"A US book (DraftKings, FanDuel, BetMGM, BetRivers, bet365) still hangs a price that is +EV against Pinnacle's fair price at the same number. Priced from Pinnacle's own alternate ladder, so it only counts when the book is genuinely behind."],
  sharp:['Sharp accounts','warn','Polymarket accounts whose past $1k+ bets beat the closing price (t-stat 2+, 10+ bets, 5+ games) just bought. Their edge fades within about 30 minutes, so the age matters.'],
@@ -202,12 +205,14 @@ const TYPES={steam:['Pinnacle move','acc',"Pinnacle, the book that takes the big
  cross:['Sharp net crossed','acc',"The combined net money from Polymarket sharp accounts on one team's moneyline just reached the line: $25k for NFL and NBA, $5k for college football. Fires once per game, and again if the sharp side flips."],
  split:['Money vs bets','','At the US books, a side has 20+ points more of the money than of the bets, while most bets are on the other side. Fewer, bigger bettors on one side.']};
 const MK={sp:'Spread',ml:'Money',tot:'Total'};
-/* Team logos: ESPN's CDN (NFL and NBA by abbreviation, college by ESPN id looked up from the team name). The colored badge with the abbreviation sits underneath and shows if an image fails. */
+/* Team logos: ESPN's CDN (NFL and NBA by abbreviation, college football by ESPN id looked up from the team name, college basketball
+   by the logo link ESPN itself returned for the team, stored by the poller). The colored badge with the abbreviation sits underneath and shows if an image fails. */
 const CFBL={},NFLM={LA:'lar',WAS:'wsh',JAC:'jax'},NBAM={NOP:'no',NYK:'ny',SAS:'sa',GSW:'gs',WAS:'wsh',UTA:'utah'};
 const vNorm=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function teamUrl(sp,t){const ab=String(t.abbr||'').toUpperCase(),b='https://a.espncdn.com/i/teamlogos/';
  if(sp==='nfl')return b+'nfl/500/'+(NFLM[ab]||ab.toLowerCase())+'.png';
  if(sp==='nba')return b+'nba/500/'+(NBAM[ab]||ab.toLowerCase())+'.png';
+ if(sp==='cbb')return /^https:\/\/a\.espncdn\.com\//.test(t.logo||'')?t.logo:null;
  if(sp==='cfb'){const id=t.espnId||CFBL[vNorm(t.name)]||CFBL[vNorm(String(t.name||'').replace(/\([^)]*\)/g,''))];return id?b+'ncaa/500/'+id+'.png':null}
  return null}
 const logo=(t,c='',sp)=>{const u=sp&&t?teamUrl(sp,t):null;return `<div class="logo ${c}" style="background:${(t&&t.color)||'#444'}"><span>${esc((t&&t.abbr)||'')}</span>${u?`<img src="${u}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>`};
@@ -249,7 +254,7 @@ function gameCard(g){
  <div class="tags">${tot}${mv}${n?`<span class="badge">${n} alert${n>1?'s':''} today</span>`:''}${(g.behind||[]).length?`<span class="badge good">+EV at ${esc(g.behind[0].book)}</span>`:''}${!P?'<span class="badge">no Pinnacle line yet</span>':''}</div></div>`;
 }
 function board(){
- const up=upcoming(),cnt={all:up.length,nfl:0,cfb:0,nba:0};up.forEach(g=>cnt[g.sport]++);
+ const up=upcoming(),cnt={all:up.length,nfl:0,cfb:0,nba:0,cbb:0};up.forEach(g=>cnt[g.sport]=(cnt[g.sport]||0)+1);
  const L=up.filter(g=>st.sport==='all'||g.sport===st.sport);
  let h=head('Sharp Money','Context only, not a bet signal. '+snap())+
  chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport');
@@ -375,7 +380,7 @@ function props(){
 }
 function acctBlock(){
  let h='';
- h+=`<div class="sec"><span>Scored wallets</span></div><div class="hs">${['nfl','cfb','nba'].map(k=>{const w=D.wallets[k];return `<div class="card hc"><div class="gtop"><span>${SPORT[k]}</span><span>${w.scored.toLocaleString()} scored</span></div><div class="big cond" style="font-size:30px;font-weight:600">${w.sharp}</div><div class="m" style="color:var(--mut);font-size:12px">sharp · ${w.borrowed} borrowed · ${w.dull} dull</div></div>`}).join('')}</div>`;
+ h+=`<div class="sec"><span>Scored wallets</span></div><div class="hs">${['nfl','cfb','nba','cbb'].filter(k=>D.wallets[k]).map(k=>{const w=D.wallets[k];return `<div class="card hc"><div class="gtop"><span>${SPORT[k]}</span><span>${w.scored.toLocaleString()} scored</span></div><div class="big cond" style="font-size:30px;font-weight:600">${w.sharp}</div><div class="m" style="color:var(--mut);font-size:12px">sharp · ${w.borrowed} borrowed · ${w.dull} dull</div></div>`}).join('')}</div>`;
  h+=`<div class="sec"><span>Sharpest accounts</span><span>by t-stat</span></div><div class="card">`+ACC.map((a,i)=>`<div class="row tap" data-go="acct/${i}"><div class="grow"><b>${esc(a.who)}</b><div class="m">t ${a.rec.t} · ${sgn(a.rec.clv*100)} pts vs close · ${a.rec.n} bets, ${a.rec.games} games · ${SPORT[a.rec.sport]||''}</div></div><div class="amt cond">${money(a.buy24)}<small>bought, 24h</small></div></div>`).join('')+`</div>`;
  return h;
 }
@@ -414,7 +419,7 @@ function record(){
  h+=`<div class="sec"><span>Model scoreboard</span><span class="badge">small samples</span></div>`+(SC.length?'':'<div class="empty">The scoreboard could not be loaded.</div>')+SC.map(s=>`<div class="card"><div class="gtop"><span>${s[0]}</span><span class="badge ${s[5]?'bad':'warn'}">${s[5]?'no edge':'tracking'}</span></div><div class="cond" style="font-size:36px;font-weight:600">${s[1]}</div><div class="m" style="color:var(--mut);font-size:13px">${s[2]}</div><div class="fbar" style="margin-top:10px"><i style="width:${Math.min(100,s[3]/s[4]*100)}%;background:#6c9cff"></i></div><div class="fll" style="margin:5px 0 0"><span>${s[3]} of ${s[4]} to count</span><span>${esc(s[6]||'')}</span></div></div>`).join('');
  h+=`<div class="sec"><span>What each alert means</span></div>`+Object.keys(TYPES).map(k=>`<div class="card"><span class="badge ${TYPES[k][1]}">${TYPES[k][0]}</span><div style="color:var(--mut);font-size:13px;margin-top:8px">${esc(TYPES[k][2])}</div></div>`).join('');
  h+=`<div class="card"><b>How to read the grades</b><div style="color:var(--mut);font-size:13px;margin-top:6px">Closing line value is the standard test for a bet: did the market end up agreeing with you? An alert type that keeps beating the close is adding information. One that does not is shown for context only.</div></div>`;
- const S=D.status||{nfl:{},cfb:{},nba:{}};h+=`<div class="sec"><span>Where the data comes from</span><span>${snap().replace(/<[^>]+>/g,'')}</span></div><div class="card">${['nfl','cfb','nba'].map(k=>`<div class="kv"><span>${SPORT[k]}</span><em class="cond" style="font-size:16px">${S[k].games} games · Pinnacle ${S[k].pinnacle} · Polymarket ${S[k].polymarket} · Kalshi ${S[k].kalshi} · Novig ${S[k].novig}</em></div>`).join('')}</div>`;
+ const S=D.status||{nfl:{},cfb:{},nba:{}};h+=`<div class="sec"><span>Where the data comes from</span><span>${snap().replace(/<[^>]+>/g,'')}</span></div><div class="card">${['nfl','cfb','nba','cbb'].filter(k=>S[k]).map(k=>`<div class="kv"><span>${SPORT[k]}</span><em class="cond" style="font-size:16px">${S[k].games} games · Pinnacle ${S[k].pinnacle} · Polymarket ${S[k].polymarket} · Kalshi ${S[k].kalshi} · Novig ${S[k].novig}</em></div>`).join('')}</div>`;
  return h;
 }
 let inApp=false;
@@ -762,7 +767,7 @@ function readOut(g,t){
  }
  const d=g.splits&&g.splits[t];
  if(d)for(const p of [i,s]){const h=d[p];if(h&&h.m!=null&&h.t<=50&&h.m-h.t>=10)r.money={side:p,txt:h.m+'% of the money on '+h.t+'% of bets'}}
- const fl=(g.flow&&g.flow.sharp)||{},c=(fl[t+':'+i]||0)-(fl[t+':'+s]||0),at=g.sport==='cfb'?2500:5000;
+ const fl=(g.flow&&g.flow.sharp)||{},c=(fl[t+':'+i]||0)-(fl[t+':'+s]||0),at=g.sport==='cfb'||g.sport==='cbb'?2500:5000;
  if(Math.abs(c)>=at)r.sharp={side:c>0?i:s,usd:Math.abs(c),ctx:true,txt:money(Math.abs(c))+' net from sharp accounts'};
  const b=(g.behind||[]).find(p=>p.m===t);
  if(b)r.behind={side:b.side,txt:b.book+' '+am(b.price)+', '+(b.ev*100).toFixed(1)+"% over Pinnacle's fair",bh:b};
@@ -784,7 +789,7 @@ function topGroups(Dd){
  };
  const grouped=new Map();
  for(const r of Dd.alerts||[]){
-  const kind=EF[r.type];if(!kind||!r.m||!r.side)continue;
+  const kind=EF[r.type];if(!kind||!r.m||!r.side||!TRS.has(r.sport))continue;
   const d=sk(r);let c=grouped.get(d);
   if(!c){c={game:r.game,gameLbl:r.gameLbl,start:r.start,sport:r.sport,m:r.m,side:r.side,kinds:new Set(),res:0,graded:false,hline:r.hline==null?null:r.hline,line:r.line==null?null:r.line,alerts:[]};grouped.set(d,c)}
   c.kinds.add(kind);c.alerts.push({k:kind,r});if(r.result!=null){c.graded=true;c.res+=r.result}if(r.hline!=null)c.hline=r.hline;if(r.line!=null)c.line=r.line;
@@ -895,7 +900,7 @@ function lvPin(d,m){
   if(m==='tot'){const ov=gap>0;bb=bk.reduce((x,w)=>(ov?w[1]<x[1]:w[1]>x[1])?w:x);pick=(ov?'Over ':'Under ')+bb[1]}
   else{const home=gap<0;bb=bk.reduce((x,w)=>(home?w[1]>x[1]:w[1]<x[1])?w:x);pick=home?rTn(g,'home')+' '+mSn(bb[1]):rTn(g,'away')+' '+mSn(-bb[1])}
   const fl2=m==='tot'?e=>''+e:e=>rTn(g,'home')+' '+mSn(e),mk=mdAg(m,mdOf(g),lp,med),mdTxt=!mk?(g.sport==='nba'?'No NBA model':'No model line for this game'):(m==='tot'?'Total '+mk.v:(mk.v>=0?rTn(g,'home'):rTn(g,'away'))+' by '+Math.abs(mk.v))+', '+mk.x.toFixed(1)+' pts '+(mk.ag?'toward':'against')+' the pick';
-  o.push({k:Math.abs(gap),y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:(g.sport!=='nfl'?`<span class="badge">${g.sport==='cfb'?'College':'NBA'}, not in the NFL record</span>`:'')+(mk?`<span class="badge ${mk.ag?'good':'bad'}">${mk.ag?'model agrees':'model disagrees'}</span>`:'')+`<span class="badge ${hrs>=3?'good':''}">${hrs>=3?'counted (3h+ out)':'inside 3h, not counted'}</span>`,rows:[['Pinnacle',fl2(lp)],['Model',mdTxt],['Other books','median '+fl2(med)+'; best '+fl2(bb[1])+' at '+(SHB[bb[0]]||bb[0])],['Gap',Math.abs(gap).toFixed(1)+' pts'],['Opened',g.open&&g.open[m]?fl2(g.open[m].line):'-'],['Kickoff','in '+hrsTxt(hrs)]]}});
+  o.push({k:Math.abs(gap),y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:(g.sport!=='nfl'?`<span class="badge">${{cfb:'College football',nba:'NBA',cbb:'College basketball'}[g.sport]||esc(g.sport)}, not in the NFL record</span>`:'')+(mk?`<span class="badge ${mk.ag?'good':'bad'}">${mk.ag?'model agrees':'model disagrees'}</span>`:'')+`<span class="badge ${hrs>=3?'good':''}">${hrs>=3?'counted (3h+ out)':'inside 3h, not counted'}</span>`,rows:[['Pinnacle',fl2(lp)],['Model',mdTxt],['Other books','median '+fl2(med)+'; best '+fl2(bb[1])+' at '+(SHB[bb[0]]||bb[0])],['Gap',Math.abs(gap).toFixed(1)+' pts'],['Opened',g.open&&g.open[m]?fl2(g.open[m].line):'-'],['Kickoff','in '+hrsTxt(hrs)]]}});
  }
  return o.sort((x,w)=>w.k-x.k).map(x=>x.y);
 }
@@ -995,7 +1000,7 @@ function trReads(d){
  const alertTs={};for(const a of D.alerts||[])(alertTs[a.game]||(alertTs[a.game]=[])).push(a.ts);
  const one=[],split=[];
  for(const g of G){
-  if(!(g.start>(st.texp?d-4*3600:d)))continue;
+  if(!(g.start>(st.texp?d-4*3600:d))||!TRS.has(g.sport))continue;
   for(const m of ['sp','tot','ml']){
    const {out,hl}=readOut(g,m),ks=['line','behind','money'].filter(k=>out[k]),sides=new Set(ks.map(k=>out[k].side));
    if(!sides.size)continue;
@@ -1067,7 +1072,7 @@ function topPage(){
  // 1. one-line verdict
  const vd=!T?(TR.err?['off','Ledger unavailable. These are the strongest one-sided reads right now.']:['off','These are the strongest one-sided reads right now.']):plays.length?['ok',plays.length+' play'+(plays.length===1?'':'s')+' today']:['','No rule has earned a play yet. These are the strongest one-sided reads right now.'];
  h+=`<div class="trv"><span class="dt ${vd[0]}"></span><span>${vd[1]}</span></div>`;
- h+=`<div class="chips">${Object.keys(SPORT).map(k=>`<button class="chip ${sp===k?'on':''}" data-set="tsp" data-v="${k}">${SPORT[k]}<small>${cnt[k]||0}</small></button>`).join('')}<button class="chip ${st.texp?'on':''}" data-toggle="texp" style="margin-left:6px">${st.texp?'Including expired':'Still gettable'}</button></div>`;
+ h+=`<div class="chips">${Object.keys(TRSPORT).map(k=>`<button class="chip ${sp===k?'on':''}" data-set="tsp" data-v="${k}">${SPORT[k]}<small>${cnt[k]||0}</small></button>`).join('')}<button class="chip ${st.texp?'on':''}" data-toggle="texp" style="margin-left:6px">${st.texp?'Including expired':'Still gettable'}</button></div>`;
  // 2. plays first, then the top three reads
  h+=plays.map(trPlayCard).join('');
  h+=reads.length?reads.slice(0,3).map((x,i)=>trTop(x,i,d)).join(''):`<div class="card"><b>No one-sided reads ${st.texp?'right now':'still gettable'}.</b><div class="foot" style="margin-top:4px">${st.texp?'Reads show up here when line moves, money splits or book prices line up on one side.':'Turn on "Including expired" to see reads whose window has closed.'}</div></div>`;
@@ -1115,10 +1120,11 @@ function v2Plays(){
  const c=v2c(),title='Plays',sub='Prices that beat two independent fair prices. '+snap();
  if(!c)return head(title,sub)+'<div class="card empty">The V2 rules did not load. Reload the page.</div>';
  if(!c.ensure())return v2wait(title,sub,'plays');
+ if(!TRS.has(st.sport))st.sport='all';               // V2 Plays has no college basketball: a CBB pick from the board falls back to All here
  const B=v2built(),F=c.STORE.files,cnt={all:0,nfl:0,cfb:0,nba:0};
  B.cand.filter(x=>x.tier==='play').forEach(x=>{cnt.all++;cnt[x.sport]++});
  const L=t=>B.cand.filter(x=>x.tier===t&&(st.sport==='all'||x.sport===st.sport)),OR=c.openRows(F,st.sport);
- let h=head(title,sub)+v2nav('plays')+`<div style="margin:0 16px 12px">${c.recordHtml(F,V2PAL,st.ptier==='open'?'play':st.ptier,st.sport)}</div>`+chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['open','Open',OR.length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
+ let h=head(title,sub)+v2nav('plays')+`<div style="margin:0 16px 12px">${c.recordHtml(F,V2PAL,st.ptier==='open'?'play':st.ptier,st.sport)}</div>`+chips(Object.keys(TRSPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['open','Open',OR.length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
  const list=L(st.ptier);
  if(st.ptier==='open')h+=`<div class="card">${OR.length?OR.map(r=>{const p=r.p,f=p.first||{},gk=p.game&&p.game.gk;return `<div class="row"${gk?` data-go="game/${esc(gk)}" style="cursor:pointer"`:''}><div class="grow"><b>${esc(f.title)}</b><div class="m">${esc(f.price.book)} ${am(f.price.am)} · ${esc(f.sub||'')} · first seen ${v2when(p.firstSeen)} · ${(f.refs||[]).map(x=>esc(x.n)+' '+v2spct(x.edge)).join(', ')}</div></div><div class="m" style="text-align:right">${SPORT[p.sport]}<br>${p.start?v2when(p.start).split(' ').slice(0,3).join(' '):''}</div></div>`}).join(''):'<div class="empty">No open plays. Plays that were logged and are still waiting on the game show here.</div>'}</div>`;
  else if(st.ptier==='pass')h+=`<div class="card">${list.length?list.map(x=>`<div class="row"${x.gk?` data-go="game/${esc(x.gk)}" style="cursor:pointer"`:''}><div class="grow"><b>${esc(x.title)}</b><div class="m">${esc(x.price.book)} ${am(x.price.am)} · ${esc(x.reasons[0])}</div></div><div class="m" style="text-align:right">${SPORT[x.sport]}</div></div>`).join(''):'<div class="empty">Nothing passed over.</div>'}</div>`;
