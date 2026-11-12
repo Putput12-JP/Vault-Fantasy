@@ -1,10 +1,10 @@
-"""Unit tests for scripts/grade_side_cards.py and scripts/sharpflow_h2h.py: the grading rules of docs/sharp-card-prereg.md."""
+"""Unit tests for scripts/grade_side_cards.py and scripts/benchmark_h2h.py: the grading rules of docs/sharp-card-prereg.md."""
 import os, sys, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 import grade_side_cards as G  # noqa: E402
-import sharpflow_h2h as H  # noqa: E402
+import benchmark_h2h as H  # noqa: E402
 
 GST = 1_800_000_000
 CUT = GST - 900
@@ -110,7 +110,7 @@ class Grade(unittest.TestCase):
             G.append_rows(d, rows)                                      # every row kind carries gst for its month file
             self.assertEqual(sorted(G.load_rows(d)), sorted(r["key"] for r in rows))
 
-    def test_sharpflow_list_variant_is_graded_and_compared(self):
+    def test_benchmark_list_variant_is_graded_and_compared(self):
         sf = {"side": "Jazz", "units": 2, "line": -4.5, "price": 0.515, "price_t": CUT - 60, "cid": "c1", "outs": ["Magic", "Jazz"]}
         c = card(LOCK)
         c["markets"]["spread"]["sf"] = {"all": {"side": None, "units": 0}, "sfx": sf}
@@ -175,7 +175,7 @@ class Benchmark(unittest.TestCase):
         self.assertEqual((spr["res"], spr["res_mapped"], spr["flat"]), (None, "loss", None))          # no line: no priced result
         self.assertIn(("after_cut", "Knicks", "ml"), rows)                                            # sized up after the cut
         rec = H.h2h(list(rows.values()), [], 0)["sports"]["nba"]["ml"]
-        self.assertEqual((rec["sharpflow"]["n"], rec["sharpflow_after_cut"]["n"], rec["sharpflow_at_cut_cancelled_later"]), (1, 1, 1))
+        self.assertEqual((rec["benchmark"]["n"], rec["benchmark_after_cut"]["n"], rec["benchmark_at_cut_cancelled_later"]), (1, 1, 1))
 
     def test_h2h_reads_card_results_and_skips_close_rows(self):
         rows = G.grade(card(LOCK), "nba/frozen/d/x.json", None, FACT, CLOSES, GST + 3600)[0]

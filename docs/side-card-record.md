@@ -37,16 +37,16 @@ The rules are the pre-registration's:
 - `pm_record/cards_record.json`: the read.
 - `pm_record/markets.json`: resolved Gamma facts. A final result never changes, so only resolved markets are cached.
 
-## 2. SharpFlow head-to-head (`scripts/sharpflow_h2h.py`)
+## 2. SharpFlow head-to-head (`scripts/benchmark_h2h.py`)
 
 SharpFlow rewrites its public files about every 10 minutes, so its site never shows what it said at a given time. Its repo's commit
 history does, so the archive is built from that.
 
 | File | When | What |
 |---|---|---|
-| `sharpflow/<sport>/<date>/<slug>@<gst>.json` | once the cut has passed | that game's entry in SharpFlow's three position files and its picks, from the last commit at or before our cut (no older than 2 hours) |
+| `benchmark/<sport>/<date>/<slug>@<gst>.json` | once the cut has passed | that game's entry in SharpFlow's three position files and its picks, from the last commit at or before our cut (no older than 2 hours) |
 | `...@<gst>.final.json` | 12 hours after the start, or at 3 days if picks are still pending | SharpFlow's picks for the game from its current file |
-| `sharpflow/rows/<sport>/<YYYY-MM>.jsonl` | once the market resolves | each SharpFlow real play (units > 0, not cancelled, in the final file) |
+| `benchmark/rows/<sport>/<YYYY-MM>.jsonl` | once the market resolves | each SharpFlow real play (units > 0, not cancelled, in the final file) |
 | `h2h_record.json` | every run | per sport and market group: SharpFlow, Vault's shown size, Vault's counted lock, the same games, and by day |
 
 - **The headline is what SharpFlow showed at our cut** (`set: at_cut`): every real play in the picks file public at the cut,
@@ -92,7 +92,7 @@ own at-cut plays:
 | `all` | Vault's hedger (25% both sides, 8+ markets) and churn (volume / PnL > 100) on every wallet | the shown size today |
 | `sfx` | SharpFlow's published market-maker and trader list | shadow, graded beside it |
 
-The head-to-head (`vault_shown_size`, `vault_sfx`, `sharpflow`) and the Record page show all three. The shown size moves to
+The head-to-head (`vault_shown_size`, `vault_sfx`, `benchmark`) and the Record page show all three. The shown size moves to
 whichever Vault rule set is beating SharpFlow once both have a usable sample. That switch is a decision made with the user, not
 automatic, and the pre-registered lock is unchanged either way.
 
