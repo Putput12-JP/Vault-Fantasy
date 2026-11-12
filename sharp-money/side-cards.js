@@ -113,7 +113,12 @@ var RUNG = {
   'FADE-F': ['Fade', 'The only losing wallet in this market is on the other side and is on a losing streak.'],
   'TRUST-G': ['Trusted wallet', 'A wallet that has beaten its own prices lately is on this moneyline, and the older score is positive.'],
   'TRUST-S': ['Trusted wallet', 'A wallet that has beaten its prices in spread markets is on this side and none is against it.'],
-  'TRUST-T': ['Trusted wallets', 'Two or more wallets that have beaten their prices in totals are on this side and none is against.']
+  'TRUST-T': ['Trusted wallets', 'Two or more wallets that have beaten their prices in totals are on this side and none is against.'],
+  'STEAM-C': ['Steam', 'Pinnacle\'s price is moving toward this side, and the proven wallets against it are betting small. The market overrules a small dissent.'],
+  'STEAM-S': ['Steam', 'Pinnacle\'s price is moving toward this side against a seasoned wallet\'s ordinary-size bet, with 20% to 60% of the money here.'],
+  'SOLO-Q': ['Quiet favourite', 'Nobody is against this side, Pinnacle is not moving, it is a 50% to 60% favourite, and the money here is small or from a wallet in hot form.'],
+  'PRESS-M': ['Mirror press', 'The press shape (money, a sized-up veteran, no proven wallet against) is on the side SharpFlow\'s score did not favour.'],
+  'GAP-LEAD': ['Recent form', 'At least two wallets here have much better last-30-day results in this market than the wallets on the other side, whose recent results are negative.']
 };
 /* climate, from stored fields only: signal = a side meets the tracked rule; building = proven money somewhere; quiet = none */
 function climate(g, v){
@@ -154,7 +159,7 @@ function verdict(g, m, key, names, v){
       tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>'
       : '<p class="vc-why">' + (rg ? rg[1] : 'This side meets one of SharpFlow\'s staking rules.') + '</p>') +
       '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size is what SharpFlow\'s staking rules give this side, rebuilt from Vault\'s own wallet records. ' +
-      'It does not yet use Pinnacle line moves, the odds cap or three of SharpFlow\'s smaller rules, so it can differ from SharpFlow\'s own pick. This rule has no graded record yet.</p></details><button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
+      'It now includes Pinnacle steam, the odds cap, the trusted-margin, mirror, recent-form and top-wallet rules and the edge clamps. It still leaves out SharpFlow\'s first-capture steam door and its private steam feed, and wallet records are Vault\'s own, so it can differ from SharpFlow\'s pick. This rule has no graded record yet.</p></details><button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
   }
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
   var other = names.filter(function(n){ return n !== lead; })[0], tot = counted(S[lead]) + counted(S[other]);
@@ -305,7 +310,7 @@ function detail(g, key, v){
   if (ls){
     var rg = ls.rung && RUNG[ls.rung];
     h += '<section class="vd-sec"><span class="vd-cap">How the size is set</span><p class="vd-p"><b>' + (rg ? rg[0] : 'Press ladder') + '.</b> ' + (rg ? rg[1] : 'This side meets the pre-registered press-ladder gates.') +
-      ' The size is SharpFlow\'s staking rule rebuilt from Vault\'s own wallet records. It leaves out Pinnacle line moves, steam and the odds cap, and it has no graded record yet.</p></section>';
+      ' The size is SharpFlow\'s staking rule rebuilt from Vault\'s own wallet records, with Pinnacle steam, the odds cap and SharpFlow\'s seat and edge caps. It still leaves out its first-capture steam door, and it has no graded record yet.</p></section>';
   }
   return h + '<p class="vd-foot">Sharp money is context. Price skill counts only past bets with a stored close; a wallet with fewer than ' + CLV_MIN + ' is listed but not plotted.</p>';
 }
