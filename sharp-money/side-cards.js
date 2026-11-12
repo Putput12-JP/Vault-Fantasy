@@ -15,6 +15,7 @@
 'use strict';
 var OPT = {}, UI = {}, SHOWN = {};
 /* Vault NBA skin: every colour comes from the NBA page's own theme variables, so light, dark and charcoal follow the page */
+var RECORD_CSS = '.vsc .vr-view{margin:0 0 14px}\n.vsc .vr-top{text-align:left;margin-bottom:14px}.vsc .vr-top p{margin:6px 0 0;max-width:none}\n.vsc .vr-sec{margin-bottom:14px;background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r)}\n.vsc .vr-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}\n.vsc .vr-prog{font-size:12.5px;color:var(--c-mut)}\n.vsc .vr-bar{height:4px;border-radius:2px;background:var(--c-box);margin:8px 0 4px;overflow:hidden}.vsc .vr-bar i{display:block;height:100%;background:var(--c-good)}\n.vsc .vr-sub{margin:8px 0 0;font-size:12.5px;line-height:1.5;color:var(--c-mut)}.vsc .vr-sub b.dn{color:var(--c-bad)}\n.vsc .vr-cap2{display:block;margin:14px 0 4px;font-size:12.5px;font-weight:600}\n.vsc .vr-tw{overflow-x:auto}\n.vsc .vr-t{width:100%;border-collapse:collapse;font-size:13px}\n.vsc .vr-t th,.vsc .vr-t td{padding:7px 8px;text-align:right;border-top:1px solid var(--c-line);white-space:nowrap}\n.vsc .vr-t thead th{border-top:0;font-size:11.5px;font-weight:500;color:var(--c-mut)}\n.vsc .vr-t tbody th{text-align:left;font-weight:500;padding-left:0}.vsc .vr-t thead th:first-child{padding-left:0}\n.vsc .vr-t td.up{color:var(--c-good)}.vsc .vr-t td.dn{color:var(--c-bad)}.vsc .vr-t td em{font-style:normal;color:var(--c-dim);font-size:11.5px}\n.vsc .vr-t td.vr-none{text-align:left;color:var(--c-dim)}\n.vsc .vr-g{padding:10px 0;border-top:1px solid var(--c-line)}.vsc .vr-g:first-of-type{border-top:0}\n.vsc .vr-gn{display:block;font-size:13.5px;margin-bottom:4px}\n.vsc .vr-pl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13px;padding:2px 0}\n.vsc .vr-who{width:84px;color:var(--c-mut);font-size:12px}.vsc .vr-pl em{font-style:normal;color:var(--c-dim);font-size:12px}\n.vsc .vr-res{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 5px;border-radius:6px;font-size:11.5px;font-weight:700}\n.vsc .vr-res.win{background:var(--c-good);color:var(--c-on-good)}.vsc .vr-res.loss{background:var(--c-bad);color:#fff}.vsc .vr-res.push,.vsc .vr-res.na{background:var(--c-box);color:var(--c-mut)}\n@media (max-width:767px){.vsc .vr-sec{margin:0 0 12px}.vsc .vr-who{width:auto;min-width:72px}}\n';
 var DETAIL = '.vd-wrap{position:fixed;inset:0;z-index:1000;margin:0!important;--ease-sheet:cubic-bezier(0.32,0.72,0,1)}\n.vd-scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s ease}\n.vd-wrap.on .vd-scrim{opacity:1}\n.vd{position:absolute;top:0;right:0;bottom:0;width:min(560px,100%);overflow-y:auto;overscroll-behavior:contain;background:var(--c-card);color:var(--c-ink);font-family:var(--c-sans);font-size:14px;line-height:1.4;padding:20px 20px 32px;border-left:1px solid var(--c-line);transform:translateX(100%);transition:transform var(--dur-rail,400ms) var(--ease-sheet)}\n.vd-wrap.on .vd{transform:none}\n.vd .num{font-family:var(--c-num);font-variant-numeric:tabular-nums;letter-spacing:var(--c-num-ls,0)}\n.vd .vd-cap{display:block;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-mut)}\n.vd-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}\n.vd-top h2{margin:6px 0 4px;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.1}\n.vd-px{display:flex;align-items:baseline;gap:10px;font-size:15px}.vd-px b{font-size:20px}.vd-px span{color:var(--c-mut)}\n.vd-px em{font-style:normal;font-weight:600;color:var(--c-mut)}.vd-px em.up{color:var(--c-good)}.vd-px em.dn{color:var(--c-bad)}\n.vd-sub{display:block;margin-top:3px;font-size:12.5px;color:var(--c-dim)}\n.vd-x{all:unset;box-sizing:border-box;cursor:pointer;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--c-box);color:var(--c-mut);flex:none}\n.vd-x svg{width:16px;height:16px}.vd-x:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}\n.vd-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:18px}\n.vd-hero b{font-size:40px;font-weight:700;letter-spacing:-.04em;line-height:1}\n.vd-op{margin-left:10px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.vd-op.ok{color:var(--c-good)}.vd-op.no{color:var(--c-warn)}\n.vd-u{text-align:right}.vd-u b{display:block;font-size:24px;color:var(--c-gold)}\n.vd-mix{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--c-box);margin-top:12px;gap:1px}\n.vd-mix i{display:block;height:100%}.vd-mix .sharp{background:var(--c-good)}.vd-mix .unp{background:var(--c-rb-unp)}.vd-mix .loser{background:var(--c-bad)}\n.vd-mixl{display:flex;gap:14px;margin-top:6px;font-size:12px;color:var(--c-mut)}\n.vd-sec,.vd-lead{margin-top:18px;padding:16px;border-radius:var(--c-mr,14px);background:var(--c-box)}\n.vd-key{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0 4px;font-size:12px;color:var(--c-mut)}\n.vd-key span{display:inline-flex;align-items:center;gap:5px}.vd-key em{font-style:normal;margin-left:auto;color:var(--c-dim)}\n.vd-key i{width:9px;height:9px;border-radius:50%}.vd-key .sharp{background:var(--c-good)}.vd-key .gold{background:var(--c-gold)}\n.vd-key .unp{background:transparent;border:1.5px dashed var(--c-rb-unp)}.vd-key .loser{background:var(--c-bad)}.vd-key .opp{background:transparent;border:1.5px solid var(--c-mut)}\n.vd-sc{display:block;width:100%;height:auto;margin-top:4px}\n.vd-sc .gl{stroke:var(--c-line2);stroke-width:1}.vd-sc .gl.z{stroke:var(--c-mut);stroke-dasharray:3 4}\n.vd-sc .ax{fill:var(--c-dim);font-size:11px;font-family:var(--c-num)}.vd-sc .axt{fill:var(--c-mut);font-size:11.5px;font-family:var(--c-sans)}\n.vd-sc .b circle{stroke-width:1.5;fill-opacity:.85}.vd-sc .b.sharp circle{fill:var(--c-good);stroke:var(--c-good)}.vd-sc .b.gold circle{fill:var(--c-gold);stroke:var(--c-gold)}\n.vd-sc .b.unp circle{fill:var(--c-rb-unp);fill-opacity:.25;stroke:var(--c-rb-unp);stroke-dasharray:3 3}.vd-sc .b.loser circle{fill:var(--c-bad);stroke:var(--c-bad)}\n.vd-sc .b.opp circle{fill-opacity:0}.vd-sc .bl{fill:var(--c-gold);font-size:13px;font-weight:700;font-family:var(--c-num)}\n.vd-held{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--c-mut)}\n.vd-lead{box-shadow:inset 3px 0 0 var(--c-gold)}\n.vd-lh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:8px}\n.vd-lh b{font-size:18px}.vd-lu{text-align:right}.vd-lu b{display:block;font-size:24px;color:var(--c-gold)}.vd-lu span{font-size:12px;color:var(--c-mut)}\n.vd-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700;vertical-align:2px;border:1px solid currentColor}\n.vd-tag.sharp{color:var(--c-good)}.vd-tag.gold{color:var(--c-gold)}.vd-tag.unp{color:var(--c-mut)}.vd-tag.loser{color:var(--c-bad)}\n.vd-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}\n.vd-box{padding:12px;border-radius:12px;background:var(--c-card);min-width:0}.vd-box b{display:block;font-size:24px;margin-top:4px}.vd-box span.num{font-size:12.5px;color:var(--c-mut)}\n.vd-box.good{box-shadow:inset 0 0 0 1px var(--c-good-line)}.vd-box.good b{color:var(--c-good)}\n.vd-size{margin-top:14px}.vd-szh{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--c-mut)}.vd-szh b{color:var(--c-good);font-size:15px}\n.vd-bar{position:relative;height:6px;border-radius:3px;background:var(--c-card);margin:8px 0 6px}.vd-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--c-good)}\n.vd-bar u{position:absolute;top:-3px;width:2px;height:12px;background:var(--c-ink)}\n.vd-size p{margin:6px 0 0;font-size:12.5px;color:var(--c-mut)}\n.vd-who{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}\n.vd-col{padding:12px;border-radius:12px;background:var(--c-card);min-width:0;border-top:2px solid var(--c-bad)}.vd-col.own{border-top-color:var(--c-good)}\n.vd-ch{display:flex;justify-content:space-between;align-items:baseline}.vd-ch b{font-size:16px}.vd-cn{display:block;margin:2px 0 6px;font-size:15px}\n.vd-w{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--c-line)}\n.vd-w>i{width:8px;height:8px;border-radius:50%;background:var(--c-dim)}.vd-w.sharp>i{background:var(--c-good)}.vd-w.gold>i{background:var(--c-gold)}.vd-w.loser>i{background:var(--c-bad)}\n.vd-w.unp>i{background:transparent;border:1.5px dashed var(--c-rb-unp)}\n.vd-w b{font-size:13px}.vd-w div span{display:block;font-size:11.5px;color:var(--c-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.vd-wr{text-align:right}.vd-wr span{display:block;font-size:11.5px;color:var(--c-mut)}\n.vd-none,.vd-more{margin:6px 0 0;font-size:12px;color:var(--c-dim)}\n.vd-p{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--c-mut)}.vd-p b{color:var(--c-ink)}\n.vd-foot{margin:16px 2px 0;font-size:12px;color:var(--c-dim);line-height:1.5}\n.vsc .vc-open{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;margin-top:14px;border-radius:12px;background:var(--c-card);border:1px solid var(--c-line2);font-size:13.5px;font-weight:600;color:var(--c-ink)}\n.vsc .vc-open:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}\n@media (max-width:767px){\n.vd{top:6vh;width:100%;border-left:0;border-radius:20px 20px 0 0;padding:18px 16px 28px;transform:translateY(100%)}\n.vd-top h2{font-size:23px}.vd-hero b{font-size:34px}\n.vd-who{grid-template-columns:1fr}\n.vd-sec,.vd-lead{padding:14px}\n}\n@media (prefers-reduced-motion:reduce){.vd,.vd-scrim{transition:none}}\n';
 var NBA = 'html .vsc.vsc-nba{--c-card:var(--surface);--c-box:var(--surface2,var(--raised));--c-line:var(--border);--c-line2:var(--border2);--c-ink:var(--fg);--c-mut:var(--fg2);--c-dim:var(--fg3);' +
   '--c-good:var(--up);--c-on-good:var(--bg);--c-bad:var(--down);--c-warn:var(--warn);--c-gold:#e5c877;--c-good-line:color-mix(in srgb,var(--up) 50%,transparent);--c-good-box:color-mix(in srgb,var(--up) 7%,transparent);' +
@@ -435,7 +436,7 @@ function host(el, render){
 }
 function css(){
   if (document.getElementById('vsc-css')) return;
-  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA + DETAIL; document.head.appendChild(s);
+  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA + DETAIL + RECORD_CSS; document.head.appendChild(s);
 }
 function rootClass(el, o){ el.className = 'vsc' + (o.skin === 'new' ? ' vsc-new' : o.skin === 'nba' ? ' vsc-nba' : ''); }
 function card(g, o, folded){
@@ -445,23 +446,148 @@ function card(g, o, folded){
   return el;
 }
 
-/* the Sharps page: slate strip, then every upcoming game. Signal first, then building, then quiet (folded) */
+/* ---------- Record: the side card's graded results and the SharpFlow head-to-head (docs/side-card-record.md) ----------
+   Files written every 2 hours by .github/workflows/pm-record.yml on pm-holders-data/pm_record. Interim and report-only: the
+   pre-registered test (docs/sharp-card-prereg.md) gives a verdict once, on its final read date. Every number is a stored field. */
+var REC_BASE = (LOCAL && (location.search.match(/[?&]rec=([^&]+)/) || [])[1]) ? decodeURIComponent(location.search.match(/[?&]rec=([^&]+)/)[1])
+  : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-holders-data/pm_record/';
+var REC = {d: null, state: 'idle', at: 0};
+var REC_N = 300;                                                       /* prereg minimum n per sport */
+var REC_READ = {nba: 'the first Monday after the 2026-27 regular season', nfl: 'the Tuesday after Week 18', cfb: 'the Monday after conference championship weekend'};
+function months(){ var d = new Date(), a = d.toISOString().slice(0, 7); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1); return [d.toISOString().slice(0, 7), a]; }
+function jsonl(t){ return (t || '').split('\n').filter(Boolean).map(function(l){ try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean); }
+function recLoad(done){
+  if (REC.state === 'busy') return;
+  if (REC.d && Date.now() - REC.at < 300000){ done(); return; }
+  REC.state = 'busy';
+  var get = function(p, txt){ return fetch(REC_BASE + p + '?t=' + Math.floor(Date.now() / 300000), {cache: 'no-store'})
+    .then(function(r){ return r.ok ? (txt ? r.text() : r.json()) : null; }).catch(function(){ return null; }); };
+  var rows = [];
+  ['nba', 'nfl', 'cfb'].forEach(function(s){ months().forEach(function(m){ rows.push(get('cards/' + s + '/' + m + '.jsonl', 1), get('sharpflow/rows/' + s + '/' + m + '.jsonl', 1)); }); });
+  Promise.all([get('cards_record.json'), get('h2h_record.json')].concat(rows)).then(function(r){
+    var cards = [], sf = [];
+    r.slice(2).forEach(function(t, i){ (i % 2 ? sf : cards).push.apply(i % 2 ? sf : cards, jsonl(t)); });
+    REC.d = r[0] || r[1] ? {cards: r[0], h2h: r[1], cardRows: cards, sfRows: sf} : null;
+    REC.state = REC.d ? 'ok' : 'none'; REC.at = Date.now(); done();
+  });
+}
+function pctCI(ci){ return ci ? ' <em class="num">(' + roi(ci[0]) + ' to ' + roi(ci[1]) + ')</em>' : ''; }
+function wl(s){ return s.w + '-' + s.l + (s.p ? '-' + s.p : ''); }
+function recRow(label, s, extra){
+  if (!s || !s.n) return '<tr><th>' + label + '</th><td colspan="4" class="vr-none">no graded plays yet</td></tr>';
+  return '<tr><th>' + label + '</th><td class="num">' + s.n + '</td><td class="num">' + wl(s) + '</td><td class="num ' + (s.flat_roi > 0 ? 'up' : s.flat_roi < 0 ? 'dn' : '') + '">' + roi(s.flat_roi) +
+    (s.flat_ci ? pctCI(s.flat_ci) : '') + '</td><td class="num">' + (s.units_pl > 0 ? '+' : '') + trim((s.units_pl || 0).toFixed(2)) + 'u' + (extra || '') + '</td></tr>';
+}
+function recTable(head, rows){ return '<div class="vr-tw"><table class="vr-t"><thead><tr><th></th><th>n</th><th>W-L</th><th>Flat ROI</th><th>Units</th></tr></thead><tbody>' + rows + '</tbody></table></div>'; }
+function clvLine(s){
+  if (!s || !s.n) return '';
+  return s.clv_n ? 'CLV ' + (s.clv_mean > 0 ? '+' : '') + trim((s.clv_mean * 100).toFixed(1)) + ' pts on ' + s.clv_n + (s.clv_ci ? ' (' + trim((s.clv_ci[0] * 100).toFixed(1)) + ' to ' + trim((s.clv_ci[1] * 100).toFixed(1)) + ')' : '') +
+    (s.no_close ? ', ' + s.no_close + ' without a stored close' : '') : s.no_close + ' without a stored close';
+}
+function gameName(ev){ var m = /^[a-z]+-([a-z0-9]+)-([a-z0-9]+)-(\d{4})-(\d{2})-(\d{2})/.exec(ev || ''); if (!m) return esc(ev || '');
+  return m[1].toUpperCase() + ' at ' + m[2].toUpperCase() + ' · ' + new Date(Date.UTC(+m[3], +m[4] - 1, +m[5], 12)).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'UTC'}); }
+function resTag(r){ return r ? '<span class="vr-res ' + r + '">' + {win: 'W', loss: 'L', push: 'P'}[r] + '</span>' : '<span class="vr-res na">n/a</span>'; }
+function playLine(who, side, group, line, outs, units, res, note){
+  var ln = line != null && outs && outs[1] === side ? -line : line;
+  var lb = group === 'ml' ? side + ' ML' : group === 'total' ? side + (line != null && side.indexOf(' ') < 0 ? ' ' + line : '') :
+    side + (ln != null ? ' ' + (ln > 0 ? '+' : '') + ln : ' spread');
+  return '<div class="vr-pl"><span class="vr-who">' + who + '</span><b>' + esc(lb) + '</b><span class="num">' + (units != null ? units + 'u' : '') + '</span>' + resTag(res) + (note ? '<em>' + note + '</em>' : '') + '</div>';
+}
+function recSport(sp, D){
+  var c = ((D.cards || {}).sports || {})[sp], h = ((D.h2h || {}).sports || {})[sp];
+  if (!c && !h) return '';
+  var G = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']], hs = '';
+  var lk = function(g){ return ((((c || {}).lock || {}).all || {})[g] || {}).counted; }, sf = function(g){ return ((((c || {}).sf || {}).all || {})[g] || {}).all_cards; };
+  var ml = lk('ml'), n = ml ? ml.n : 0, dq = (c || {}).data_quality || {}, cc = (c || {}).cards || {};
+  hs += '<section class="vc-mod vr-sec"><div class="vr-h"><span class="vc-cap">' + sp.toUpperCase() + ' · Vault\'s cards</span><span class="vr-prog num">' + n + ' of ' + REC_N + ' moneyline locks</span></div>' +
+    '<div class="vr-bar"><i style="width:' + Math.min(100, n / REC_N * 100).toFixed(1) + '%"></i></div>' +
+    '<p class="vr-sub">The forward test grades the lock on counted cards. It reads once, on ' + (REC_READ[sp] || 'its registered date') + '; until then this is report-only.</p>' +
+    '<span class="vr-cap2">Lock (the pre-registered test, counted cards)</span>' + recTable('', G.map(function(g){ return recRow(g[1], lk(g[0])); }).join('')) +
+    '<p class="vr-sub num">' + G.map(function(g){ var t = clvLine(lk(g[0])); return t ? g[1] + ': ' + t : ''; }).filter(Boolean).join(' · ') + '</p>' +
+    '<span class="vr-cap2">Shown size (untested rule, every card)</span>' + recTable('', G.map(function(g){ return recRow(g[1], sf(g[0])); }).join('')) +
+    '<p class="vr-sub num">' + (cc.frozen || 0) + ' cards frozen, ' + (cc.counted || 0) + ' count for the test' +
+      Object.keys(cc.not_counted_by_reason || {}).map(function(k){ return ' · ' + cc.not_counted_by_reason[k] + ' ' + esc(k); }).join('') +
+      (dq.fail ? ' · <b class="dn">Data-quality fail: ' + Math.round(dq.unpriced_share * 100) + '% of counted moneyline locks unpriced</b>' : dq.unpriced_share ? ' · ' + Math.round(dq.unpriced_share * 100) + '% unpriced' : '') + '</p></section>';
+  if (h){
+    hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · SharpFlow, graded the same way</span>' +
+      '<p class="vr-sub">SharpFlow\'s plays as its site showed them at our cut, graded by Polymarket\'s result at SharpFlow\'s own locked price. Plays it cancelled later still count. Spread picks name no line, so they have no priced result.</p>' +
+      recTable('', G.map(function(g){ var x = h[g[0]] || {}; return recRow(g[1] + ' · SharpFlow', x.sharpflow) + recRow(g[1] + ' · Vault size', x.vault_shown_size); }).join('')) +
+      '<p class="vr-sub num">' + G.map(function(g){ var x = h[g[0]] || {}, a = x.sharpflow_after_cut || {}, bits = [];
+        if (a.n) bits.push(a.n + ' added or sized up after the cut (' + wl(a) + ')');
+        if (x.sharpflow_at_cut_cancelled_later) bits.push(x.sharpflow_at_cut_cancelled_later + ' cancelled after the cut');
+        if (x.sharpflow_unpriced_spread_rungs) bits.push(x.sharpflow_unpriced_spread_rungs + ' spread picks unpriced');
+        if ((x.same_games || {}).games) bits.push(x.same_games.games + ' games both played, ' + x.same_games.same_side + ' on the same side');
+        return bits.length ? g[1] + ': ' + bits.join(', ') : ''; }).filter(Boolean).join(' · ') + '</p></section>';
+  }
+  /* recent games: our plays (variant all) and SharpFlow's, newest first */
+  var by = {};
+  D.cardRows.filter(function(r){ return r.sport === sp && r.kind !== 'close' && r.variant === 'all' && r.side; }).forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).v.push(r); });
+  D.sfRows.filter(function(r){ return r.sport === sp; }).forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).s.push(r); });
+  var evs = Object.keys(by).sort(function(a, b){ return by[b].gst - by[a].gst; }).slice(0, 20);
+  if (evs.length){
+    hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · Recent games</span>' + evs.map(function(ev){ var x = by[ev];
+      return '<div class="vr-g"><b class="vr-gn num">' + gameName(ev) + '</b>' +
+        x.v.map(function(r){ return playLine(r.play === 'lock' ? 'Vault lock' : 'Vault size', r.side, r.group, r.line, r.outs, r.units, r.status === 'unpriced' ? null : r.res,
+          [r.play === 'lock' && !r.counts ? 'not counted' : '', r.status === 'unpriced' ? 'unpriced (' + r.res + ')' : ''].filter(Boolean).join(', ')); }).join('') +
+        x.s.map(function(r){ return playLine('SharpFlow', r.group === 'ml' ? (r.side || r.team) : r.team, r.group, null, null, r.units, r.res || null,
+          [r.set === 'after_cut' ? 'after our cut' : '', r.cancelled_later ? 'cancelled later' : '', !r.res && r.res_mapped ? 'no line (' + r.res_mapped + ' on the likeliest rung)' : ''].filter(Boolean).join(', ')); }).join('') + '</div>'; }).join('') + '</section>';
+  }
+  return hs;
+}
+function renderRecord(el, o){
+  el.innerHTML = '<div class="vc-note"><b>Loading the record</b></div>';
+  recLoad(function(){
+    if (!REC.d){ el.innerHTML = '<div class="vc-note"><b>No record yet</b><p>The record fills in once frozen cards settle. It updates every 2 hours.</p></div>'; return; }
+    var sp = o.sport && o.sport !== 'all' ? [o.sport] : ['nba', 'nfl', 'cfb'];
+    var body = sp.map(function(s){ return recSport(s, REC.d); }).join('');
+    var gen = Math.max((REC.d.cards || {}).generated || 0, (REC.d.h2h || {}).generated || 0);
+    el.innerHTML = '<div class="vc-note vr-top"><b>Interim record</b><p>Updated ' + (gen ? ct(gen, true) + ' CT' : 'n/a') +
+      '. Small samples swing hard: nothing here is a verdict until the registered final read. Sharp money is context.</p></div>' +
+      (body || '<div class="vc-note"><b>No graded plays for this sport yet</b></div>');
+  });
+}
+
+/* the Sharps page: a Cards / Record switch, then either every upcoming game (signal first, then building, then quiet, folded)
+   or the graded record. The switch is the page's own strip, so every host (Sharp Money, the NBA page) gets it. */
+function renderCards(el, o){
+  if (STORE.state === 'loading'){ el.innerHTML = '<div class="vc-note"><b>Loading the cards</b></div>'; return; }
+  if (STORE.state === 'none'){ el.innerHTML = '<div class="vc-note"><b>No cards yet</b><p>Proven sharps cards start once the Polymarket holders log is running. Nothing is shown until then.</p></div>'; return; }
+  var sp = o.sport && o.sport !== 'all' ? o.sport : null, rank = {signal: 0, building: 1, quiet: 2};
+  var games = STORE.d.games.filter(function(g){ return !sp || g.sport === sp; }).map(function(g){ return {g: g, c: climate(g, 'all')}; })
+    .sort(function(a, b){ return (rank[a.c] - rank[b.c]) || (a.g.gst - b.g.gst); });
+  el.innerHTML = '';
+  if (!games.length){ el.innerHTML = '<div class="vc-note"><b>No upcoming games</b><p>No card has been built for this sport yet.</p></div>'; return; }
+  var sl = document.createElement('div'); sl.className = 'vc-sl'; slate(sl, {games: games.map(function(x){ return x.g; })}); el.appendChild(sl);
+  var list = document.createElement('div'); list.className = 'vsc-list';
+  games.forEach(function(x){ list.appendChild(card(x.g, o, x.c === 'quiet' && !SHOWN[x.g.ev] && Object.keys(x.g.markets).length > 0)); });
+  el.appendChild(list);
+  [].forEach.call(el.querySelectorAll('.vseg'), function(s){ rail(s, false); });
+}
+var VIEW = 'cards';
+try { VIEW = localStorage.getItem('vsc-view') === 'record' ? 'record' : 'cards'; } catch (e) {}
 function mountPage(el, o){
   o = o || {}; css(); rootClass(el, o);
+  if (!el._vr){
+    el._vr = 1;
+    el.addEventListener('click', function(e){
+      var b = e.target.closest('.vr-view > button');
+      if (!b || b.classList.contains('on')) return;
+      VIEW = b.dataset.v; try { localStorage.setItem('vsc-view', VIEW); } catch (x) {}
+      [].forEach.call(b.parentNode.children, function(c){ if (c.tagName === 'BUTTON') c.classList.toggle('on', c === b); });
+      rail(b.parentNode, true); paint();
+    });
+  }
+  function paint(){
+    var body = el.querySelector('.vr-body');
+    if (VIEW === 'record') renderRecord(body, o); else renderCards(body, o);
+  }
   host(el, function(){
     OPT = o;
-    if (STORE.state === 'loading'){ el.innerHTML = '<div class="vc-note"><b>Loading the cards</b></div>'; return; }
-    if (STORE.state === 'none'){ el.innerHTML = '<div class="vc-note"><b>No cards yet</b><p>Proven sharps cards start once the Polymarket holders log is running. Nothing is shown until then.</p></div>'; return; }
-    var sp = o.sport && o.sport !== 'all' ? o.sport : null, rank = {signal: 0, building: 1, quiet: 2};
-    var games = STORE.d.games.filter(function(g){ return !sp || g.sport === sp; }).map(function(g){ return {g: g, c: climate(g, 'all')}; })
-      .sort(function(a, b){ return (rank[a.c] - rank[b.c]) || (a.g.gst - b.g.gst); });
-    el.innerHTML = '';
-    if (!games.length){ el.innerHTML = '<div class="vc-note"><b>No upcoming games</b><p>No card has been built for this sport yet.</p></div>'; return; }
-    var sl = document.createElement('div'); sl.className = 'vc-sl'; slate(sl, {games: games.map(function(x){ return x.g; })}); el.appendChild(sl);
-    var list = document.createElement('div'); list.className = 'vsc-list';
-    games.forEach(function(x){ list.appendChild(card(x.g, o, x.c === 'quiet' && !SHOWN[x.g.ev] && Object.keys(x.g.markets).length > 0)); });
-    el.appendChild(list);
-    [].forEach.call(el.querySelectorAll('.vseg'), function(s){ rail(s, false); });
+    if (VIEW === 'record' && el._sp === (o.sport || '') && el.querySelector('.vr-body .vr-sec, .vr-body .vc-note')) return;   /* a card refresh leaves the record alone */
+    el._sp = o.sport || '';
+    el.innerHTML = '<div class="vseg sm vr-view" role="tablist" aria-label="View"><i class="v-pill"></i><button type="button" data-v="cards"' + (VIEW === 'cards' ? ' class="on"' : '') +
+      '>Cards</button><button type="button" data-v="record"' + (VIEW === 'record' ? ' class="on"' : '') + '>Record</button></div><div class="vr-body"></div>';
+    paint(); rail(el.querySelector('.vr-view'), false);
   });
 }
 /* the game page section: the one card whose Vault game key matches, or nothing */
