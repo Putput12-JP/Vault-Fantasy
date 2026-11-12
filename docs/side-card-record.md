@@ -81,3 +81,18 @@ progress toward the 300 counted moneyline locks, the lock and shown-size tables 
 data-quality flag, SharpFlow graded the same way (with after-cut, cancelled and unpriced-spread counts), and the 20 most recent
 games with both sides' plays and results. Locally, `?rec=/path/to/pm_record/` points it at a copy.
 
+## Matching SharpFlow: which rule set shows
+
+The goal is to match or beat SharpFlow's ROI. Card rules can't be judged on history: every backfill row comes from a wallet chosen
+because it had already won, so any rule looks better than it is. They are judged forward, on the same games, against SharpFlow's
+own at-cut plays:
+
+| Rule set | Exclusions | On the card |
+|---|---|---|
+| `all` | Vault's hedger (25% both sides, 8+ markets) and churn (volume / PnL > 100) on every wallet | the shown size today |
+| `sfx` | SharpFlow's published market-maker and trader list | shadow, graded beside it |
+
+The head-to-head (`vault_shown_size`, `vault_sfx`, `sharpflow`) and the Record page show all three. The shown size moves to
+whichever Vault rule set is beating SharpFlow once both have a usable sample. That switch is a decision made with the user, not
+automatic, and the pre-registered lock is unchanged either way.
+

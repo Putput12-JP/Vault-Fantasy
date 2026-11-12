@@ -497,7 +497,7 @@ function recSport(sp, D){
   var c = ((D.cards || {}).sports || {})[sp], h = ((D.h2h || {}).sports || {})[sp];
   if (!c && !h) return '';
   var G = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']], hs = '';
-  var lk = function(g){ return ((((c || {}).lock || {}).all || {})[g] || {}).counted; }, sf = function(g){ return ((((c || {}).sf || {}).all || {})[g] || {}).all_cards; };
+  var lk = function(g){ return ((((c || {}).lock || {}).all || {})[g] || {}).counted; }, sf = function(g, v){ return ((((c || {}).sf || {})[v || 'all'] || {})[g] || {}).all_cards; };
   var ml = lk('ml'), n = ml ? ml.n : 0, dq = (c || {}).data_quality || {}, cc = (c || {}).cards || {};
   hs += '<section class="vc-mod vr-sec"><div class="vr-h"><span class="vc-cap">' + sp.toUpperCase() + ' · Vault\'s cards</span><span class="vr-prog num">' + n + ' of ' + REC_N + ' moneyline locks</span></div>' +
     '<div class="vr-bar"><i style="width:' + Math.min(100, n / REC_N * 100).toFixed(1) + '%"></i></div>' +
@@ -505,13 +505,15 @@ function recSport(sp, D){
     '<span class="vr-cap2">Lock (the pre-registered test, counted cards)</span>' + recTable('', G.map(function(g){ return recRow(g[1], lk(g[0])); }).join('')) +
     '<p class="vr-sub num">' + G.map(function(g){ var t = clvLine(lk(g[0])); return t ? g[1] + ': ' + t : ''; }).filter(Boolean).join(' · ') + '</p>' +
     '<span class="vr-cap2">Shown size (untested rule, every card)</span>' + recTable('', G.map(function(g){ return recRow(g[1], sf(g[0])); }).join('')) +
+    '<span class="vr-cap2">Shown size with SharpFlow\'s own exclusion list (shadow)</span>' + recTable('', G.map(function(g){ return recRow(g[1], sf(g[0], 'sfx')); }).join('')) +
+    '<p class="vr-sub">Same wallets and staking rules, but the market makers and traders SharpFlow publishes as excluded replace Vault\'s hedger and churn rules. Whichever rule set beats SharpFlow becomes the shown size.</p>' +
     '<p class="vr-sub num">' + (cc.frozen || 0) + ' cards frozen, ' + (cc.counted || 0) + ' count for the test' +
       Object.keys(cc.not_counted_by_reason || {}).map(function(k){ return ' · ' + cc.not_counted_by_reason[k] + ' ' + esc(k); }).join('') +
       (dq.fail ? ' · <b class="dn">Data-quality fail: ' + Math.round(dq.unpriced_share * 100) + '% of counted moneyline locks unpriced</b>' : dq.unpriced_share ? ' · ' + Math.round(dq.unpriced_share * 100) + '% unpriced' : '') + '</p></section>';
   if (h){
     hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · SharpFlow, graded the same way</span>' +
       '<p class="vr-sub">SharpFlow\'s plays as its site showed them at our cut, graded by Polymarket\'s result at SharpFlow\'s own locked price. Plays it cancelled later still count. Spread picks name no line, so they have no priced result.</p>' +
-      recTable('', G.map(function(g){ var x = h[g[0]] || {}; return recRow(g[1] + ' · SharpFlow', x.sharpflow) + recRow(g[1] + ' · Vault size', x.vault_shown_size); }).join('')) +
+      recTable('', G.map(function(g){ var x = h[g[0]] || {}; return recRow(g[1] + ' · SharpFlow', x.sharpflow) + recRow(g[1] + ' · Vault size', x.vault_shown_size) + recRow(g[1] + ' · Vault, SF list', x.vault_sfx); }).join('')) +
       '<p class="vr-sub num">' + G.map(function(g){ var x = h[g[0]] || {}, a = x.sharpflow_after_cut || {}, bits = [];
         if (a.n) bits.push(a.n + ' added or sized up after the cut (' + wl(a) + ')');
         if (x.sharpflow_at_cut_cancelled_later) bits.push(x.sharpflow_at_cut_cancelled_later + ' cancelled after the cut');
@@ -521,13 +523,13 @@ function recSport(sp, D){
   }
   /* recent games: our plays (variant all) and SharpFlow's, newest first */
   var by = {};
-  D.cardRows.filter(function(r){ return r.sport === sp && r.kind !== 'close' && r.variant === 'all' && r.side; }).forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).v.push(r); });
+  D.cardRows.filter(function(r){ return r.sport === sp && r.kind !== 'close' && r.side && (r.variant === 'all' || (r.variant === 'sfx' && r.play === 'sf')); }).forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).v.push(r); });
   D.sfRows.filter(function(r){ return r.sport === sp; }).forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).s.push(r); });
   var evs = Object.keys(by).sort(function(a, b){ return by[b].gst - by[a].gst; }).slice(0, 20);
   if (evs.length){
     hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · Recent games</span>' + evs.map(function(ev){ var x = by[ev];
       return '<div class="vr-g"><b class="vr-gn num">' + gameName(ev) + '</b>' +
-        x.v.map(function(r){ return playLine(r.play === 'lock' ? 'Vault lock' : 'Vault size', r.side, r.group, r.line, r.outs, r.units, r.status === 'unpriced' ? null : r.res,
+        x.v.map(function(r){ return playLine(r.play === 'lock' ? 'Vault lock' : r.variant === 'sfx' ? 'Vault, SF list' : 'Vault size', r.side, r.group, r.line, r.outs, r.units, r.status === 'unpriced' ? null : r.res,
           [r.play === 'lock' && !r.counts ? 'not counted' : '', r.status === 'unpriced' ? 'unpriced (' + r.res + ')' : ''].filter(Boolean).join(', ')); }).join('') +
         x.s.map(function(r){ return playLine('SharpFlow', r.group === 'ml' ? (r.side || r.team) : r.team, r.group, null, null, r.units, r.res || null,
           [r.set === 'after_cut' ? 'after our cut' : '', r.cancelled_later ? 'cancelled later' : '', !r.res && r.res_mapped ? 'no line (' + r.res_mapped + ' on the likeliest rung)' : ''].filter(Boolean).join(', ')); }).join('') + '</div>'; }).join('') + '</section>';

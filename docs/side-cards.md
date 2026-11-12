@@ -37,6 +37,11 @@ pre-registered forward test in `docs/sharp-card-prereg.md`, recorded so it can b
   one. With no such leg it is dropped as balanced dust (`coverage.two_way_dust_dropped`).
 - **Books use ledger rows settled before the cut only.** Hedged legs are left out of records. SPLIT-funded rows count in win-loss
   but never in dollars.
+- **Variant `sfx` (a shadow, since 2026-11-12):** the `all` books, but with SharpFlow's own published exclusion list
+  (`sharp_intel_excluded_wallets.json`: its market makers and traders, fetched every build) in place of Vault's hedger and churn
+  rules. SharpFlow applies its 25% both-sides and churn rules only when it discovers new wallets; Vault applied them to every
+  wallet, which is stricter. `sfx` keeps money, score, `sf` and `lock_shadow` per market, not the wallet lists. It is not part of the
+  pre-registered test. If the list cannot be fetched, the variant is left out of that build rather than built on an empty list.
 - **Every number is computed twice.** `all` uses every row, which is SharpFlow's way and includes wallets chosen with hindsight.
   `fwd` uses only rows from after a wallet was selected. The pre-registration names `all` as primary and reads `fwd` alongside it.
 

@@ -110,6 +110,17 @@ class Grade(unittest.TestCase):
             G.append_rows(d, rows)                                      # every row kind carries gst for its month file
             self.assertEqual(sorted(G.load_rows(d)), sorted(r["key"] for r in rows))
 
+    def test_sharpflow_list_variant_is_graded_and_compared(self):
+        sf = {"side": "Jazz", "units": 2, "line": -4.5, "price": 0.515, "price_t": CUT - 60, "cid": "c1", "outs": ["Magic", "Jazz"]}
+        c = card(LOCK)
+        c["markets"]["spread"]["sf"] = {"all": {"side": None, "units": 0}, "sfx": sf}
+        rows = [r for r in G.grade(c, "k", None, FACT, CLOSES, GST + 3600)[0] if r["kind"] == "result"]
+        self.assertIn(("sf", "sfx", -2.0), [(r["play"], r["variant"], r["units_pl"]) for r in rows])
+        rec = G.record(rows, [c], 0)["sports"]["nba"]
+        self.assertEqual(rec["sf"]["sfx"]["spread"]["all_cards"]["n"], 1)
+        h = H.h2h([], rows, 0)["sports"]["nba"]["spread"]
+        self.assertEqual((h["vault_sfx"]["n"], h["vault_shown_size"]["n"]), (1, 0))
+
     def test_bootstrap_is_seeded(self):
         xs = [1.0, -1.0, 0.9, -1.0, 0.5]
         self.assertEqual(G.boot_ci(xs), G.boot_ci(xs))

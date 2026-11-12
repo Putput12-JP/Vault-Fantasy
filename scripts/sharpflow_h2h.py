@@ -174,6 +174,7 @@ def h2h(sf_rows, card_rows, now):
             theirs = [r for r in mine_sport if r.get("set") == "at_cut"]
             after = [r for r in mine_sport if r.get("set") == "after_cut"]
             vsf = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "sf" and r["variant"] == "all"]
+            vsfx = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "sf" and r["variant"] == "sfx"]
             vlock = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "lock"
                      and r["variant"] == "all" and r.get("counts")]
             both = {r["ev"] for r in theirs} & {r["ev"] for r in vsf}
@@ -187,7 +188,7 @@ def h2h(sf_rows, card_rows, now):
                         "n": len(counted), "units_pl": round(sum(r.get("their_profit") or 0 for r in counted), 3),
                         "disagree_with_polymarket": sum(1 for r in counted if r.get("their_res") and (r.get("res") or r.get("res_mapped"))
                                                         and r["their_res"] != (r.get("res") or r.get("res_mapped")))},
-                    "vault_shown_size": summarize(vsf), "vault_lock": summarize(vlock),
+                    "vault_shown_size": summarize(vsf), "vault_sfx": summarize(vsfx), "vault_lock": summarize(vlock),
                     "same_games": {"games": len(both), "same_side": agree,
                                    "sharpflow": summarize([r for r in theirs if r["ev"] in both]),
                                    "vault_shown_size": summarize([r for r in vsf if r["ev"] in both])}}

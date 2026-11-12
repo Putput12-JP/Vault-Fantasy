@@ -302,5 +302,37 @@ class Detail(unittest.TestCase):
         self.assertNotIn("flagged", frozen["markets"]["ml"]["sf"]["all"])
 
 
+class SharpFlowExclusions(unittest.TestCase):
+    """Variant `sfx`: SharpFlow's published exclusion list replaces Vault's hedger and churn rules; `all` and `fwd` are unchanged."""
+    def hedger_rows(self):
+        # a proven wallet that held both sides of 10 of its 20 markets: Vault's hedger rule excludes it
+        rows = proven("0xh")
+        for i in range(10):
+            rows.append(dict(row("0xh", i, "loss", stake=1.0), oi=1, hedged=True, cid=f"0xh-c{i}"))
+        return rows
+
+    def test_no_list_means_no_sfx_variant(self):
+        c = C.card(kf([("m1", 0, "0xh", 500)]), ledger(self.hedger_rows()), "nba")
+        self.assertNotIn("sfx", c["markets"]["ml"]["sides"]["A"])
+        self.assertEqual(c["sf_excluded_n"], 0)
+
+    def test_vault_hedger_counts_under_sharpflows_list(self):
+        L = ledger(self.hedger_rows())
+        L.sf_excluded = {"0xother"}
+        c = C.card(kf([("m1", 0, "0xh", 500)]), L, "nba")
+        A = c["markets"]["ml"]["sides"]["A"]
+        self.assertEqual(A["all"]["excluded_usd"], 500)                  # Vault's rule: a hedger
+        self.assertEqual((A["sfx"]["sharp_usd"], A["sfx"]["excluded_usd"]), (500, 0))   # SharpFlow's list: proven money
+        self.assertEqual(A["sfx"]["list"], [])                           # the shadow keeps money and score, not the lists
+
+    def test_wallet_on_sharpflows_list_is_excluded_even_untracked(self):
+        L = ledger(proven("0xp"))
+        L.sf_excluded = {"0xp", "0xstranger"}
+        c = C.card(kf([("m1", 0, "0xp", 400), ("m1", 1, "0xstranger", 900)]), L, "nba")
+        m = c["markets"]["ml"]["sides"]
+        self.assertEqual((m["A"]["all"]["sharp_usd"], m["A"]["sfx"]["excluded_usd"]), (400, 400))
+        self.assertEqual((m["B"]["all"]["unproven_usd"], m["B"]["sfx"]["excluded_usd"]), (900, 900))
+
+
 if __name__ == "__main__":
     unittest.main()

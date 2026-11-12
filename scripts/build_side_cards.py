@@ -76,6 +76,7 @@ GROUP = {"moneyline": "ml", "spreads": "spread", "totals": "total"}
 EVENT_RE = re.compile(r"^(.*?-\d{4}-\d{2}-\d{2})")
 START_GAP_FLAG = 10 * 60                  # Polymarket and Vault start times more than 10 min apart (prereg "known limits")
 VERSION = 1
+VARIANTS = ("all", "fwd")                  # plus "sfx" when SharpFlow's exclusion list is given (--sf-excluded)
 SIZE_BANDS = (0.0, 0.75, 1.5, 3.0)        # size vs usual stake bands for the "at this size" record (below 0.75x, 0.75 to 1.5x, ...)
 CLOSE_STALE = 30 * 60                     # a keyframe price older than this at the cut is not a close (prereg "unpriced" rule)
 
@@ -143,6 +144,7 @@ class Ledger:
             v.sort(key=lambda s: s.get("at") or 0)
         self.run_at = run_at
         self.closes = closes or {}
+        self.sf_excluded = set()                     # SharpFlow's published exclusion list, for the `sfx` variant
 
     @classmethod
     def load(cls, root, sport, holders=None, pm_closes=None):
@@ -169,7 +171,8 @@ class Ledger:
         fs = self.first_seen.get(w)
         if fs is None or fs > asof:                  # not in the universe at the cut: untracked, whatever its later record
             empty = book([], asof, self.markets)
-            return {"tracked": False, "markets": 0, "hedged_share": 0.0, "all": empty, "fwd": empty, "churn": None, "excluded": None}
+            return {"tracked": False, "markets": 0, "hedged_share": 0.0, "all": empty, "fwd": empty, "sfx": empty, "churn": None,
+                    "excluded": None, "excluded_sfx": "sharpflow" if w in self.sf_excluded else None}
         rs = self.by_w.get(w, [])
         rs = rs[:bisect.bisect_left(self.keys.get(w, []), asof)]
         hedged_cids = {r["cid"] for r in rs if r.get("hedged")}
@@ -181,6 +184,10 @@ class Ledger:
         out["churn"] = churn(snap[-1]) if snap else None
         out["excluded"] = ("hedger" if cids and len(cids) >= HEDGER_MIN_MARKETS and out["hedged_share"] >= HEDGER_SHARE
                            else "churn" if out["churn"] else None)
+        # variant `sfx`: the same all-rows book, but SharpFlow's own published exclusion list (market makers and traders) instead of
+        # Vault's hedger and churn approximations, which SharpFlow applies only when it discovers new wallets
+        out["sfx"] = out["all"]
+        out["excluded_sfx"] = "sharpflow" if w in self.sf_excluded else None
         return out
 
 
@@ -304,7 +311,7 @@ def card(kf, ledger, sport, vault=None, frozen=True):
             side, usd, cid = max(legs, key=lambda l: l[1])
         groups.setdefault(g, []).append({"w": w, "side": side, "usd": usd, "cid": cid, "two_way": two_way, "s": s})
     built = int(time.time())
-    out = {"v": VERSION, "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "cut": cut, "frozen": frozen,
+    out = {"v": VERSION, "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "cut": cut, "frozen": frozen, "sf_excluded_n": len(ledger.sf_excluded),
            "built": built, "keyframe_written": kf.get("written"), "ledger_run_at": ledger.run_at,
            "money_basis": "shares x market price at the cut", "context_only": True,
            "coverage": {"markets_read": len(kf["mk"]), "markets_missed": len(kf.get("miss") or []),
@@ -321,7 +328,7 @@ def card(kf, ledger, sport, vault=None, frozen=True):
     for g, ws in groups.items():
         sides_all = sorted({side for (gg, _, side) in best if gg == g})
         out["markets"][g] = {"sides": {}, "lock_shadow": {}}
-        for variant in ("all", "fwd"):
+        for variant in VARIANTS + (("sfx",) if ledger.sf_excluded else ()):
             cls = {x["w"]: classify(x, variant) for x in ws}
             for side in sides_all:
                 mine = [x for x in ws if x["side"] == side]
@@ -356,6 +363,8 @@ def card(kf, ledger, sport, vault=None, frozen=True):
                     "counts": {k: sum(1 for x in mine if cls[x["w"]] == k) for k in ("hc", "sharp", "unproven", "loser", "excluded")},
                 }
                 side_out["ags"] = ags_side(side, ws, cls, variant)
+                if variant == "sfx":                     # a shadow: money and score only, the wallet lists are the `all` ones
+                    side_out.update({"list": [], "losers": [], "unproven_list": []})
                 p = side_out["proven"]
                 p["win_pct"] = round(100 * p["w"] / (p["w"] + p["l"]), 1) if p["w"] + p["l"] else None
                 out["markets"][g]["sides"].setdefault(side, {})[variant] = side_out
@@ -454,7 +463,7 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out):
 
 def classify(x, variant):
     b = x["s"][variant]
-    if x["s"]["excluded"]:
+    if x["s"]["excluded_sfx" if variant == "sfx" else "excluded"]:
         return "excluded"
     if b["proven"]:
         return "hc" if b["usual"] and x["usd"] / b["usual"] >= PRESS else "sharp"
@@ -559,6 +568,7 @@ def main():
     ap.add_argument("--sports", default="nba,nfl,cfb")
     ap.add_argument("--closes", default="data/pm_closes.json", help="Pendulum Flow closes, for wallet price skill")
     ap.add_argument("--prev-live", help="the last published live.json, to carry the price each shown size was first flagged at")
+    ap.add_argument("--sf-excluded", help="SharpFlow's public sharp_intel_excluded_wallets.json, for the `sfx` variant")
     a = ap.parse_args()
     import scan_pm_holders as H
     games = []
@@ -571,6 +581,16 @@ def main():
     if a.closes and os.path.exists(a.closes):
         with open(a.closes) as f:
             pm_closes = json.load(f)
+    sf_ex, sf_ex_at = set(), None
+    if a.sf_excluded and os.path.exists(a.sf_excluded):
+        try:
+            with open(a.sf_excluded) as f:
+                j = json.load(f)
+            sf_ex = {w.lower() for w in j.get("excluded") or [] if isinstance(w, str)}
+            sf_ex_at = j.get("updatedAt")
+        except (OSError, ValueError):
+            sf_ex = set()                            # no list: no `sfx` variant this run, never an empty exclusion list
+    live["sf_excluded_at"] = sf_ex_at if sf_ex else None
     prev = {}
     if a.prev_live and os.path.exists(a.prev_live):
         try:
@@ -580,6 +600,7 @@ def main():
             prev = {}
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
         ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
+        ledger.sf_excluded = sf_ex
         # frozen: one card per keyframe that has none yet
         for kpath in sorted(glob.glob(os.path.join(a.holders, sport, "frozen", "*", "*.json"))):
             rel = os.path.relpath(kpath, os.path.join(a.holders, sport, "frozen"))
