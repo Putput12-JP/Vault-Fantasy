@@ -92,7 +92,7 @@ def plays(card, kf):
     """Every gradeable play on one card: (group, variant, play, side, cid, line, outs, price, price_t, units)."""
     out = []
     for g, m in (card.get("markets") or {}).items():
-        for variant in ("all", "fwd"):
+        for variant in ("all", "fwd", "sfx"):                  # sfx: SharpFlow's own exclusion list (a shadow, not the test)
             ls = (m.get("lock_shadow") or {}).get(variant) or {}
             if ls.get("side"):
                 out.append({"group": g, "variant": variant, "play": "lock", "side": ls["side"], "cid": ls.get("cid"),
@@ -189,7 +189,7 @@ def record(rows, cards, now):
                        "not_counted_by_reason": why},
              "lock": {}, "sf": {}}
         for play in ("lock", "sf"):
-            for variant in ("all", "fwd"):
+            for variant in ("all", "fwd", "sfx"):
                 for g in ("ml", "spread", "total"):
                     sub = [r for r in rs if r["play"] == play and r["variant"] == variant and r["group"] == g]
                     if not sub:
