@@ -358,14 +358,31 @@ def src_action(slate):
 
 
 def src_actionprops(slate):
-    """Main-line player props per book from Action Network's markets endpoint (keyless, one call per game day). One row per
-    game|book|stat|player|side: [line, odds]. Alternate lines are skipped: a main market is what the book is pricing."""
+    """Main-line player props per book from Action Network's markets endpoint (keyless). One row per
+    game|book|stat|player|side: [line, odds]. Alternate lines are skipped: a main market is what the book is pricing.
+    One call per game day per prop type: since Nov 10 2026 the endpoint answers HTTP 400 ("Invalid data submitted as payload") when
+    customPickTypes lists more than one type, which left the board with DraftKings as its only US book. A type that fails is skipped;
+    the source errors only when every call fails, so a partial answer still counts as fresh."""
     rows, meta = {}, {}
     days = sorted({g['day'] for g in slate.games if g['pre']})
     books = ','.join(str(b) for b in AN_PROP_BOOKS)
-    for day in days:
-        d = curl(f"https://api.actionnetwork.com/web/v2/scoreboard/nba/markets?bookIds={books}&date={day.replace('-', '')}"
-                 f"&customPickTypes={','.join(AN_PROP_TYPES)}", ['User-Agent: Mozilla/5.0'])
+    calls = [(day, t) for day in days for t in AN_PROP_TYPES]
+    def get(c):
+        try:
+            return curl(f"https://api.actionnetwork.com/web/v2/scoreboard/nba/markets?bookIds={books}&date={c[0].replace('-', '')}"
+                        f"&customPickTypes={c[1]}", ['User-Agent: Mozilla/5.0'])
+        except Exception as e:
+            return e
+    with ThreadPoolExecutor(5) as ex:
+        got = list(ex.map(get, calls))
+    errs = [(c, d) for c, d in zip(calls, got) if isinstance(d, Exception)]
+    if calls and len(errs) == len(calls):
+        raise errs[0][1]
+    for (day, t), d in errs:
+        print(f'  actionprops {day} {AN_PROP_TYPES[t]} skipped: {str(d)[:120]}', file=sys.stderr)
+    for d in got:
+        if isinstance(d, Exception):
+            continue
         games, teams = {}, {}
         for g in d.get('games', []):
             start = iso(g.get('start_time'))

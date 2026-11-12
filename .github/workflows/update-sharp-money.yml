@@ -161,7 +161,7 @@ jobs:
           # recorder again (it diffs against that fresh state), up to 3 times, instead of rebasing.
           for i in 1 2 3; do
             python3 scripts/sharp_tape.py --data sharp-out/data.json
-            python3 scripts/backfill_edge_results.py || true      # final scores the live feed missed, from ESPN, before the record is rebuilt
+            python3 scripts/backfill_edge_results.py --plays sharp-out/v2_plays.json sharp-out/v2_watch.json sharp-out/v2_passed.json || true      # final scores the live feed missed (edge calls and open V2 game plays), from ESPN, before the record is rebuilt
             python3 scripts/exchange_edge_record.py
             python3 scripts/steam_record.py || true      # Pinnacle steam replay, context only
             python3 scripts/build_lead_lag.py --data sharp-out/data.json || true      # lead-lag clock and stale-quote ages from the book tape, context only
@@ -185,6 +185,7 @@ jobs:
           # published. A failed fetch only means no NBA props this run; plays already logged keep their rows and settle from ESPN's box score.
           rm -f sharp-out/nba_board.json
           if git fetch -q --depth=1 origin nba-live:refs/remotes/origin/nba-live 2>/dev/null; then git show origin/nba-live:board.json > sharp-out/nba_board.json || rm -f sharp-out/nba_board.json; fi
+          python3 scripts/reopen_v2_game_voids.py --dir=sharp-out || true      # game rows voided for a missing final, now stored: reopened so this run grades them
           node scripts/track-v2-plays.mjs --dir=sharp-out
           node scripts/track-v2-plays.mjs --dir=sharp-out --tier=watch
           node scripts/track-v2-plays.mjs --dir=sharp-out --tier=pass
