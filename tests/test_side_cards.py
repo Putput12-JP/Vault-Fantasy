@@ -240,6 +240,8 @@ class ReviewFixes(unittest.TestCase):
         self.assertEqual(late["test"], {"counts": False, "why_not": ["built after game start"]})
         stale = C.card(k, ledger(proven("0xp"), run_at=None), "nba")
         self.assertEqual(stale["test"]["why_not"], ["ledger run not before the cut"])
+        cbb = C.card(k, ledger(proven("0xp")), "cbb")                                          # not in docs/sharp-card-prereg.md
+        self.assertEqual(cbb["test"], {"counts": False, "why_not": ["sport not in a registered test"]})
 
 
 class Detail(unittest.TestCase):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Polymarket sharp-wallet ledger: every full-game NBA / NFL / CFB bet a tracked wallet held at tip, graded against the market's resolution.
+"""Polymarket sharp-wallet ledger: every full-game NBA / NFL / CFB / CBB bet a tracked wallet held at tip, graded against the market's resolution.
 
 This is PR 1 of the side-card build (docs/pm-ledger.md). It writes the raw material only. Nothing here decides who is "proven"; that is
 computed point in time from these rows by the side-card step. Sharp money stays context only (CLAUDE.md): this file grades wallets, not picks.
@@ -32,7 +32,7 @@ Requests stay polite and bounded: a global pace, Retry-After honoured on 429/503
 half-written). Data rows are merged, never overwritten: a key already in the ledger is never rewritten, and a run that finds a settled row
 changing exits 2 without writing.
 
-usage: build_pm_ledger.py --out DIR [--sports nba,nfl,cfb] [--lb-all 1500] [--lb-month 1000] [--wallets N] [--max-req N]
+usage: build_pm_ledger.py --out DIR [--sports nba,nfl,cfb,cbb] [--lb-all 1500] [--lb-month 1000] [--wallets N] [--max-req N]
                           [--pace 0.25] [--workers 4] [--rate-probe N] [--today YYYY-MM-DD] [--dry-run]
 """
 import argparse, datetime as dt, json, os, sys, threading, time, urllib.error, urllib.parse, urllib.request
@@ -43,7 +43,14 @@ from pm_data_api import PM_DATA, PMDataError  # noqa: E402
 
 GAMMA = "https://gamma-api.polymarket.com"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; vault-ledger)"}
-SPORT_PREFIX = {"nba": "nba-", "nfl": "nfl-", "cfb": "cfb-"}
+SPORT_PREFIX = {"nba": "nba-", "nfl": "nfl-", "cfb": "cfb-", "cbb": "cbb-"}
+# The sports the ledger graded before men's college basketball (cbb) was added on 2026-11-12. A wallet whose state predates that
+# has read only these, so its books get a one-time "fill" walk for every sport it has not read (walk_positions).
+LEGACY_SPORTS = ("nba", "nfl", "cfb")
+# Sports whose games may ADD wallets to the universe (fat-ticket discovery; the benchmark board is BENCH_SPORTS; WALLET_FILES).
+# College basketball is graded for wallets already tracked but adds none: the side-card test (docs/sharp-card-prereg.md) was
+# registered on the universe these sources built, and CBB has no registration of its own yet (docs/sharp-card-prereg-cbb.md, proposed).
+UNIVERSE_SPORTS = ("nba", "nfl", "cfb")
 FULL_GAME = ("moneyline", "spreads", "totals")
 CUTOFF_SEC = 15 * 60                      # The benchmark T-15 freeze (index.js `_=900*1e3`)
 MIN_MONTHLY_PNL = 20000                   # The benchmark seedSportsSharps MIN_MONTHLY_PNL ("monthly hot")
@@ -51,7 +58,7 @@ WALLET_FILES = ("data/pm_wallets.json", "data/pm_wallets_cfb.json", "data/pm_wal
 RANK_FILE = "data/pm_wallet_rank.json"     # Vault's CLV ranker; every wallet it has tiered (proven, probable, watching, dull)
 COND_BATCH = 20                           # Data API v2 limit on comma-separated condition ids
 GAMMA_BATCH = 50
-SERIES = {"nba": 10345, "nfl": 12185, "cfb": 12756}   # Gamma sports series ids (GET /sports); games carry tag 100639
+SERIES = {"nba": 10345, "nfl": 12185, "cfb": 12756, "cbb": 10470}   # Gamma sports series ids (GET /sports); games carry tag 100639
 GAME_TAG = 100639
 FAT_TICKET_USD = 2000      # The benchmark discoverScanSupplement MIN_POSITION_USD: a holder this big on a full-game market is a candidate
 HOT_USD = 250              # The benchmark's board floor (index.js Nj=250), the same floor the side card uses: a tracked wallet holding this
@@ -515,7 +522,7 @@ def order_wallets(uni, fs, hot, pend, wallets=0, priority_only=False):
 def discover(cli, a, known, now):
     """Wallets with a fat ticket on an upcoming full-game NBA / NFL / CFB market, kept when their all-time AND this-month sports
     PnL are both positive (the benchmark's discovery gate). Returns {wallet: universe entry} for wallets not already known."""
-    events = []
+    events, uni_events = [], []
     iso = lambda t: dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for s in a.sports:
         cursor = None
@@ -529,6 +536,8 @@ def discover(cli, a, known, now):
             if not isinstance(j, dict):
                 raise PMDataError(f"gamma events {s}: no response")
             events += j.get("events") or []
+            if s in UNIVERSE_SPORTS:
+                uni_events += j.get("events") or []
             cursor = j.get("next_cursor")
             if not cursor or not j.get("events"):
                 break
@@ -539,8 +548,8 @@ def discover(cli, a, known, now):
     for i in range(0, len(cids), COND_BATCH):
         for rows in pages(cli, "/holders", {"condition": ",".join(cids[i:i + COND_BATCH]), "limit": 1000}, 5):
             holder_pages.append(rows)
-    fat = fat_tickets(events, holder_pages, now)
-    hot = fat_tickets(events, holder_pages, now, HOT_USD)
+    fat = fat_tickets(uni_events, holder_pages, now)            # only these games may add a wallet (UNIVERSE_SPORTS)
+    hot = fat_tickets(events, holder_pages, now, HOT_USD)      # read order only: hot wallets must already be tracked
     out = {}
     for w, t in sorted(fat.items(), key=lambda kv: -kv[1]["usd"]):
         if w in known:
@@ -569,13 +578,25 @@ def walk_positions(cli, w, a, ws, trunc, add):
     a page, while newest-first answers in well under a second. Per book the state keeps `hw` (everything newer than it has been
     read) and an optional backlog window [lo, hi] still to read. Each visit reads the new window [hw - OVERLAP, now], then the
     backlog. Progress is saved page by page; a capped or interrupted read leaves the unread part as the backlog, so nothing older is
-    ever skipped. Each page's sport rows go to `add` first."""
+    ever skipped. Each page's sport rows go to `add` first.
+
+    A sport added to the ledger after a wallet's books were first read (cbb, 2026-11-12) gets a one-time `fill` window per book:
+    [1, the high-water mark when the sport was added], keeping only that sport's rows, so its history is graded like a new
+    wallet's would be. It resumes across runs like the backlog. `sports_read` lists the sports whose full history is read."""
+    if "sports_read" not in ws:
+        ws["sports_read"] = list(LEGACY_SPORTS) if any(k.startswith("b_") for k in ws) else list(a.sports)
     for status in ("OPEN", "CLOSED"):
         b = ws.setdefault("b_" + status, {})
+        unread = [s for s in a.sports if s not in ws["sports_read"]]
+        if unread and b.get("hw") and "fill" not in b:
+            b["fill"] = {"sports": unread, "lo": 1, "hi": b["hw"]}
         wins = [("new", max(1, b["hw"] - OVERLAP) if b.get("hw") else 1, None)]
         if b.get("hi") is not None:
             wins.append(("backlog", b["lo"], b["hi"]))
+        if b.get("fill"):
+            wins.append(("fill", b["fill"]["lo"], b["fill"]["hi"]))
         for kind, lo, hi in wins:
+            keep = b["fill"]["sports"] if kind == "fill" else a.sports
             q = {"user": w, "status": status, "limit": 1000, "sort_by": "TIMESTAMP", "sort_direction": "DESC", "start": lo}
             if hi is not None:
                 q["end"] = hi
@@ -589,7 +610,7 @@ def walk_positions(cli, w, a, ws, trunc, add):
                         if kind == "new":
                             b["hw_next"] = max(b.get("hw_next") or 0, t)
                         low = t if low is None else min(low, t)
-                    for r in dedupe_positions([r for r in rows if sport_of(r.get("slug")) in a.sports]):
+                    for r in dedupe_positions([r for r in rows if sport_of(r.get("slug")) in keep]):
                         add(r)
                 done = not cut
             finally:
@@ -606,8 +627,15 @@ def walk_positions(cli, w, a, ws, trunc, add):
                         b.pop("hi", None)
                     elif low is not None:
                         b["hi"] = low
+                elif kind == "fill":
+                    if done:
+                        b.pop("fill", None)
+                    elif low is not None:
+                        b["fill"]["hi"] = low
             if cut:
                 trunc.append("/positions:" + status)
+    if not any(ws.get("b_" + st, {}).get("fill") for st in ("OPEN", "CLOSED")):
+        ws["sports_read"] = sorted(set(ws["sports_read"]) | set(a.sports))
 
 
 def fetch_fills(cli, w, cids, a, wp, now, note):
@@ -745,7 +773,7 @@ def rate_probe(cli, n, wallets):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--sports", default="nba,nfl,cfb")
+    ap.add_argument("--sports", default="nba,nfl,cfb,cbb")
     ap.add_argument("--lb-all", type=int, default=1500, help="depth of the all-time sports PnL board (the benchmark LB_DEPTH)")
     ap.add_argument("--lb-month", type=int, default=1000, help="depth of the monthly board, kept at pnl >= $20K")
     ap.add_argument("--wallets", type=int, default=0, help="poll only the first N wallets (dry runs)")

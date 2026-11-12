@@ -1,5 +1,5 @@
 # Polymarket holders scan (scripts/scan_pm_holders.py, docs/pm-holders.md): who holds which side of every upcoming full-game
-# NBA / NFL / CFB market, with a frozen T-15 keyframe per game. Writes pm_holders/<sport>/ on the never-force-pushed
+# NBA / NFL / CFB / CBB market, with a frozen T-15 keyframe per game. Writes pm_holders/<sport>/ on the never-force-pushed
 # `pm-holders-data` branch. Each job loops while a game of its sports starts within 24h (15-min reads all game day, 5-min reads in
 # the last 45 min, a freeze read at T-18), otherwise it runs one cycle and the hourly cron takes over. Each sport is its own job with its own concurrency group and
 # folder, so one sport's slow cycle can never push another sport's freeze read past its cut, and pushes never conflict.
@@ -11,7 +11,7 @@ on:
       sports:
         description: Which job to run
         type: choice
-        options: [all, nba, nfl, cfb]
+        options: [all, nba, nfl, cfb, cbb]
         default: all
   schedule:
     - cron: '41 * * * *'
@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job: ${{ fromJSON((github.event_name == 'schedule' || inputs.sports == 'all') && '["nba","nfl","cfb"]' || format('["{0}"]', inputs.sports)) }}
+        job: ${{ fromJSON((github.event_name == 'schedule' || inputs.sports == 'all') && '["nba","nfl","cfb","cbb"]' || format('["{0}"]', inputs.sports)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
     concurrency:
