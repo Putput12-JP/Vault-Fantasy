@@ -69,7 +69,7 @@ const SPORTS = {
   // ahead: 1 (today + tomorrow; not a threshold): a Thursday slate read 146 games over 3 days and added 78 s to the poll, so the
   // window is kept short to hold the run inside the workflow's time limit on a 150-game Saturday.
   cbb: { name: 'College Basketball', an: 'ncaab', anQ: '&division=D1', pinSport: 4, pinLeague: 493, pm: 10470, kal: 'KXNCAAMBGAME', nov: 'NCAAB',
-         espn: 'basketball/mens-college-basketball', espnQ: '&groups=50', ahead: 1,
+         espn: 'basketball/mens-college-basketball', espnQ: '&groups=50', espnTeams: true, ahead: 1,
          steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, sharpCard: 2500, wallets: 'pm_wallets_cbb.json', sigBig: 25000, crossAt: 5000, borrowed: 'cfb' },
 };
 // Sports whose signals feed Top Reads (picks, the agree ledger, data/topreads_rules.json). CBB was added after the Nov 9 rule
@@ -640,6 +640,25 @@ async function novig(sk, cfg, games, S) {
     out.set(hit.g, info);
   } catch (e) { /* one event with no MONEY market or a bad read must not drop the sport */ } });
   return out;
+}
+
+// ── 4c. ESPN team ids + logos (sports with ~360 teams: no hand-kept logo table) ──
+// ESPN's scoreboard carries each team's id and its own logo link. The pages show that link as is, so a CBB logo is never a URL
+// Vault builds. A team ESPN does not list (or a game it cannot match) keeps no logo; the page shows the abbreviation badge.
+async function espnTeams(sk, cfg, games) {
+  const t = now(), hit = new Set();
+  for (let d = 0; d <= cfg.ahead; d++) {
+    let r; try { r = await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${cfg.espn}/scoreboard?dates=${ymdET(t + d * DAY)}&limit=400${cfg.espnQ || ''}`); } catch (e) { continue; }
+    for (const e of r.events || []) {
+      const c = e.competitions?.[0]; if (!c) continue;
+      const h = c.competitors?.find(x => x.homeAway === 'home'), a = c.competitors?.find(x => x.homeAway === 'away'); if (!h?.team || !a?.team) continue;
+      const m = matchGame(games, a.team.displayName, h.team.displayName, Date.parse(e.date) / 1000); if (!m) continue;
+      const [gh, ga] = m.flip ? [a.team, h.team] : [h.team, a.team];
+      for (const [side, tm] of [['home', gh], ['away', ga]]) { if (tm.id) m.g[side].espnId = String(tm.id); if (/^https:\/\/a\.espncdn\.com\//.test(tm.logo || '')) m.g[side].logo = tm.logo; }
+      hit.add(m.g);
+    }
+  }
+  return hit.size;
 }
 
 // ── 5. ESPN finals (for the alert record) ───────────────────────────────
@@ -1417,6 +1436,7 @@ async function pollOnce() {
     ]);
     st.pinnacle ??= P.size; st.polymarket ??= PM.size; st.kalshi ??= K.size; st.novig ??= NV.size; st.games = games.length;
     const KP = await kalshiProps(sk, games, K).catch(e => { st.kalshiProps = 'error: ' + e.message; return new Map(); });
+    if (cfg.espnTeams) st.espnTeams = await espnTeams(sk, cfg, games).catch(e => 'error: ' + e.message);
     for (const g of games) g._kp = KP.get(g) || null;
     for (const g of games) {
       g._P = P.get(g) || null; g._pm = PM.get(g) || null; g._k = K.get(g) || null; g._nov = NV.get(g) || null;
