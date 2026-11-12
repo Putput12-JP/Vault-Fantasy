@@ -1,7 +1,9 @@
 # Polymarket's price at kickoff for every NFL and NBA game (moneyline, every spread and total line), from the
-# Pendulum Flow orderbook archive (archive.pendulumflow.com, CC BY 4.0), into data/pm_closes.json.
+# Pendulum Flow orderbook archive (archive.pendulumflow.com; v3 hours CC BY 4.0, v3.1 hours from 2026-10-30T19 UTC
+# CC BY-NC 4.0), into data/pm_closes.json.
 # settle_bets.py grades NFL game calls against it; the NBA recorder grades Sharp Price signals against it.
-# The archive publishes about 5 hours behind, so twice a day covers every game by the next morning.
+# The archive publishes about 5 hours behind, so twice a day covers every game by the next morning. The 10-day
+# lookback lets a multi-day archive stall heal on its own: games already stored are skipped, so it costs only the gaps.
 name: Polymarket closes
 
 on:
@@ -35,7 +37,7 @@ jobs:
       - name: Install DuckDB
         run: pip install --quiet duckdb pytz
       - name: Pull closes from the archive
-        run: python scripts/pm_archive.py closes --sports nfl,nba --days 4
+        run: python scripts/pm_archive.py closes --sports nfl,nba --days 10
       - name: Commit if changed
         run: |
           git config user.name  "vault-bot"
