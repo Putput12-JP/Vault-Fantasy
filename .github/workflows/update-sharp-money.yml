@@ -63,6 +63,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run update-game-history.yml --ref main --repo "${{ github.repository }}"
+      # Same for the proven-sharps cards (pm-cards.yml): its */10 cron fired only 3 times in 24h on Nov 12, so live.json sat 4.5h old
+      # (12:23 to 5 PM CT) while the page showed those plays. Its own concurrency group queues a dispatch behind a running build.
+      - name: Rebuild proven-sharps cards
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pm-cards.yml --ref main --repo "${{ github.repository }}"
       - uses: actions/checkout@v5
         if: steps.gate.outputs.go == '1'
       - uses: actions/setup-node@v5
