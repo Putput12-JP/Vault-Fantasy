@@ -145,6 +145,20 @@ def grade(card, rel, kf, facts, closes, now):
     return rows, waiting
 
 
+def open_plays(todo, graded, now, days=7):
+    """Locked plays still waiting for a result, for the Record page: Vault's shown size (variant all) on every frozen card, and the
+    pre-registered lock on counted cards. Newest game first. Stored values only."""
+    out = []
+    for rel, c, kf in todo:
+        for p in plays(c, kf):
+            key = f"{rel}|{p['group']}|{p['variant']}|{p['play']}"
+            if key in graded or c["gst"] < now - days * 86400 or p["variant"] != "all" or (p["play"] == "lock" and not (c.get("test") or {}).get("counts")):
+                continue
+            out.append({"sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": p["group"], "play": p["play"], "side": p["side"],
+                        "line": p["line"], "outs": p["outs"], "units": p["units"], "price": p["price"]})
+    return sorted(out, key=lambda r: (-r["gst"], r["ev"], r["group"], r["play"]))
+
+
 def boot_ci(xs, n=BOOT_N, seed=BOOT_SEED):
     """95% percentile bootstrap of the mean (prereg: 10,000 resamples, seed 20261111)."""
     if len(xs) < 2:
@@ -294,6 +308,7 @@ def main():
     allrows = list(have.values()) + new
     rec = record(allrows, cards, now)
     rec["waiting"] = {"plays": len(waiting), "why": {w: sum(1 for _, x in waiting if x == w) for _, w in waiting}}
+    rec["open"] = open_plays(todo, {r["key"] for r in allrows}, now)
     save_record(os.path.join(a.out, "cards_record.json"), rec)
     print(json.dumps({"new_rows": len(new), "waiting": rec["waiting"], "cards": len(cards)}))
     return 0
