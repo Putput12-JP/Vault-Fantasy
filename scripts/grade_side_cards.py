@@ -140,7 +140,7 @@ def grade(card, rel, kf, facts, closes, now):
         if close is None:
             waiting.append((key, "no close stored yet"))
             continue
-        rows.append({"key": key + "|close", "kind": "close", "of": key, "v": VERSION, "sport": sport, "ev": ev,
+        rows.append({"key": key + "|close", "kind": "close", "of": key, "v": VERSION, "sport": sport, "ev": ev, "gst": gst,
                      "close": close, "clv": round(close - p["price"], 6), "graded_at": now})
     return rows, waiting
 

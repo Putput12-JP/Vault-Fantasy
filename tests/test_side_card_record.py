@@ -102,6 +102,14 @@ class Grade(unittest.TestCase):
         dq = G.record(rows, [], 0)["sports"]["nba"]["data_quality"]
         self.assertEqual((dq["counted_ml_locks"], dq["unpriced_share"], dq["fail"]), (10, 0.2, True))
 
+    def test_result_and_close_rows_save_and_load(self):
+        import tempfile
+        rows = G.grade(card(LOCK), "nba/frozen/d/x.json", None, FACT, CLOSES, GST + 3600)[0]
+        self.assertEqual([r["kind"] for r in rows], ["result", "close"])
+        with tempfile.TemporaryDirectory() as d:
+            G.append_rows(d, rows)                                      # every row kind carries gst for its month file
+            self.assertEqual(sorted(G.load_rows(d)), sorted(r["key"] for r in rows))
+
     def test_bootstrap_is_seeded(self):
         xs = [1.0, -1.0, 0.9, -1.0, 0.5]
         self.assertEqual(G.boot_ci(xs), G.boot_ci(xs))
