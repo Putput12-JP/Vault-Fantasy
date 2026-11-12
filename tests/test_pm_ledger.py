@@ -293,6 +293,16 @@ class BenchmarkSource(unittest.TestCase):
         self.assertEqual(set(got), {"0xaa", "0xbb"})
         self.assertEqual(got["0xaa"], {"tier": "ELITE", "sports": ["nba", "cfb"]})
 
+    def test_full_list_uses_the_scan_rule_and_drops_excluded(self):
+        sharps = {"_meta": {"walletCount": 3},
+                  "0xAA": {"name": "a", "sportPnlTotal": 5000, "source": "leaderboard"},
+                  "0xbb": {"name": "b", "sportPnlTotal": -10, "monthlyQualified": True, "source": "monthly_leaderboard"},
+                  "0xcc": {"name": "c", "sportPnlTotal": -10, "source": "scan_supplement"},
+                  "0xdd": {"name": "d", "sportPnlTotal": 9000, "source": "leaderboard"}}
+        got = L.benchmark_list(sharps, {"excluded": ["0xDD"]})
+        self.assertEqual(sorted(got), ["0xaa", "0xbb"])          # 0xcc fails the scan rule, 0xdd is a listed market maker
+        self.assertEqual(got["0xaa"]["source"], "leaderboard")
+
 
 if __name__ == "__main__":
     unittest.main()
