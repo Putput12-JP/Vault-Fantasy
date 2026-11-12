@@ -54,8 +54,26 @@ Each case is counted in `summary.json` under `conditions`.
   added when it holds at least $2,000 on one market (valued at the current price) and its all-time and this-month sports PnL are
   both positive.
 
+- **SharpFlow's public sharp boards** (`sharp_positions.json`, `sharp_spread_positions.json`, `sharp_total_positions.json` in its
+  public repo): every wallet it lists on an NBA, NFL or CFB game. SharpFlow picks these from lifetime leaderboard PnL, which is
+  hindsight, so they are treated like any other new wallet: `first_seen` is the moment Vault added them, and their earlier rows are
+  `backfill`. Added after the 2026-11-11 comparison found 52 of the 105 wallets SharpFlow showed that night were not tracked here.
+
 Once a wallet is added it stays tracked, so the universe grows day by day, the same way SharpFlow's list grew to 1,646. Market-maker
 and trader exclusion is NOT applied at this stage. It is decided point in time from `user_stats/` and the rows, in the side-card step.
+
+## Read order: tonight's holders first
+
+A wallet's first read costs about 150 requests (its whole history), so a 20,000-request night reaches only a few hundred new
+wallets. On 2026-11-11 the run reached 429 of 1,943, and 28 wallets holding $545K on that night's NBA games had no graded NBA bet.
+
+- **Every run reads hot wallets first:** tracked wallets holding at least $250 (the side card's floor) on a full-game market in the
+  next 36 hours, soonest game first, then the bigger ticket. The holder lists come from the discovery read, so this costs no extra
+  requests. Then today's universe by rank, then every earlier wallet.
+- **Four daytime priority runs** (9:20 AM, 12:20, 4:20 and 8:20 PM Central) read only the hot wallets, capped at 12,000 requests
+  and 55 minutes. They replace the old discovery-only runs and still run discovery.
+- A priority run writes `summary_priority.json`. `summary.json` stays the nightly full run's, because its `run_at` is what the side
+  card checks against the cut. Rows a priority run adds are still filtered by `settled_at < cut` on every card.
 
 ## Safety
 
