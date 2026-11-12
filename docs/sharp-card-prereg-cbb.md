@@ -1,11 +1,9 @@
-# Sharp side card, college basketball: proposed forward test
+# Sharp side card, college basketball: pre-registered forward test
 
-**Status: PROPOSED, not registered.** Written on 2026-11-12 for the user to approve. Until a later commit changes this line to
-"Registered" with the user's approval, this file binds nothing: no college basketball (CBB) card counts toward any test, every
-frozen CBB card carries `test.counts: false` ("sport not in a registered test"), and the Record tab shows CBB as "not registered".
-
-If approved, the commit that changes the status line is the registration. Its hash and time are the proof that the rule came first,
-and nothing below may change after the first CBB card frozen under it is graded.
+**Status: Registered.** Proposed on 2026-11-12 and approved by the user as written the same day (Nov 12, 2026, about 5:35 PM CT),
+with every decision below taken as proposed. The commit that changes this line from PROPOSED is the registration: its hash and time
+are the proof that the rule came first. Nothing below may change after the first college basketball (CBB) card frozen under it is
+graded. A change means a new registration with its own date.
 
 This does not change `docs/sharp-card-prereg.md`. That registration covers NBA, NFL and CFB, and is read exactly as written.
 
@@ -32,9 +30,9 @@ Everything not listed under "What is different" is copied from `docs/sharp-card-
 
 ## What is different for college basketball
 
-1. **Start.** Only CBB cards whose cut is after the registration commit can count. Cards frozen before it stay `counts: false`.
-   (`scripts/build_side_cards.py` would then list `cbb` in `REGISTERED_SPORTS` and stamp, on each CBB card, whether its cut is
-   after the registration time; that code change ships in the same pull request as the approval.)
+1. **Start.** Only CBB cards whose cut is at or after **6:00 PM CT, Nov 12, 2026** (2026-11-13 00:00 UTC, epoch 1794528000) can
+   count. That is after the registration commit. Cards cut earlier stay `counts: false` ("cut before this sport's registration").
+   `scripts/build_side_cards.py` lists `cbb` in `REGISTERED_SPORTS` with that start in `REGISTERED_FROM`, in the same commit.
 2. **No closing-line value.** `data/pm_closes.json` has no CBB games (on 2026-11-12 it holds NBA 207 and NFL 121). CBB is read on
    ROI only, like CFB, and its CLV is "not available". That is said here in advance.
 3. **Final read and minimum n.**
@@ -50,23 +48,24 @@ Everything not listed under "What is different" is copied from `docs/sharp-card-
    cards see thinner wallet books than later ones. A card is built from whatever the ledger held at its cut; nothing is re-graded
    once the fill catches up.
 
-## Decisions for the user before approval
+## Decisions (approved as proposed, 2026-11-12)
 
-These are open. The proposal above holds whichever way they go, but each changes what the CBB test measures.
+Each was open in the proposal; the user approved the proposal as written, so each takes the proposed option.
 
 - **A. Wallet universe.** Today CBB games add no wallets to the ledger universe (`UNIVERSE_SPORTS` in `build_pm_ledger.py`), so the
   NBA/NFL/CFB test keeps the universe it was registered on. CBB cards are therefore built only from wallets found through NBA, NFL
   and CFB games, the all-sports leaderboards, the benchmark's full list and Vault's NBA/NFL/CFB wallet files. Options:
-  (1) keep it that way (proposed: no effect on the running test);
+  (1) keep it that way (proposed: no effect on the running test). **Approved.**
   (2) let CBB fat-ticket discovery, the benchmark's CBB board and `data/pm_wallets_cbb.json` add wallets. That finds CBB
   specialists, but those wallets would also appear on later NBA/NFL/CFB cards, which is a change to the population the existing test
   reads from that day on. If chosen, it needs its own note in the existing test's interim reports, with the date.
 - **B. Minimum n.** 300 matches the other sports. CBB has far more games (Polymarket settled 652 CBB games from Nov 3 to Nov 10), so
-  300 counted locks is reachable this season, unlike NFL and CFB. Keep 300, or set a larger n?
+  300 counted locks is reachable this season, unlike NFL and CFB. **Approved: 300.**
 - **C. Read date.** The Monday after the national championship includes the tournament. A regular-season-only read would end on
-  the Monday after Selection Sunday. Proposed: include the tournament.
+  the Monday after Selection Sunday. **Approved: include the tournament.**
 - **D. Thresholds borrowed from CFB.** The Sharp Money page's CBB alert thresholds are borrowed from CFB (see #417). They do not
-  enter this test (the lock uses only the gates above), but the user may want them measured for CBB before relying on the page.
+  enter this test (the lock uses only the gates above). **Approved: they stay borrowed and out of the test.** Measuring them for CBB
+  is separate page work.
 
 ## Known limits, stated before the data
 

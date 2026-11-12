@@ -240,8 +240,12 @@ class ReviewFixes(unittest.TestCase):
         self.assertEqual(late["test"], {"counts": False, "why_not": ["built after game start"]})
         stale = C.card(k, ledger(proven("0xp"), run_at=None), "nba")
         self.assertEqual(stale["test"]["why_not"], ["ledger run not before the cut"])
-        cbb = C.card(k, ledger(proven("0xp")), "cbb")                                          # not in docs/sharp-card-prereg.md
-        self.assertEqual(cbb["test"], {"counts": False, "why_not": ["sport not in a registered test"]})
+        early = dict(k, gst=C.REGISTERED_FROM["cbb"] - 1, cut=C.REGISTERED_FROM["cbb"] - 901)   # CBB: cut before its registration
+        rows = [dict(r, settled_at=early["cut"] - 10_000 + i) for i, r in enumerate(proven("0xp"))]
+        self.assertIn("cut before this sport's registration",
+                      C.card(early, ledger(rows, first_seen={"0xp": 1}, run_at=early["cut"] - 60), "cbb")["test"]["why_not"])
+        self.assertTrue(C.card(k, ledger(proven("0xp")), "cbb")["test"]["counts"])                 # after it: counts like the rest
+        self.assertEqual(C.card(k, ledger(proven("0xp")), "mlb")["test"], {"counts": False, "why_not": ["sport not in a registered test"]})
 
     def test_vault_join_keeps_only_espn_logo_links(self):
         g = [{"key": "cbb:1", "start": 100, "pm": {"slug": "cbb-a-b"},

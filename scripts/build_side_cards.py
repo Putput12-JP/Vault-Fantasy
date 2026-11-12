@@ -406,6 +406,8 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
         why = []
         if sport not in REGISTERED_SPORTS:
             why.append("sport not in a registered test")
+        elif cut < REGISTERED_FROM.get(sport, 0):
+            why.append("cut before this sport's registration")
         if built > kf["gst"]:
             why.append("built after game start")
         if not ledger.run_at or ledger.run_at >= cut:
@@ -618,9 +620,12 @@ NBA_NICK = {"ATL": "Hawks", "BOS": "Celtics", "BKN": "Nets", "CHA": "Hornets", "
             "ORL": "Magic", "PHI": "76ers", "PHX": "Suns", "POR": "Trail Blazers", "SAC": "Kings", "SAS": "Spurs", "TOR": "Raptors",
             "UTA": "Jazz", "WAS": "Wizards"}
 NFL_ALIAS = {"WSH": "WAS", "LA": "LAR", "JAC": "JAX", "LVR": "LV", "OAK": "LV"}   # scripts/book_tape.py ALIAS
-# Sports in docs/sharp-card-prereg.md. A frozen card of any other sport (cbb, added 2026-11-12) is built and graded like the rest
-# but never counts toward the test (`test.counts` false, "sport not in a registered test") until a registration of its own is approved.
-REGISTERED_SPORTS = ("nba", "nfl", "cfb")
+# Sports with a registered side-card test: NBA, NFL, CFB (docs/sharp-card-prereg.md) and CBB (docs/sharp-card-prereg-cbb.md, approved
+# 2026-11-12). A frozen card of any other sport is built and graded but never counts ("sport not in a registered test").
+REGISTERED_SPORTS = ("nba", "nfl", "cfb", "cbb")
+# CBB counts only cards whose cut is at or after its registration: 2026-11-13 00:00 UTC (6:00 PM CT, Nov 12), set after the approval
+# commit. Earlier CBB cards stay `counts: false`.
+REGISTERED_FROM = {"cbb": 1794528000}
 TAPE_START_GAP = 12 * 3600                    # a tape game with the same two teams starting within 12 h of the Polymarket start
 
 
