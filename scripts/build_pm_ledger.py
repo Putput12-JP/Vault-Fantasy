@@ -49,7 +49,7 @@ SPORT_PREFIX = {"nba": "nba-", "nfl": "nfl-", "cfb": "cfb-", "cbb": "cbb-"}
 LEGACY_SPORTS = ("nba", "nfl", "cfb")
 # Sports whose games may ADD wallets to the universe (fat-ticket discovery; the benchmark board is BENCH_SPORTS; WALLET_FILES).
 # College basketball is graded for wallets already tracked but adds none: the side-card test (docs/sharp-card-prereg.md) was
-# registered on the universe these sources built, and CBB has no registration of its own yet (docs/sharp-card-prereg-cbb.md, proposed).
+# registered on the universe these sources built. docs/sharp-card-prereg-cbb.md (approved 2026-11-12, decision A) keeps it that way.
 UNIVERSE_SPORTS = ("nba", "nfl", "cfb")
 FULL_GAME = ("moneyline", "spreads", "totals")
 CUTOFF_SEC = 15 * 60                      # The benchmark T-15 freeze (index.js `_=900*1e3`)
