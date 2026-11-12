@@ -254,6 +254,44 @@ class Discovery(unittest.TestCase):
         self.assertEqual(got["0xe"]["usd"], 3000)
         self.assertNotIn("0xd", got)                              # props are not full-game markets
         self.assertEqual(L.fat_tickets(ev, [page], gst + 60), {})  # already started: not upcoming
+        self.assertEqual(got["0xa"]["gst"], gst)
+        hot = L.fat_tickets(ev, [page], gst - 3600, L.HOT_USD)    # the $250 floor used to order the reads
+        self.assertEqual(hot["0xb"]["usd"], 1600)
+        self.assertEqual(hot["0xc"]["usd"], 1800)                 # both sides of one market count, as discovery does
+        self.assertNotIn("0xd", hot)
+
+
+class Order(unittest.TestCase):
+    def uni(self):
+        return {"0xr1": {"why": [{"board": "all", "rank": 1}]}, "0xr2": {"why": [{"board": "all", "rank": 2}]},
+                "0xr3": {"why": [{"board": "all", "rank": 3}]}}
+
+    def test_hot_wallets_first_soonest_game_then_bigger_ticket(self):
+        fs = {"0xr1": 1, "0xr2": 1, "0xr3": 1, "0xold": 1}
+        hot = {"0xr3": {"usd": 300, "gst": 100}, "0xold": {"usd": 900, "gst": 100}, "0xr2": {"usd": 5000, "gst": 200},
+               "0xstranger": {"usd": 9000, "gst": 50}}
+        order, former = L.order_wallets(self.uni(), fs, hot, {})
+        self.assertEqual(order, ["0xold", "0xr3", "0xr2", "0xr1"])     # untracked holders are never added here
+        self.assertEqual(former, [])                                   # 0xold was read with the hot group, not twice
+
+    def test_priority_only_reads_just_the_hot_tracked_wallets(self):
+        fs = {"0xr1": 1, "0xr2": 1, "0xr3": 1, "0xold": 1}
+        hot = {"0xr2": {"usd": 300, "gst": 100}, "0xstranger": {"usd": 9000, "gst": 50}}
+        self.assertEqual(L.order_wallets(self.uni(), fs, hot, {"0xold": {"c": {}}}, priority_only=True), (["0xr2"], []))
+
+    def test_no_hot_keeps_rank_then_former(self):
+        fs = {"0xr1": 1, "0xr2": 1, "0xr3": 1, "0xold": 1}
+        self.assertEqual(L.order_wallets(self.uni(), fs, {}, {}), (["0xr1", "0xr2", "0xr3"], ["0xold"]))
+
+
+class SharpFlowSource(unittest.TestCase):
+    def test_lists_nba_nfl_cfb_wallets_only(self):
+        f1 = {"NBA": {"a_b": {"positions": [{"wallet": "0xAA", "tier": "ELITE"}, {"wallet": "0xbb", "tier": "SHARP"}]}},
+              "NHL": {"c_d": {"positions": [{"wallet": "0xcc", "tier": "ELITE"}]}}, "scannedAt": "2026-11-11T23:00:00Z"}
+        f2 = {"CFB": {"e_f": {"positions": [{"wallet": "0xaa", "tier": "ELITE"}]}}}
+        got = L.sharpflow_wallets([f1, f2])
+        self.assertEqual(set(got), {"0xaa", "0xbb"})
+        self.assertEqual(got["0xaa"], {"tier": "ELITE", "sports": ["nba", "cfb"]})
 
 
 if __name__ == "__main__":

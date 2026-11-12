@@ -54,6 +54,11 @@ GAMMA_BATCH = 50
 SERIES = {"nba": 10345, "nfl": 12185, "cfb": 12756}   # Gamma sports series ids (GET /sports); games carry tag 100639
 GAME_TAG = 100639
 FAT_TICKET_USD = 2000      # SharpFlow discoverScanSupplement MIN_POSITION_USD: a holder this big on a full-game market is a candidate
+HOT_USD = 250              # SharpFlow's board floor (index.js Nj=250), the same floor the side card uses: a tracked wallet holding this
+                           # much on an upcoming game is graded first, so its book is current before that game's cut
+SHARPFLOW_RAW = "https://raw.githubusercontent.com/dpk1212/nhl-savant/main/public/"
+SHARPFLOW_FILES = ("sharp_positions.json", "sharp_spread_positions.json", "sharp_total_positions.json")
+SHARPFLOW_SPORTS = {"NBA": "nba", "NFL": "nfl", "CFB": "cfb"}
 DISCOVER_AHEAD = 36 * 3600 # games starting within the next 36 hours (today's slate plus tomorrow's early games)
 EPS = 1e-6
 
@@ -376,10 +381,11 @@ def build_universe(cli, a):
     return uni
 
 
-def fat_tickets(events, holder_pages, now):
+def fat_tickets(events, holder_pages, now, min_usd=FAT_TICKET_USD):
     """Pure part of discovery. events: Gamma events (with markets). holder_pages: v2 /holders `data` lists.
-    Returns {wallet: {"usd", "cid", "both"}} for holders whose position on one full-game market, valued at the market's current
-    price, is at least FAT_TICKET_USD. `both` marks a wallet holding both outcomes of that market."""
+    Returns {wallet: {"usd", "cid", "both", "gst"}} for holders whose position on one full-game market, valued at the market's
+    current price, is at least `min_usd` (the largest such market per wallet). `both` marks a wallet holding both outcomes of that
+    market; `gst` is the start of the soonest game on which the wallet holds at least `min_usd`."""
     tok = {}
     for e in events:
         for m in e.get("markets") or []:
@@ -392,7 +398,7 @@ def fat_tickets(events, holder_pages, now):
                 continue
             for oi, t in enumerate(ids):
                 if oi < len(px):
-                    tok[str(t)] = (m.get("conditionId"), oi, px[oi])
+                    tok[str(t)] = (m.get("conditionId"), oi, px[oi], f["gst"])
     per = {}
     for page in holder_pages:
         for grp in page or []:
@@ -401,15 +407,75 @@ def fat_tickets(events, holder_pages, now):
                 w = (h.get("proxy_wallet") or "").lower()
                 if not hit or not w.startswith("0x"):
                     continue
-                cid, oi, px = hit
-                r = per.setdefault((w, cid), {"usd": 0.0, "ois": set()})
+                cid, oi, px, gst = hit
+                r = per.setdefault((w, cid), {"usd": 0.0, "ois": set(), "gst": gst})
                 r["usd"] += float(h.get("amount") or 0) * px
                 r["ois"].add(oi)
-    out = {}
+    out, soon = {}, {}
     for (w, cid), r in per.items():
-        if r["usd"] >= FAT_TICKET_USD and r["usd"] > out.get(w, {}).get("usd", 0):
+        if r["usd"] < min_usd:
+            continue
+        soon[w] = min(soon.get(w, r["gst"]), r["gst"])
+        if r["usd"] > out.get(w, {}).get("usd", 0):
             out[w] = {"usd": round(r["usd"]), "cid": cid, "both": len(r["ois"]) > 1}
+    for w in out:
+        out[w]["gst"] = soon[w]
     return out
+
+
+def sharpflow_wallets(files):
+    """Pure part of the SharpFlow board source. files: parsed sharp_*positions.json from SharpFlow's public repo.
+    Returns {wallet: {"tier", "sports"}} for every wallet SharpFlow lists on an NBA, NFL or CFB game."""
+    out = {}
+    for j in files:
+        for sp, games in (j or {}).items():
+            if sp not in SHARPFLOW_SPORTS or not isinstance(games, dict):
+                continue
+            for g in games.values():
+                for p in (g or {}).get("positions") or []:
+                    w = (p.get("wallet") or "").lower()
+                    if w.startswith("0x"):
+                        o = out.setdefault(w, {"tier": p.get("tier"), "sports": []})
+                        if SHARPFLOW_SPORTS[sp] not in o["sports"]:
+                            o["sports"].append(SHARPFLOW_SPORTS[sp])
+    return out
+
+
+def sharpflow_source(cli, known):
+    """Wallets on SharpFlow's public sharp boards that the ledger does not track yet. SharpFlow picked them with hindsight (lifetime
+    leaderboard PnL), so they enter the universe like any other wallet: first_seen is now, and their earlier rows are `backfill`.
+    A fetch failure only skips the source."""
+    files = []
+    for fn in SHARPFLOW_FILES:
+        j = cli.get(SHARPFLOW_RAW + fn)
+        if not isinstance(j, dict):
+            raise PMDataError(f"sharpflow {fn}: no response")
+        files.append(j)
+    seen = sharpflow_wallets(files)
+    add = {w: {"name": None, "why": [{"sharpflow": v["tier"], "sports": v["sports"]}]} for w, v in seen.items() if w not in known}
+    return add, {"listed": len(seen), "added": len(add)}
+
+
+def order_wallets(uni, fs, hot, pend, wallets=0, priority_only=False):
+    """The order a run reads wallets in, and the former wallets after them.
+
+    1. hot: tracked wallets holding at least HOT_USD on an upcoming game, soonest game first, then the bigger ticket. Their books
+       are brought up to date before those games' cuts, which is what the side card reads.
+    2. today's universe by leaderboard rank.
+    3. every wallet selected on an earlier day (read on every run, so a forward record never depends on the wallet still winning).
+    priority_only keeps only the hot wallets. `wallets` caps the list for dry runs."""
+    known = set(uni) | set(fs)
+    first = [w for w in sorted(hot, key=lambda w: (hot[w]["gst"], -hot[w]["usd"], w)) if w in known]
+    if priority_only:
+        return (first[:wallets] if wallets else first), []
+    best = lambda w: min([x["rank"] for x in uni.get(w, {}).get("why", []) if x.get("rank")] or [10 ** 9])
+    taken = set(first)
+    order = first + [w for w in sorted(uni, key=lambda w: (best(w), w)) if w not in taken]
+    if wallets:
+        order = order[:wallets]
+    taken = set(order)
+    former = sorted(w for w in fs if w not in uni and w not in taken and (pend.get(w) or not wallets))
+    return order, former
 
 
 def discover(cli, a, known, now):
@@ -440,6 +506,7 @@ def discover(cli, a, known, now):
         for rows in pages(cli, "/holders", {"condition": ",".join(cids[i:i + COND_BATCH]), "limit": 1000}, 5):
             holder_pages.append(rows)
     fat = fat_tickets(events, holder_pages, now)
+    hot = fat_tickets(events, holder_pages, now, HOT_USD)
     out = {}
     for w, t in sorted(fat.items(), key=lambda kv: -kv[1]["usd"]):
         if w in known:
@@ -452,8 +519,8 @@ def discover(cli, a, known, now):
         if (lb["all"] or 0) > 0 and (lb["month"] or 0) > 0:
             out[w] = {"name": None, "why": [{"fat_ticket": t["usd"], "cid": t["cid"], "both_sides": t["both"],
                                               "all_pnl": round(lb["all"]), "month_pnl": round(lb["month"])}]}
-    return out, {"markets": len(cids), "fat_tickets": len(fat), "new_candidates": sum(1 for w in fat if w not in known),
-                 "added": len(out)}
+    return out, hot, {"markets": len(cids), "fat_tickets": len(fat), "new_candidates": sum(1 for w in fat if w not in known),
+                      "added": len(out), "hot_holders": len(hot)}
 
 
 OVERLAP = 3 * 86400        # incremental position reads go back 3 days before the high-water mark, so a late fill or redeem is not missed
@@ -656,6 +723,9 @@ def main():
     ap.add_argument("--rate-probe", type=int, default=0)
     ap.add_argument("--today", help="names the dated files only; first_seen is always the real clock")
     ap.add_argument("--discover-only", action="store_true", help="only run fat-ticket discovery and record new wallets")
+    ap.add_argument("--priority-only", action="store_true",
+                    help="discover, then read only tracked wallets holding $250+ on an upcoming game (the afternoon runs)")
+    ap.add_argument("--no-sharpflow", action="store_true", help="skip the SharpFlow board universe source")
     ap.add_argument("--dry-run", action="store_true", help="fetch and grade but write nothing; print the summary")
     a = ap.parse_args()
     a.sports = [s for s in a.sports.split(",") if s in SPORT_PREFIX]
@@ -685,26 +755,26 @@ def main():
     if not uni:
         print("::error::empty universe (leaderboard returned nothing); nothing written")
         return 1
+    if not a.no_sharpflow:
+        try:
+            found, summary["sharpflow"] = sharpflow_source(cli, set(uni) | set(first_seen))
+            uni.update(found)
+        except (PMDataError, Budget) as e:
+            summary["sharpflow"] = {"error": repr(e)}  # an outside source is additive; the ledger still runs without it
+    hot = {}
     try:
-        found, summary["discover"] = discover(cli, a, set(uni) | set(first_seen), now)
+        found, hot, summary["discover"] = discover(cli, a, set(uni) | set(first_seen), now)
         uni.update(found)
     except (PMDataError, Budget) as e:
         summary["discover"] = {"error": repr(e)}       # discovery is additive; the ledger still runs without it
-    if a.discover_only:
-        order, former = [], []
     selected_at = int(time.time())                                    # the moment today's selection was known
     new_fs = {w: selected_at for w in uni if w not in first_seen}
     fs = {**first_seen, **new_fs}
-    best = lambda w: min([x["rank"] for x in uni.get(w, {}).get("why", []) if x.get("rank")] or [10 ** 9])
-    # Today's universe by rank, then every wallet ever selected before. Once selected, a wallet is read on every run whether or not
-    # it is still on a board, so a forward row never depends on the wallet having kept winning.
+    order, former = [], []
     if not a.discover_only:
-        order = sorted(uni, key=lambda w: (best(w), w))
-        if a.wallets:
-            order = order[:a.wallets]
-        former = sorted(w for w in fs if w not in uni and (pend.get(w) or not a.wallets))
-        if a.wallets:
-            former = [w for w in former if pend.get(w)]
+        order, former = order_wallets(uni, fs, hot, pend, a.wallets, a.priority_only)
+    summary["mode"] = "discover" if a.discover_only else "priority" if a.priority_only else "full"
+    summary["hot_first"] = sum(1 for w in order if w in hot)
 
     if a.rate_probe:
         summary["rate_probe"] = rate_probe(cli, a.rate_probe, order)
@@ -807,7 +877,10 @@ def main():
                                                            and m.get("mt") in FULL_GAME})
     jsave(os.path.join(root, "pending.json"), {w: v for w, v in pend.items() if v})
     jsave(os.path.join(root, "state.json"), state)
-    jsave(os.path.join(root, "summary_discover.json" if a.discover_only else "summary.json"), summary)
+    # A priority run keeps its own summary: summary.json's run_at is what the side cards test against the cut, and it stays the
+    # nightly full run's. The rows a priority run adds are still filtered by settled_at < cut on every card.
+    jsave(os.path.join(root, {"discover": "summary_discover.json", "priority": "summary_priority.json"}.get(summary["mode"], "summary.json")),
+          summary)
     print(json.dumps(summary, indent=1, default=str))
     return 0
 
