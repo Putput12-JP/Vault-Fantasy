@@ -73,17 +73,28 @@ function dur(s){ var h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); 
 function logo(name, g){
   if (name === 'Over' || name === 'Under') return '<div class="vc-logo">' + name[0] + '</div>';
   var url = OPT.logo ? OPT.logo(g, name) : null, ab = null;
+  if (!url && g.sport === 'cbb'){ var cs = cbbSide(g, name); url = cs && ((g.vault || {}).logo || {})[cs] || null; }   /* ESPN's own link, stored by the poller */
   if (!url && g.sport === 'nba'){ ab = [g.vault.away, g.vault.home].filter(function(a){ return TEAMS[a] && TEAMS[a][0] === name; })[0];
     if (ab) url = 'https://a.espncdn.com/i/teamlogos/nba/500/' + TEAMS[ab][1] + '.png'; }
   var mono = esc(ab || name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(function(w){ return w[0]; }).join('').slice(0, 3).toUpperCase());
   if (!url) return '<div class="vc-logo">' + mono + '</div>';
   return '<div class="vc-logo"><img alt="" src="' + esc(url) + '" onerror="this.replaceWith(document.createTextNode(\'' + mono + '\'))"></div>';
 }
-function teamName(g, side){ var ab = g.vault && g.vault[side]; return g.sport === 'nba' && TEAMS[ab] ? TEAMS[ab][0] : (ab || '?'); }
+/* College basketball has ~360 teams, so there is no table: a Polymarket outcome ("Penn State Nittany Lions") is matched to a side by
+   the Vault game's own team names (full name, or its short name followed by the nickname). No match: no side, a monogram logo. */
+function cbbSide(g, name){
+  var T = (g.vault && g.vault.teams) || {}, n = String(name || '').toLowerCase(), hit = ['away', 'home'].filter(function(k){
+    return (T[k] || []).some(function(x){ x = String(x || '').toLowerCase(); return x && (n === x || n.indexOf(x + ' ') === 0); }); });
+  return hit.length === 1 ? hit[0] : null;
+}
+function teamName(g, side){ var ab = g.vault && g.vault[side];
+  if (g.sport === 'cbb'){ var T = ((g.vault || {}).teams || {})[side] || []; return T[1] || T[0] || ab || '?'; }
+  return g.sport === 'nba' && TEAMS[ab] ? TEAMS[ab][0] : (ab || '?'); }
 function sideOrder(g, m, key){
   var names = Object.keys(m.sides);
   if (key === 'total') return names.sort();                         /* Over, Under */
   var away = g.sport === 'nba' && TEAMS[g.vault.away] ? TEAMS[g.vault.away][0] : null;
+  if (g.sport === 'cbb') away = names.filter(function(x){ return cbbSide(g, x) === 'away'; })[0] || null;
   return names.sort(function(a, b){ return (a === away ? 0 : 1) - (b === away ? 0 : 1); });
 }
 function sideLabel(name, key, ls){
@@ -521,6 +532,7 @@ var REC_BASE = (LOCAL && (location.search.match(/[?&]rec=([^&]+)/) || [])[1]) ? 
 var REC = {d: null, state: 'idle', at: 0};
 var REC_N = 300;                                                       /* prereg minimum n per sport */
 var REC_READ = {nba: 'the first Monday after the 2026-27 regular season', nfl: 'the Tuesday after Week 18', cfb: 'the Monday after conference championship weekend'};
+var REC_SPORTS = ['nba', 'nfl', 'cfb', 'cbb'];                          /* cbb: graded for reference, in no registered test (REC_READ has no date) */
 function months(){ var d = new Date(), a = d.toISOString().slice(0, 7); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1); return [d.toISOString().slice(0, 7), a]; }
 function jsonl(t){ return (t || '').split('\n').filter(Boolean).map(function(l){ try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean); }
 function recLoad(done){
@@ -530,7 +542,7 @@ function recLoad(done){
   var get = function(p, txt){ return fetch(REC_BASE + p + '?t=' + Math.floor(Date.now() / 300000), {cache: 'no-store'})
     .then(function(r){ return r.ok ? (txt ? r.text() : r.json()) : null; }).catch(function(){ return null; }); };
   var rows = [];
-  ['nba', 'nfl', 'cfb'].forEach(function(s){ months().forEach(function(m){ rows.push(get('cards/' + s + '/' + m + '.jsonl', 1), get('benchmark/rows/' + s + '/' + m + '.jsonl', 1)); }); });
+  REC_SPORTS.forEach(function(s){ months().forEach(function(m){ rows.push(get('cards/' + s + '/' + m + '.jsonl', 1), get('benchmark/rows/' + s + '/' + m + '.jsonl', 1)); }); });
   Promise.all([get('cards_record.json'), get('h2h_record.json')].concat(rows)).then(function(r){
     var cards = [], sf = [];
     r.slice(2).forEach(function(t, i){ (i % 2 ? sf : cards).push.apply(i % 2 ? sf : cards, jsonl(t)); });
@@ -582,7 +594,10 @@ function recSport(sp, D){
   var clvN = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n || 0); }, 0);
   var clvS = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n ? x.clv_mean * x.clv_n : 0); }, 0);
   var n = ml.n || 0, pct = Math.min(100, n / REC_N * 100);
-  out += '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">' + n + ' / ' + REC_N + '</span></div>' +
+  if (!REC_READ[sp]) out += '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">not registered</span></div>' +
+    '<p class="vr-fn">College basketball joined on Nov 12, 2026, after the test was registered. Its cards are graded here for reference only and never count toward it. ' +
+    'A separate college basketball test has been proposed and is not in force.</p></section>';
+  else out += '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">' + n + ' / ' + REC_N + '</span></div>' +
     '<div class="vr-bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + REC_N + '" aria-valuenow="' + n + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
     '<p class="vr-fs num">' + (L.n ? 'Locks ' + wl(L) + ' · ' + u2(L.units_pl) + (clvN ? ' · CLV ' + (clvS / clvN > 0 ? '+' : '') + trim((clvS / clvN * 100).toFixed(1)) + ' pts' : '') : 'No counted lock has settled yet') + '</p>' +
     '<p class="vr-fn">The registered test needs ' + REC_N + ' counted moneyline locks and reads once, on ' + (REC_READ[sp] || 'its registered date') + '.' +
@@ -636,7 +651,7 @@ function renderRecord(el, o){
   recLoad(function(){
     if (!document.contains(el)) return;                                  /* a newer render replaced this one */
     if (!REC.d){ el.innerHTML = '<div class="vc-note"><b>No record yet</b><p>The record fills in once frozen cards settle. It updates every 2 hours.</p></div>'; return; }
-    var have = ['nba', 'nfl', 'cfb'].filter(function(s){ return ((REC.d.cards || {}).sports || {})[s] || ((REC.d.h2h || {}).sports || {})[s]; });
+    var have = REC_SPORTS.filter(function(s){ return ((REC.d.cards || {}).sports || {})[s] || ((REC.d.h2h || {}).sports || {})[s]; });
     var fixed = o.sport && o.sport !== 'all' ? o.sport : null, sp = fixed || (have.indexOf(REC_SP) >= 0 ? REC_SP : have[0]);
     var gen = Math.max((REC.d.cards || {}).generated || 0, (REC.d.h2h || {}).generated || 0);
     var head = '<div class="vr-head">' + (!fixed && have.length > 1 ? '<div class="vseg sm vr-sp" role="tablist" aria-label="Sport"><i class="v-pill"></i>' +
