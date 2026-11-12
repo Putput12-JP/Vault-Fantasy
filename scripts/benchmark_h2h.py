@@ -282,31 +282,6 @@ def load_jsonl(pattern):
     return rows
 
 
-def migrate_folder(out):
-    """The archive used to live in pm_record/sharpflow/. Move it to pm_record/benchmark/ once, file by file (a file already at the new
-    path wins), then remove the old folder. Idempotent; the job's commit picks the move up as renames."""
-    old, new = os.path.join(out, "sharpflow"), os.path.join(out, "benchmark")
-    if not os.path.isdir(old):
-        return 0
-    moved = 0
-    for d, _, fs in os.walk(old):
-        for fn in fs:
-            src = os.path.join(d, fn)
-            dst = os.path.join(new, os.path.relpath(src, old))
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
-            if os.path.exists(dst):
-                os.remove(src)
-            else:
-                os.replace(src, dst)
-                moved += 1
-    for d, _, _ in sorted(os.walk(old), key=lambda x: -len(x[0])):
-        try:
-            os.rmdir(d)
-        except OSError:
-            pass
-    return moved
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--holders", required=True, help="pm_holders folder (T-15 keyframes)")
@@ -317,7 +292,6 @@ def main():
     now = a.now or int(time.time())
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     root = os.path.join(a.out, "benchmark")
-    migrate_folder(a.out)
 
     games = []
     for path in sorted(glob.glob(os.path.join(a.holders, "*", "frozen", "*", "*.json"))):

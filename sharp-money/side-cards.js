@@ -515,7 +515,7 @@ function recLoad(done){
   var get = function(p, txt){ return fetch(REC_BASE + p + '?t=' + Math.floor(Date.now() / 300000), {cache: 'no-store'})
     .then(function(r){ return r.ok ? (txt ? r.text() : r.json()) : null; }).catch(function(){ return null; }); };
   var rows = [];
-  ['nba', 'nfl', 'cfb'].forEach(function(s){ months().forEach(function(m){ rows.push(get('cards/' + s + '/' + m + '.jsonl', 1), get('benchmark/rows/' + s + '/' + m + '.jsonl', 1).then(function(t){ return t != null ? t : get('sharpflow/rows/' + s + '/' + m + '.jsonl', 1); })); }); });
+  ['nba', 'nfl', 'cfb'].forEach(function(s){ months().forEach(function(m){ rows.push(get('cards/' + s + '/' + m + '.jsonl', 1), get('benchmark/rows/' + s + '/' + m + '.jsonl', 1)); }); });
   Promise.all([get('cards_record.json'), get('h2h_record.json')].concat(rows)).then(function(r){
     var cards = [], sf = [];
     r.slice(2).forEach(function(t, i){ (i % 2 ? sf : cards).push.apply(i % 2 ? sf : cards, jsonl(t)); });
@@ -565,11 +565,11 @@ function recSport(sp, D){
   if (h){
     hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · Benchmark tracker, graded the same way</span>' +
       '<p class="vr-sub">An outside sharp-wallet tracker\'s plays as its site showed them at our cut, graded by Polymarket\'s result at its own locked price. Plays it cancelled later still count. Spread picks name no line, so they have no priced result.</p>' +
-      recTable('', G.map(function(g){ var x = h[g[0]] || {}; return recRow(g[1] + ' · Benchmark', x.benchmark || x.sharpflow) + recRow(g[1] + ' · Vault size', x.vault_shown_size) + recRow(g[1] + ' · Vault, benchmark list', x.vault_sfx); }).join('')) +
-      '<p class="vr-sub num">' + G.map(function(g){ var x = h[g[0]] || {}, a = (x.benchmark_after_cut || x.sharpflow_after_cut) || {}, bits = [];
+      recTable('', G.map(function(g){ var x = h[g[0]] || {}; return recRow(g[1] + ' · Benchmark', x.benchmark) + recRow(g[1] + ' · Vault size', x.vault_shown_size) + recRow(g[1] + ' · Vault, benchmark list', x.vault_sfx); }).join('')) +
+      '<p class="vr-sub num">' + G.map(function(g){ var x = h[g[0]] || {}, a = x.benchmark_after_cut || {}, bits = [];
         if (a.n) bits.push(a.n + ' added or sized up after the cut (' + wl(a) + ')');
-        var cl = x.benchmark_at_cut_cancelled_later || x.sharpflow_at_cut_cancelled_later; if (cl) bits.push(cl + ' cancelled after the cut');
-        var up = x.benchmark_unpriced_spread_rungs || x.sharpflow_unpriced_spread_rungs; if (up) bits.push(up + ' spread picks unpriced');
+        var cl = x.benchmark_at_cut_cancelled_later; if (cl) bits.push(cl + ' cancelled after the cut');
+        var up = x.benchmark_unpriced_spread_rungs; if (up) bits.push(up + ' spread picks unpriced');
         if ((x.same_games || {}).games) bits.push(x.same_games.games + ' games both played, ' + x.same_games.same_side + ' on the same side');
         return bits.length ? g[1] + ': ' + bits.join(', ') : ''; }).filter(Boolean).join(' · ') + '</p></section>';
   }
