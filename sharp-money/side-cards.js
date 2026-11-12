@@ -15,6 +15,7 @@
 'use strict';
 var OPT = {}, UI = {}, SHOWN = {};
 /* Vault NBA skin: every colour comes from the NBA page's own theme variables, so light, dark and charcoal follow the page */
+var STEAM_CSS = '.vsc .vc-steam{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:12px;font-size:13px}\n.vsc .vc-steam i{width:8px;height:8px;border-radius:50%;background:var(--c-dim);flex:none}\n.vsc .vc-steam.on i{background:var(--c-warn)}.vsc .vc-steam.off i{background:var(--c-mut)}.vsc .vc-steam.unknown i{background:transparent;border:1.5px dashed var(--c-dim)}\n.vsc .vc-steam b{font-weight:600}.vsc .vc-steam span{color:var(--c-mut)}\n.vd-pin{margin-top:12px;padding-top:12px;border-top:1px solid var(--c-line)}\n.vd-kv{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px}.vd-kv span{color:var(--c-mut);flex:none}.vd-kv b{font-weight:500;text-align:right}\n.vd-chain{margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--c-ink)}.vd-chain li{margin:2px 0}\n';
 var RECORD_CSS = '.vsc .vr-view{margin:0 0 14px}\n.vsc .vr-top{text-align:left;margin-bottom:14px}.vsc .vr-top p{margin:6px 0 0;max-width:none}\n.vsc .vr-sec{margin-bottom:14px;background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r)}\n.vsc .vr-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}\n.vsc .vr-prog{font-size:12.5px;color:var(--c-mut)}\n.vsc .vr-bar{height:4px;border-radius:2px;background:var(--c-box);margin:8px 0 4px;overflow:hidden}.vsc .vr-bar i{display:block;height:100%;background:var(--c-good)}\n.vsc .vr-sub{margin:8px 0 0;font-size:12.5px;line-height:1.5;color:var(--c-mut)}.vsc .vr-sub b.dn{color:var(--c-bad)}\n.vsc .vr-cap2{display:block;margin:14px 0 4px;font-size:12.5px;font-weight:600}\n.vsc .vr-tw{overflow-x:auto}\n.vsc .vr-t{width:100%;border-collapse:collapse;font-size:13px}\n.vsc .vr-t th,.vsc .vr-t td{padding:7px 8px;text-align:right;border-top:1px solid var(--c-line);white-space:nowrap}\n.vsc .vr-t thead th{border-top:0;font-size:11.5px;font-weight:500;color:var(--c-mut)}\n.vsc .vr-t tbody th{text-align:left;font-weight:500;padding-left:0}.vsc .vr-t thead th:first-child{padding-left:0}\n.vsc .vr-t td.up{color:var(--c-good)}.vsc .vr-t td.dn{color:var(--c-bad)}.vsc .vr-t td em{font-style:normal;color:var(--c-dim);font-size:11.5px}\n.vsc .vr-t td.vr-none{text-align:left;color:var(--c-dim)}\n.vsc .vr-g{padding:10px 0;border-top:1px solid var(--c-line)}.vsc .vr-g:first-of-type{border-top:0}\n.vsc .vr-gn{display:block;font-size:13.5px;margin-bottom:4px}\n.vsc .vr-pl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13px;padding:2px 0}\n.vsc .vr-who{width:84px;color:var(--c-mut);font-size:12px}.vsc .vr-pl em{font-style:normal;color:var(--c-dim);font-size:12px}\n.vsc .vr-res{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 5px;border-radius:6px;font-size:11.5px;font-weight:700}\n.vsc .vr-res.win{background:var(--c-good);color:var(--c-on-good)}.vsc .vr-res.loss{background:var(--c-bad);color:#fff}.vsc .vr-res.push,.vsc .vr-res.na{background:var(--c-box);color:var(--c-mut)}\n@media (max-width:767px){.vsc .vr-sec{margin:0 0 12px}.vsc .vr-who{width:auto;min-width:72px}}\n';
 var DETAIL = '.vd-wrap{position:fixed;inset:0;z-index:1000;margin:0!important;--ease-sheet:cubic-bezier(0.32,0.72,0,1)}\n.vd-scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);opacity:0;transition:opacity .2s ease}\n.vd-wrap.on .vd-scrim{opacity:1}\n.vd{position:absolute;top:0;right:0;bottom:0;width:min(560px,100%);overflow-y:auto;overscroll-behavior:contain;background:var(--c-card);color:var(--c-ink);font-family:var(--c-sans);font-size:14px;line-height:1.4;padding:20px 20px 32px;border-left:1px solid var(--c-line);transform:translateX(100%);transition:transform var(--dur-rail,400ms) var(--ease-sheet)}\n.vd-wrap.on .vd{transform:none}\n.vd .num{font-family:var(--c-num);font-variant-numeric:tabular-nums;letter-spacing:var(--c-num-ls,0)}\n.vd .vd-cap{display:block;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-mut)}\n.vd-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}\n.vd-top h2{margin:6px 0 4px;font-size:26px;font-weight:700;letter-spacing:-.03em;line-height:1.1}\n.vd-px{display:flex;align-items:baseline;gap:10px;font-size:15px}.vd-px b{font-size:20px}.vd-px span{color:var(--c-mut)}\n.vd-px em{font-style:normal;font-weight:600;color:var(--c-mut)}.vd-px em.up{color:var(--c-good)}.vd-px em.dn{color:var(--c-bad)}\n.vd-sub{display:block;margin-top:3px;font-size:12.5px;color:var(--c-dim)}\n.vd-x{all:unset;box-sizing:border-box;cursor:pointer;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--c-box);color:var(--c-mut);flex:none}\n.vd-x svg{width:16px;height:16px}.vd-x:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}\n.vd-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:18px}\n.vd-hero b{font-size:40px;font-weight:700;letter-spacing:-.04em;line-height:1}\n.vd-op{margin-left:10px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.vd-op.ok{color:var(--c-good)}.vd-op.no{color:var(--c-warn)}\n.vd-u{text-align:right}.vd-u b{display:block;font-size:24px;color:var(--c-gold)}\n.vd-mix{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--c-box);margin-top:12px;gap:1px}\n.vd-mix i{display:block;height:100%}.vd-mix .sharp{background:var(--c-good)}.vd-mix .unp{background:var(--c-rb-unp)}.vd-mix .loser{background:var(--c-bad)}\n.vd-mixl{display:flex;gap:14px;margin-top:6px;font-size:12px;color:var(--c-mut)}\n.vd-sec,.vd-lead{margin-top:18px;padding:16px;border-radius:var(--c-mr,14px);background:var(--c-box)}\n.vd-key{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0 4px;font-size:12px;color:var(--c-mut)}\n.vd-key span{display:inline-flex;align-items:center;gap:5px}.vd-key em{font-style:normal;margin-left:auto;color:var(--c-dim)}\n.vd-key i{width:9px;height:9px;border-radius:50%}.vd-key .sharp{background:var(--c-good)}.vd-key .gold{background:var(--c-gold)}\n.vd-key .unp{background:transparent;border:1.5px dashed var(--c-rb-unp)}.vd-key .loser{background:var(--c-bad)}.vd-key .opp{background:transparent;border:1.5px solid var(--c-mut)}\n.vd-sc{display:block;width:100%;height:auto;margin-top:4px}\n.vd-sc .gl{stroke:var(--c-line2);stroke-width:1}.vd-sc .gl.z{stroke:var(--c-mut);stroke-dasharray:3 4}\n.vd-sc .ax{fill:var(--c-dim);font-size:11px;font-family:var(--c-num)}.vd-sc .axt{fill:var(--c-mut);font-size:11.5px;font-family:var(--c-sans)}\n.vd-sc .b circle{stroke-width:1.5;fill-opacity:.85}.vd-sc .b.sharp circle{fill:var(--c-good);stroke:var(--c-good)}.vd-sc .b.gold circle{fill:var(--c-gold);stroke:var(--c-gold)}\n.vd-sc .b.unp circle{fill:var(--c-rb-unp);fill-opacity:.25;stroke:var(--c-rb-unp);stroke-dasharray:3 3}.vd-sc .b.loser circle{fill:var(--c-bad);stroke:var(--c-bad)}\n.vd-sc .b.opp circle{fill-opacity:0}.vd-sc .bl{fill:var(--c-gold);font-size:13px;font-weight:700;font-family:var(--c-num)}\n.vd-held{margin:8px 0 0;font-size:12px;line-height:1.5;color:var(--c-mut)}\n.vd-lead{box-shadow:inset 3px 0 0 var(--c-gold)}\n.vd-lh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:8px}\n.vd-lh b{font-size:18px}.vd-lu{text-align:right}.vd-lu b{display:block;font-size:24px;color:var(--c-gold)}.vd-lu span{font-size:12px;color:var(--c-mut)}\n.vd-tag{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700;vertical-align:2px;border:1px solid currentColor}\n.vd-tag.sharp{color:var(--c-good)}.vd-tag.gold{color:var(--c-gold)}.vd-tag.unp{color:var(--c-mut)}.vd-tag.loser{color:var(--c-bad)}\n.vd-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}\n.vd-box{padding:12px;border-radius:12px;background:var(--c-card);min-width:0}.vd-box b{display:block;font-size:24px;margin-top:4px}.vd-box span.num{font-size:12.5px;color:var(--c-mut)}\n.vd-box.good{box-shadow:inset 0 0 0 1px var(--c-good-line)}.vd-box.good b{color:var(--c-good)}\n.vd-size{margin-top:14px}.vd-szh{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--c-mut)}.vd-szh b{color:var(--c-good);font-size:15px}\n.vd-bar{position:relative;height:6px;border-radius:3px;background:var(--c-card);margin:8px 0 6px}.vd-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--c-good)}\n.vd-bar u{position:absolute;top:-3px;width:2px;height:12px;background:var(--c-ink)}\n.vd-size p{margin:6px 0 0;font-size:12.5px;color:var(--c-mut)}\n.vd-who{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}\n.vd-col{padding:12px;border-radius:12px;background:var(--c-card);min-width:0;border-top:2px solid var(--c-bad)}.vd-col.own{border-top-color:var(--c-good)}\n.vd-ch{display:flex;justify-content:space-between;align-items:baseline}.vd-ch b{font-size:16px}.vd-cn{display:block;margin:2px 0 6px;font-size:15px}\n.vd-w{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--c-line)}\n.vd-w>i{width:8px;height:8px;border-radius:50%;background:var(--c-dim)}.vd-w.sharp>i{background:var(--c-good)}.vd-w.gold>i{background:var(--c-gold)}.vd-w.loser>i{background:var(--c-bad)}\n.vd-w.unp>i{background:transparent;border:1.5px dashed var(--c-rb-unp)}\n.vd-w b{font-size:13px}.vd-w div span{display:block;font-size:11.5px;color:var(--c-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.vd-wr{text-align:right}.vd-wr span{display:block;font-size:11.5px;color:var(--c-mut)}\n.vd-none,.vd-more{margin:6px 0 0;font-size:12px;color:var(--c-dim)}\n.vd-p{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--c-mut)}.vd-p b{color:var(--c-ink)}\n.vd-foot{margin:16px 2px 0;font-size:12px;color:var(--c-dim);line-height:1.5}\n.vsc .vc-open{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;margin-top:14px;border-radius:12px;background:var(--c-card);border:1px solid var(--c-line2);font-size:13.5px;font-weight:600;color:var(--c-ink)}\n.vsc .vc-open:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}\n@media (max-width:767px){\n.vd{top:6vh;width:100%;border-left:0;border-radius:20px 20px 0 0;padding:18px 16px 28px;transform:translateY(100%)}\n.vd-top h2{font-size:23px}.vd-hero b{font-size:34px}\n.vd-who{grid-template-columns:1fr}\n.vd-sec,.vd-lead{padding:14px}\n}\n@media (prefers-reduced-motion:reduce){.vd,.vd-scrim{transition:none}}\n';
 var NBA = 'html .vsc.vsc-nba{--c-card:var(--surface);--c-box:var(--surface2,var(--raised));--c-line:var(--border);--c-line2:var(--border2);--c-ink:var(--fg);--c-mut:var(--fg2);--c-dim:var(--fg3);' +
@@ -104,6 +105,52 @@ function shadow(m, v){
   var ls = (m.lock_shadow || {})[v] || {};
   return ls.side && ls.gates ? ls : null;
 }
+/* ---------- Pinnacle steam and the size steps, from the stored `steam` and `chain` fields on the shown size ---------- */
+var STEAM_WHY = {no_tape_before_cut: 'no Pinnacle prices before the lock', ticket_line_not_main_at_cut: 'this line is not Pinnacle\'s main line',
+  no_moneyline_rows: 'no Pinnacle moneyline prices', side_not_mapped_to_home_away: 'teams not matched to Pinnacle', lock_row_juice_unknown: 'Pinnacle\'s price on this line is not known'};
+var SEAT = {no_t5: 'no tier-5 wallet: up to 2u', no_lead: 'no lead: up to 2u', t5_young: 'young tier-5 lead: 2u to 3u', lead6: '6-day lead: 2u to 5u', lead14: '14-day lead: 3u to 6u'};
+function ptsTxt(p, side){ if (!p) return null; var a = trim(Math.abs(p).toFixed(1)); return 'line moved ' + a + ' pt ' + (p > 0 ? 'toward ' : 'away from ') + esc(side); }
+function pctTxt(p){ if (p == null || !p) return null; return 'price ' + (p > 0 ? 'shortened ' : 'drifted ') + trim(Math.abs(p).toFixed(1)) + '%'; }
+function steamState(s){ return !s ? null : s.on === true ? 'on' : s.on === false ? 'off' : 'unknown'; }
+function steamBits(s, side){
+  var b = [], so = ptsTxt(s.since_open_pts, side), lh = ptsTxt(s.last_hour_pts, side), po = pctTxt(s.since_open_pct), ph = pctTxt(s.last_hour_pct);
+  if (so) b.push(so + ' since open'); if (lh) b.push(lh + ' in the last hour');
+  if (po) b.push(po + ' since open'); if (ph) b.push(ph + ' in the last hour');
+  return b;
+}
+function steamRow(ls, key){
+  var s = ls && ls.steam, st = steamState(s);
+  if (!st) return '';
+  var b = steamBits(s, ls.side), lbl = st === 'on' ? 'Pinnacle steam toward ' + esc(ls.side) : st === 'off' ? 'No Pinnacle steam' : 'Pinnacle steam unknown';
+  var why = st === 'unknown' ? (STEAM_WHY[s.why] || 'not enough Pinnacle prices') : b[0] || (st === 'off' ? 'price and line steady' : '');
+  return '<div class="vc-steam ' + st + '"><i></i><b>' + lbl + '</b>' + (why ? '<span>' + why + '</span>' : '') + '</div>';
+}
+function steamDetail(ls, key, side){
+  var s = ls && ls.steam, st = steamState(s);
+  if (!st) return '';
+  var b = steamBits(s, ls.side), rows = [];
+  rows.push(['Steam', st === 'on' ? 'On, toward ' + esc(ls.side) + (s.tier === 'gold' ? ' (gold: 4.5%+ in the last hour)' : '') : st === 'off' ? 'Off' : 'Unknown: ' + (STEAM_WHY[s.why] || 'not enough Pinnacle prices')]);
+  if (b.length) rows.push(['Moves', b.join(' · ')]);
+  if (s.juice != null || s.lock_juice != null) rows.push(['Price itself', s.juice === true || s.lock_juice === true ? 'shortened 3% or more' : s.juice === false ? 'no 3% shorten' : 'not known']);
+  else if (st !== 'off' && key !== 'ml') rows.push(['Price itself', 'not known (a line move alone counts as steam, but not for the seat gate)']);
+  if (s.rows) rows.push(['Pinnacle reads', s.rows + ' before the lock']);
+  return '<div class="vd-pin"><span class="vd-cap">Pinnacle</span>' + rows.map(function(r){ return '<div class="vd-kv"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join('') + '</div>';
+}
+var CHAIN = {press_under5_cap: 'Capped at 1u: the press edge is under 5.', press_under5_zero: 'Muted: the press edge is under 0 on a spread or total.',
+  t5_band: 'Moved into its seat\'s range.', t5_cap: 'Cut to its seat\'s ceiling.', t5_rescue: 'Raised to its seat\'s floor.', t5_zero: 'Muted by the seat rules.',
+  t5_no_t5_st: 'Muted: no tier-5 wallet and Pinnacle\'s price has not moved.', t5_no_t5_st_undecided_steam_unknown: 'Kept: Pinnacle\'s price move on this line is not known, so the no-tier-5 gate could not decide.',
+  t5_undecided_steam_unknown: 'Kept: Pinnacle\'s price move is not known, so the seat gate could not decide.',
+  gap_boost: '+1u: wallets here lead the other side on recent form.', gap_rescue: 'Rescued at 3u: wallets here lead the other side on recent form.',
+  top3_floor: 'Raised: a top-ranked wallet is on this side.', top3_rescue: 'Rescued: a top-ranked wallet is on this side.',
+  edge_under_5: 'Held back: the edge is under 5.', edge_under_5_undecided_steam_unknown: 'Kept: the edge is under 5 but Pinnacle steam is not known.',
+  press_edge_net: 'Clamped by the press edge and the wallets\' closing record.'};
+function chainList(ls){
+  var c = (ls && ls.chain) || [], seat = ls && ls.t5_seat;
+  var items = c.map(function(x){ var k = String(x).split(':')[0]; return CHAIN[k] || null; }).filter(Boolean);
+  if (seat && SEAT[seat]) items.unshift('Seat: ' + SEAT[seat] + '.');
+  if (!items.length) return '';
+  return '<div class="vd-pin"><span class="vd-cap">Size steps</span><ol class="vd-chain">' + items.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ol></div>';
+}
 var RUNG = {
   'PRESS': ['Press', 'A proven wallet is sized up on this side, the money is with it, and no proven wallet is against it.'],
   'PRESS-X': ['Press X', 'The press shape, but proven wallets on the other side are betting small and fewer than the proven wallets here.'],
@@ -117,7 +164,7 @@ var RUNG = {
   'STEAM-C': ['Steam', 'Pinnacle\'s price is moving toward this side, and the proven wallets against it are betting small. The market overrules a small dissent.'],
   'STEAM-S': ['Steam', 'Pinnacle\'s price is moving toward this side against a seasoned wallet\'s ordinary-size bet, with 20% to 60% of the money here.'],
   'SOLO-Q': ['Quiet favourite', 'Nobody is against this side, Pinnacle is not moving, it is a 50% to 60% favourite, and the money here is small or from a wallet in hot form.'],
-  'PRESS-M': ['Mirror press', 'The press shape (money, a sized-up veteran, no proven wallet against) is on the side SharpFlow\'s score did not favour.'],
+  'PRESS-M': ['Mirror press', 'The press shape (money, a sized-up veteran, no proven wallet against) is on the side the wallet-quality score did not favour.'],
   'GAP-LEAD': ['Recent form', 'At least two wallets here have much better last-30-day results in this market than the wallets on the other side, whose recent results are negative.']
 };
 /* climate, from stored fields only: signal = a side meets the tracked rule; building = proven money somewhere; quiet = none */
@@ -157,9 +204,9 @@ function verdict(g, m, key, names, v){
       logo(ls.side, g) + '</div>' +
       agsRow(m, names, v) + (q ? '<div class="vc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> proven for') +
       tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>'
-      : '<p class="vc-why">' + (rg ? rg[1] : 'This side meets one of SharpFlow\'s staking rules.') + '</p>') +
-      '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size is what SharpFlow\'s staking rules give this side, rebuilt from Vault\'s own wallet records. ' +
-      'It now includes Pinnacle steam, the odds cap, the trusted-margin, mirror, recent-form and top-wallet rules and the edge clamps. It still leaves out SharpFlow\'s first-capture steam door and its private steam feed, and wallet records are Vault\'s own, so it can differ from SharpFlow\'s pick. This rule has no graded record yet.</p></details><button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
+      : '<p class="vc-why">' + (rg ? rg[1] : 'This side meets one of the staking rules.') + '</p>') +
+      '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size comes from the staking rules, built from Vault\'s own wallet records. ' +
+      'They use Pinnacle steam, the odds cap, the trusted-margin, mirror, recent-form and top-wallet rules, the seat caps and the edge clamps. A few inputs Vault cannot observe are left out. This rule has no graded record yet.</p></details>' + steamRow(ls, key) + '<button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
   }
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
   var other = names.filter(function(n){ return n !== lead; })[0], tot = counted(S[lead]) + counted(S[other]);
@@ -216,7 +263,7 @@ function body(g, st){
   var cv = g.coverage, bits = ['Money is mark value ' + (g.frozen ? 'at the lock' : 'now') + ' (shares x price), not cost.',
     cv.markets_read + ' markets read, ' + cv.markets_missed + ' missed' + (cv.late_reads ? ', ' + cv.late_reads + ' late' : '') + '.',
     'Oldest read ' + dur(cv.max_read_lag_s) + ' before ' + (g.frozen ? 'the lock' : 'this build') + '.', 'Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.'];
-  if (names.some(function(n){ return m.sides[n][v].ags; })) bits.push('The score is SharpFlow\'s: it compares the average quality of the proven wallets on each side, from -1 to +1. The labels use SharpFlow\'s published cut points (above 0.781 Lean, 0.916 Lock, 0.957 Prem, 0.981 Elite; any lower positive score is Weak). Those were fitted on SharpFlow\'s picks, not Vault\'s, and the label does not set the size.');
+  if (names.some(function(n){ return m.sides[n][v].ags; })) bits.push('The score compares the average quality of the proven wallets on each side, from -1 to +1. The labels use published cut points (above 0.781 Lean, 0.916 Lock, 0.957 Prem, 0.981 Elite; any lower positive score is Weak). Those were fitted outside Vault, and the label does not set the size.');
   if (cv.two_way_dust_dropped) bits.push(cv.two_way_dust_dropped + ' two-way ' + (cv.two_way_dust_dropped === 1 ? 'wallet' : 'wallets') + ' dropped as balanced dust.');
   if (g.vault.start_gap_flag) bits.push('Start times differ by ' + g.vault.start_gap_min + ' min between Polymarket and Vault.');
   if (g.test) bits.push(g.test.counts ? 'Counts for the forward test.' : 'Does not count for the forward test: ' + g.test.why_not.join(', ') + '.');
@@ -310,7 +357,7 @@ function detail(g, key, v){
   if (ls){
     var rg = ls.rung && RUNG[ls.rung];
     h += '<section class="vd-sec"><span class="vd-cap">How the size is set</span><p class="vd-p"><b>' + (rg ? rg[0] : 'Press ladder') + '.</b> ' + (rg ? rg[1] : 'This side meets the pre-registered press-ladder gates.') +
-      ' The size is SharpFlow\'s staking rule rebuilt from Vault\'s own wallet records, with Pinnacle steam, the odds cap and SharpFlow\'s seat and edge caps. It still leaves out its first-capture steam door, and it has no graded record yet.</p></section>';
+      ' The size comes from the staking rules, built from Vault\'s own wallet records, with Pinnacle steam, the odds cap and the seat and edge caps. It has no graded record yet.</p>' + steamDetail(ls, key, side) + chainList(ls) + '</section>';
   }
   return h + '<p class="vd-foot">Sharp money is context. Price skill counts only past bets with a stored close; a wallet with fewer than ' + CLV_MIN + ' is listed but not plotted.</p>';
 }
@@ -441,7 +488,7 @@ function host(el, render){
 }
 function css(){
   if (document.getElementById('vsc-css')) return;
-  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA + DETAIL + RECORD_CSS; document.head.appendChild(s);
+  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA + DETAIL + RECORD_CSS + STEAM_CSS; document.head.appendChild(s);
 }
 function rootClass(el, o){ el.className = 'vsc' + (o.skin === 'new' ? ' vsc-new' : o.skin === 'nba' ? ' vsc-nba' : ''); }
 function card(g, o, folded){
@@ -510,15 +557,15 @@ function recSport(sp, D){
     '<span class="vr-cap2">Lock (the pre-registered test, counted cards)</span>' + recTable('', G.map(function(g){ return recRow(g[1], lk(g[0])); }).join('')) +
     '<p class="vr-sub num">' + G.map(function(g){ var t = clvLine(lk(g[0])); return t ? g[1] + ': ' + t : ''; }).filter(Boolean).join(' · ') + '</p>' +
     '<span class="vr-cap2">Shown size (untested rule, every card)</span>' + recTable('', G.map(function(g){ return recRow(g[1], sf(g[0])); }).join('')) +
-    '<span class="vr-cap2">Shown size with SharpFlow\'s own exclusion list (shadow)</span>' + recTable('', G.map(function(g){ return recRow(g[1], sf(g[0], 'sfx')); }).join('')) +
-    '<p class="vr-sub">Same wallets and staking rules, but the market makers and traders SharpFlow publishes as excluded replace Vault\'s hedger and churn rules. Whichever rule set beats SharpFlow becomes the shown size.</p>' +
+    '<span class="vr-cap2">Shown size with the benchmark\'s exclusion list (shadow)</span>' + recTable('', G.map(function(g){ return recRow(g[1], sf(g[0], 'sfx')); }).join('')) +
+    '<p class="vr-sub">Same wallets and staking rules, but the market makers and traders the benchmark tracker publishes as excluded replace Vault\'s hedger and churn rules. Whichever rule set beats the benchmark becomes the shown size.</p>' +
     '<p class="vr-sub num">' + (cc.frozen || 0) + ' cards frozen, ' + (cc.counted || 0) + ' count for the test' +
       Object.keys(cc.not_counted_by_reason || {}).map(function(k){ return ' · ' + cc.not_counted_by_reason[k] + ' ' + esc(k); }).join('') +
       (dq.fail ? ' · <b class="dn">Data-quality fail: ' + Math.round(dq.unpriced_share * 100) + '% of counted moneyline locks unpriced</b>' : dq.unpriced_share ? ' · ' + Math.round(dq.unpriced_share * 100) + '% unpriced' : '') + '</p></section>';
   if (h){
-    hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · SharpFlow, graded the same way</span>' +
-      '<p class="vr-sub">SharpFlow\'s plays as its site showed them at our cut, graded by Polymarket\'s result at SharpFlow\'s own locked price. Plays it cancelled later still count. Spread picks name no line, so they have no priced result.</p>' +
-      recTable('', G.map(function(g){ var x = h[g[0]] || {}; return recRow(g[1] + ' · SharpFlow', x.sharpflow) + recRow(g[1] + ' · Vault size', x.vault_shown_size) + recRow(g[1] + ' · Vault, SF list', x.vault_sfx); }).join('')) +
+    hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · Benchmark tracker, graded the same way</span>' +
+      '<p class="vr-sub">An outside sharp-wallet tracker\'s plays as its site showed them at our cut, graded by Polymarket\'s result at its own locked price. Plays it cancelled later still count. Spread picks name no line, so they have no priced result.</p>' +
+      recTable('', G.map(function(g){ var x = h[g[0]] || {}; return recRow(g[1] + ' · Benchmark', x.sharpflow) + recRow(g[1] + ' · Vault size', x.vault_shown_size) + recRow(g[1] + ' · Vault, benchmark list', x.vault_sfx); }).join('')) +
       '<p class="vr-sub num">' + G.map(function(g){ var x = h[g[0]] || {}, a = x.sharpflow_after_cut || {}, bits = [];
         if (a.n) bits.push(a.n + ' added or sized up after the cut (' + wl(a) + ')');
         if (x.sharpflow_at_cut_cancelled_later) bits.push(x.sharpflow_at_cut_cancelled_later + ' cancelled after the cut');
@@ -534,9 +581,9 @@ function recSport(sp, D){
   if (evs.length){
     hs += '<section class="vc-mod vr-sec"><span class="vc-cap">' + sp.toUpperCase() + ' · Recent games</span>' + evs.map(function(ev){ var x = by[ev];
       return '<div class="vr-g"><b class="vr-gn num">' + gameName(ev) + '</b>' +
-        x.v.map(function(r){ return playLine(r.play === 'lock' ? 'Vault lock' : r.variant === 'sfx' ? 'Vault, SF list' : 'Vault size', r.side, r.group, r.line, r.outs, r.units, r.status === 'unpriced' ? null : r.res,
+        x.v.map(function(r){ return playLine(r.play === 'lock' ? 'Vault lock' : r.variant === 'sfx' ? 'Vault, bench list' : 'Vault size', r.side, r.group, r.line, r.outs, r.units, r.status === 'unpriced' ? null : r.res,
           [r.play === 'lock' && !r.counts ? 'not counted' : '', r.status === 'unpriced' ? 'unpriced (' + r.res + ')' : ''].filter(Boolean).join(', ')); }).join('') +
-        x.s.map(function(r){ return playLine('SharpFlow', r.group === 'ml' ? (r.side || r.team) : r.team, r.group, null, null, r.units, r.res || null,
+        x.s.map(function(r){ return playLine('Benchmark', r.group === 'ml' ? (r.side || r.team) : r.team, r.group, null, null, r.units, r.res || null,
           [r.set === 'after_cut' ? 'after our cut' : '', r.cancelled_later ? 'cancelled later' : '', !r.res && r.res_mapped ? 'no line (' + r.res_mapped + ' on the likeliest rung)' : ''].filter(Boolean).join(', ')); }).join('') + '</div>'; }).join('') + '</section>';
   }
   return hs;
