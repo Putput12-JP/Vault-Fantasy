@@ -72,3 +72,12 @@ history does, so the archive is built from that.
   price. With no single match the play is listed as `no_market`.
 - **The archive needs SharpFlow's repo history.** If SharpFlow rewrote that history, a game not yet archived would be lost. The job
   runs every 2 hours to keep that window short.
+
+## On the page
+
+The Proven Sharps page (Sharp Money and the NBA page, `sharp-money/side-cards.js`) has a **Cards / Record** switch. Record reads
+`cards_record.json`, `h2h_record.json` and this month's and last month's row files straight from `pm-holders-data`, and shows per sport:
+progress toward the 300 counted moneyline locks, the lock and shown-size tables with CLV, cards not counted by reason, the
+data-quality flag, SharpFlow graded the same way (with after-cut, cancelled and unpriced-spread counts), and the 20 most recent
+games with both sides' plays and results. Locally, `?rec=/path/to/pm_record/` points it at a copy.
+
