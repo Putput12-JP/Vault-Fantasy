@@ -70,7 +70,7 @@ const SPORTS = {
   // window is kept short to hold the run inside the workflow's time limit on a 150-game Saturday.
   cbb: { name: 'College Basketball', an: 'ncaab', anQ: '&division=D1', pinSport: 4, pinLeague: 493, pm: 10470, kal: 'KXNCAAMBGAME', nov: 'NCAAB',
          espn: 'basketball/mens-college-basketball', espnQ: '&groups=50', espnTeams: true, ahead: 1,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, sharpCard: 2500, wallets: 'pm_wallets_cbb.json', sigBig: 25000, crossAt: 5000, borrowed: 'cfb' },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, sharpCard: 2500, wallets: 'pm_wallets_cbb.json', sigBig: 25000, crossAt: 5000, borrowed: 'cfb', noLend: true },
 };
 // Sports whose signals feed Top Reads (picks, the agree ledger, data/topreads_rules.json). CBB was added after the Nov 9 rule
 // freeze and is in no registered test, so its alerts show on the page but never become a Top Read.
@@ -1419,7 +1419,9 @@ async function pollOnce() {
     if (ONLY && !ONLY.has(sk)) continue;
     const st = status[sk] = {};
     const own = OWN[sk], W = { sharp: new Set(own.sharp), dull: new Set(own.dull), rec: { ...own.rec }, n: own.n, generated: own.generated };
-    for (const [ok, o] of Object.entries(OWN)) if (ok !== sk) for (const w of o.sharp) {
+    // CBB borrows from the other sports but does not lend: the cross-sport test (docs/retro/sharp-money-study.md) only covered
+    // NFL-labelled accounts on CFB and NBA, so a CBB label never changes an NFL, CFB or NBA read until that is tested.
+    for (const [ok, o] of Object.entries(OWN)) if (ok !== sk && !SPORTS[ok].noLend) for (const w of o.sharp) {
       if (own.rec[w] || own.dull.has(w)) continue;
       W.sharp.add(w); W.rec[w] = o.rec[w];
     }
