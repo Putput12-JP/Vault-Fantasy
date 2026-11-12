@@ -2,8 +2,10 @@
 """
 Polymarket game markets (NFL, college football, NBA) from the Pendulum Flow orderbook archive.
 
-Source: https://archive.pendulumflow.com, one Parquet file per UTC hour of every Polymarket order book, free, CC BY 4.0
-(credit "pendulumflow" for v3). Published about 5 hours behind, so this is for grading and testing, not live signals.
+Source: https://archive.pendulumflow.com, every Polymarket order book per UTC hour, free (credit "pendulumflow").
+v3 (one Parquet per hour, CC BY 4.0) ends at 2026-10-30T18; later hours come from v3.1 (CC BY-NC 4.0), where an hour
+is several files split by category and listed in its manifest, and an exact mirror row for a market's second token is
+dropped (rebuilt here). Published about 5 hours behind, so this is for grading and testing, not live signals.
 Market ids come from Polymarket's Gamma API (series per sport); the archive stores a market as its 32 raw bytes and an
 outcome token as its 32-byte big-endian integer, so both filter with from_hex().
 
@@ -23,10 +25,18 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SERIES = {'nfl': 12185, 'cfb': 12756, 'nba': 10345}
 V3_START = dt.datetime(2026, 8, 18, 6, tzinfo=dt.timezone.utc)
+# v3 (one Parquet per hour) stopped at 2026-10-30T18. Later hours are v3.1 only: several files per hour, split by
+# market category and listed by the hour's manifest. v3.1 starts at 2026-10-27T00, so the overlap stays on v3.
+V3_LAST = dt.datetime(2026, 10, 30, 18, tzinfo=dt.timezone.utc).timestamp()
 LAG_H = 6                      # the archive publishes about 5 hours behind; wait a little longer
 URL = 'https://dl.pendulumflow.com/v3/{d}/{h:02d}/{d}T{h:02d}.parquet'
+URL31 = 'https://dl.pendulumflow.com/v3.1/{d}/{h:02d}/{f}'
+# Game markets file under sports. A market missing from the hour's category map lands in uncategorised or unknown.
+CATS31 = ('sports', 'uncategorised', 'unknown')
+MIRRORED = ('best_bid_ask', 'book', 'price_change')   # event types whose exact second-token twins v3.1 drops
 CLOSES = os.path.join(ROOT, 'data', 'pm_closes.json')
-CREDIT = 'Polymarket prices from the Pendulum Flow orderbook archive (archive.pendulumflow.com), CC BY 4.0'
+CREDIT = ('Polymarket prices from the Pendulum Flow orderbook archive (archive.pendulumflow.com): v3 hours CC BY 4.0, '
+          'v3.1 hours (from 2026-10-30T19 UTC) CC BY-NC 4.0')
 TYPES = ('moneyline', 'spreads', 'totals')
 
 
@@ -99,22 +109,58 @@ def con():
     return c
 
 
-def hour_url(t):
+_HOURS = {}
+
+
+def hour_files(t):
+    """(parquet urls, is_v31) for the hour starting at t, or None while the hour is not published.
+    v3 is one file per hour; a v3.1 hour is whatever its manifest lists as the lean file(s) of CATS31."""
+    t = int(t // 3600) * 3600
+    if t in _HOURS:
+        return _HOURS[t]
     d = dt.datetime.fromtimestamp(t, dt.timezone.utc)
-    return URL.format(d=d.strftime('%Y-%m-%d'), h=d.hour)
+    day = d.strftime('%Y-%m-%d')
+    if t <= V3_LAST:
+        r = ([URL.format(d=day, h=d.hour)], False)
+    else:
+        m = curl_json(URL31.format(d=day, h=d.hour, f=f'{day}T{d.hour:02d}.manifest.json'))
+        if not isinstance(m, dict) or not isinstance(m.get('files'), list):
+            return None                     # 404 (a JSON error body) or unreachable: not published, ask again later
+        fs = [f['file'] for f in m['files'] if f.get('role') == 'lean' and f.get('category') in CATS31]
+        if not fs:
+            raise RuntimeError(f'v3.1 manifest for {day}T{d.hour:02d} lists no {"/".join(CATS31)} file')
+        r = ([URL31.format(d=day, h=d.hour, f=f) for f in fs], True)
+    _HOURS[t] = r
+    return r
+
+
+def hour_url(t):
+    return hour_files(t)[0][0]
 
 
 def in_list(cids):
     return ', '.join(f"from_hex('{c}')" for c in cids)
 
 
-def query(c, t, event, cols, cids, before=None):
-    """Rows of one event type for these markets in the hour starting at t (None if the hour is not published)."""
+def query(c, t, event, cols, cids, before=None, mirror=False):
+    """Rows of one event type for these markets in the hour starting at t (None if the hour is not published).
+    mirror=True appends a last column: True when v3.1 dropped this row's exact twin on the market's other token
+    (always False on v3, which stores both tokens)."""
+    hf = hour_files(t)
+    if hf is None:
+        return None
+    urls, v31 = hf
+    if v31 and event in MIRRORED and not mirror:
+        # Reading these without rebuilding the dropped twins would silently lose the second token's rows.
+        raise ValueError(f'{event} in a v3.1 hour drops mirror twins: pass mirror=True and rebuild them (see close_of)')
     w = f"event_type = '{event}' AND market IN ({in_list(cids)})"
     if before is not None:
         w += f' AND epoch_ms(timestamp) < {int(before * 1000)}'
-    url = hour_url(t)
-    sql = f"SELECT {cols} FROM read_parquet('{url}') WHERE {w}"
+    if mirror:
+        cols += ', mirror_dropped' if v31 else ', false'
+    url = urls[0]
+    src = ', '.join(f"'{u}'" for u in urls)
+    sql = f"SELECT {cols} FROM read_parquet([{src}], union_by_name=true) WHERE {w}"
     for attempt in range(5):
         try:
             return c.execute(sql).fetchall()
@@ -135,14 +181,28 @@ def query(c, t, event, cols, cids, before=None):
 def close_of(g, c):
     """Last quote before kickoff for every outcome token of the game's markets (kickoff hour, then the hour before)."""
     cids = [m['cid'] for m in g['markets']]
+    other = {}
+    for m in g['markets']:
+        if len(m['tokens']) == 2:
+            other[m['tokens'][0]], other[m['tokens'][1]] = m['tokens'][1], m['tokens'][0]
     ko, last = g['kickoff'], {}
+
+    def put(a, tm, b, k):
+        if a not in last or tm > last[a][0]:
+            last[a] = (tm, b, k)
     for t in ((ko // 3600) * 3600, (ko // 3600) * 3600 - 3600):
-        rows = query(c, t, 'best_bid_ask', "lower(hex(asset_id)), epoch_ms(timestamp), best_bid, best_ask", cids, before=ko)
+        rows = query(c, t, 'best_bid_ask', "lower(hex(asset_id)), epoch_ms(timestamp), best_bid, best_ask", cids,
+                     before=ko, mirror=True)
         if rows is None:
             return None
-        for a, tm, b, k in rows:
-            if a not in last or tm > last[a][0]:
-                last[a] = (tm, float(b) if b is not None else None, float(k) if k is not None else None)
+        for a, tm, b, k, twin in rows:
+            b = float(b) if b is not None else None
+            k = float(k) if k is not None else None
+            put(a, tm, b, k)
+            # v3.1 stores one row for an exact mirror pair: the other token's quote is bid 1 - ask, ask 1 - bid at the
+            # same time (the archive's quickstart.py expand_twins). Rebuild it so that token's last quote is current.
+            if twin and a in other:
+                put(other[a], tm, round(1 - k, 4) if k is not None else None, round(1 - b, 4) if b is not None else None)
         trades = query(c, t, 'last_trade_price', "lower(hex(asset_id)), epoch_ms(timestamp), price", cids, before=ko) or []
         for a, tm, p in trades:
             key = 'trade:' + a
@@ -191,7 +251,7 @@ def cmd_closes(a):
                 time.sleep(1)
                 continue
             if r is None or r['ml'] is None:
-                print(f'  {k}: hour not published yet or no moneyline quote', flush=True)
+                print(f"  {k}: {'hour not published yet' if r is None else 'no moneyline quote before kickoff'}", flush=True)
                 time.sleep(1)
                 continue
             G[k] = {'sport': sport, 'slug': g['slug'], 'title': g['title'], 'kickoff': g['kickoff'], **r}
