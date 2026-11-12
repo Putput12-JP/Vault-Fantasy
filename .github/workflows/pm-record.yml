@@ -1,0 +1,60 @@
+# Proven-sharps side card record (docs/side-card-record.md). Every 2 hours:
+#   1. scripts/grade_side_cards.py grades every frozen card's lock and shown size by Polymarket resolution, with CLV from
+#      data/pm_closes.json, and rebuilds pm_record/cards_record.json (the pre-registered read, report-only until the final date)
+#   2. scripts/sharpflow_h2h.py archives what SharpFlow showed at each of our cuts (from its public repo's commit history, since
+#      it rewrites its files every 10 minutes), grades SharpFlow's real plays the same way, and rebuilds pm_record/h2h_record.json
+# Rows are append-only on `pm-holders-data` (never force-pushed). Sharp money is context only: nothing here is a pick feed.
+name: Proven-sharps record
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '50 */2 * * *'
+
+concurrency:
+  group: pm-record
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python3 -m unittest tests.test_side_card_record
+      - name: Check out pm-holders-data
+        run: |
+          if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then
+            echo "No holders data yet; nothing to grade."; echo "SKIP=1" >> "$GITHUB_ENV"; exit 0
+          fi
+          git fetch -q --depth=1 origin +pm-holders-data:refs/remotes/origin/pm-holders-data
+          git worktree add -q --detach pmdata origin/pm-holders-data   # not `data`: the repo has a data/ folder
+          git -C pmdata config user.name  "vault-bot"
+          git -C pmdata config user.email "vault-bot@users.noreply.github.com"
+      - name: Grade the frozen cards
+        if: env.SKIP != '1'
+        run: |
+          python3 scripts/grade_side_cards.py --cards pmdata/pm_cards --holders pmdata/pm_holders --closes data/pm_closes.json \
+            --out pmdata/pm_record
+      - name: SharpFlow head-to-head
+        if: env.SKIP != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/sharpflow_h2h.py --holders pmdata/pm_holders --out pmdata/pm_record
+      - name: Commit (append-only)
+        if: env.SKIP != '1'
+        run: |
+          python3 - <<'PY'
+          import sys; sys.path.insert(0, "scripts")
+          import os, scan_pm_holders as H, datetime as dt
+          if not os.path.isdir(os.path.join("pmdata", "pm_record")):
+              sys.exit(0)
+          ok = H.commit_push("pmdata", "pm_record", ["."], "pm record: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
+          sys.exit(0 if ok and H.remote_has_head("pmdata") else 1)
+          PY

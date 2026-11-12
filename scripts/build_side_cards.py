@@ -387,9 +387,10 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out):
         return {"side": None, "units": 0, "rung": None, "reason": min((r["reason"] for r in res.values()), default="no_wallets"), "missing": SF.MISSING}
     _, _, side = max(staked)
     r = res[side]
-    mk = kf["mk"].get(max((x for x in pool if x["side"] == side), key=lambda x: x["usd"])["cid"]) or {}
+    cid = max((x for x in pool if x["side"] == side), key=lambda x: x["usd"])["cid"]
+    mk = kf["mk"].get(cid) or {}
     return {"side": side, "units": r["units"], "rung": r["rung"], "reason": r["reason"], "price": r["price"], "price_t": mk.get("px_t"),
-            "line": mk.get("line"), "missing": SF.MISSING}
+            "line": mk.get("line"), "cid": cid, "missing": SF.MISSING}
 
 
 def classify(x, variant):
