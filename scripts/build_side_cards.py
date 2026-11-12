@@ -50,7 +50,11 @@ Point-in-time rules
   - Hedged legs (a wallet on both outcomes at the cutoff) are left out of records. SPLIT-funded rows count in W/L, never in dollars.
   - Money on a side is shares x the market price at the cut (the keyframe's `usd_at_mark`), labelled as mark value, not cost.
 
+The `sf` size (scripts/sf_rungs.py) also reads Pinnacle's moves from Vault's book tape (--book-tape, default data/book_tape, on main),
+only rows at or before the cut, and ledger-wide 30-day market books (TOP3-PICK ranks, GAP-LEAD) and season tier-5 reads.
+
 usage: build_side_cards.py --holders DIR --ledger DIR [--sharp-data data.json] --frozen-out DIR --live-out FILE [--sports nba,nfl,cfb]
+       [--book-tape DIR]
 """
 import argparse, bisect, datetime as dt, glob, json, math, os, re, sys, time
 
@@ -74,6 +78,7 @@ AGS_CUTS = ((0.981, "ELITE"), (0.957, "PREMIUM"), (0.916, "LOCK"), (0.781, "LEAN
 SHOW_PROVEN, SHOW_LOSERS = 4, 3            # wallets listed per side (index.js DN=4, zW=3)
 GROUP = {"moneyline": "ml", "spreads": "spread", "totals": "total"}
 EVENT_RE = re.compile(r"^(.*?-\d{4}-\d{2}-\d{2})")
+DATE_RE = re.compile(r"-(\d{4}-\d{2}-\d{2})$")
 START_GAP_FLAG = 10 * 60                  # Polymarket and Vault start times more than 10 min apart (prereg "known limits")
 VERSION = 1
 VARIANTS = ("all", "fwd")                  # plus "sfx" when SharpFlow's exclusion list is given (--sf-excluded)
@@ -84,6 +89,12 @@ CLOSE_STALE = 30 * 60                     # a keyframe price older than this at 
 def event_of(slug):
     m = EVENT_RE.match(slug or "")
     return m.group(1) if m else slug
+
+
+def ev_date(ev):
+    """The game date in an event slug (nba-bkn-nop-2026-11-11 -> 2026-11-11), or None."""
+    m = DATE_RE.search(ev or "")
+    return m.group(1) if m else None
 
 
 def load_closes(holders, sport, markets, pm_closes):
@@ -145,6 +156,7 @@ class Ledger:
         self.run_at = run_at
         self.closes = closes or {}
         self.sf_excluded = set()                     # SharpFlow's published exclusion list, for the `sfx` variant
+        self._wide, self._mb, self._t5 = {}, {}, {}   # ledger-wide reads for sf_rungs (TOP3-PICK, GAP-LEAD, season tier 5)
 
     @classmethod
     def load(cls, root, sport, holders=None, pm_closes=None):
@@ -189,6 +201,75 @@ class Ledger:
         out["sfx"] = out["all"]
         out["excluded_sfx"] = "sharpflow" if w in self.sf_excluded else None
         return out
+
+
+    # ---- ledger-wide reads for SharpFlow's market rules (scripts/sf_rungs.py) ----
+
+    def _wide_positions(self, variant):
+        """Every wallet's positions (non-hedged rows; `fwd` forward rows only):
+        (settled_at, game date, market group, stake, pnl, entry price, won, split, result)."""
+        key = "fwd" if variant == "fwd" else "all"
+        if key not in self._wide:
+            out = {}
+            for w, rs in self.by_w.items():
+                use = [r for r in rs if not r.get("hedged") and (key == "all" or r.get("src") == "forward")]
+                out[w] = [(p["settled_at"], ev_date(p["ev"]), GROUP.get(p["mt"]), p["stake"], p["pnl"], p["px"], p["res"] == "win",
+                           p["split"], p["res"]) for p in positions(use, self.markets)]
+            self._wide[key] = out
+        return self._wide[key]
+
+    def population(self, variant, cut):
+        """The wallets in the universe at the cut (`sfx` leaves SharpFlow's excluded wallets out)."""
+        return [w for w in self.by_w if self.first_seen.get(w) is not None and self.first_seen[w] <= cut
+                and not (variant == "sfx" and w in self.sf_excluded)]
+
+    def market_books(self, variant, pick_date, cut):
+        """GAP-LEAD books and TOP3-PICK ranks (gapLeadRescue.js buildGapLeadBooks, top3PickRung.js buildTop3PickRanks): per wallet x
+        market group, positions dated in the 30 days before the pick date and settled before the cut, pushes and zero PnL left out,
+        5 or more -> dollar ROI in percent. A group ranks only with 4 or more such wallets; rank 1 is the best ROI. SPLIT-funded
+        positions are left out (no real dollars). Returns ({(wallet, group): {n, dol}}, {(wallet, group): rank})."""
+        k = (variant, pick_date, cut)
+        if k not in self._mb:
+            since = (dt.date.fromisoformat(pick_date) - dt.timedelta(days=SF.L30_DAYS)).isoformat()
+            wide, acc = self._wide_positions(variant), {}
+            for w in self.population(variant, cut):
+                for t, d, g, stake, pnl, px, won, split, res in wide.get(w, ()):
+                    if t >= cut or not d or not since <= d < pick_date or g is None or split or res == "push" or not stake > 0 or abs(pnl) <= 1e-9:
+                        continue
+                    a = acc.setdefault((w, g), [0, 0.0, 0.0])
+                    a[0] += 1; a[1] += stake; a[2] += pnl
+            gap, boards, rank = {}, {}, {}
+            for (w, g), (n, inv, pnl) in acc.items():
+                if n >= SF.GAP_MIN_N and inv > 0:
+                    gap[(w, g)] = {"n": n, "dol": round(100 * pnl / inv, 2)}
+                    boards.setdefault(g, []).append((w, n, 100 * pnl / inv))
+            for g, people in boards.items():
+                if len(people) >= SF.TOP3_MIN_BOARD:
+                    for i, (w, _, _) in enumerate(sorted(people, key=lambda x: (-x[2], -x[1], x[0]))):
+                        rank[(w, g)] = i + 1
+            self._mb[k] = (gap, rank)
+        return self._mb[k]
+
+    def t5(self, variant, pick_date, cut, w):
+        """Season tier 5 on the pick date (t5LeadPolicy.js t5MorningRead): the wallet's positions priced .02 to .98 with a non-zero
+        PnL, dated on or after the sport's season start (the first date after the last 21-day gap, over every wallet's dates) and
+        before the pick date, read as tier 5, ON, n >= 10 and 15+ days old. Returns {q, held}: held is t5HoldDays, the days it has
+        qualified without a break (walked back one morning at a time to the season start)."""
+        k = (variant, pick_date, cut)
+        if k not in self._t5:
+            wide, rows = self._wide_positions(variant), {}
+            for x in self.population(variant, cut):
+                rs = [(d, px, won) for t, d, g, stake, pnl, px, won, split, res in wide.get(x, ())
+                      if t < cut and d and d < pick_date and px is not None and SF.T5_PRICE_LO < px < SF.T5_PRICE_HI
+                      and stake > 0 and abs(pnl) > 1e-9]
+                if rs:
+                    rows[x] = rs
+            self._t5[k] = (SF.season_start([d for rs in rows.values() for d, _, _ in rs]), rows, {})
+        start, rows, q = self._t5[k]
+        if w not in q:
+            held = SF.t5_hold(rows.get(w, []), pick_date, start)
+            q[w] = {"q": held is not None, "held": held}
+        return q[w]
 
 
 def positions(rows, markets, closes=None):
@@ -239,7 +320,10 @@ def book(rows, asof, markets, closes=None):
          if any(p["stake"] > 0 for p in cash) else None,
          "l30_n": sum(p["res"] in ("win", "loss") for p in l30),
          "l30_roi": (sum(r["pnl"] for r in l30) / l30_stake) if l30_stake > 0 else None,
-         "bets": sorted(([p["settled_at"], round(p["px"], 4), p["res"] == "win", p["mt"]] for p in ps if p["res"] != "push" and p["px"]), key=lambda b: b[0]),
+         # decided positions: [settled_at, entry price, won, market type, stake, pnl, game date, split] (the sf_rungs trust, market
+         # book, last-10 and blend reads)
+         "bets": sorted(([p["settled_at"], round(p["px"], 4), p["res"] == "win", p["mt"], round(p["stake"], 2), round(p["pnl"], 2),
+                          ev_date(p["ev"]), p["split"]] for p in ps if p["res"] != "push" and p["px"]), key=lambda b: b[0]),
          "legs": sorted(([r["settled_at"], r["res"]] for r in legs.values()), reverse=True)[:LAST_N],
          # price skill: positions with a stored close, and how many were bought below it (SharpFlow's "beat the closing line")
          "clv_n": sum(1 for p in ps if p["clv"] is not None),
@@ -272,7 +356,7 @@ def churn(snap):
 
 # ---------- cards ----------
 
-def card(kf, ledger, sport, vault=None, frozen=True):
+def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
     """One game's card from a keyframe (step 2) and the ledger as of its cut."""
     cut = kf["cut"]
     ix = {c: i for i, c in enumerate(kf["cols"])}
@@ -369,7 +453,8 @@ def card(kf, ledger, sport, vault=None, frozen=True):
                 p["win_pct"] = round(100 * p["w"] / (p["w"] + p["l"]), 1) if p["w"] + p["l"] else None
                 out["markets"][g]["sides"].setdefault(side, {})[variant] = side_out
             out["markets"][g]["lock_shadow"][variant] = lock_shadow(g, ws, cls, variant, kf)
-            out["markets"][g].setdefault("sf", {})[variant] = sf_market(g, ws, cls, variant, kf, sides_all, out["markets"][g]["sides"])
+            out["markets"][g].setdefault("sf", {})[variant] = sf_market(g, ws, cls, variant, kf, sides_all, out["markets"][g]["sides"],
+                                                                        ledger, sport, tape, vault)
     return out
 
 
@@ -409,56 +494,208 @@ def ags_side(side, ws, cls, variant):
             "for_n": len(f), "against_n": len(a), "contributors": sum(1 for q in f + a if q > 0)}
 
 
-def sf_market(g, ws, cls, variant, kf, sides, sides_out):
+def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None, tape=None, vault=None):
     """SharpFlow's stake policy (scripts/sf_rungs.py, a replica with the gaps it lists) for this market group. One side at most is staked:
-    the side with the most units, ties to the higher AGS score. A shadow field; it never feeds the lock, Top Reads or an agree total."""
+    the side with the most units, ties to the higher AGS score. A shadow field; it never feeds the lock, Top Reads or an agree total.
+    Steam per side is read from Vault's Pinnacle tape (`tape`), rows at or before the cut only."""
     cut = kf["cut"]
+    pick = ev_date(event_of(kf["ev"]))
     pool = [x for x in ws if cls[x["w"]] != "excluded"]
     trust_cache = {}
 
     def trust(w, market_only):
         k = (w, market_only)
         if k not in trust_cache:
-            bets = [(t, p, won) for t, p, won, mt in x_bets[w] if not market_only or GROUP.get(mt) == g]
-            trust_cache[k] = SF.trust_state(bets, cut) if bets else None
+            # walletTrustStatus.js dates a bet by its game date (bets[6]); a bet with no dated slug falls back to its settlement day
+            bets = [(b[6] or SF._day(b[0]).isoformat(), b[1], b[2]) for b in x_bets[w] if not market_only or GROUP.get(b[3]) == g]
+            t = SF.trust_state_dated(bets, asof_day) if bets else None
+            if t and market_only:                    # pressLadderOverlay.js sportBook: the market record carries the sport book's age
+                sport_t = trust(w, False)
+                t = dict(t, age=sport_t["age"]) if sport_t else t
+            trust_cache[k] = t
         return trust_cache[k]
 
     x_bets = {x["w"]: x["s"][variant]["bets"] for x in pool}
-    res = {}
+    asof_day = pick or SF._day(cut).isoformat()
+    gap, rank = ledger.market_books(variant, pick, cut) if ledger is not None and pick else ({}, {})
+    names = team_names(vault, kf["ev"], sport)
+    norms = side_norms(g, sides, names)
+    game, how = tape.game(sport, vault, kf["ev"], kf["gst"]) if tape is not None else ([], "no_tape")
+    order = sorted(sides, key=lambda s: ({"away": 0, "over": 0, "home": 1, "under": 1}.get(norms.get(s), 2), s))
+    ctx, info = {}, {}
     for side in sides:
         rows = []
         for x in pool:
             b = x["s"][variant]
-            decided = [bet[2] for bet in b["bets"]]
+            bets = b["bets"]
             streak = 0
-            for won in reversed(decided):
-                if won:
+            for bet in reversed(bets):
+                if bet[2]:
                     break
                 streak += 1
-            rows.append({"dir": "FOR" if x["side"] == side else "AG", "invested": x["usd"],
-                         "ratio": x["usd"] / b["usual"] if b["usual"] else None, "n": b["n"],
+            mk_b = [bet for bet in bets if GROUP.get(bet[3]) == g]
+            last10 = [bet[2] for bet in bets[-10:]]
+            rows.append({"w": x["w"], "dir": "FOR" if x["side"] == side else "AG", "invested": x["usd"],
+                         "ratio": x["usd"] / b["usual"] if b["usual"] else None, "n": b["n"], "wins": b["w"],
                          "wr": b["wr"] * 100 if b["wr"] is not None else None, "door2": b["proven"], "streak": streak,
-                         "trust": trust(x["w"], False), "trust_mkt": trust(x["w"], True)})
+                         "s_n": len(bets), "s_wins": sum(1 for bet in bets if bet[2]), "mkt_n": len(mk_b), "mkt_wins": sum(1 for bet in mk_b if bet[2]),
+                         "mkt_wr": 100 * sum(1 for bet in mk_b if bet[2]) / len(mk_b) if mk_b else None,
+                         "l10": (sum(last10), len(last10) - sum(last10)) if last10 else None,
+                         "trust": trust(x["w"], False), "trust_mkt": trust(x["w"], True),
+                         "gap": gap.get((x["w"], g)), "rank": rank.get((x["w"], g)),
+                         "t5": ledger.t5(variant, pick, cut, x["w"]) if ledger is not None and pick and x["s"]["tracked"] else None})
         mine = [x for x in pool if x["side"] == side]
         cid = max(mine, key=lambda x: x["usd"])["cid"] if mine else None
         mk = kf["mk"].get(cid) if cid else None
-        px = None
-        if mk and mk.get("px") and side in (mk.get("outs") or []):
+        px, line = None, None
+        if mk and side in (mk.get("outs") or []):
             oi = mk["outs"].index(side)
-            px = mk["px"][oi] if oi < len(mk["px"]) else None
+            px = mk["px"][oi] if mk.get("px") and oi < len(mk["px"]) else None
+            if mk.get("line") is not None:            # Polymarket's spread line is outcomes[0]'s; the other side has the opposite sign
+                line = mk["line"] if g == "total" or oi == 0 else -mk["line"]
+        norm = norms.get(side)
+        if px is None and g == "ml" and game and norm:   # no Polymarket ticket: SharpFlow prices a moneyline from Pinnacle (mlOddsFromMeta)
+            px = SF.implied_of(pinnacle_price(game, g, norm, cut))
+        if not game:
+            st = {"on": None, "why": how}
+        elif not norm:
+            st = {"on": None, "why": "side_not_mapped_to_home_away"}
+        else:
+            st = SF.ladder_steam(game, g, norm, line, cut, kf["gst"])
         ags = (sides_out.get(side, {}).get(variant) or {}).get("ags")
-        r = SF.evaluate(rows, g, px, ags["score"] if ags else None)
-        r.update({"price": px, "ags_score": ags["score"] if ags else None})
-        res[side] = r
-    staked = [(r["units"], r["ags_score"] or 0, side) for side, r in res.items() if r["units"] > 0]
+        ctx[side] = {"rows": rows, "implied": px, "ags": ags["score"] if ags else None, "steam": st["on"], "juice": st.get("juice"),
+                     "pinn_odds": pinnacle_price(game, g, norm, cut, line) if game and norm else None}
+        info[side] = {"steam": st, "line": line}
+    res = SF.stake_market(ctx, g, pick, order, sport)
+    missing = list(SF.MISSING) + ["steam unknown for %s (%s)" % (s, info[s]["steam"].get("why")) for s in order if info[s]["steam"]["on"] is None]
+    summary = {s: {"units": res[s]["units"], "rung": res[s]["rung"], "reason": res[s]["reason"], "steam": info[s]["steam"]["on"],
+                   "juice": info[s]["steam"].get("juice"), "t5_seat": res[s].get("t5_seat"), "chain": res[s].get("chain") or []}
+               for s in order}
+    staked = [(r["units"], ctx[s]["ags"] or 0, s) for s, r in res.items() if r["units"] > 0]
     if not staked:
-        return {"side": None, "units": 0, "rung": None, "reason": min((r["reason"] for r in res.values()), default="no_wallets"), "missing": SF.MISSING}
+        return {"side": None, "units": 0, "rung": None, "reason": min((r["reason"] for r in res.values()), default="no_wallets"), "missing": missing,
+                "pick_date": pick, "sides": summary}
     _, _, side = max(staked)
     r = res[side]
-    cid = max((x for x in pool if x["side"] == side), key=lambda x: x["usd"])["cid"]
+    cid = max((x for x in pool if x["side"] == side), key=lambda x: x["usd"])["cid"] if any(x["side"] == side for x in pool) else None
     mk = kf["mk"].get(cid) or {}
-    return {"side": side, "units": r["units"], "rung": r["rung"], "reason": r["reason"], "price": r["price"], "price_t": mk.get("px_t"),
-            "line": mk.get("line"), "outs": mk.get("outs"), "cid": cid, "missing": SF.MISSING}
+    e = r.get("edge")
+    return {"side": side, "units": r["units"], "rung": r["rung"], "reason": r["reason"], "price": ctx[side]["implied"], "price_t": mk.get("px_t"),
+            "line": mk.get("line"), "outs": mk.get("outs"), "cid": cid, "missing": missing, "pick_date": pick, "sides": summary,
+            "chain": r.get("chain") or [], "press_edge": round(e, 1) if e is not None else None, "blend_edge": r.get("blend"),
+            "steam": compact_steam(info[side]["steam"]), "pinnacle_odds": ctx[side]["pinn_odds"], "t5_seat": r.get("t5_seat"),
+            "top3_price_src": (r.get("top3") or {}).get("price_src")}
+
+
+def compact_steam(st):
+    keep = ("on", "cut_on", "juice", "lock_juice", "lock_t", "tier", "last_hour_pct", "since_open_pct", "open", "hour", "now", "short_session", "line_open", "line_hour", "line_now",
+            "since_open_pts", "last_hour_pts", "rows", "why")
+    return {k: st[k] for k in keep if k in st}
+
+
+def pinnacle_price(game, g, norm, cut, line=None):
+    """Pinnacle's price for the side at the cut, from the last tape row at or before it. On a spread or total it is the main line's
+    price, and None when the side's ticket line is not Pinnacle's main at the cut (the tape keeps no alt lines)."""
+    key = {"ml": "ml", "spread": "sp", "total": "tot"}[g]
+    rows = [r for r in game if r.get(key) and r["t"] <= cut]
+    if not rows:
+        return None
+    v = max(rows, key=lambda r: r["t"])[key]
+    away = norm in ("away", "under")
+    if g != "ml":
+        main = (-v[0] if away else v[0]) if g == "spread" else v[0]
+        if line is None or abs(main - line) > SF.PIN_LINE_EPS:
+            return None
+    return (v[0] if away else v[1]) if g == "ml" else (v[2] if away else v[1])
+
+
+# NBA nicknames by abbreviation, the same table as sharp-money/side-cards.js TEAMS (Polymarket's NBA outcome names)
+NBA_NICK = {"ATL": "Hawks", "BOS": "Celtics", "BKN": "Nets", "CHA": "Hornets", "CHI": "Bulls", "CLE": "Cavaliers", "DAL": "Mavericks",
+            "DEN": "Nuggets", "DET": "Pistons", "GSW": "Warriors", "HOU": "Rockets", "IND": "Pacers", "LAC": "Clippers", "LAL": "Lakers",
+            "MEM": "Grizzlies", "MIA": "Heat", "MIL": "Bucks", "MIN": "Timberwolves", "NOP": "Pelicans", "NYK": "Knicks", "OKC": "Thunder",
+            "ORL": "Magic", "PHI": "76ers", "PHX": "Suns", "POR": "Trail Blazers", "SAC": "Kings", "SAS": "Spurs", "TOR": "Raptors",
+            "UTA": "Jazz", "WAS": "Wizards"}
+NFL_ALIAS = {"WSH": "WAS", "LA": "LAR", "JAC": "JAX", "LVR": "LV", "OAK": "LV"}   # scripts/book_tape.py ALIAS
+TAPE_START_GAP = 12 * 3600                    # a tape game with the same two teams starting within 12 h of the Polymarket start
+
+
+def slug_teams(ev, sport):
+    """(AWAY, HOME) abbreviations from an NBA event slug (nba-bkn-nop-2026-11-11), only when both are in the NBA table."""
+    parts = (ev or "").split("-")
+    if sport != "nba" or len(parts) < 3:
+        return None
+    a, h = parts[1].upper(), parts[2].upper()
+    return (a, h) if a in NBA_NICK and h in NBA_NICK else None
+
+
+def team_names(vault, ev, sport):
+    """{away: [names], home: [names]} for mapping outcome names to home / away: Vault's game names, else (NBA) the slug's teams."""
+    if vault and vault.get("teams"):
+        return vault["teams"]
+    st = slug_teams(ev, sport)
+    return {"away": [NBA_NICK[st[0]]], "home": [NBA_NICK[st[1]]]} if st else None
+
+
+def _name_match(n, x):
+    x = (x or "").strip().lower()
+    return bool(x) and (n == x or x.startswith(n + " ") or x.endswith(" " + n))
+
+
+def side_norms(g, sides, names):
+    """Outcome name -> home | away | over | under. A team name maps only when it matches exactly one of the two teams (equal to a
+    team's full or short name, or its leading or trailing words) and the two outcomes land on different teams; otherwise None."""
+    if g == "total":
+        return {s: {"over": "over", "under": "under"}.get(s.strip().lower()) for s in sides}
+    out = {}
+    for s in sides:
+        n = s.strip().lower()
+        hits = [k for k in ("away", "home") if any(_name_match(n, x) for x in (names or {}).get(k) or [])]
+        out[s] = hits[0] if len(hits) == 1 else None
+    vals = [v for v in out.values() if v]
+    if len(vals) != len(set(vals)):
+        return {s: None for s in sides}
+    return out
+
+
+class BookTape:
+    """Pinnacle rows of data/book_tape/<sport>/<YYYY-MM>.jsonl (written by scripts/sharp_tape.py for NBA and CFB, scripts/book_tape.py
+    for the NFL). Backfill rows carry no prices and are not read."""
+
+    def __init__(self, root):
+        self.root, self.idx = root, {}
+
+    def _load(self, sport):
+        if sport not in self.idx:
+            gk, teams = {}, {}
+            for fn in sorted(glob.glob(os.path.join(self.root or "", sport, "[0-9][0-9][0-9][0-9]-[0-9][0-9].jsonl"))):
+                with open(fn) as f:
+                    for line in f:
+                        try:
+                            r = json.loads(line)
+                        except ValueError:
+                            continue
+                        if r.get("book") != "Pinnacle" or r.get("t") is None or r.get("bf"):
+                            continue
+                        c = {"t": r["t"], "ml": r.get("ml"), "sp": r.get("sp"), "tot": r.get("tot"), "start": r.get("start")}
+                        if r.get("gk"):
+                            gk.setdefault(r["gk"], []).append(c)
+                        a, h = NFL_ALIAS.get(r.get("away"), r.get("away")), NFL_ALIAS.get(r.get("home"), r.get("home"))
+                        teams.setdefault((a, h), []).append(c)
+            self.idx[sport] = (gk, teams)
+        return self.idx[sport]
+
+    def game(self, sport, vault, ev, gst):
+        """(rows, how) for one game: by Vault's game key (NBA, CFB), else by the two teams and a start within 12 h."""
+        gk, teams = self._load(sport)
+        if vault and vault.get("key") in gk:
+            return gk[vault["key"]], "gk"
+        pair = None
+        if vault and vault.get("away") and vault.get("home"):
+            pair = (NFL_ALIAS.get(vault["away"], vault["away"]), NFL_ALIAS.get(vault["home"], vault["home"]))
+        elif not vault:
+            pair = slug_teams(ev, sport)
+        rows = [r for r in teams.get(pair, []) if r.get("start") is not None and abs(r["start"] - gst) <= TAPE_START_GAP] if pair else []
+        return (rows, "teams") if rows else ([], "no_tape_rows_for_game")
 
 
 def classify(x, variant):
@@ -551,6 +788,8 @@ def vault_join(games, ev, gst):
         if (g.get("pm") or {}).get("slug") == ev:
             return {"key": g.get("key"), "start": g.get("start"), "away": (g.get("away") or {}).get("abbr"),
                     "home": (g.get("home") or {}).get("abbr"),
+                    # team names, for mapping Polymarket outcomes to home / away (the steam read)
+                    "teams": {k: [n for n in ((g.get(k) or {}).get("name"), (g.get(k) or {}).get("short")) if n] for k in ("away", "home")},
                     "start_gap_min": round((gst - g["start"]) / 60) if g.get("start") else None,
                     "start_gap_flag": bool(g.get("start")) and abs(gst - g["start"]) > START_GAP_FLAG}
     return None
@@ -569,6 +808,7 @@ def main():
     ap.add_argument("--closes", default="data/pm_closes.json", help="Pendulum Flow closes, for wallet price skill")
     ap.add_argument("--prev-live", help="the last published live.json, to carry the price each shown size was first flagged at")
     ap.add_argument("--sf-excluded", help="SharpFlow's public sharp_intel_excluded_wallets.json, for the `sfx` variant")
+    ap.add_argument("--book-tape", default="data/book_tape", help="Vault's book tape (Pinnacle rows), for the steam read of the `sf` size")
     a = ap.parse_args()
     import scan_pm_holders as H
     games = []
@@ -598,6 +838,7 @@ def main():
                 prev = {(g["ev"], g["gst"]): g for g in (json.load(f).get("games") or [])}
         except (OSError, ValueError, KeyError):
             prev = {}
+    tape = BookTape(a.book_tape)
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
         ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
         ledger.sf_excluded = sf_ex
@@ -609,7 +850,7 @@ def main():
                 continue
             with open(kpath) as f:
                 kf = json.load(f)
-            c = card(kf, ledger, sport, vault_join(games, kf["ev"], kf["gst"]), frozen=True)
+            c = card(kf, ledger, sport, vault_join(games, kf["ev"], kf["gst"]), frozen=True, tape=tape)
             carry_flagged(c, prev.get((kf["ev"], kf["gst"])), None)
             # one card per game for the test: a postponed game can have several; the earliest cut is the one that counts
             earlier = sorted(x for x in glob.glob(os.path.join(a.frozen_out, sport, "frozen", "*", f"{kf['ev']}@*.json"))
@@ -629,7 +870,7 @@ def main():
         for ev, gst in sorted(evs, key=lambda x: x[1]):
             kf = H.keyframe(st, ev, gst, now)
             if kf:
-                c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False)
+                c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape)
                 carry_flagged(c, prev.get((ev, gst)), now)
                 live["games"].append(c)
     os.makedirs(os.path.dirname(os.path.abspath(a.live_out)), exist_ok=True)

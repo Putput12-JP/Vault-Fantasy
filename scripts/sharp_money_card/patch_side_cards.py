@@ -35,7 +35,7 @@ def patch(path, subs):
 ce = 'U.createElement'
 ico = ce + '(U.Fragment,null,' + ce + '("path",{d:"M4 20V10M10 20V4M16 20v-7M22 20H2"}))'
 patch(os.path.join(SM, 'index.html'), [
-    ('<script src="v2-pages.js?v=side1"></script>', '<script src="v2-pages.js?v=side1"></script>\n<script src="side-cards.js?v=8"></script>', 'classic: script tag'),
+    ('<script src="v2-pages.js?v=side1"></script>', '<script src="v2-pages.js?v=side1"></script>\n<script src="side-cards.js?v=9"></script>', 'classic: script tag'),
     ('["NFL Model","The Vault line against the sharp money"',
      '["Sharps","Who holds each side, and the proven wallets among them",' + ico + '],["NFL Model","The Vault line against the sharp money"', 'classic: nav Sharps'),
     ('if(location.hash==="#record")return{page:"record",key:null};',
@@ -55,7 +55,7 @@ patch(os.path.join(SM, 'index.html'), [
     ("!/^#(plays|signals|record)/.test(location.hash)", "!/^#(plays|signals|record|sharps)/.test(location.hash)", 'classic: phone redirect'),
 ])
 patch(os.path.join(SM, 'new', 'index.html'), [
-    ('<script src="../v2-pages.js?v=side1"></script>', '<script src="../v2-pages.js?v=side1"></script>\n<script src="../side-cards.js?v=8"></script>', 'new: script tag'),
+    ('<script src="../v2-pages.js?v=side1"></script>', '<script src="../v2-pages.js?v=side1"></script>\n<script src="../side-cards.js?v=9"></script>', 'new: script tag'),
     ("[['plays','Plays'],['signals','Signals'],['vrecord','Play record']]", "[['plays','Plays'],['signals','Signals'],['vrecord','Play record'],['sharps','Sharps']]", 'new: Sharps chip'),
     (" else if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)));tab='board'}",
      " else if(r==='sharps'){tab='plays';html=head('Sharps','Who holds each side on Polymarket. Context, with a suggested size from an untested rule')+v2nav('sharps')+'<div data-side-cards></div>'}\n"

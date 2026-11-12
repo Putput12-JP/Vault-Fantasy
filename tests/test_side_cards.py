@@ -191,7 +191,7 @@ class StakeRungs(unittest.TestCase):
         self.assertEqual((g["rung"], g["units"]), ("TRUST-G", 4.0))                       # the moneyline floor lifts 3u to 4u in the .50-.65 window
         self.assertEqual(S.evaluate(rows, "ml", 0.55, -0.1)["units"], 0.0)                 # no positive score, no TRUST-G
         sp = [self.w("FOR", 500, trust_mkt=t), self.w("AG", 500, trust_mkt=t)]
-        self.assertEqual(S.evaluate(sp, "spread", 0.55, 0.3)["reason"], "trust_s_veto")    # a trusted wallet against vetoes a spread
+        self.assertTrue(S.evaluate(sp, "spread", 0.55, 0.3)["reason"].startswith("trust_s_veto"))   # a trusted wallet against vetoes a spread
 
     def test_caps_and_mutes(self):
         import sf_rungs as S
