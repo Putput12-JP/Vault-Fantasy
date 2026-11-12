@@ -243,6 +243,12 @@ class ReviewFixes(unittest.TestCase):
         cbb = C.card(k, ledger(proven("0xp")), "cbb")                                          # not in docs/sharp-card-prereg.md
         self.assertEqual(cbb["test"], {"counts": False, "why_not": ["sport not in a registered test"]})
 
+    def test_vault_join_keeps_only_espn_logo_links(self):
+        g = [{"key": "cbb:1", "start": 100, "pm": {"slug": "cbb-a-b"},
+              "away": {"abbr": "A", "name": "Aa Bees", "logo": "https://a.espncdn.com/i/teamlogos/ncaa/500/1.png"},
+              "home": {"abbr": "B", "name": "Bb Cats", "logo": "http://example.com/b.png"}}]
+        self.assertEqual(C.vault_join(g, "cbb-a-b", 100)["logo"], {"away": "https://a.espncdn.com/i/teamlogos/ncaa/500/1.png"})
+
 
 class Detail(unittest.TestCase):
     """The play-detail fields: price skill from stored closes, the at-this-size record, the first-flagged price."""

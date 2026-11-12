@@ -795,6 +795,8 @@ def vault_join(games, ev, gst):
                     "home": (g.get("home") or {}).get("abbr"),
                     # team names, for mapping Polymarket outcomes to home / away (the steam read)
                     "teams": {k: [n for n in ((g.get(k) or {}).get("name"), (g.get(k) or {}).get("short")) if n] for k in ("away", "home")},
+                    # ESPN's own logo link per team, as the poller stored it (college basketball); never built here
+                    "logo": {k: u for k in ("away", "home") for u in [((g.get(k) or {}).get("logo") or "")] if u.startswith("https://a.espncdn.com/")},
                     "start_gap_min": round((gst - g["start"]) / 60) if g.get("start") else None,
                     "start_gap_flag": bool(g.get("start")) and abs(gst - g["start"]) > START_GAP_FLAG}
     return None
