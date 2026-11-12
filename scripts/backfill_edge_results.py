@@ -5,6 +5,10 @@ data/exchange_edge_results.json is only written while the live feed still lists 
 finished between runs were missed and their calls could not be settled. This reads the calls already in data/exchange_edge_record.json,
 asks ESPN's public scoreboard for the days those games were played, and stores any completed game's real final score under the call's
 game key. A game ESPN does not list as completed is left alone: nothing is guessed. Run it before scripts/exchange_edge_record.py.
+
+--plays FILE [FILE ...] also scores the open and voided game plays (kind book or exch) in the Sharp Money V2 ledgers (v2_plays.json, v2_watch.json,
+v2_passed.json): scripts/track-v2-plays.mjs settles them from this same file, and a game the live feed missed would otherwise void 72h
+after tip (the Spurs at Suns moneyline of Nov 9 2026 sat open for that reason).
 """
 import datetime as dt
 import json
@@ -17,7 +21,8 @@ REC = os.path.join(ROOT, 'data', 'exchange_edge_record.json')
 RES = os.path.join(ROOT, 'data', 'exchange_edge_results.json')
 SCORE = {'nfl': 'football/nfl/scoreboard', 'cfb': 'football/college-football/scoreboard?groups=80&limit=400', 'nba': 'basketball/nba/scoreboard'}
 ALIAS = {'WSH': 'WAS', 'LA': 'LAR', 'JAC': 'JAX', 'LVR': 'LV', 'OAK': 'LV'}
-SPORT_ALIAS = {'cfb': {'CHA': 'CLT'}}      # the feed's college abbreviation where it differs from ESPN's (CHA is the Hornets in the NBA, so this is per sport)
+SPORT_ALIAS = {'cfb': {'CHA': 'CLT'},
+               'nba': {'SA': 'SAS', 'GS': 'GSW', 'NY': 'NYK', 'NO': 'NOP', 'UTAH': 'UTA'}}   # ESPN's short NBA codes -> the feed's      # the feed's college abbreviation where it differs from ESPN's (CHA is the Hornets in the NBA, so this is per sport)
 n = lambda x, sp=None: SPORT_ALIAS.get(sp, {}).get(x) or ALIAS.get(x, x)
 
 
@@ -32,14 +37,33 @@ def board(sport, day):
         return []
 
 
-def main():
+def open_plays(files, res, now):
+    """{gk: (sport, 'AWAY@HOME', start)} for V2 game plays with no stored final, 3h+ after tip: open ones, and voids that went void for
+    that missing final (scripts/reopen_v2_game_voids.py reopens them once it is stored)."""
+    need = {}
+    for f in files:
+        try:
+            plays = json.load(open(f)).get('plays') or {}
+        except (OSError, ValueError, AttributeError):
+            continue
+        for p in (plays.values() if isinstance(plays, dict) else plays):
+            g = p.get('game') or {}
+            if (p.get('status') in ('open', 'void') and not p.get('regraded') and p.get('kind') in ('book', 'exch') and g.get('gk') and g['gk'] not in res
+                    and g.get('away') and g.get('home') and p.get('sport') in SCORE and p.get('start') and p['start'] < now - 3 * 3600):
+                need[g['gk']] = (p['sport'], g['away'] + '@' + g['home'], p['start'])
+    return need
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    plays = argv[argv.index('--plays') + 1:] if '--plays' in argv else []
     try:
         rec = json.load(open(REC))
     except (OSError, ValueError):
-        return
+        rec = {}
     res = json.load(open(RES)) if os.path.exists(RES) else {}
     now = dt.datetime.now(dt.timezone.utc).timestamp()
-    need = {}
+    need = open_plays(plays, res, now)
     for sport, b in (rec.get('by_sport') or {}).items():
         for c in b.get('calls', []):
             if c.get('graded') and c.get('gk') and c['gk'] not in res and c['start'] < now and '@' in str(c.get('game')):
