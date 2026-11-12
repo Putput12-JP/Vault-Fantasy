@@ -76,6 +76,8 @@ GROUP = {"moneyline": "ml", "spreads": "spread", "totals": "total"}
 EVENT_RE = re.compile(r"^(.*?-\d{4}-\d{2}-\d{2})")
 START_GAP_FLAG = 10 * 60                  # Polymarket and Vault start times more than 10 min apart (prereg "known limits")
 VERSION = 1
+SIZE_BANDS = (0.0, 0.75, 1.5, 3.0)        # size vs usual stake bands for the "at this size" record (below 0.75x, 0.75 to 1.5x, ...)
+CLOSE_STALE = 30 * 60                     # a keyframe price older than this at the cut is not a close (prereg "unpriced" rule)
 
 
 def event_of(slug):
@@ -83,10 +85,49 @@ def event_of(slug):
     return m.group(1) if m else slug
 
 
+def load_closes(holders, sport, markets, pm_closes):
+    """{(cid, outcome index): close} for ledger markets, from stored prices only (never estimated):
+    1. Vault's own T-15 keyframes (pm_holders/<sport>/frozen): the market's price at the cut, when read within 30 min of it;
+    2. data/pm_closes.json (Pendulum Flow, NBA and NFL): the last quote before kickoff, matched on event slug, market type, line and
+       an identical outcome list. `p` is outcomes[0]'s price."""
+    out, cut_of = {}, {}
+    for path in sorted(glob.glob(os.path.join(holders or "", sport, "frozen", "*", "*.json"))):
+        try:
+            with open(path) as f:
+                kf = json.load(f)
+        except (OSError, ValueError):
+            continue
+        for cid, mk in (kf.get("mk") or {}).items():
+            px, t = mk.get("px"), mk.get("px_t")
+            if not px or t is None or t < kf["cut"] - CLOSE_STALE or kf["cut"] <= cut_of.get(cid, -1):
+                continue                             # a postponed game: the keyframe with the latest cut is the close
+            if not all(v is not None and 0 < v < 1 for v in px):
+                continue                             # both outcomes from one read, or none
+            cut_of[cid] = kf["cut"]
+            for oi, v in enumerate(px):
+                out[(cid, oi)] = v
+    games = (pm_closes or {}).get("games") or {}
+    key = {"moneyline": "ml", "spreads": "spreads", "totals": "totals"}
+    for cid, mk in (markets or {}).items():
+        g = games.get(f"{sport}|{event_of(mk.get('slug'))}")
+        if not g or mk.get("mt") not in key or (cid, 0) in out:
+            continue
+        cands = g.get(key[mk["mt"]])
+        for c in [cands] if isinstance(cands, dict) else (cands or []):
+            if not c or c.get("p") is None or list(c.get("outcomes") or []) != list(mk.get("outs") or []):
+                continue
+            if mk["mt"] != "moneyline" and (c.get("line") is None or mk.get("line") is None or float(c["line"]) != float(mk["line"])):
+                continue
+            if 0 < c["p"] < 1:
+                out[(cid, 0)], out[(cid, 1)] = c["p"], 1.0 - c["p"]
+            break
+    return out
+
+
 # ---------- ledger: per-wallet books as of a time ----------
 
 class Ledger:
-    def __init__(self, rows, markets, first_seen, user_stats, run_at=None):
+    def __init__(self, rows, markets, first_seen, user_stats, run_at=None, closes=None):
         self.by_w = {}
         for r in rows:
             self.by_w.setdefault(r["w"], []).append(r)
@@ -101,9 +142,10 @@ class Ledger:
         for v in self.us.values():
             v.sort(key=lambda s: s.get("at") or 0)
         self.run_at = run_at
+        self.closes = closes or {}
 
     @classmethod
-    def load(cls, root, sport):
+    def load(cls, root, sport, holders=None, pm_closes=None):
         rows = []
         for fn in sorted(glob.glob(os.path.join(root, "bets", sport, "*.jsonl"))):
             with open(fn) as f:
@@ -118,8 +160,9 @@ class Ledger:
         for fn in sorted(glob.glob(os.path.join(root, "user_stats", "*.jsonl"))):
             with open(fn) as f:
                 us += [json.loads(l) for l in f if l.strip()]
-        return cls(rows, j(os.path.join(root, "markets", sport + ".json"), {}), j(os.path.join(root, "first_seen.json"), {}), us,
-                   (j(os.path.join(root, "summary.json"), {}) or {}).get("run_at"))
+        markets = j(os.path.join(root, "markets", sport + ".json"), {})
+        return cls(rows, markets, j(os.path.join(root, "first_seen.json"), {}), us,
+                   (j(os.path.join(root, "summary.json"), {}) or {}).get("run_at"), load_closes(holders, sport, markets, pm_closes))
 
     def stats(self, w, asof):
         """The wallet's sport book as of `asof` (rows settled strictly before it), all rows and forward rows."""
@@ -132,8 +175,8 @@ class Ledger:
         hedged_cids = {r["cid"] for r in rs if r.get("hedged")}
         cids = {r["cid"] for r in rs}
         out = {"tracked": True, "markets": len(cids), "hedged_share": (len(hedged_cids) / len(cids)) if cids else 0.0,
-               "all": book([r for r in rs if not r.get("hedged")], asof, self.markets),
-               "fwd": book([r for r in rs if not r.get("hedged") and r.get("src") == "forward"], asof, self.markets)}
+               "all": book([r for r in rs if not r.get("hedged")], asof, self.markets, self.closes),
+               "fwd": book([r for r in rs if not r.get("hedged") and r.get("src") == "forward"], asof, self.markets, self.closes)}
         snap = [s for s in self.us.get(w, []) if (s.get("at") or 0) <= asof]
         out["churn"] = churn(snap[-1]) if snap else None
         out["excluded"] = ("hedger" if cids and len(cids) >= HEDGER_MIN_MARKETS and out["hedged_share"] >= HEDGER_SHARE
@@ -141,7 +184,7 @@ class Ledger:
         return out
 
 
-def positions(rows, markets):
+def positions(rows, markets, closes=None):
     """Ledger rows -> SharpFlow positions: one per game x market type x side. Rungs of one side are summed; the result is the sign
     of the summed PnL; a position touched by a SPLIT row is kept out of dollar totals."""
     pos = {}
@@ -150,7 +193,12 @@ def positions(rows, markets):
         outs = mk.get("outs") or []
         side = outs[r["oi"]] if r["oi"] < len(outs) else r["oi"]
         key = (event_of(mk.get("slug")) or r["cid"], r.get("mt"), side)
-        p = pos.setdefault(key, {"ev": key[0], "stake": 0.0, "pnl": 0.0, "settled_at": 0, "split": False, "pxs": 0.0, "mt": r.get("mt")})
+        p = pos.setdefault(key, {"ev": key[0], "stake": 0.0, "pnl": 0.0, "settled_at": 0, "split": False, "pxs": 0.0, "mt": r.get("mt"),
+                                 "clv_s": 0.0, "clv_st": 0.0})
+        close = closes.get((r["cid"], r["oi"])) if closes else None
+        if close is not None and r.get("avg") is not None and r["stake"] > 0 and not r.get("split"):   # a SPLIT's 0.5 is booked, not paid
+            p["clv_s"] += (close - r["avg"]) * r["stake"]
+            p["clv_st"] += r["stake"]
         p["stake"] += r["stake"]
         p["pxs"] += (r.get("avg") or 0.0) * r["stake"]
         p["pnl"] += r["pnl"]
@@ -159,11 +207,12 @@ def positions(rows, markets):
     for p in pos.values():
         p["px"] = p["pxs"] / p["stake"] if p["stake"] > 0 else None
         p["res"] = "win" if p["pnl"] > 1e-9 else "loss" if p["pnl"] < -1e-9 else "push"
+        p["clv"] = p["clv_s"] / p["clv_st"] if p["clv_st"] > 0 else None   # stake-weighted close minus entry price, where a close is stored
     return list(pos.values())
 
 
-def book(rows, asof, markets):
-    ps = positions(rows, markets)
+def book(rows, asof, markets, closes=None):
+    ps = positions(rows, markets, closes)
     wins = sum(p["res"] == "win" for p in ps)
     losses = sum(p["res"] == "loss" for p in ps)
     cash = [p for p in ps if not p["split"]]
@@ -184,7 +233,13 @@ def book(rows, asof, markets):
          "l30_n": sum(p["res"] in ("win", "loss") for p in l30),
          "l30_roi": (sum(r["pnl"] for r in l30) / l30_stake) if l30_stake > 0 else None,
          "bets": sorted(([p["settled_at"], round(p["px"], 4), p["res"] == "win", p["mt"]] for p in ps if p["res"] != "push" and p["px"]), key=lambda b: b[0]),
-         "legs": sorted(([r["settled_at"], r["res"]] for r in legs.values()), reverse=True)[:LAST_N]}
+         "legs": sorted(([r["settled_at"], r["res"]] for r in legs.values()), reverse=True)[:LAST_N],
+         # price skill: positions with a stored close, and how many were bought below it (SharpFlow's "beat the closing line")
+         "clv_n": sum(1 for p in ps if p["clv"] is not None),
+         "clv_beat": sum(1 for p in ps if p["clv"] is not None and p["clv"] > 0),
+         "clv_mean": (sum(p["clv"] for p in ps if p["clv"] is not None) / sum(1 for p in ps if p["clv"] is not None))
+         if any(p["clv"] is not None for p in ps) else None,
+         "sizes": [[p["stake"], p["res"] == "win"] for p in cash if p["res"] in ("win", "loss") and p["stake"] > 0]}
     if b["l30_n"] < L30_MIN_N:
         b["l30_roi"] = None
     b["proven"] = bool(b["n"] >= PROVEN_N and b["wr"] is not None and b["wr"] >= PROVEN_WR and b["roi"] is not None
@@ -294,6 +349,10 @@ def card(kf, ledger, sport, vault=None, frozen=True):
                     "list": [wallet_line(x, variant, cls[x["w"]]) for x in sorted(proven, key=lambda x: -x["usd"])[:SHOW_PROVEN]],
                     "losers": [wallet_line(x, variant, "loser") for x in
                                sorted((x for x in mine if cls[x["w"]] == "loser"), key=lambda x: -x["usd"])[:SHOW_LOSERS]],
+                    # tracked wallets that are not proven yet (SharpFlow's "secondary"), with whatever record they have
+                    "unproven_list": [wallet_line(x, variant, "unproven") for x in
+                                      sorted((x for x in mine if cls[x["w"]] == "unproven" and x["s"]["tracked"]),
+                                             key=lambda x: -x["usd"])[:SHOW_PROVEN]],
                     "counts": {k: sum(1 for x in mine if cls[x["w"]] == k) for k in ("hc", "sharp", "unproven", "loser", "excluded")},
                 }
                 side_out["ags"] = ags_side(side, ws, cls, variant)
@@ -390,7 +449,7 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out):
     cid = max((x for x in pool if x["side"] == side), key=lambda x: x["usd"])["cid"]
     mk = kf["mk"].get(cid) or {}
     return {"side": side, "units": r["units"], "rung": r["rung"], "reason": r["reason"], "price": r["price"], "price_t": mk.get("px_t"),
-            "line": mk.get("line"), "cid": cid, "missing": SF.MISSING}
+            "line": mk.get("line"), "outs": mk.get("outs"), "cid": cid, "missing": SF.MISSING}
 
 
 def classify(x, variant):
@@ -402,12 +461,25 @@ def classify(x, variant):
     return "loser" if b["loser"] else "unproven"
 
 
+def at_size(b, press):
+    """The wallet's record on positions in the same size band (vs its usual stake) as this one, and the share of its bets there."""
+    if press is None or not b["usual"] or not b.get("sizes"):
+        return None
+    lo = max(x for x in SIZE_BANDS if x <= press)
+    hi = next((x for x in SIZE_BANDS if x > lo), None)
+    band = [won for st, won in b["sizes"] if st / b["usual"] >= lo and (hi is None or st / b["usual"] < hi)]
+    return {"lo": lo, "hi": hi, "w": sum(band), "l": len(band) - sum(band), "share": round(len(band) / len(b["sizes"]), 3)}
+
+
 def wallet_line(x, variant, k):
     b = x["s"][variant]
+    press = round(x["usd"] / b["usual"], 2) if b["usual"] else None
     return {"w": x["w"], "usd": round(x["usd"]), "class": k, "star": k == "hc", "two_way": x["two_way"],
-            "press": round(x["usd"] / b["usual"], 2) if b["usual"] else None, "w_": b["w"], "l_": b["l"],
+            "press": press, "w_": b["w"], "l_": b["l"],
             "roi": round(b["roi"], 4) if b["roi"] is not None else None,
-            "l30_roi": round(b["l30_roi"], 4) if b["l30_roi"] is not None else None, "pnl": b["pnl"], "n": b["n"]}
+            "l30_roi": round(b["l30_roi"], 4) if b["l30_roi"] is not None else None, "pnl": b["pnl"], "n": b["n"],
+            "usual": round(b["usual"]) if b["usual"] else None, "at_size": at_size(b, press),
+            "clv": {"n": b["clv_n"], "beat": b["clv_beat"], "mean": round(b["clv_mean"], 4) if b["clv_mean"] is not None else None}}
 
 
 def ladder_units(top_press, price):
@@ -449,6 +521,21 @@ def lock_shadow(g, ws, cls, variant, kf):
     return res
 
 
+def carry_flagged(c, old, now):
+    """`flagged` on each shown size and lock: the price and time this side was first flagged, carried from the previous live build
+    while the side stays the same. A new side starts at its current price (live builds only; a frozen card only inherits)."""
+    for g, m in (c.get("markets") or {}).items():
+        for field in ("sf", "lock_shadow"):
+            for variant, x in (m.get(field) or {}).items():
+                if not x or not x.get("side"):
+                    continue
+                o = (((old or {}).get("markets") or {}).get(g) or {}).get(field, {}).get(variant) or {}
+                if o.get("side") == x["side"] and o.get("cid") == x.get("cid") and o.get("flagged"):
+                    x["flagged"] = o["flagged"]              # same side of the same market: keep the first price
+                elif now is not None and x.get("price") is not None:
+                    x["flagged"] = {"price": x["price"], "t": x.get("price_t") or now}
+
+
 def vault_join(games, ev, gst):
     """Attach the Vault game (sharp-data key) by Polymarket event slug; report how far the two start times disagree."""
     for g in games:
@@ -470,6 +557,8 @@ def main():
     ap.add_argument("--frozen-out", required=True, help="pm_cards folder on pm-holders-data")
     ap.add_argument("--live-out", required=True)
     ap.add_argument("--sports", default="nba,nfl,cfb")
+    ap.add_argument("--closes", default="data/pm_closes.json", help="Pendulum Flow closes, for wallet price skill")
+    ap.add_argument("--prev-live", help="the last published live.json, to carry the price each shown size was first flagged at")
     a = ap.parse_args()
     import scan_pm_holders as H
     games = []
@@ -478,8 +567,19 @@ def main():
             games = json.load(f).get("games") or []
     now = int(time.time())
     live, wrote = {"built": now, "context_only": True, "games": []}, []
+    pm_closes = {}
+    if a.closes and os.path.exists(a.closes):
+        with open(a.closes) as f:
+            pm_closes = json.load(f)
+    prev = {}
+    if a.prev_live and os.path.exists(a.prev_live):
+        try:
+            with open(a.prev_live) as f:
+                prev = {(g["ev"], g["gst"]): g for g in (json.load(f).get("games") or [])}
+        except (OSError, ValueError, KeyError):
+            prev = {}
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
-        ledger = Ledger.load(a.ledger, sport)
+        ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
         # frozen: one card per keyframe that has none yet
         for kpath in sorted(glob.glob(os.path.join(a.holders, sport, "frozen", "*", "*.json"))):
             rel = os.path.relpath(kpath, os.path.join(a.holders, sport, "frozen"))
@@ -489,6 +589,7 @@ def main():
             with open(kpath) as f:
                 kf = json.load(f)
             c = card(kf, ledger, sport, vault_join(games, kf["ev"], kf["gst"]), frozen=True)
+            carry_flagged(c, prev.get((kf["ev"], kf["gst"])), None)
             # one card per game for the test: a postponed game can have several; the earliest cut is the one that counts
             earlier = sorted(x for x in glob.glob(os.path.join(a.frozen_out, sport, "frozen", "*", f"{kf['ev']}@*.json"))
                              if int(x.rsplit("@", 1)[1].split(".")[0]) < kf["gst"])
@@ -507,7 +608,9 @@ def main():
         for ev, gst in sorted(evs, key=lambda x: x[1]):
             kf = H.keyframe(st, ev, gst, now)
             if kf:
-                live["games"].append(card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False))
+                c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False)
+                carry_flagged(c, prev.get((ev, gst)), now)
+                live["games"].append(c)
     os.makedirs(os.path.dirname(os.path.abspath(a.live_out)), exist_ok=True)
     with open(a.live_out + ".tmp", "w") as f:
         json.dump(live, f, separators=(",", ":"))

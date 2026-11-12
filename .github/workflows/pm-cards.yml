@@ -41,13 +41,16 @@ jobs:
           git worktree add -q --detach pmdata origin/pm-holders-data   # not `data`: the repo has a data/ folder
           git worktree add -q --detach hist origin/sharp-history
           git show origin/sharp-data:data.json > sharp_data.json || echo '{"games":[]}' > sharp_data.json
+          # the last published live cards: each shown size keeps the price it was first flagged at while the side stays the same
+          git fetch -q --depth=1 origin +pm-cards-live:refs/remotes/origin/pm-cards-live 2>/dev/null \
+            && git show origin/pm-cards-live:live.json > prev_live.json || echo '{"games":[]}' > prev_live.json
           git -C pmdata config user.name  "vault-bot"
           git -C pmdata config user.email "vault-bot@users.noreply.github.com"
       - name: Build
         if: env.SKIP != '1'
         run: |
           python3 scripts/build_side_cards.py --holders pmdata/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
-            --frozen-out pmdata/pm_cards --live-out live/live.json
+            --frozen-out pmdata/pm_cards --live-out live/live.json --closes data/pm_closes.json --prev-live prev_live.json
       - name: Commit frozen cards (append-only)
         if: env.SKIP != '1'
         run: |
