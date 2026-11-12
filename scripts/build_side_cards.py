@@ -404,6 +404,8 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
            "vault": vault, "markets": {}}
     if frozen:
         why = []
+        if sport not in REGISTERED_SPORTS:
+            why.append("sport not in a registered test")
         if built > kf["gst"]:
             why.append("built after game start")
         if not ledger.run_at or ledger.run_at >= cut:
@@ -616,6 +618,9 @@ NBA_NICK = {"ATL": "Hawks", "BOS": "Celtics", "BKN": "Nets", "CHA": "Hornets", "
             "ORL": "Magic", "PHI": "76ers", "PHX": "Suns", "POR": "Trail Blazers", "SAC": "Kings", "SAS": "Spurs", "TOR": "Raptors",
             "UTA": "Jazz", "WAS": "Wizards"}
 NFL_ALIAS = {"WSH": "WAS", "LA": "LAR", "JAC": "JAX", "LVR": "LV", "OAK": "LV"}   # scripts/book_tape.py ALIAS
+# Sports in docs/sharp-card-prereg.md. A frozen card of any other sport (cbb, added 2026-11-12) is built and graded like the rest
+# but never counts toward the test (`test.counts` false, "sport not in a registered test") until a registration of its own is approved.
+REGISTERED_SPORTS = ("nba", "nfl", "cfb")
 TAPE_START_GAP = 12 * 3600                    # a tape game with the same two teams starting within 12 h of the Polymarket start
 
 
@@ -790,6 +795,8 @@ def vault_join(games, ev, gst):
                     "home": (g.get("home") or {}).get("abbr"),
                     # team names, for mapping Polymarket outcomes to home / away (the steam read)
                     "teams": {k: [n for n in ((g.get(k) or {}).get("name"), (g.get(k) or {}).get("short")) if n] for k in ("away", "home")},
+                    # ESPN's own logo link per team, as the poller stored it (college basketball); never built here
+                    "logo": {k: u for k in ("away", "home") for u in [((g.get(k) or {}).get("logo") or "")] if u.startswith("https://a.espncdn.com/")},
                     "start_gap_min": round((gst - g["start"]) / 60) if g.get("start") else None,
                     "start_gap_flag": bool(g.get("start")) and abs(gst - g["start"]) > START_GAP_FLAG}
     return None
@@ -804,7 +811,7 @@ def main():
     ap.add_argument("--sharp-data", help="sharp-data data.json, for the Vault game key")
     ap.add_argument("--frozen-out", required=True, help="pm_cards folder on pm-holders-data")
     ap.add_argument("--live-out", required=True)
-    ap.add_argument("--sports", default="nba,nfl,cfb")
+    ap.add_argument("--sports", default="nba,nfl,cfb,cbb")
     ap.add_argument("--closes", default="data/pm_closes.json", help="Pendulum Flow closes, for wallet price skill")
     ap.add_argument("--prev-live", help="the last published live.json, to carry the price each shown size was first flagged at")
     ap.add_argument("--sf-excluded", help="The benchmark's public sharp_intel_excluded_wallets.json, for the `sfx` variant")

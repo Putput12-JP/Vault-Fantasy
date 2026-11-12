@@ -304,5 +304,80 @@ class BenchmarkSource(unittest.TestCase):
         self.assertEqual(got["0xaa"]["source"], "leaderboard")
 
 
+class SportFill(unittest.TestCase):
+    """A sport added after a wallet's books were read (cbb) is walked once from the start, keeping only that sport's rows."""
+
+    def run_walk(self, ws, sports, rows_by_window):
+        import types
+        seen, added = [], []
+        orig = L.pages
+
+        def fake(cli, path, params, max_pages, trunc=None):
+            seen.append((params["status"], params["start"], params.get("end")))
+            yield rows_by_window(params)
+        L.pages = fake
+        try:
+            a = types.SimpleNamespace(sports=sports, max_pages=5)
+            L.walk_positions(None, "0xw", a, ws, [], added.append)
+        finally:
+            L.pages = orig
+        return seen, added
+
+    @staticmethod
+    def pos(slug, cid, t):
+        return {"slug": slug, "condition_id": cid, "outcome_index": 0, "last_event_at": t}
+
+    def test_legacy_wallet_gets_one_fill_for_cbb_only(self):
+        ws = {"b_OPEN": {"hw": 5000}, "b_CLOSED": {"hw": 5000}}
+        old = [self.pos("nba-a-b-2026-03-01", "n1", 100), self.pos("cbb-a-b-2026-03-01", "c1", 100)]
+        new = [self.pos("nba-a-b-2026-11-11", "n2", 6000), self.pos("cbb-a-b-2026-11-11", "c2", 6000)]
+        seen, added = self.run_walk(ws, ["nba", "nfl", "cfb", "cbb"], lambda q: new if q.get("end") is None else old)
+        self.assertIn(("CLOSED", 1, 5000), seen)                               # the fill window: from the start to the old mark
+        ids = sorted(r["condition_id"] for r in added)
+        self.assertEqual(ids, ["c1", "c1", "c2", "c2", "n2", "n2"])            # old nba row n1 is never re-read
+        self.assertNotIn("fill", ws["b_CLOSED"])
+        self.assertEqual(ws["sports_read"], ["cbb", "cfb", "nba", "nfl"])
+        seen2, _ = self.run_walk(ws, ["nba", "nfl", "cfb", "cbb"], lambda q: [])
+        self.assertFalse([w for w in seen2 if w[2] is not None])               # done once: no second fill (only the new window runs)
+
+    def test_priority_runs_skip_the_fill(self):
+        import types
+        ws, seen = {"b_CLOSED": {"hw": 5000}}, []
+        orig = L.pages
+
+        def fake(cli, path, params, max_pages, trunc=None):
+            seen.append(params.get("end"))
+            yield []
+        L.pages = fake
+        try:
+            L.walk_positions(None, "0xw", types.SimpleNamespace(sports=["nba", "cbb"], max_pages=1, priority_only=True), ws, [], lambda r: None)
+        finally:
+            L.pages = orig
+        self.assertEqual(seen, [None, None])                                   # new windows only
+        self.assertEqual(ws["b_CLOSED"]["fill"]["hi"], 5000)                   # still owed
+        self.assertNotIn("cbb", ws["sports_read"])
+
+    def test_cut_fill_resumes_and_new_wallet_needs_none(self):
+        ws = {"b_CLOSED": {"hw": 5000}}
+        orig = L.pages
+
+        def capped(cli, path, params, max_pages, trunc=None):
+            if params.get("end") is not None:
+                trunc.append(path)
+            yield [self.pos("cbb-a-b-2026-02-01", "c9", 3000)] if params.get("end") is not None else []
+        L.pages = capped
+        try:
+            import types
+            L.walk_positions(None, "0xw", types.SimpleNamespace(sports=["nba", "cbb"], max_pages=1), ws, [], lambda r: None)
+        finally:
+            L.pages = orig
+        self.assertEqual(ws["b_CLOSED"]["fill"], {"sports": ["cbb"], "lo": 1, "hi": 3000})   # resumes below the oldest row read
+        self.assertNotIn("cbb", ws["sports_read"])
+        fresh = {}
+        self.run_walk(fresh, ["nba", "cbb"], lambda q: [])
+        self.assertEqual(sorted(fresh["sports_read"]), ["cbb", "nba"])
+        self.assertNotIn("fill", fresh["b_CLOSED"])
+
+
 if __name__ == "__main__":
     unittest.main()

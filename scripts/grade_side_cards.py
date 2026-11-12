@@ -36,7 +36,7 @@ GROUP_MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
 CLOSE_KEY = {"ml": "ml", "spread": "spreads", "total": "totals"}
 STALE_PRICE = 30 * 60              # prereg "Unpriced": price_t more than 30 minutes before the cut
 UNPRICED_FAIL = 0.10               # prereg: unpriced over 10% of a sport's counted moneyline locks = data-quality failure, no verdict
-NO_CLOSES = {"cfb"}                # prereg: CFB has no stored close, read on ROI only
+NO_CLOSES = {"cfb", "cbb"}         # prereg: CFB has no stored close, read on ROI only; CBB likewise (data/pm_closes.json has none)
 BOOT_N, BOOT_SEED = 10000, 20261111
 VERSION = 1
 

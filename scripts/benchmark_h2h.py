@@ -33,7 +33,7 @@ REPO = "dpk1212/nhl-savant"
 POS_FILES = {"ml": "public/sharp_positions.json", "spread": "public/sharp_spread_positions.json",
              "total": "public/sharp_total_positions.json"}
 PICKS_FILE = "public/sharp-flow-pnl.json"
-SPORT_KEY = {"nba": "NBA", "nfl": "NFL", "cfb": "CFB"}
+SPORT_KEY = {"nba": "NBA", "nfl": "NFL", "cfb": "CFB", "cbb": "CBB"}
 GROUP = {"ml": "ml", "spread": "spread", "total": "total"}     # The benchmark marketType -> Vault market group
 MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
 SETTLE_CUT = 30 * 60         # archive a cut only once it is 30 minutes old, so a commit pushed late is already on GitHub
