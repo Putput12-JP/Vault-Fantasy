@@ -340,6 +340,23 @@ class SportFill(unittest.TestCase):
         seen2, _ = self.run_walk(ws, ["nba", "nfl", "cfb", "cbb"], lambda q: [])
         self.assertFalse([w for w in seen2 if w[2] is not None])               # done once: no second fill (only the new window runs)
 
+    def test_priority_runs_skip_the_fill(self):
+        import types
+        ws, seen = {"b_CLOSED": {"hw": 5000}}, []
+        orig = L.pages
+
+        def fake(cli, path, params, max_pages, trunc=None):
+            seen.append(params.get("end"))
+            yield []
+        L.pages = fake
+        try:
+            L.walk_positions(None, "0xw", types.SimpleNamespace(sports=["nba", "cbb"], max_pages=1, priority_only=True), ws, [], lambda r: None)
+        finally:
+            L.pages = orig
+        self.assertEqual(seen, [None, None])                                   # new windows only
+        self.assertEqual(ws["b_CLOSED"]["fill"]["hi"], 5000)                   # still owed
+        self.assertNotIn("cbb", ws["sports_read"])
+
     def test_cut_fill_resumes_and_new_wallet_needs_none(self):
         ws = {"b_CLOSED": {"hw": 5000}}
         orig = L.pages

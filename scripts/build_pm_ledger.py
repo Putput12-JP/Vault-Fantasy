@@ -593,7 +593,7 @@ def walk_positions(cli, w, a, ws, trunc, add):
         wins = [("new", max(1, b["hw"] - OVERLAP) if b.get("hw") else 1, None)]
         if b.get("hi") is not None:
             wins.append(("backlog", b["lo"], b["hi"]))
-        if b.get("fill"):
+        if b.get("fill") and not getattr(a, "priority_only", False):   # the afternoon runs keep their budget for the hot wallets' cuts
             wins.append(("fill", b["fill"]["lo"], b["fill"]["hi"]))
         for kind, lo, hi in wins:
             keep = b["fill"]["sports"] if kind == "fill" else a.sports
