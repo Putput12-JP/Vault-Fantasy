@@ -3,7 +3,7 @@
    VAULT · SHARP MONEY WATCH  →  .claude/sharp-money/data.json
 
    One poll of every free, keyless source that says where informed money is
-   going, for NFL, college football and NBA. Run it every few minutes; each
+   going, for NFL, college football, NBA and college basketball. Run it every few minutes; each
    run diffs against the saved state, so line moves and new trades become
    time-stamped alerts, and every alert is graded against Pinnacle's closing
    price once its game starts.
@@ -58,11 +58,25 @@ const now = () => Math.floor(Date.now() / 1000);
 const SPORTS = {
   nfl: { name: 'NFL', an: 'nfl', pinSport: 15, pinLeague: 889, pm: 12185, kal: 'KXNFLGAME', nov: 'NFL', espn: 'football/nfl', ahead: 7,
          steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, sharpCard: 5000, wallets: 'pm_wallets.json', sigBig: 25000, crossAt: 25000 },
-  cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', nov: 'NCAAF', espn: 'football/college-football', ahead: 5,
+  cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', nov: 'NCAAF', espn: 'football/college-football', espnQ: '&groups=80', ahead: 5,
          steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, sharpCard: 2500, wallets: 'pm_wallets_cfb.json', sigBig: 25000, crossAt: 5000 },
   nba: { name: 'NBA', an: 'nba', pinSport: 4, pinLeague: 487, pm: 10345, kal: 'KXNBAGAME', nov: 'NBA', espn: 'basketball/nba', ahead: 3,
          steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, sharpCard: 5000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
+  // Men's college basketball (added 2026-11-12). Every threshold below is BORROWED from CFB, not measured for CBB: the CFB
+  // values have no recorded fitting method to repeat. Measured CBB vs CFB Polymarket sizes (2026-11-12, games since Nov 3 vs
+  // since Oct 1): median game moneyline volume $1.7k vs $28k, p90 $24k vs $670k; taker trades $50+ p99 $4.0k vs $21k. So CBB
+  // markets are far thinner and these CFB lines fire rarely here (5 of 733 sampled CBB trades reach $5k). Revisit with a CBB sample.
+  // ahead: 1 (today + tomorrow; not a threshold): a Thursday slate read 146 games over 3 days and added 78 s to the poll, so the
+  // window is kept short to hold the run inside the workflow's time limit on a 150-game Saturday.
+  cbb: { name: 'College Basketball', an: 'ncaab', anQ: '&division=D1', pinSport: 4, pinLeague: 493, pm: 10470, kal: 'KXNCAAMBGAME', nov: 'NCAAB',
+         espn: 'basketball/mens-college-basketball', espnQ: '&groups=50', ahead: 1,
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, sharpCard: 2500, wallets: 'pm_wallets_cbb.json', sigBig: 25000, crossAt: 5000, borrowed: 'cfb' },
 };
+// Sports whose signals feed Top Reads (picks, the agree ledger, data/topreads_rules.json). CBB was added after the Nov 9 rule
+// freeze and is in no registered test, so its alerts show on the page but never become a Top Read.
+const TOPREADS_SPORTS = new Set(['nfl', 'cfb', 'nba']);
+// --sports=cbb,nba polls only those (local timing and debugging); default is every sport.
+const ONLY = typeof ARG.sports === 'string' ? new Set(ARG.sports.split(',')) : null;
 const WREC = {};
 const WALL = {};   // every scored wallet, per sport: {w: {rec}}. Accounts page only; never feeds the sharp or dull labels.
 const PROP_MIN_VOL = 300, PROP_MAX = 25;   // prop markets read per game (by Polymarket volume)
@@ -172,7 +186,7 @@ function loadWallets(file) {
   try {
     const j = JSON.parse(readFileSync(resolve(ROOT, 'data', file), 'utf8'));
     const rec = {};
-    const sport = file.includes('_cfb') ? 'cfb' : file.includes('_nba') ? 'nba' : 'nfl';
+    const sport = (/_(cfb|nba|cbb)\.json$/.exec(file) || [, 'nfl'])[1];
     for (const w of [...(j.sharp || []), ...(j.dull || [])]) {
       const pub = j.stats?.[w];
       if (pub && pub.n != null) { rec[w] = { n: pub.n, games: pub.games ?? pub.n, trades: pub.trades ?? null, clv: r3(pub.clv), t: pub.t, sport }; continue; }
@@ -195,7 +209,7 @@ function loadWallets(file) {
 async function actionGames(sk, cfg) {
   const t = now(), dates = [];
   for (let d = 0; d <= cfg.ahead; d++) dates.push(ymdET(t + d * DAY));
-  const pages = await pool(dates, 4, d => getJSON(`https://api.actionnetwork.com/web/v2/scoreboard/${cfg.an}?bookIds=${AN_BOOKS.join(',')}&date=${d}&periods=event`));
+  const pages = await pool(dates, 4, d => getJSON(`https://api.actionnetwork.com/web/v2/scoreboard/${cfg.an}?bookIds=${AN_BOOKS.join(',')}&date=${d}&periods=event${cfg.anQ || ''}`));
   const out = [], seen = new Set();
   for (const p of pages) for (const g of (p?.games || [])) {
     if (seen.has(g.id)) continue; seen.add(g.id);
@@ -541,7 +555,7 @@ async function kalshi(sk, cfg, games, S) {
   const t = now(), out = new Map(), todo = [];
   for (const ev of evs) {
     const ms = ev.markets || []; if (ms.length !== 2) continue;
-    const st = Date.parse(ms[0].occurrence_datetime || ms[0].expected_expiration_time) / 1000 - (cfg.an === 'nba' ? 2.5 * H : 3 * H);
+    const st = Date.parse(ms[0].occurrence_datetime || ms[0].expected_expiration_time) / 1000 - (cfg.pinSport === 4 ? 2.5 * H : 3 * H);
     const n1 = ms[0].yes_sub_title, n2 = ms[1].yes_sub_title;
     const hit = matchGame(games, n1, n2, st > 0 ? st : null); if (!hit) continue;
     const info = { ticker: ev.event_ticker, vol: 0, vol24: 0, px: {} };
@@ -634,7 +648,7 @@ async function finals(sk, cfg, S) {
   if (!need.length) return;
   const days = [...new Set(need.map(G => ymdET(G.meta.start)))];
   for (const d of days) {
-    let r; try { r = await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${cfg.espn}/scoreboard?dates=${d}&limit=400${sk === 'cfb' ? '&groups=80' : ''}`); } catch (e) { continue; }
+    let r; try { r = await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${cfg.espn}/scoreboard?dates=${d}&limit=400${cfg.espnQ || ''}`); } catch (e) { continue; }
     const fake = need.filter(G => ymdET(G.meta.start) === d).map(G => ({ G, start: G.meta.start, _away: { _al: G.meta.al.away }, _home: { _al: G.meta.al.home } }));
     for (const e of r.events || []) {
       const c = e.competitions?.[0]; if (!c?.status?.type?.completed) continue;
@@ -1147,7 +1161,7 @@ function assembleLedger(picks, alerts, sharpContext) {
     slices[name] = { old: slice(legacy, r => !r.contested && predOld(r)), now: slice(rows, r => !r.contested && predNew(r)) };
   };
   add('overall', () => true, () => true);
-  for (const sp of ['nfl', 'cfb', 'nba']) add(sp, r => r.sport === sp, r => r.sport === sp);
+  for (const sp of TOPREADS_SPORTS) add(sp, r => r.sport === sp, r => r.sport === sp);
   for (const m of ['sp', 'ml', 'tot']) add(m, r => r.m === m, r => r.m === m);
   for (const k of [1, 2, 3]) add(k + ' agree', r => r.kinds.size === k, r => r.kinds.size === k);
   const better = [];
@@ -1187,7 +1201,7 @@ function snapPicks(S, games) {
   const t = now(); S.picks ||= {};
   for (const p of Object.values(S.picks)) p.frozen = true;   // a stored row is the first sight we still have
   for (const e of games) {
-    if (e.start <= t) continue;
+    if (e.start <= t || !TOPREADS_SPORTS.has(e.sport)) continue;
     for (const m of ['sp', 'tot', 'ml']) {
       const { out, hl } = cardSignals(e, m), by = {};
       for (const k of BET_KINDS) if (out[k]) (by[out[k].side] ||= []).push(k);
@@ -1383,6 +1397,7 @@ async function pollOnce() {
   if (ARG.quick && now() - (S.lastWallet || 0) < 15 * 60) { status.accounts = 'skipped (quick)'; } else S.lastWallet = now();
   if (status.accounts == null) await lap(status, 'accounts', walletPoll(S, allSharp).catch(e => { status.accounts = 'error: ' + e.message; }));
   for (const [sk, cfg] of Object.entries(SPORTS)) {
+    if (ONLY && !ONLY.has(sk)) continue;
     const st = status[sk] = {};
     const own = OWN[sk], W = { sharp: new Set(own.sharp), dull: new Set(own.dull), rec: { ...own.rec }, n: own.n, generated: own.generated };
     for (const [ok, o] of Object.entries(OWN)) if (ok !== sk) for (const w of o.sharp) {
@@ -1428,7 +1443,7 @@ async function pollOnce() {
   snapPicks(S, P.games); gradePicks(S); migrateLedger(S);
   P.picks = Object.values(S.picks);
   P.sharpContext = Object.values(S.sharpContext || {}).filter(r => r.dropped).map(({ sig, ...r }) => r);
-  const led = assembleLedger(P.picks, P.alerts, P.sharpContext);
+  const led = assembleLedger(P.picks, P.alerts.filter(a => TOPREADS_SPORTS.has(a.sport)), P.sharpContext);
   const { rows, legacy, ...pub } = led;
   P.ledger = pub;
   snapLead(S, P.games); P.lead = Object.values(S.lead).filter(x => x.first);

@@ -274,9 +274,20 @@ def side_number(m, side, hline, line):
     return None
 
 
+# Sports whose game signals enter the ledger. College basketball (cbb) joined the Sharp Money poll on 2026-11-12, after the
+# rules in data/topreads_rules.json were frozen (2026-11-09), and is in no registered test: its alerts are left out here so the
+# sport-less rule behind_spread_24h keeps the population it was registered on.
+LEDGER_SPORTS = ('nfl', 'cfb', 'nba')
+
+
 def game_events(S):
     """Non-sharp game signals, sharp context signals. Each event: dict with key, ts, kind, src_ref, ..."""
     ev, ctx = [], []
+    S = dict(S)
+    for k in ('alerts',):
+        S[k] = [a for a in (S.get(k) or []) if a.get('sport') in LEDGER_SPORTS]
+    for k in ('picks', 'sharpContext'):
+        S[k] = {i: p for i, p in (S.get(k) or {}).items() if p.get('sport') in LEDGER_SPORTS}
     for a in S.get('alerts') or []:
         typ, start, ts = a.get('type'), num(a.get('start')), num(a.get('ts'))
         if start is None or ts is None or ts >= start or a.get('m') not in ('ml', 'sp', 'tot') or not a.get('side'):
@@ -1041,6 +1052,13 @@ def selftest():
         fails.append('a predicate edit with a stale hash was accepted')
     except SystemExit:
         pass
+    # college basketball joined after the freeze: its alerts and picks never enter the ledger
+    t9 = 1_800_000_000
+    cb = {'alerts': [{'id': 'x', 'type': 'behind', 'sport': 'cbb', 'game': 'cbb:1', 'gameLbl': 'A @ B', 'start': t9, 'ts': t9 - 90000, 'm': 'sp', 'side': 'home', 'hline': -3, 'book': 'DraftKings', 'price': -105},
+                     {'id': 'y', 'type': 'behind', 'sport': 'nba', 'game': 'nba:1', 'gameLbl': 'C @ D', 'start': t9, 'ts': t9 - 90000, 'm': 'sp', 'side': 'home', 'hline': -3, 'book': 'DraftKings', 'price': -105}],
+          'picks': {'cbb:1|ml|home': {'game': 'cbb:1', 'sport': 'cbb', 'kinds': ['line'], 'start': t9, 'ts': t9 - 100, 'm': 'ml', 'side': 'home'}}}
+    ev_cb, _ = game_events(cb)
+    ok([e['sport'] for e in ev_cb] == ['nba'], f'cbb signals must stay out of the ledger: {[e["sport"] for e in ev_cb]}')
     if fails:
         print('SELFTEST FAILED:\n  ' + '\n  '.join(fails))
         sys.exit(1)

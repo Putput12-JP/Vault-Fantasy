@@ -27,7 +27,8 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # 15 (was 12): full sweeps ran ~7 min for NFL/CFB/NBA; college basketball adds 1-3 min on a big slate.
+    timeout-minutes: 15
     steps:
       # Busy windows (Central): Mon/Thu 5-11pm, Sat 10am-11pm, Sun 8am-8pm every
       # 10 min; other days 9am-11pm every 30 min. Quiet hours are skipped, except
