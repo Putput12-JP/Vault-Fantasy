@@ -166,6 +166,12 @@ class SharpFlow(unittest.TestCase):
         rec = H.h2h(list(rows.values()), [], 0)["sports"]["nba"]["ml"]
         self.assertEqual((rec["sharpflow"]["n"], rec["sharpflow_after_cut"]["n"], rec["sharpflow_at_cut_cancelled_later"]), (1, 1, 1))
 
+    def test_h2h_reads_card_results_and_skips_close_rows(self):
+        rows = G.grade(card(LOCK), "nba/frozen/d/x.json", None, FACT, CLOSES, GST + 3600)[0]
+        self.assertEqual([r["kind"] for r in rows], ["result", "close"])
+        rec = H.h2h([], rows, 0)["sports"]["nba"]["spread"]
+        self.assertEqual(rec["vault_lock"]["n"], 1)
+
     def test_unresolved_market_writes_nothing(self):
         g = {"sport": "nba", "ev": "e", "gst": GST}
         mk = {"ml": {"mt": "moneyline", "outs": ["A", "B"], "final": None}}
