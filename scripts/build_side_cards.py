@@ -56,6 +56,7 @@ import argparse, bisect, datetime as dt, glob, json, math, os, re, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import CUTOFF_SEC, FULL_GAME  # noqa: E402
+import sf_rungs as SF  # noqa: E402
 
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
 FLOOR_USD = 250
@@ -149,12 +150,14 @@ def positions(rows, markets):
         outs = mk.get("outs") or []
         side = outs[r["oi"]] if r["oi"] < len(outs) else r["oi"]
         key = (event_of(mk.get("slug")) or r["cid"], r.get("mt"), side)
-        p = pos.setdefault(key, {"ev": key[0], "stake": 0.0, "pnl": 0.0, "settled_at": 0, "split": False})
+        p = pos.setdefault(key, {"ev": key[0], "stake": 0.0, "pnl": 0.0, "settled_at": 0, "split": False, "pxs": 0.0, "mt": r.get("mt")})
         p["stake"] += r["stake"]
+        p["pxs"] += (r.get("avg") or 0.0) * r["stake"]
         p["pnl"] += r["pnl"]
         p["settled_at"] = max(p["settled_at"], r["settled_at"])
         p["split"] = p["split"] or bool(r.get("split"))
     for p in pos.values():
+        p["px"] = p["pxs"] / p["stake"] if p["stake"] > 0 else None
         p["res"] = "win" if p["pnl"] > 1e-9 else "loss" if p["pnl"] < -1e-9 else "push"
     return list(pos.values())
 
@@ -180,6 +183,7 @@ def book(rows, asof, markets):
          if any(p["stake"] > 0 for p in cash) else None,
          "l30_n": sum(p["res"] in ("win", "loss") for p in l30),
          "l30_roi": (sum(r["pnl"] for r in l30) / l30_stake) if l30_stake > 0 else None,
+         "bets": sorted(([p["settled_at"], round(p["px"], 4), p["res"] == "win", p["mt"]] for p in ps if p["res"] != "push" and p["px"]), key=lambda b: b[0]),
          "legs": sorted(([r["settled_at"], r["res"]] for r in legs.values()), reverse=True)[:LAST_N]}
     if b["l30_n"] < L30_MIN_N:
         b["l30_roi"] = None
@@ -297,6 +301,7 @@ def card(kf, ledger, sport, vault=None, frozen=True):
                 p["win_pct"] = round(100 * p["w"] / (p["w"] + p["l"]), 1) if p["w"] + p["l"] else None
                 out["markets"][g]["sides"].setdefault(side, {})[variant] = side_out
             out["markets"][g]["lock_shadow"][variant] = lock_shadow(g, ws, cls, variant, kf)
+            out["markets"][g].setdefault("sf", {})[variant] = sf_market(g, ws, cls, variant, kf, sides_all, out["markets"][g]["sides"])
     return out
 
 
@@ -334,6 +339,57 @@ def ags_side(side, ws, cls, variant):
     score = 0.0 if fm == 0 and am == 0 else (fm - am) / (fm + am + 0.5)
     return {"score": round(score, 3), "tier": ags_tier(score), "for_mean": round(fm, 2), "against_mean": round(am, 2),
             "for_n": len(f), "against_n": len(a), "contributors": sum(1 for q in f + a if q > 0)}
+
+
+def sf_market(g, ws, cls, variant, kf, sides, sides_out):
+    """SharpFlow's stake policy (scripts/sf_rungs.py, a replica with the gaps it lists) for this market group. One side at most is staked:
+    the side with the most units, ties to the higher AGS score. A shadow field; it never feeds the lock, Top Reads or an agree total."""
+    cut = kf["cut"]
+    pool = [x for x in ws if cls[x["w"]] != "excluded"]
+    trust_cache = {}
+
+    def trust(w, market_only):
+        k = (w, market_only)
+        if k not in trust_cache:
+            bets = [(t, p, won) for t, p, won, mt in x_bets[w] if not market_only or GROUP.get(mt) == g]
+            trust_cache[k] = SF.trust_state(bets, cut) if bets else None
+        return trust_cache[k]
+
+    x_bets = {x["w"]: x["s"][variant]["bets"] for x in pool}
+    res = {}
+    for side in sides:
+        rows = []
+        for x in pool:
+            b = x["s"][variant]
+            decided = [bet[2] for bet in b["bets"]]
+            streak = 0
+            for won in reversed(decided):
+                if won:
+                    break
+                streak += 1
+            rows.append({"dir": "FOR" if x["side"] == side else "AG", "invested": x["usd"],
+                         "ratio": x["usd"] / b["usual"] if b["usual"] else None, "n": b["n"],
+                         "wr": b["wr"] * 100 if b["wr"] is not None else None, "door2": b["proven"], "streak": streak,
+                         "trust": trust(x["w"], False), "trust_mkt": trust(x["w"], True)})
+        mine = [x for x in pool if x["side"] == side]
+        cid = max(mine, key=lambda x: x["usd"])["cid"] if mine else None
+        mk = kf["mk"].get(cid) if cid else None
+        px = None
+        if mk and mk.get("px") and side in (mk.get("outs") or []):
+            oi = mk["outs"].index(side)
+            px = mk["px"][oi] if oi < len(mk["px"]) else None
+        ags = (sides_out.get(side, {}).get(variant) or {}).get("ags")
+        r = SF.evaluate(rows, g, px, ags["score"] if ags else None)
+        r.update({"price": px, "ags_score": ags["score"] if ags else None})
+        res[side] = r
+    staked = [(r["units"], r["ags_score"] or 0, side) for side, r in res.items() if r["units"] > 0]
+    if not staked:
+        return {"side": None, "units": 0, "rung": None, "reason": min((r["reason"] for r in res.values()), default="no_wallets"), "missing": SF.MISSING}
+    _, _, side = max(staked)
+    r = res[side]
+    mk = kf["mk"].get(max((x for x in pool if x["side"] == side), key=lambda x: x["usd"])["cid"]) or {}
+    return {"side": side, "units": r["units"], "rung": r["rung"], "reason": r["reason"], "price": r["price"], "price_t": mk.get("px_t"),
+            "line": mk.get("line"), "missing": SF.MISSING}
 
 
 def classify(x, variant):

@@ -9,7 +9,7 @@
 - Sharp money is context only. It is not a bet signal and it does not count toward an agree total.
   - One exception, by the user's decision on 2026-11-11: the proven-sharps side card (`sharp-money/side-cards.js`) shows a suggested
     size. It must always carry the "untested rule" label while the forward test in `docs/sharp-card-prereg.md` is running, it shows
-    only the stored `units_clean_ladder` (SharpFlow's sizing, copied as is), and it still never feeds Top Reads, SM_GATE or an agree total.
+    only the stored `sf` size (SharpFlow's staking rules, ported in `scripts/sf_rungs.py` with its listed gaps), and it still never feeds Top Reads, SM_GATE or an agree total.
 - Never invent a number. Use a stored price, a stored closing-line value, or close minus fair when both are stored.
 - Avoid editing a file another open pull request is changing.
 

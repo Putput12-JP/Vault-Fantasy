@@ -148,6 +148,60 @@ class Score(unittest.TestCase):
         self.assertIsNone(C.ags_side("X", [mk("d", "X", 100, 0.5, n=0)], {"d": "unproven"}, "all"))
 
 
+class StakeRungs(unittest.TestCase):
+    """scripts/sf_rungs.py: SharpFlow's press ladder, rescue rungs and trust layer, ported."""
+
+    @staticmethod
+    def w(d, usd=1000, ratio=1.0, n=20, wr=60.0, door2=False, streak=0, trust=None, trust_mkt=None):
+        return {"dir": d, "invested": usd, "ratio": ratio, "n": n, "wr": wr, "door2": door2, "streak": streak, "trust": trust, "trust_mkt": trust_mkt}
+
+    def test_press_clean_and_bands(self):
+        import sf_rungs as S
+        rows = [self.w("FOR", 3000, ratio=2.5, door2=True), self.w("AG", 1000)]
+        self.assertEqual(S.evaluate(rows, "spread", 0.55, 0.9)["units"], 2.0)          # band 4 clean is cut to 2u
+        rows[0]["ratio"] = 3.2
+        self.assertEqual((S.evaluate(rows, "ml", 0.55, 0.9)["rung"], S.evaluate(rows, "ml", 0.55, 0.9)["units"]), ("PRESS", 5.0))
+        self.assertEqual(S.evaluate(rows, "ml", 0.45, 0.9)["units"], 1.0)               # a dog is capped at 1u
+        rows[1]["invested"] = 5000                                                       # money share under 60%
+        self.assertEqual(S.evaluate(rows, "ml", 0.55, 0.9)["units"], 0.0)
+
+    def test_press_x_n_u_and_r6(self):
+        import sf_rungs as S
+        x = [self.w("FOR", 3000, ratio=2.0, door2=True), self.w("FOR", 500, door2=True, ratio=1.0), self.w("AG", 500, door2=True, ratio=0.5)]
+        self.assertEqual(S.evaluate(x, "ml", 0.55, 0.5)["rung"], "PRESS-X")
+        n = [self.w("FOR", 3000, ratio=2.0, n=60), self.w("AG", 500)]
+        self.assertEqual((S.evaluate(n, "ml", 0.55, 0.5)["rung"], S.evaluate(n, "ml", 0.55, 0.5)["units"]), ("PRESS-N", 3.0))
+        n[0]["n"] = 30                                                                   # a 30-bet presser does not carry PRESS-N
+        self.assertEqual(S.evaluate(n, "ml", 0.55, 0.5)["units"], 0.0)
+        r6 = [self.w("FOR", 1500, ratio=1.0), self.w("FOR", 1500, ratio=1.1), self.w("AG", 500)]
+        self.assertEqual(S.evaluate(r6, "ml", 0.55, 0.5)["rung"], "PRESS-R6")
+
+    def test_trust_status_and_trust_rungs(self):
+        import sf_rungs as S
+        day = 86400
+        cut = CUT
+        bets = [(cut - day * (40 - i), 0.5, i % 4 != 0) for i in range(30)]               # 75% wins at 50 cents: edge +25 points
+        t = S.trust_state(bets, cut)
+        self.assertEqual((t["tier"], t["status"], t["n"]), (5, "STABLE_ON", 30))
+        self.assertTrue(S.trusted(t))
+        young = S.trust_state([(cut - day * 3 + i, 0.5, True) for i in range(12)], cut)    # a book under 15 days old is not trusted
+        self.assertFalse(S.trusted(young))
+        rows = [self.w("FOR", 500, trust=t), self.w("AG", 500)]
+        g = S.evaluate(rows, "ml", 0.55, 0.3)                                              # gate fails, score positive, trusted wallet FOR
+        self.assertEqual((g["rung"], g["units"]), ("TRUST-G", 4.0))                       # the moneyline floor lifts 3u to 4u in the .50-.65 window
+        self.assertEqual(S.evaluate(rows, "ml", 0.55, -0.1)["units"], 0.0)                 # no positive score, no TRUST-G
+        sp = [self.w("FOR", 500, trust_mkt=t), self.w("AG", 500, trust_mkt=t)]
+        self.assertEqual(S.evaluate(sp, "spread", 0.55, 0.3)["reason"], "trust_s_veto")    # a trusted wallet against vetoes a spread
+
+    def test_caps_and_mutes(self):
+        import sf_rungs as S
+        rows = [self.w("FOR", 3000, ratio=3.5, door2=True), self.w("AG", 1000)]
+        self.assertEqual(S.evaluate(rows, "spread", 0.55, 0.9)["units"], 2.5)             # spread cap
+        self.assertEqual(S.evaluate(rows, "total", 0.55, 0.9)["units"], 2.0)              # totals cap
+        self.assertEqual(S.evaluate(rows, "ml", 0.85, 0.9)["reason"], "heavy_favourite_mute")
+        self.assertEqual(S.evaluate(rows, "ml", 0.55, -0.5)["reason"], "score_not_positive")
+
+
 class ReviewFixes(unittest.TestCase):
     def test_wallet_selected_after_the_cut_is_untracked(self):
         rows = proven("0xp")
