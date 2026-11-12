@@ -463,6 +463,31 @@ def remote_has_head(repo):
     return git(repo, "merge-base", "--is-ancestor", "HEAD", "FETCH_HEAD").returncode == 0
 
 
+def kick_cards(repo, unsent, ref, run=subprocess.run):
+    """Start the side-cards build the moment new keyframes are on the remote, instead of waiting for its 10-minute cron.
+
+    GitHub's scheduler can run hours late, and a frozen card only counts for the forward test if it is built before game start.
+    Fires only when origin has this run's HEAD (so the build sees the keyframes). pm-cards.yml has one concurrency group that keeps
+    the newest pending run, so dispatches from three sport jobs collapse into one build, and every build writes every keyframe
+    that has no card yet. Returns the keyframes still unsent: a failed dispatch is retried after the next push, and the cron stays
+    as the backstop. Never fails the scan."""
+    if not unsent or not ref:
+        return unsent
+    if not remote_has_head(repo):
+        print("::warning::keyframes not on origin yet; the cards build is started after the next push")
+        return unsent
+    try:
+        r = run(["gh", "workflow", "run", "pm-cards.yml", "--ref", ref], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"::warning::could not start the cards build: {e}")
+        return unsent
+    if r.returncode != 0:
+        print(f"::warning::could not start the cards build: {(r.stderr or r.stdout or '').strip()[:300]}")
+        return unsent
+    print(f"started the cards build for {len(unsent)} new keyframe(s)")
+    return []
+
+
 # ---------- cycle and loop ----------
 
 def cycle(cli, root, sport, st, dry):
@@ -545,15 +570,19 @@ def main():
     ap.add_argument("--max-req", type=int, default=400, help="request cap per cycle")
     ap.add_argument("--pace", type=float, default=0.2)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--cards-ref", default="", help="with --commit: start pm-cards.yml on this ref after new keyframes are pushed "
+                    "(the workflow passes it only on the default branch, so a branch run never writes frozen cards)")
     a = ap.parse_args()
     sports = [s for s in a.sports.split(",") if s in SERIES]
     start = time.time()
     end = start + a.max_minutes * 60
     repo, folder = os.path.dirname(os.path.abspath(a.out)), os.path.basename(os.path.abspath(a.out))
-    states, status = {}, {}
+    states, status, unsent = {}, {}, []
     for s in sports:
         states[s], nf = replay(a.out, s, int(start))
         owed = [] if a.dry_run else write_keyframes(a.out, s, states[s], int(time.time()))   # before any prune (a long gap)
+        if a.cards_ref:
+            unsent += owed
         states[s].prune(int(start))
         print(f"{s}: replayed {nf} log files, {len(states[s].m)} markets, "
               f"{sum(1 for v in states[s].h.values() if v['a'] > 0)} holdings, owed keyframes written: {len(owed)}")
@@ -566,11 +595,15 @@ def main():
             if not a.dry_run:
                 status[s] = save_status(a.out, s, cyc)
                 changed = changed or wrote
+                if a.cards_ref:
+                    unsent += cyc["frozen"]
             states[s].prune(int(time.time()))
         if changed and a.commit:
             when = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
             if not commit_push(repo, folder, sports, f"pm holders {','.join(sports)}: {when} [skip ci]"):
                 print("::warning::push failed; the next cycle retries")
+        if unsent and a.commit:                       # no commit of its own: a failed dispatch just retries next cycle
+            unsent = kick_cards(repo, unsent, a.cards_ref)
         if not a.loop or a.dry_run:
             break
         now = int(time.time())
@@ -593,6 +626,7 @@ def main():
         when = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         for _ in range(3):                            # the last cycle's files (and status) must reach the remote
             if commit_push(repo, folder, sports, f"pm holders {','.join(sports)}: {when} [skip ci]") and remote_has_head(repo):
+                unsent = kick_cards(repo, unsent, a.cards_ref)
                 break
             time.sleep(10)
         else:

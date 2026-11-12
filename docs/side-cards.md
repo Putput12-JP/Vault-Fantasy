@@ -1,6 +1,8 @@
 # Proven-sharps side cards
 
-`scripts/build_side_cards.py` runs every 10 minutes from `.github/workflows/pm-cards.yml`. For every game it builds the card from
+`scripts/build_side_cards.py` runs from `.github/workflows/pm-cards.yml`. The holders scan starts it right after it pushes a new
+T-15 keyframe, so a frozen card is built within minutes of the cut even when GitHub's cron runs late; a 10-minute cron is the
+backstop. For every game it builds the card from
 your SharpFlow screenshot: who holds each side, how much is proven sharp money, unproven money and losing-wallet money, and the
 combined record of the proven wallets on the side. All of it is computed as of the cut (game start minus 15 minutes).
 

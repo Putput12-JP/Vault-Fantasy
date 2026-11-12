@@ -55,9 +55,18 @@ jobs:
           fi
           git -C "$GITHUB_WORKSPACE/pmdata" config user.name  "vault-bot"
           git -C "$GITHUB_WORKSPACE/pmdata" config user.email "vault-bot@users.noreply.github.com"
+      # --cards-ref: right after a push that carries new T-15 keyframes, start pm-cards.yml, so the frozen cards are built before
+      # tip even when GitHub's cron runs late (a frozen card built after game start does not count for the forward test).
+      # Only on main: frozen cards are permanent, so a test run from a branch must never build them with
+      # unmerged card code. CARDS_REF is empty there and the scan dispatches nothing.
       - name: Scan
         id: scan
-        run: python3 scripts/scan_pm_holders.py --out pmdata/pm_holders --sports "${{ matrix.job }}" --loop --commit --max-minutes 330
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CARDS_REF: ${{ github.ref_name == 'main' && 'main' || '' }}
+        run: |
+          python3 scripts/scan_pm_holders.py --out pmdata/pm_holders --sports "${{ matrix.job }}" --loop --commit --max-minutes 330 \
+            --cards-ref "$CARDS_REF"
       - name: Hand off to a fresh run
         if: always() && steps.scan.outputs.handoff == 'true'
         env:
