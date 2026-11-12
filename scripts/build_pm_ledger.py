@@ -59,6 +59,8 @@ HOT_USD = 250              # The benchmark's board floor (index.js Nj=250), the 
 BENCH_RAW = "https://raw.githubusercontent.com/dpk1212/nhl-savant/main/public/"
 BENCH_FILES = ("sharp_positions.json", "sharp_spread_positions.json", "sharp_total_positions.json")
 BENCH_SPORTS = {"NBA": "nba", "NFL": "nfl", "CFB": "cfb"}
+BENCH_LIST = "sports_sharps.json"          # the benchmark's full sharp-wallet list (lifetime board, monthly board, its own discovery)
+BENCH_EXCLUDED = "sharp_intel_excluded_wallets.json"   # its market makers and traders, which it never scans
 DISCOVER_AHEAD = 36 * 3600 # games starting within the next 36 hours (today's slate plus tomorrow's early games)
 EPS = 1e-6
 
@@ -441,19 +443,51 @@ def benchmark_wallets(files):
     return out
 
 
+def benchmark_list(sharps, excluded):
+    """Pure part of the full-list source. sharps: the benchmark's sports_sharps.json; excluded: its sharp_intel_excluded_wallets.json.
+    Returns {wallet: {"name", "source"}} for every wallet it would scan: sport PnL above 0 or monthly-qualified (its scan rule), not on
+    its exclusion list."""
+    ex = {w.lower() for w in (excluded or {}).get("excluded") or [] if isinstance(w, str)}
+    out = {}
+    for w, e in (sharps or {}).items():
+        if w == "_meta" or not isinstance(e, dict) or not w.lower().startswith("0x") or w.lower() in ex:
+            continue
+        if (e.get("sportPnlTotal") or 0) > 0 or e.get("monthlyQualified"):
+            out[w.lower()] = {"name": e.get("name"), "source": e.get("source")}
+    return out
+
+
 def benchmark_source(cli, known):
-    """Wallets on the benchmark's public sharp boards that the ledger does not track yet. The benchmark picked them with hindsight (lifetime
-    leaderboard PnL), so they enter the universe like any other wallet: first_seen is now, and their earlier rows are `backfill`.
-    A fetch failure only skips the source."""
-    files = []
-    for fn in BENCH_FILES:
-        j = cli.get(BENCH_RAW + fn)
-        if not isinstance(j, dict):
-            raise PMDataError(f"benchmark {fn}: no response")
-        files.append(j)
-    seen = benchmark_wallets(files)
-    add = {w: {"name": None, "why": [{"benchmark": v["tier"], "sports": v["sports"]}]} for w, v in seen.items() if w not in known}
-    return add, {"listed": len(seen), "added": len(add)}
+    """Wallets the benchmark tracks that the ledger does not: everyone on its game boards now, and its full sharp list (minus the market
+    makers and traders it excludes). It picked them with hindsight (lifetime and monthly PnL, its own discovery), so they enter the universe
+    like any other wallet: first_seen is now, and their earlier rows are `backfill`. A fetch failure skips only that part."""
+    stats, add = {}, {}
+    try:
+        files = []
+        for fn in BENCH_FILES:
+            j = cli.get(BENCH_RAW + fn)
+            if not isinstance(j, dict):
+                raise PMDataError(f"benchmark {fn}: no response")
+            files.append(j)
+        seen = benchmark_wallets(files)
+        for w, v in seen.items():
+            if w not in known:
+                add[w] = {"name": None, "why": [{"benchmark": v["tier"], "sports": v["sports"]}]}
+        stats["board"] = {"listed": len(seen), "added": len(add)}
+    except PMDataError as e:
+        stats["board"] = {"error": repr(e)}
+    sharps, excluded = cli.get(BENCH_RAW + BENCH_LIST), cli.get(BENCH_RAW + BENCH_EXCLUDED)
+    if isinstance(sharps, dict) and isinstance(excluded, dict):
+        lst = benchmark_list(sharps, excluded)
+        n0 = len(add)
+        for w, v in lst.items():
+            if w not in known and w not in add:
+                add[w] = {"name": v["name"], "why": [{"benchmark": "list", "source": v["source"]}]}
+        stats["list"] = {"listed": len(lst), "added": len(add) - n0}
+    else:
+        stats["list"] = {"error": "no response"}           # never read as "empty list"
+    stats["added"] = len(add)
+    return add, stats
 
 
 def order_wallets(uni, fs, hot, pend, wallets=0, priority_only=False):

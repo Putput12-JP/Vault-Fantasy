@@ -59,6 +59,11 @@ Each case is counted in `summary.json` under `conditions`.
   hindsight, so they are treated like any other new wallet: `first_seen` is the moment Vault added them, and their earlier rows are
   `backfill`. Added after the 2026-11-11 comparison found 52 of the 105 wallets SharpFlow showed that night were not tracked here.
 
+- **The benchmark's full sharp list** (`sports_sharps.json`, added 2026-11-12): every wallet it would scan (sport PnL above 0 or
+  monthly-qualified), minus its published market makers and traders (`sharp_intel_excluded_wallets.json`). On 2026-11-12 that was 1,447
+  wallets, 954 of them new to Vault. Like the board wallets they are hindsight picks: `first_seen` is the day Vault added them. A fetch
+  failure skips the source; it is never read as an empty list.
+
 Once a wallet is added it stays tracked, so the universe grows day by day, the same way SharpFlow's list grew to 1,646. Market-maker
 and trader exclusion is NOT applied at this stage. It is decided point in time from `user_stats/` and the rows, in the side-card step.
 
@@ -74,6 +79,13 @@ wallets. On 2026-11-11 the run reached 429 of 1,943, and 28 wallets holding $545
   and 55 minutes. They replace the old discovery-only runs and still run discovery.
 - A priority run writes `summary_priority.json`. `summary.json` stays the nightly full run's, because its `run_at` is what the side
   card checks against the cut. Rows a priority run adds are still filtered by `settled_at < cut` on every card.
+
+## Throughput
+
+From 2026-11-12, full runs use 8 workers at 8 requests a second with a 40,000-request cap, and run twice a night (11:20 PM and 3:20 AM
+Central); the daytime priority runs use the same pace. The 2026-11-11 run made 20,000 requests at 4 a second with no 429 and no
+Retry-After; a live test at the new pace ran 1,500 requests at 5.7 a second, again with none. A wallet's first read still costs about
+150 requests, so the never-graded backlog (about 2,800 wallets once the list lands) takes roughly 3 days instead of 6.
 
 ## Safety
 
