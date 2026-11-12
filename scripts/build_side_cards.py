@@ -184,7 +184,7 @@ class Ledger:
         if fs is None or fs > asof:                  # not in the universe at the cut: untracked, whatever its later record
             empty = book([], asof, self.markets)
             return {"tracked": False, "markets": 0, "hedged_share": 0.0, "all": empty, "fwd": empty, "sfx": empty, "churn": None,
-                    "excluded": None, "excluded_sfx": "sharpflow" if w in self.sf_excluded else None}
+                    "excluded": None, "excluded_sfx": "benchmark" if w in self.sf_excluded else None}
         rs = self.by_w.get(w, [])
         rs = rs[:bisect.bisect_left(self.keys.get(w, []), asof)]
         hedged_cids = {r["cid"] for r in rs if r.get("hedged")}
@@ -199,7 +199,7 @@ class Ledger:
         # variant `sfx`: the same all-rows book, but the benchmark's own published exclusion list (market makers and traders) instead of
         # Vault's hedger and churn approximations, which the benchmark applies only when it discovers new wallets
         out["sfx"] = out["all"]
-        out["excluded_sfx"] = "sharpflow" if w in self.sf_excluded else None
+        out["excluded_sfx"] = "benchmark" if w in self.sf_excluded else None
         return out
 
 

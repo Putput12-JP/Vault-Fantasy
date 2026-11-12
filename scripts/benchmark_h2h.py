@@ -7,21 +7,21 @@ rewrites them about every 10 minutes, so its page never shows what it said at a 
   1. Archive. For every frozen Vault keyframe (pm_holders/<sport>/frozen/<date>/<slug>@<gst>.json) whose cut has passed, it finds the
      last commit at or before the cut of each the benchmark file (the version that was public at the cut), and stores that game's entry
      from the three position files and that game's picks from sharp-flow-pnl.json:
-       pm_record/sharpflow/<sport>/<date>/<slug>@<gst>.json          written once
+       pm_record/benchmark/<sport>/<date>/<slug>@<gst>.json          written once
      Once the game is 12 hours old it stores the benchmark's picks for it again from the current file (status, outcome, units, cancels):
-       pm_record/sharpflow/<sport>/<date>/<slug>@<gst>.final.json    written once
+       pm_record/benchmark/<sport>/<date>/<slug>@<gst>.final.json    written once
      Comparing the two shows what the benchmark cancelled, re-sized or relabelled after the cut.
   2. Grade. Every the benchmark real play (units > 0, not cancelled, in the final file) is graded by the Polymarket market's own resolution
      at the benchmark's locked price (oddsLock, American odds). Moneyline and total picks map to one market exactly. A spread pick names
      only the team, so it is mapped to the spread rung carrying the most the benchmark-listed money on that team, and labelled so.
-       pm_record/sharpflow/rows/<sport>/<YYYY-MM>.jsonl              append-only, keyed game|market|team
+       pm_record/benchmark/rows/<sport>/<YYYY-MM>.jsonl              append-only, keyed game|market|team
   3. Record. pm_record/h2h_record.json: per sport and market, the benchmark's real plays and Vault's card plays (shown size and the
      pre-registered lock, from scripts/grade_side_cards.py), on all games and on the games where both had a play.
 
 Never invents a number: prices are the benchmark's stored oddsLock and Vault's stored card price; results are Polymarket resolutions.
 Sharp money is context only (CLAUDE.md). This is a record, not a signal.
 
-usage: sharpflow_h2h.py --holders DIR --out DIR [--now EPOCH] [--days 10]
+usage: benchmark_h2h.py --holders DIR --out DIR [--now EPOCH] [--days 10]
 """
 import argparse, datetime as dt, glob, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 
@@ -180,28 +180,28 @@ def h2h(sf_rows, card_rows, now):
             both = {r["ev"] for r in theirs} & {r["ev"] for r in vsf}
             agree = sum(1 for ev in both if {r["side"] for r in theirs if r["ev"] == ev} == {r["side"] for r in vsf if r["ev"] == ev})
             counted = [r for r in mine_sport if r.get("final_units") and not r.get("cancelled_later")]
-            s[g] = {"sharpflow": summarize(theirs), "sharpflow_after_cut": summarize(after),
-                    "sharpflow_at_cut_cancelled_later": sum(1 for r in theirs if r.get("cancelled_later")),
-                    "sharpflow_unpriced_spread_rungs": sum(1 for r in theirs if r.get("map") == "most_money_rung"),
-                    "sharpflow_stated": {
+            s[g] = {"benchmark": summarize(theirs), "benchmark_after_cut": summarize(after),
+                    "benchmark_at_cut_cancelled_later": sum(1 for r in theirs if r.get("cancelled_later")),
+                    "benchmark_unpriced_spread_rungs": sum(1 for r in theirs if r.get("map") == "most_money_rung"),
+                    "benchmark_stated": {
                         "note": "The benchmark's own result and profit on the plays its final file counts",
                         "n": len(counted), "units_pl": round(sum(r.get("their_profit") or 0 for r in counted), 3),
                         "disagree_with_polymarket": sum(1 for r in counted if r.get("their_res") and (r.get("res") or r.get("res_mapped"))
                                                         and r["their_res"] != (r.get("res") or r.get("res_mapped")))},
                     "vault_shown_size": summarize(vsf), "vault_sfx": summarize(vsfx), "vault_lock": summarize(vlock),
                     "same_games": {"games": len(both), "same_side": agree,
-                                   "sharpflow": summarize([r for r in theirs if r["ev"] in both]),
+                                   "benchmark": summarize([r for r in theirs if r["ev"] in both]),
                                    "vault_shown_size": summarize([r for r in vsf if r["ev"] in both])}}
         days = {}
         for r in sf_rows:
             if r["sport"] == sport and r.get("set") == "at_cut":
-                d = days.setdefault(r["date"], {"sharpflow_units_pl": 0.0, "sharpflow_n": 0, "vault_units_pl": 0.0, "vault_n": 0})
+                d = days.setdefault(r["date"], {"benchmark_units_pl": 0.0, "benchmark_n": 0, "vault_units_pl": 0.0, "vault_n": 0})
                 if r.get("units_pl") is not None:
-                    d["sharpflow_units_pl"] = round(d["sharpflow_units_pl"] + r["units_pl"], 3)
-                    d["sharpflow_n"] += 1
+                    d["benchmark_units_pl"] = round(d["benchmark_units_pl"] + r["units_pl"], 3)
+                    d["benchmark_n"] += 1
         for r in card_rows:
             if r["sport"] == sport and r["play"] == "sf" and r["variant"] == "all" and r.get("units_pl") is not None:
-                d = days.setdefault(r["ev"][-10:], {"sharpflow_units_pl": 0.0, "sharpflow_n": 0, "vault_units_pl": 0.0, "vault_n": 0})
+                d = days.setdefault(r["ev"][-10:], {"benchmark_units_pl": 0.0, "benchmark_n": 0, "vault_units_pl": 0.0, "vault_n": 0})
                 d["vault_units_pl"] = round(d["vault_units_pl"] + r["units_pl"], 3)
                 d["vault_n"] += 1
         s["by_day"] = dict(sorted(days.items()))
@@ -282,6 +282,31 @@ def load_jsonl(pattern):
     return rows
 
 
+def migrate_folder(out):
+    """The archive used to live in pm_record/sharpflow/. Move it to pm_record/benchmark/ once, file by file (a file already at the new
+    path wins), then remove the old folder. Idempotent; the job's commit picks the move up as renames."""
+    old, new = os.path.join(out, "sharpflow"), os.path.join(out, "benchmark")
+    if not os.path.isdir(old):
+        return 0
+    moved = 0
+    for d, _, fs in os.walk(old):
+        for fn in fs:
+            src = os.path.join(d, fn)
+            dst = os.path.join(new, os.path.relpath(src, old))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if os.path.exists(dst):
+                os.remove(src)
+            else:
+                os.replace(src, dst)
+                moved += 1
+    for d, _, _ in sorted(os.walk(old), key=lambda x: -len(x[0])):
+        try:
+            os.rmdir(d)
+        except OSError:
+            pass
+    return moved
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--holders", required=True, help="pm_holders folder (T-15 keyframes)")
@@ -291,7 +316,8 @@ def main():
     a = ap.parse_args()
     now = a.now or int(time.time())
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    root = os.path.join(a.out, "sharpflow")
+    root = os.path.join(a.out, "benchmark")
+    migrate_folder(a.out)
 
     games = []
     for path in sorted(glob.glob(os.path.join(a.holders, "*", "frozen", "*", "*.json"))):

@@ -56,9 +56,9 @@ GAME_TAG = 100639
 FAT_TICKET_USD = 2000      # The benchmark discoverScanSupplement MIN_POSITION_USD: a holder this big on a full-game market is a candidate
 HOT_USD = 250              # The benchmark's board floor (index.js Nj=250), the same floor the side card uses: a tracked wallet holding this
                            # much on an upcoming game is graded first, so its book is current before that game's cut
-SHARPFLOW_RAW = "https://raw.githubusercontent.com/dpk1212/nhl-savant/main/public/"
-SHARPFLOW_FILES = ("sharp_positions.json", "sharp_spread_positions.json", "sharp_total_positions.json")
-SHARPFLOW_SPORTS = {"NBA": "nba", "NFL": "nfl", "CFB": "cfb"}
+BENCH_RAW = "https://raw.githubusercontent.com/dpk1212/nhl-savant/main/public/"
+BENCH_FILES = ("sharp_positions.json", "sharp_spread_positions.json", "sharp_total_positions.json")
+BENCH_SPORTS = {"NBA": "nba", "NFL": "nfl", "CFB": "cfb"}
 DISCOVER_AHEAD = 36 * 3600 # games starting within the next 36 hours (today's slate plus tomorrow's early games)
 EPS = 1e-6
 
@@ -423,36 +423,36 @@ def fat_tickets(events, holder_pages, now, min_usd=FAT_TICKET_USD):
     return out
 
 
-def sharpflow_wallets(files):
+def benchmark_wallets(files):
     """Pure part of the benchmark board source. files: parsed sharp_*positions.json from the benchmark's public repo.
     Returns {wallet: {"tier", "sports"}} for every wallet the benchmark lists on an NBA, NFL or CFB game."""
     out = {}
     for j in files:
         for sp, games in (j or {}).items():
-            if sp not in SHARPFLOW_SPORTS or not isinstance(games, dict):
+            if sp not in BENCH_SPORTS or not isinstance(games, dict):
                 continue
             for g in games.values():
                 for p in (g or {}).get("positions") or []:
                     w = (p.get("wallet") or "").lower()
                     if w.startswith("0x"):
                         o = out.setdefault(w, {"tier": p.get("tier"), "sports": []})
-                        if SHARPFLOW_SPORTS[sp] not in o["sports"]:
-                            o["sports"].append(SHARPFLOW_SPORTS[sp])
+                        if BENCH_SPORTS[sp] not in o["sports"]:
+                            o["sports"].append(BENCH_SPORTS[sp])
     return out
 
 
-def sharpflow_source(cli, known):
+def benchmark_source(cli, known):
     """Wallets on the benchmark's public sharp boards that the ledger does not track yet. The benchmark picked them with hindsight (lifetime
     leaderboard PnL), so they enter the universe like any other wallet: first_seen is now, and their earlier rows are `backfill`.
     A fetch failure only skips the source."""
     files = []
-    for fn in SHARPFLOW_FILES:
-        j = cli.get(SHARPFLOW_RAW + fn)
+    for fn in BENCH_FILES:
+        j = cli.get(BENCH_RAW + fn)
         if not isinstance(j, dict):
-            raise PMDataError(f"sharpflow {fn}: no response")
+            raise PMDataError(f"benchmark {fn}: no response")
         files.append(j)
-    seen = sharpflow_wallets(files)
-    add = {w: {"name": None, "why": [{"sharpflow": v["tier"], "sports": v["sports"]}]} for w, v in seen.items() if w not in known}
+    seen = benchmark_wallets(files)
+    add = {w: {"name": None, "why": [{"benchmark": v["tier"], "sports": v["sports"]}]} for w, v in seen.items() if w not in known}
     return add, {"listed": len(seen), "added": len(add)}
 
 
@@ -757,10 +757,10 @@ def main():
         return 1
     if not a.no_benchmark_board:
         try:
-            found, summary["sharpflow"] = sharpflow_source(cli, set(uni) | set(first_seen))
+            found, summary["benchmark"] = benchmark_source(cli, set(uni) | set(first_seen))
             uni.update(found)
         except (PMDataError, Budget) as e:
-            summary["sharpflow"] = {"error": repr(e)}  # an outside source is additive; the ledger still runs without it
+            summary["benchmark"] = {"error": repr(e)}  # an outside source is additive; the ledger still runs without it
     hot = {}
     try:
         found, hot, summary["discover"] = discover(cli, a, set(uni) | set(first_seen), now)

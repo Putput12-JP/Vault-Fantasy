@@ -289,7 +289,7 @@ class BenchmarkSource(unittest.TestCase):
         f1 = {"NBA": {"a_b": {"positions": [{"wallet": "0xAA", "tier": "ELITE"}, {"wallet": "0xbb", "tier": "SHARP"}]}},
               "NHL": {"c_d": {"positions": [{"wallet": "0xcc", "tier": "ELITE"}]}}, "scannedAt": "2026-11-11T23:00:00Z"}
         f2 = {"CFB": {"e_f": {"positions": [{"wallet": "0xaa", "tier": "ELITE"}]}}}
-        got = L.sharpflow_wallets([f1, f2])
+        got = L.benchmark_wallets([f1, f2])
         self.assertEqual(set(got), {"0xaa", "0xbb"})
         self.assertEqual(got["0xaa"], {"tier": "ELITE", "sports": ["nba", "cfb"]})
 
