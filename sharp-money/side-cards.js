@@ -531,8 +531,9 @@ var REC_BASE = (LOCAL && (location.search.match(/[?&]rec=([^&]+)/) || [])[1]) ? 
   : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-holders-data/pm_record/';
 var REC = {d: null, state: 'idle', at: 0};
 var REC_N = 300;                                                       /* prereg minimum n per sport */
-var REC_READ = {nba: 'the first Monday after the 2026-27 regular season', nfl: 'the Tuesday after Week 18', cfb: 'the Monday after conference championship weekend'};
-var REC_SPORTS = ['nba', 'nfl', 'cfb', 'cbb'];                          /* cbb: graded for reference, in no registered test (REC_READ has no date) */
+var REC_READ = {nba: 'the first Monday after the 2026-27 regular season', nfl: 'the Tuesday after Week 18', cfb: 'the Monday after conference championship weekend',
+  cbb: 'the Monday after the 2027 men\'s national championship game'};   /* cbb: docs/sharp-card-prereg-cbb.md, cards cut from 6:00 PM CT Nov 12, 2026 */
+var REC_SPORTS = ['nba', 'nfl', 'cfb', 'cbb'];
 function months(){ var d = new Date(), a = d.toISOString().slice(0, 7); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1); return [d.toISOString().slice(0, 7), a]; }
 function jsonl(t){ return (t || '').split('\n').filter(Boolean).map(function(l){ try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean); }
 function recLoad(done){
@@ -595,8 +596,7 @@ function recSport(sp, D){
   var clvS = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n ? x.clv_mean * x.clv_n : 0); }, 0);
   var n = ml.n || 0, pct = Math.min(100, n / REC_N * 100);
   if (!REC_READ[sp]) out += '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">not registered</span></div>' +
-    '<p class="vr-fn">College basketball joined on Nov 12, 2026, after the test was registered. Its cards are graded here for reference only and never count toward it. ' +
-    'A separate college basketball test has been proposed and is not in force.</p></section>';
+    '<p class="vr-fn">This sport is not in a registered test. Its cards are graded here for reference only.</p></section>';
   else out += '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">' + n + ' / ' + REC_N + '</span></div>' +
     '<div class="vr-bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + REC_N + '" aria-valuenow="' + n + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
     '<p class="vr-fs num">' + (L.n ? 'Locks ' + wl(L) + ' · ' + u2(L.units_pl) + (clvN ? ' · CLV ' + (clvS / clvN > 0 ? '+' : '') + trim((clvS / clvN * 100).toFixed(1)) + ' pts' : '') : 'No counted lock has settled yet') + '</p>' +
