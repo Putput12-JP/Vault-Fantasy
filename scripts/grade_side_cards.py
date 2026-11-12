@@ -16,9 +16,11 @@ Rules, all from the pre-registration:
     event slug, market type, line and an identical outcome list. No close is ever estimated. CFB has no stored close.
   - Every row carries the card's `test.counts`; the record reads counted cards, and lists the rest by reason.
 
-Never invents a number: every price, close and result is a stored value. Rows are append-only (keyed card|group|variant|play) and
-are written once, when the market has resolved and its close is in (or the sport has no closes, or 3 days have passed, after which
-the row is written with no close and counted as such).
+Never invents a number: every price, close and result is a stored value. Rows are append-only and written once:
+  - a result row (keyed card|group|variant|play) as soon as the market resolves;
+  - a close row (the same key + "|close") whenever its close shows up in pm_closes.json, however late. A play with no close row is
+    counted as "no close stored" and is never estimated. Results never wait on closes, so a stalled closes feed cannot freeze a
+    play without its CLV.
 
 Sharp money is context only (CLAUDE.md): this is a record of a shadow test and of the card's shown size, never a pick feed.
 
@@ -33,7 +35,7 @@ from pm_data_api import PMDataError  # noqa: E402
 GROUP_MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
 CLOSE_KEY = {"ml": "ml", "spread": "spreads", "total": "totals"}
 STALE_PRICE = 30 * 60              # prereg "Unpriced": price_t more than 30 minutes before the cut
-CLOSE_WAIT = 3 * 86400             # after this the row is written with no close
+UNPRICED_FAIL = 0.10               # prereg: unpriced over 10% of a sport's counted moneyline locks = data-quality failure, no verdict
 NO_CLOSES = {"cfb"}                # prereg: CFB has no stored close, read on ROI only
 BOOT_N, BOOT_SEED = 10000, 20261111
 VERSION = 1
@@ -129,16 +131,17 @@ def grade(card, rel, kf, facts, closes, now):
         oi = outs.index(p["side"])
         priced = p["price"] is not None and 0 < p["price"] < 1 and p["price_t"] is not None and p["price_t"] >= cut - STALE_PRICE
         res, flat = flat_profit(f["final"], oi, p["price"]) if priced else (flat_profit(f["final"], oi, 0.5)[0], None)
-        close = close_for(closes, sport, ev, p["group"], f.get("line", p["line"]), outs, p["side"])
-        if close is None and sport not in NO_CLOSES and now < gst + CLOSE_WAIT:
-            waiting.append((key, "waiting for the close"))
+        rows.append({**base, "kind": "result", "outs": outs, "final": f["final"], "res": res,
+                     "status": "graded" if priced else "unpriced", "flat": round(flat, 6) if flat is not None else None,
+                     "units_pl": round(flat * p["units"], 6) if flat is not None and p.get("units") else None, "graded_at": now})
+        if not priced or sport in NO_CLOSES:
             continue
-        rows.append({**base, "outs": outs, "final": f["final"], "res": res, "status": "graded" if priced else "unpriced",
-                     "flat": round(flat, 6) if flat is not None else None,
-                     "units_pl": round(flat * p["units"], 6) if flat is not None and p.get("units") else None,
-                     "close": close, "clv": round(close - p["price"], 6) if close is not None and priced else None,
-                     "close_status": "found" if close is not None else ("no_closes_for_sport" if sport in NO_CLOSES else "none_stored"),
-                     "graded_at": now})
+        close = close_for(closes, sport, ev, p["group"], f.get("line", p["line"]), outs, p["side"])
+        if close is None:
+            waiting.append((key, "no close stored yet"))
+            continue
+        rows.append({"key": key + "|close", "kind": "close", "of": key, "v": VERSION, "sport": sport, "ev": ev,
+                     "close": close, "clv": round(close - p["price"], 6), "graded_at": now})
     return rows, waiting
 
 
@@ -152,17 +155,19 @@ def boot_ci(xs, n=BOOT_N, seed=BOOT_SEED):
     return [round(means[int(0.025 * n)], 4), round(means[int(0.975 * n) - 1], 4)]
 
 
-def summarize(rows, boot=True):
+def summarize(rows, boot=True, closes=None):
+    """rows: result rows. closes: {result key: close row}."""
+    closes = closes or {}
     priced = [r for r in rows if r.get("status") == "graded"]
     flat = [r["flat"] for r in priced]
-    clv = [r["clv"] for r in priced if r.get("clv") is not None]
+    clv = [closes[r["key"]]["clv"] for r in priced if r["key"] in closes]
     out = {"n": len(priced), "w": sum(r["res"] == "win" for r in priced), "l": sum(r["res"] == "loss" for r in priced),
            "p": sum(r["res"] == "push" for r in priced),
            "flat_roi": round(sum(flat) / len(flat), 4) if flat else None, "flat_ci": boot_ci(flat) if boot else None,
            "units_staked": sum(r["units"] or 0 for r in priced),
            "units_pl": round(sum(r["units_pl"] or 0 for r in priced), 3),
            "clv_n": len(clv), "clv_mean": round(sum(clv) / len(clv), 4) if clv else None, "clv_ci": boot_ci(clv) if boot else None,
-           "no_close": sum(1 for r in priced if r.get("clv") is None),
+           "no_close": sum(1 for r in priced if r["key"] not in closes),
            "unpriced": sum(1 for r in rows if r.get("status") == "unpriced"),
            "unmatched": sum(1 for r in rows if r.get("status") in ("no_market", "side_not_in_market"))}
     return out
@@ -178,7 +183,8 @@ def record(rows, cards, now):
         for c in cs:
             for w in (c.get("test") or {}).get("why_not") or []:
                 why[w] = why.get(w, 0) + 1
-        rs = [r for r in rows if r["sport"] == sport]
+        closes = {r["of"]: r for r in rows if r["sport"] == sport and r.get("kind") == "close"}
+        rs = [r for r in rows if r["sport"] == sport and r.get("kind") != "close"]
         s = {"cards": {"frozen": len(cs), "counted": sum(1 for c in cs if (c.get("test") or {}).get("counts")),
                        "not_counted_by_reason": why},
              "lock": {}, "sf": {}}
@@ -189,8 +195,14 @@ def record(rows, cards, now):
                     if not sub:
                         continue
                     s[play].setdefault(variant, {})[g] = {
-                        "counted": summarize([r for r in sub if r["counts"]]),
-                        "all_cards": summarize(sub, boot=False)}
+                        "counted": summarize([r for r in sub if r["counts"]], closes=closes),
+                        "all_cards": summarize(sub, boot=False, closes=closes)}
+        # prereg: if unpriced locks exceed 10% of a sport's counted moneyline locks (variant A), that sport gets no verdict
+        ml = [r for r in rs if r["play"] == "lock" and r["variant"] == "all" and r["group"] == "ml" and r["counts"]
+              and r.get("status") in ("graded", "unpriced")]
+        share = sum(r["status"] == "unpriced" for r in ml) / len(ml) if ml else None
+        s["data_quality"] = {"counted_ml_locks": len(ml), "unpriced_share": round(share, 4) if share is not None else None,
+                             "fail": share is not None and share > UNPRICED_FAIL}
         out["sports"][sport] = s
     return out
 

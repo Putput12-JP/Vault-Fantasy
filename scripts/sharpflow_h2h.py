@@ -36,6 +36,7 @@ PICKS_FILE = "public/sharp-flow-pnl.json"
 SPORT_KEY = {"nba": "NBA", "nfl": "NFL", "cfb": "CFB"}
 GROUP = {"ml": "ml", "spread": "spread", "total": "total"}     # SharpFlow marketType -> Vault market group
 MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
+SETTLE_CUT = 30 * 60         # archive a cut only once it is 30 minutes old, so a commit pushed late is already on GitHub
 LOOKBACK = 2 * 3600          # a file version older than this at the cut is not "what was shown" (their scanner was down)
 SETTLE_AFTER = 12 * 3600     # final picks are stored once the game is this old
 GIVE_UP = 3 * 86400          # ... or, with picks still pending, once it is this old
@@ -106,6 +107,48 @@ def picks_for(picks, sport, date, names):
             and len(names) == 2 and {p.get("away"), p.get("home")} == names]
 
 
+def play_rows(g, arc, fin, mk, money, now):
+    """Graded rows for one game. mk: {cid: Gamma fact} for every market of the game; money: SharpFlow-listed $ per cid and outcome.
+
+    set "at_cut":    real plays (units > 0, not cancelled) in the picks file public at Vault's cut, graded at that file's units and
+                     oddsLock, whatever SharpFlow did later (a later cancel is kept and flagged: no survivorship). The headline.
+    set "after_cut": real plays in the final file that were not real plays at the cut (posted or sized up after it). Reported apart.
+    A spread pick names no line, so its Polymarket rung is a guess (most_money_rung). Its result there is kept as `res_mapped`, but it
+    gets no flat or units P/L: SharpFlow's price belongs to a line we cannot see. Its own stated result is kept as `their_res`.
+    Rows are skipped (not written) while a mapped market is unresolved."""
+    at_cut = {(p.get("marketType"), p.get("team")): p for p in (arc.get("picks_at_cut") or {}).get("picks") or [] if real_play(p)}
+    final = {(p.get("marketType"), p.get("team")): p for p in fin.get("picks") or []}
+    jobs = [("at_cut", k, p) for k, p in at_cut.items()]
+    jobs += [("after_cut", k, p) for k, p in final.items() if real_play(p) and k not in at_cut]
+    out = []
+    for kind, (mt, team), p in jobs:
+        if mt not in GROUP:
+            continue
+        later = final.get((mt, team)) or {}
+        cid, side, how = map_pick(p, mk, money)
+        f = mk.get(cid) if cid else None
+        if cid and f.get("final") is None:
+            continue                                       # not resolved yet
+        price = american_to_price(p.get("oddsLock"))
+        row = {"key": f"{g['ev']}@{g['gst']}|{kind}|{mt}|{team}", "v": VERSION, "set": kind, "sport": g["sport"], "ev": g["ev"],
+               "gst": g["gst"], "date": g["ev"][-10:], "group": GROUP[mt], "team": team, "side": side, "cid": cid, "map": how,
+               "units": p.get("units"), "odds_lock": p.get("oddsLock"), "price": price, "stars": p.get("stars"),
+               "tier": p.get("v8_hcStakeTier"), "final_units": later.get("units"), "cancelled_later": bool(later.get("cancelled")),
+               "their_res": (later.get("outcome") or "").lower() or None, "their_profit": later.get("profit"),
+               "res": None, "res_mapped": None, "flat": None, "units_pl": None, "graded_at": now}
+        if cid:
+            v = f["final"][f["outs"].index(side)]
+            res = "win" if v == 1.0 else "loss" if v == 0.0 else "push"
+            if how == "exact" and price is not None:
+                row["res"] = res
+                row["flat"] = round(1.0 / price - 1.0 if v == 1.0 else -1.0 if v == 0.0 else 0.0, 6)
+                row["units_pl"] = round(row["flat"] * (p.get("units") or 0), 6)
+            else:
+                row["res_mapped"] = res
+        out.append(row)
+    return out
+
+
 def summarize(rows, units_key="units", pl_key="units_pl"):
     g = [r for r in rows if r.get("res") in ("win", "loss", "push") and r.get("flat") is not None]
     flat = [r["flat"] for r in g]
@@ -118,29 +161,38 @@ def summarize(rows, units_key="units", pl_key="units_pl"):
 def h2h(sf_rows, card_rows, now):
     """Head-to-head per sport and market group. Vault plays are variant `all` (the card's primary)."""
     out = {"generated": now, "v": VERSION, "context_only": True,
-           "note": "SharpFlow rows: real plays (units > 0, not cancelled), graded by Polymarket resolution at SharpFlow's oddsLock. "
+           "note": "SharpFlow headline: real plays (units > 0, not cancelled) in the picks file public at Vault's cut, graded by "
+                   "Polymarket resolution at that file's oddsLock, later cancels included; spread picks name no line, so they "
+                   "get no priced result. "
                    "Vault rows: the card's shown size (sf, an untested rule) and the pre-registered lock (counted cards only).",
            "sports": {}}
     for sport in sorted({r["sport"] for r in sf_rows} | {r["sport"] for r in card_rows}):
         s = out["sports"].setdefault(sport, {})
         for g in ("ml", "spread", "total"):
-            theirs = [r for r in sf_rows if r["sport"] == sport and r["group"] == g]
+            mine_sport = [r for r in sf_rows if r["sport"] == sport and r["group"] == g]
+            theirs = [r for r in mine_sport if r.get("set") == "at_cut"]
+            after = [r for r in mine_sport if r.get("set") == "after_cut"]
             vsf = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "sf" and r["variant"] == "all"]
             vlock = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "lock"
                      and r["variant"] == "all" and r.get("counts")]
             both = {r["ev"] for r in theirs} & {r["ev"] for r in vsf}
             agree = sum(1 for ev in both if {r["side"] for r in theirs if r["ev"] == ev} == {r["side"] for r in vsf if r["ev"] == ev})
-            s[g] = {"sharpflow": summarize(theirs), "sharpflow_stated": {
-                        "n": len(theirs), "units_pl": round(sum(r.get("their_profit") or 0 for r in theirs), 3),
-                        "disagree_with_polymarket": sum(1 for r in theirs if r.get("their_res") and r.get("res")
-                                                        and r["their_res"] != r["res"])},
+            counted = [r for r in mine_sport if r.get("final_units") and not r.get("cancelled_later")]
+            s[g] = {"sharpflow": summarize(theirs), "sharpflow_after_cut": summarize(after),
+                    "sharpflow_at_cut_cancelled_later": sum(1 for r in theirs if r.get("cancelled_later")),
+                    "sharpflow_unpriced_spread_rungs": sum(1 for r in theirs if r.get("map") == "most_money_rung"),
+                    "sharpflow_stated": {
+                        "note": "SharpFlow's own result and profit on the plays its final file counts",
+                        "n": len(counted), "units_pl": round(sum(r.get("their_profit") or 0 for r in counted), 3),
+                        "disagree_with_polymarket": sum(1 for r in counted if r.get("their_res") and (r.get("res") or r.get("res_mapped"))
+                                                        and r["their_res"] != (r.get("res") or r.get("res_mapped")))},
                     "vault_shown_size": summarize(vsf), "vault_lock": summarize(vlock),
                     "same_games": {"games": len(both), "same_side": agree,
                                    "sharpflow": summarize([r for r in theirs if r["ev"] in both]),
                                    "vault_shown_size": summarize([r for r in vsf if r["ev"] in both])}}
         days = {}
         for r in sf_rows:
-            if r["sport"] == sport:
+            if r["sport"] == sport and r.get("set") == "at_cut":
                 d = days.setdefault(r["date"], {"sharpflow_units_pl": 0.0, "sharpflow_n": 0, "vault_units_pl": 0.0, "vault_n": 0})
                 if r.get("units_pl") is not None:
                     d["sharpflow_units_pl"] = round(d["sharpflow_units_pl"] + r["units_pl"], 3)
@@ -245,7 +297,7 @@ def main():
         if sport not in SPORT_KEY:
             continue
         kf = jload(path, None)
-        if not kf or kf["cut"] > now - 600 or kf["cut"] < now - a.days * 86400:
+        if not kf or kf["cut"] > now - SETTLE_CUT or kf["cut"] < now - a.days * 86400:
             continue
         names = sorted({o for m in kf["mk"].values() if m.get("mt") == "moneyline" for o in (m.get("outs") or [])})
         games.append({"sport": sport, "date": date, "fn": fn, "ev": kf["ev"], "gst": kf["gst"], "cut": kf["cut"],
@@ -338,46 +390,25 @@ def main():
                     m[p.get("outcome")] = m.get(p.get("outcome"), 0.0) + float(p.get("invested") or 0)
         need |= {c for c in cids if c not in facts}
         pending_games.append((g, arc, fin, cids, money))
-    fetched = {}
+    fetched, gamma_ok = {}, True
     if need:
         try:
             gamma_facts(Client(0.2, 3000), sorted(need), fetched)
         except (PMDataError, Budget) as e:
+            gamma_ok = False
             print(f"::warning::Gamma read failed ({e}); grading retried next run")
     for c, f in fetched.items():
         if f.get("final") is not None:
             facts[c] = {k: f.get(k) for k in ("slug", "mt", "line", "outs", "gst", "closed_at", "final")}
     allf = {**fetched, **facts}
     new = []
-    for g, arc, fin, cids, money in pending_games:
-        shown = {(p.get("marketType"), p.get("team")): p for p in (arc.get("picks_at_cut") or {}).get("picks") or []}
-        mk = {c: allf[c] for c in cids if c in allf}
-        for p in fin["picks"]:
-            if not real_play(p) or p.get("marketType") not in GROUP:
-                continue
-            key = f"{g['ev']}@{g['gst']}|{p['marketType']}|{p.get('team')}"
-            if key in have:
-                continue
-            cid, side, how = map_pick(p, mk, money)
-            f = allf.get(cid) if cid else None
-            if cid and (not f or f.get("final") is None):
-                continue                                   # not resolved yet
-            price = american_to_price(p.get("oddsLock"))
-            row = {"key": key, "v": VERSION, "sport": g["sport"], "ev": g["ev"], "gst": g["gst"], "date": g["ev"][-10:],
-                   "group": GROUP[p["marketType"]], "team": p.get("team"), "side": side, "cid": cid, "map": how,
-                   "units": p.get("units"), "odds_lock": p.get("oddsLock"), "price": price, "stars": p.get("stars"),
-                   "tier": p.get("v8_hcStakeTier"), "their_res": (p.get("outcome") or "").lower() or None,
-                   "their_profit": p.get("profit"), "shown_at_cut": (p.get("marketType"), p.get("team")) in shown,
-                   "units_at_cut": (shown.get((p.get("marketType"), p.get("team"))) or {}).get("units"), "graded_at": now}
-            if not cid or price is None:
-                row.update({"res": None, "flat": None, "units_pl": None})
-            else:
-                oi = f["outs"].index(side)
-                v = f["final"][oi]
-                row["res"] = "win" if v == 1.0 else "loss" if v == 0.0 else "push"
-                row["flat"] = round(1.0 / price - 1.0 if v == 1.0 else -1.0 if v == 0.0 else 0.0, 6)
-                row["units_pl"] = round(row["flat"] * (p.get("units") or 0), 6)
-            new.append(row)
+    for g, arc, fin, cids, money in pending_games if gamma_ok else []:
+        if any(c not in allf for c in cids):
+            continue                                       # Gamma did not answer for every market: never map against a gap
+        mk = {c: allf[c] for c in cids}
+        for row in play_rows(g, arc, fin, mk, money, now):
+            if row["key"] not in have and row is not None:
+                new.append(row)
     by = {}
     for r in new:
         by.setdefault((r["sport"], r["date"][:7]), []).append(r)
