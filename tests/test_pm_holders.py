@@ -220,5 +220,43 @@ class ReviewFixes(unittest.TestCase):
         self.assertFalse(cyc["ok"])
 
 
+class CardsKick(unittest.TestCase):
+    def setUp(self):
+        self.calls = []
+        self._rh = H.remote_has_head
+
+    def tearDown(self):
+        H.remote_has_head = self._rh
+
+    def run_ok(self, cmd, **kw):
+        self.calls.append(cmd)
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    def run_fail(self, cmd, **kw):
+        self.calls.append(cmd)
+        return type("R", (), {"returncode": 1, "stdout": "", "stderr": "HTTP 403"})()
+
+    def test_dispatches_once_keyframes_are_on_origin(self):
+        H.remote_has_head = lambda repo: True
+        left = H.kick_cards("r", ["nba/frozen/2026-11-12/x@1.json"], "main", run=self.run_ok)
+        self.assertEqual(left, [])
+        self.assertEqual(self.calls, [["gh", "workflow", "run", "pm-cards.yml", "--ref", "main"]])
+
+    def test_nothing_new_or_no_ref_never_dispatches(self):
+        H.remote_has_head = lambda repo: True
+        self.assertEqual(H.kick_cards("r", [], "main", run=self.run_ok), [])
+        self.assertEqual(H.kick_cards("r", ["a"], "", run=self.run_ok), ["a"])
+        self.assertEqual(self.calls, [])
+
+    def test_waits_until_origin_has_the_keyframes(self):
+        H.remote_has_head = lambda repo: False
+        self.assertEqual(H.kick_cards("r", ["a"], "main", run=self.run_ok), ["a"])
+        self.assertEqual(self.calls, [])
+
+    def test_failed_dispatch_is_kept_for_the_next_push(self):
+        H.remote_has_head = lambda repo: True
+        self.assertEqual(H.kick_cards("r", ["a"], "main", run=self.run_fail), ["a"])
+
+
 if __name__ == "__main__":
     unittest.main()

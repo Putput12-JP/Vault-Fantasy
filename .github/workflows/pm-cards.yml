@@ -1,4 +1,5 @@
-# Proven-sharps side cards (scripts/build_side_cards.py, docs/side-cards.md). Every 10 minutes:
+# Proven-sharps side cards (scripts/build_side_cards.py, docs/side-cards.md). Started by the holders scan (pm-holders.yml) right
+# after it pushes new T-15 keyframes, and every 10 minutes as a backstop:
 #   - frozen cards: one per new T-15 keyframe, committed once to pm_cards/ on `pm-holders-data` (never force-pushed)
 #   - live cards: every upcoming game, published as ONE parentless commit holding live.json on `pm-cards-live` (force-pushed,
 #     like nba-live), so a file rewritten every 10 minutes never grows any history
