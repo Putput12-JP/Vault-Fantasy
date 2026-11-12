@@ -35,10 +35,10 @@
 #  Study, 2026-09-28 (613 settled games, per-trade, kept here as history):
 #  skill persisted, but copying 30 min+ later did not. Context only.
 #
-#  Sports: --sport=nfl (default, data/pm_wallets.json), cfb, nba.
+#  Sports: --sport=nfl (default, data/pm_wallets.json), cfb, nba, cbb.
 #  Usage: python3 scripts/build_pm_wallets.py [--sport=nfl] [--max=60] [--dry] [--selftest]
 # ════════════════════════════════════════════════════════════════════════════
-import json, math, os, re, sys, time, urllib.request, glob
+import json, math, os, re, sys, time, urllib.request, glob, gzip
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -47,7 +47,10 @@ from pm_data_api import pm_pages, PMDataError
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPORTS = {"nfl": {"series": 12185, "out": "pm_wallets.json", "skip_months": ("07", "08")},
           "cfb": {"series": 12756, "out": "pm_wallets_cfb.json", "skip_months": ()},
-          "nba": {"series": 10345, "out": "pm_wallets_nba.json", "skip_months": ("07", "08", "09")}}
+          "nba": {"series": 10345, "out": "pm_wallets_nba.json", "skip_months": ("07", "08", "09")},
+          # Men's college basketball: D1 regular season opens early November, the tournament ends early April.
+          # October rows are exhibitions (mostly non-D1 opponents) and are skipped like the NBA preseason.
+          "cbb": {"series": 10470, "out": "pm_wallets_cbb.json", "skip_months": ("05", "06", "07", "08", "09", "10")}}
 SPORT = "nfl"
 OUT = os.path.join(HERE, "..", "data", "pm_wallets.json")
 UA = {"User-Agent": "VaultFantasy/1.0 (+vaultfantasy.com)", "Accept": "application/json"}
@@ -70,9 +73,14 @@ FAILED = []                    # games whose trades could not be fetched this ru
 
 
 def get(url, tries=3):
+    # Gamma serves /events pages above 50 rows gzip-only (seen 2026-11-12; without Accept-Encoding: gzip it answers 406,
+    # which this loop used to read as "no games" and score nothing), so ask for gzip and inflate it here.
     for i in range(tries):
         try:
-            return json.load(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60))
+            r = urllib.request.urlopen(urllib.request.Request(url, headers={**UA, "Accept-Encoding": "gzip"}), timeout=60)
+            body = r.read()
+            if r.headers.get("Content-Encoding") == "gzip": body = gzip.decompress(body)
+            return json.loads(body)
         except Exception as e:
             if "400" in str(e): return []
             time.sleep(2 + 3 * i)
