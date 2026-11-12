@@ -1,8 +1,8 @@
 # Proven-sharps side card record (docs/side-card-record.md). Every 2 hours:
 #   1. scripts/grade_side_cards.py grades every frozen card's lock and shown size by Polymarket resolution, with CLV from
 #      data/pm_closes.json, and rebuilds pm_record/cards_record.json (the pre-registered read, report-only until the final date)
-#   2. scripts/sharpflow_h2h.py archives what SharpFlow showed at each of our cuts (from its public repo's commit history, since
-#      it rewrites its files every 10 minutes), grades SharpFlow's real plays the same way, and rebuilds pm_record/h2h_record.json
+#   2. scripts/sharpflow_h2h.py archives what the benchmark showed at each of our cuts (from its public repo's commit history, since
+#      it rewrites its files every 10 minutes), grades the benchmark's real plays the same way, and rebuilds pm_record/h2h_record.json
 # Rows are append-only on `pm-holders-data` (never force-pushed). Sharp money is context only: nothing here is a pick feed.
 name: Proven-sharps record
 
@@ -42,7 +42,7 @@ jobs:
         run: |
           python3 scripts/grade_side_cards.py --cards pmdata/pm_cards --holders pmdata/pm_holders --closes data/pm_closes.json \
             --out pmdata/pm_record
-      - name: SharpFlow head-to-head
+      - name: Benchmark head-to-head
         if: env.SKIP != '1'
         env:
           GH_TOKEN: ${{ github.token }}

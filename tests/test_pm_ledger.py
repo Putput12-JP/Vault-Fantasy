@@ -284,7 +284,7 @@ class Order(unittest.TestCase):
         self.assertEqual(L.order_wallets(self.uni(), fs, {}, {}), (["0xr1", "0xr2", "0xr3"], ["0xold"]))
 
 
-class SharpFlowSource(unittest.TestCase):
+class BenchmarkSource(unittest.TestCase):
     def test_lists_nba_nfl_cfb_wallets_only(self):
         f1 = {"NBA": {"a_b": {"positions": [{"wallet": "0xAA", "tier": "ELITE"}, {"wallet": "0xbb", "tier": "SHARP"}]}},
               "NHL": {"c_d": {"positions": [{"wallet": "0xcc", "tier": "ELITE"}]}}, "scannedAt": "2026-11-11T23:00:00Z"}

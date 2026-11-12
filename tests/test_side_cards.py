@@ -1,4 +1,4 @@
-"""Unit tests for scripts/build_side_cards.py: as-of wallet books, SharpFlow's class rules, card money and the lock gates."""
+"""Unit tests for scripts/build_side_cards.py: as-of wallet books, the benchmark's class rules, card money and the lock gates."""
 import os, sys, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +32,7 @@ class Books(unittest.TestCase):
         self.assertTrue(ledger(rows).stats("0xp", CUT)["all"]["proven"])
         self.assertEqual(ledger(rows).stats("0xp", CUT)["all"]["n"], 6)
 
-    def test_loser_order_follows_sharpflow(self):
+    def test_loser_order_follows_benchmark(self):
         rows = [row("0xl", 0, "win", stake=10), row("0xl", 1, "loss", stake=500)]
         b = ledger(rows).stats("0xl", CUT)["all"]
         self.assertTrue(b["loser"])                                       # book PnL < 0
@@ -121,7 +121,7 @@ class Cards(unittest.TestCase):
 
 
 class Score(unittest.TestCase):
-    """SharpFlow's AGS-Unified v12 side score and tier (the `ags` field)."""
+    """The benchmark's AGS-Unified v12 side score and tier (the `ags` field)."""
 
     def test_quality_formula_and_bounds(self):
         b = {"flat_roi": 0.20, "roi": 0.10, "usual": 100.0, "n": 5}
@@ -149,7 +149,7 @@ class Score(unittest.TestCase):
 
 
 class StakeRungs(unittest.TestCase):
-    """scripts/sf_rungs.py: SharpFlow's press ladder, rescue rungs and trust layer, ported."""
+    """scripts/sf_rungs.py: the benchmark's press ladder, rescue rungs and trust layer, ported."""
 
     @staticmethod
     def w(d, usd=1000, ratio=1.0, n=20, wr=60.0, door2=False, streak=0, trust=None, trust_mkt=None):
@@ -302,8 +302,8 @@ class Detail(unittest.TestCase):
         self.assertNotIn("flagged", frozen["markets"]["ml"]["sf"]["all"])
 
 
-class SharpFlowExclusions(unittest.TestCase):
-    """Variant `sfx`: SharpFlow's published exclusion list replaces Vault's hedger and churn rules; `all` and `fwd` are unchanged."""
+class BenchmarkExclusions(unittest.TestCase):
+    """Variant `sfx`: The benchmark's published exclusion list replaces Vault's hedger and churn rules; `all` and `fwd` are unchanged."""
     def hedger_rows(self):
         # a proven wallet that held both sides of 10 of its 20 markets: Vault's hedger rule excludes it
         rows = proven("0xh")
@@ -316,16 +316,16 @@ class SharpFlowExclusions(unittest.TestCase):
         self.assertNotIn("sfx", c["markets"]["ml"]["sides"]["A"])
         self.assertEqual(c["sf_excluded_n"], 0)
 
-    def test_vault_hedger_counts_under_sharpflows_list(self):
+    def test_vault_hedger_counts_under_benchmark_list(self):
         L = ledger(self.hedger_rows())
         L.sf_excluded = {"0xother"}
         c = C.card(kf([("m1", 0, "0xh", 500)]), L, "nba")
         A = c["markets"]["ml"]["sides"]["A"]
         self.assertEqual(A["all"]["excluded_usd"], 500)                  # Vault's rule: a hedger
-        self.assertEqual((A["sfx"]["sharp_usd"], A["sfx"]["excluded_usd"]), (500, 0))   # SharpFlow's list: proven money
+        self.assertEqual((A["sfx"]["sharp_usd"], A["sfx"]["excluded_usd"]), (500, 0))   # The benchmark's list: proven money
         self.assertEqual(A["sfx"]["list"], [])                           # the shadow keeps money and score, not the lists
 
-    def test_wallet_on_sharpflows_list_is_excluded_even_untracked(self):
+    def test_wallet_on_benchmark_list_is_excluded_even_untracked(self):
         L = ledger(proven("0xp"))
         L.sf_excluded = {"0xp", "0xstranger"}
         c = C.card(kf([("m1", 0, "0xp", 400), ("m1", 1, "0xstranger", 900)]), L, "nba")

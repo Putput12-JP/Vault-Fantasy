@@ -6,7 +6,7 @@ computed point in time from these rows by the side-card step. Sharp money stays 
 
 What one row means
   A wallet's NET holding of one outcome of one full-game market (moneyline, spread, total) at the lock time, cutoff = game start - 15 min
-  (the same T-15 freeze SharpFlow uses). Fills after the cutoff are in-play trading and are ignored (counted in `post`). A position fully
+  (the same T-15 freeze the benchmark uses). Fills after the cutoff are in-play trading and are ignored (counted in `post`). A position fully
   sold before the cutoff is not a bet and writes no row (counted in the run summary). Stake = average-cost basis of the shares still held at
   the cutoff. pnl = shares x resolved price - stake. A wallet holding both outcomes at the cutoff writes both legs, each flagged `hedged`.
 
@@ -45,16 +45,16 @@ GAMMA = "https://gamma-api.polymarket.com"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; vault-ledger)"}
 SPORT_PREFIX = {"nba": "nba-", "nfl": "nfl-", "cfb": "cfb-"}
 FULL_GAME = ("moneyline", "spreads", "totals")
-CUTOFF_SEC = 15 * 60                      # SharpFlow T-15 freeze (index.js `_=900*1e3`)
-MIN_MONTHLY_PNL = 20000                   # SharpFlow seedSportsSharps MIN_MONTHLY_PNL ("monthly hot")
+CUTOFF_SEC = 15 * 60                      # The benchmark T-15 freeze (index.js `_=900*1e3`)
+MIN_MONTHLY_PNL = 20000                   # The benchmark seedSportsSharps MIN_MONTHLY_PNL ("monthly hot")
 WALLET_FILES = ("data/pm_wallets.json", "data/pm_wallets_cfb.json", "data/pm_wallets_nba.json")   # their `sharp` and `dull` lists
 RANK_FILE = "data/pm_wallet_rank.json"     # Vault's CLV ranker; every wallet it has tiered (proven, probable, watching, dull)
 COND_BATCH = 20                           # Data API v2 limit on comma-separated condition ids
 GAMMA_BATCH = 50
 SERIES = {"nba": 10345, "nfl": 12185, "cfb": 12756}   # Gamma sports series ids (GET /sports); games carry tag 100639
 GAME_TAG = 100639
-FAT_TICKET_USD = 2000      # SharpFlow discoverScanSupplement MIN_POSITION_USD: a holder this big on a full-game market is a candidate
-HOT_USD = 250              # SharpFlow's board floor (index.js Nj=250), the same floor the side card uses: a tracked wallet holding this
+FAT_TICKET_USD = 2000      # The benchmark discoverScanSupplement MIN_POSITION_USD: a holder this big on a full-game market is a candidate
+HOT_USD = 250              # The benchmark's board floor (index.js Nj=250), the same floor the side card uses: a tracked wallet holding this
                            # much on an upcoming game is graded first, so its book is current before that game's cut
 SHARPFLOW_RAW = "https://raw.githubusercontent.com/dpk1212/nhl-savant/main/public/"
 SHARPFLOW_FILES = ("sharp_positions.json", "sharp_spread_positions.json", "sharp_total_positions.json")
@@ -424,8 +424,8 @@ def fat_tickets(events, holder_pages, now, min_usd=FAT_TICKET_USD):
 
 
 def sharpflow_wallets(files):
-    """Pure part of the SharpFlow board source. files: parsed sharp_*positions.json from SharpFlow's public repo.
-    Returns {wallet: {"tier", "sports"}} for every wallet SharpFlow lists on an NBA, NFL or CFB game."""
+    """Pure part of the benchmark board source. files: parsed sharp_*positions.json from the benchmark's public repo.
+    Returns {wallet: {"tier", "sports"}} for every wallet the benchmark lists on an NBA, NFL or CFB game."""
     out = {}
     for j in files:
         for sp, games in (j or {}).items():
@@ -442,7 +442,7 @@ def sharpflow_wallets(files):
 
 
 def sharpflow_source(cli, known):
-    """Wallets on SharpFlow's public sharp boards that the ledger does not track yet. SharpFlow picked them with hindsight (lifetime
+    """Wallets on the benchmark's public sharp boards that the ledger does not track yet. The benchmark picked them with hindsight (lifetime
     leaderboard PnL), so they enter the universe like any other wallet: first_seen is now, and their earlier rows are `backfill`.
     A fetch failure only skips the source."""
     files = []
@@ -480,7 +480,7 @@ def order_wallets(uni, fs, hot, pend, wallets=0, priority_only=False):
 
 def discover(cli, a, known, now):
     """Wallets with a fat ticket on an upcoming full-game NBA / NFL / CFB market, kept when their all-time AND this-month sports
-    PnL are both positive (SharpFlow's discovery gate). Returns {wallet: universe entry} for wallets not already known."""
+    PnL are both positive (the benchmark's discovery gate). Returns {wallet: universe entry} for wallets not already known."""
     events = []
     iso = lambda t: dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for s in a.sports:
@@ -712,7 +712,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", required=True)
     ap.add_argument("--sports", default="nba,nfl,cfb")
-    ap.add_argument("--lb-all", type=int, default=1500, help="depth of the all-time sports PnL board (SharpFlow LB_DEPTH)")
+    ap.add_argument("--lb-all", type=int, default=1500, help="depth of the all-time sports PnL board (the benchmark LB_DEPTH)")
     ap.add_argument("--lb-month", type=int, default=1000, help="depth of the monthly board, kept at pnl >= $20K")
     ap.add_argument("--wallets", type=int, default=0, help="poll only the first N wallets (dry runs)")
     ap.add_argument("--max-req", type=int, default=20000)
@@ -725,7 +725,7 @@ def main():
     ap.add_argument("--discover-only", action="store_true", help="only run fat-ticket discovery and record new wallets")
     ap.add_argument("--priority-only", action="store_true",
                     help="discover, then read only tracked wallets holding $250+ on an upcoming game (the afternoon runs)")
-    ap.add_argument("--no-sharpflow", action="store_true", help="skip the SharpFlow board universe source")
+    ap.add_argument("--no-benchmark-board", action="store_true", help="skip the benchmark board universe source")
     ap.add_argument("--dry-run", action="store_true", help="fetch and grade but write nothing; print the summary")
     a = ap.parse_args()
     a.sports = [s for s in a.sports.split(",") if s in SPORT_PREFIX]
@@ -755,7 +755,7 @@ def main():
     if not uni:
         print("::error::empty universe (leaderboard returned nothing); nothing written")
         return 1
-    if not a.no_sharpflow:
+    if not a.no_benchmark_board:
         try:
             found, summary["sharpflow"] = sharpflow_source(cli, set(uni) | set(first_seen))
             uni.update(found)

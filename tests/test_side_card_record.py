@@ -127,7 +127,7 @@ class Grade(unittest.TestCase):
         self.assertIsNone(G.boot_ci([1.0]))
 
 
-class SharpFlow(unittest.TestCase):
+class Benchmark(unittest.TestCase):
     def test_american_odds_to_price(self):
         self.assertAlmostEqual(H.american_to_price(128), 100 / 228)
         self.assertAlmostEqual(H.american_to_price(-150), 0.6)
