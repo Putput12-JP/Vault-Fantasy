@@ -1,6 +1,6 @@
-"""SharpFlow's stake policy (the press ladder, its rungs and the size rules that run after it), ported from its public source
-(github.com/dpk1212/nhl-savant) so a side card can show the size SharpFlow's rules would give. Every constant below is SharpFlow's,
-with the file it comes from. See docs/sharpflow-teardown.md and docs/side-cards.md.
+"""The benchmark's stake policy (the press ladder, its rungs and the size rules that run after it), ported from its public source
+(its public repo) so a side card can show the size the benchmark's rules would give. Every constant below is the benchmark's,
+with the file it comes from. See the teardown notes and docs/side-cards.md.
 
 Order, as scripts/syncPickStateAuthoritative.js applies it for a pick date in the ladder era (create and reconcile paths):
   1. the ladder core (PRESS, PRESS-X, PRESS-N, PRESS-U, STEAM-C, PRESS-R6, STEAM-S, SOLO-Q)           src/lib/pressLadderOverlay.js
@@ -19,29 +19,29 @@ before the cut, the way src/lib/steamMove.js summarizeSteam does at the T-15 fre
 src/lib/unitTierEvSteamOverlay.js isSteamOn: the display tier at the cut is 'steam' or 'gold', OR the ticket's tape-log lock row
 (the t15 row, first cycle within 0.40 h of the start) was juice steam (policySteamOn); see `ladder_steam`. T5-LEAD's no-T5 gate reads
 juice steam only (a line walk does not count). Approximations, because the tape is coarser than
-SharpFlow's Pinnacle history:
+The benchmark's Pinnacle history:
   - "since open" is since the first tape row of the game, not Pinnacle's opener (the tape starts when Vault first recorded the game).
   - "last hour" is the last tape row at or before cut - 1 hour against the last row at or before the cut. The tape appends a row only
     when a number changes and is read about every 20 minutes, so a move inside one 20-minute gap is seen at the next read.
   - spreads and totals: the tape keeps only Pinnacle's main line. Juice on the ticket line is measured only from rows where the main
     equals the ticket line, and only when it is still the main at the cut; otherwise the juice part is unknown. The main-line walk
-    (0.5 point toward the side) is measured from the main lines and sets steam on by itself (SharpFlow paints it as tier 'steam').
-  - pinnapi steam-drop events (a 3%+ drop SharpFlow's drops feed saw, even one that later reverted) are not in Vault's data.
-  - the lock row is read at min(cut, start - 0.40 h) from the tape (SharpFlow's sync cycle times are not known).
+    (0.5 point toward the side) is measured from the main lines and sets steam on by itself (the benchmark paints it as tier 'steam').
+  - pinnapi steam-drop events (a 3%+ drop the benchmark's drops feed saw, even one that later reverted) are not in Vault's data.
+  - the lock row is read at min(cut, start - 0.40 h) from the tape (the benchmark's sync cycle times are not known).
   - when steam cannot be read (no tape for the game, a side Vault cannot map to home/away, an off-main ticket line) it is None:
-    STEAM-C and STEAM-S never fire; SOLO-Q, the price step and PRESS-X read it as off (SharpFlow passes steamOn false when it has no
+    STEAM-C and STEAM-S never fire; SOLO-Q, the price step and PRESS-X read it as off (the benchmark passes steamOn false when it has no
     tape); edge-under-5 and the no-T5 spread / total gate keep the stake and say so in `chain`; the card lists `steam unknown`.
 Other approximations, all recorded on the card:
-  - wallet books come from Vault's own ledger (build_pm_ledger.py), not SharpFlow's wallet profiles, so the wallets, ranks and numbers
-    differ. Prices are the Polymarket price at the cut (SharpFlow uses the wallets' average entry price on the ticket line).
+  - wallet books come from Vault's own ledger (build_pm_ledger.py), not the benchmark's wallet profiles, so the wallets, ranks and numbers
+    differ. Prices are the Polymarket price at the cut (the benchmark uses the wallets' average entry price on the ticket line).
   - TRUST-G's "legacy V12 sizing would have staked it" is read as the side's AGS v12 score > 0 (Vault has no legacy chain).
   - TOP3-PICK's price test reads Pinnacle's price for the side at the cut (main line only on spreads / totals, None off the main).
-    Without it SharpFlow reads the wallet's entry price; Vault's keyframes keep none, so the side's Polymarket price at the cut stands
+    Without it the benchmark reads the wallet's entry price; Vault's keyframes keep none, so the side's Polymarket price at the cut stands
     in, and `price_src` records which price was read.
-  - trust states and the season tier-5 read date a bet by its game date (the event slug), as SharpFlow does; a bet with no dated slug
-    falls back to its settlement day. The season start is computed over Vault's ledger, not SharpFlow's.
+  - trust states and the season tier-5 read date a bet by its game date (the event slug), as the benchmark does; a bet with no dated slug
+    falls back to its settlement day. The season start is computed over Vault's ledger, not the benchmark's.
   - opponent units for TOP3-PICK and GAP-LEAD: a side processed earlier in the market (away before home, over before under) passes its
-    final units, a later side its units before these two rungs (SharpFlow reads the earlier side fresh and the later one from its
+    final units, a later side its units before these two rungs (the benchmark reads the earlier side fresh and the later one from its
     last stored cycle).
 A dated rule is live when the pick date is on or after its FROM date; a pick date of None counts as live for every rule (Vault grades
 only dates after every FROM date below).
@@ -100,12 +100,12 @@ STEAM_EVENT_PCT, STEAM_GOLD_PCT, STEAM_LINE_PTS, STEAM_HOUR, LINE_EPS = 3, 4.5, 
 PIN_LINE_EPS = 0.051                                                      # pinnacleMain.js LINE_EPS (ticket-line match)
 
 MISSING = [
-    "ML-DOOR (needs the steam state at SharpFlow's first capture of the ticket, i.e. when its pick doc was created, which Vault does not observe)",
-    "T5-LEAD +1u winner-align boost (needs SharpFlow's winner boards; the seats themselves are ported)",
-    "FADE-F loss streak is per sport (Vault's ledger is one sport per build; SharpFlow merges every sport's recent action)",
-    "SharpFlow's create gate (sync: a side with no wallets for or against, no trusted wallet and no TOP3/GAP rung is never created) is not modelled",
+    "ML-DOOR (needs the steam state at the benchmark's first capture of the ticket, i.e. when its pick doc was created, which Vault does not observe)",
+    "T5-LEAD +1u winner-align boost (needs the benchmark's winner boards; the seats themselves are ported)",
+    "FADE-F loss streak is per sport (Vault's ledger is one sport per build; the benchmark merges every sport's recent action)",
+    "The benchmark's create gate (sync: a side with no wallets for or against, no trusted wallet and no TOP3/GAP rung is never created) is not modelled",
     "press-edge-net closers clause (needs net CLV mean prior per wallet; the clamp is dated out from 2026-11-05 anyway)",
-    "steam-drop events from SharpFlow's drops feed (Vault reads moves from its own Pinnacle tape)",
+    "steam-drop events from the benchmark's drops feed (Vault reads moves from its own Pinnacle tape)",
 ]
 
 
@@ -200,7 +200,7 @@ def trust_state(bets, asof):
 
 
 def trust_state_dated(rows, asof_day):
-    """buildTrustState as SharpFlow keys it: rows (game date 'YYYY-MM-DD', price, won), bets dated before `asof_day` (the pick date)."""
+    """buildTrustState as the benchmark keys it: rows (game date 'YYYY-MM-DD', price, won), bets dated before `asof_day` (the pick date)."""
     return _walk(sorted((_d(d), p, w) for d, p, w in rows if 0 < p < 1 and d < asof_day), _d(asof_day))
 
 
@@ -252,7 +252,7 @@ def t5_hold(rows, day, start):
 
 def t5_lead(rows):
     """t5LeadForSide from per-wallet reads on the rows (row t5 = {q, held}). Vault keeps one leg per wallet, so no wallet is on both
-    sides (SharpFlow's both-sides exclusion has nothing to drop). None when no row carries a read (no season ledger)."""
+    sides (the benchmark's both-sides exclusion has nothing to drop). None when no row carries a read (no season ledger)."""
     if not any(r.get("t5") is not None for r in rows):
         return None
     ours = [r["t5"].get("held") for r in rows if r["dir"] == "FOR" and (r.get("t5") or {}).get("q")]
@@ -369,7 +369,7 @@ def _hot(l10):
 
 def core(rows, market, implied, steam=None, pick_date=None, dated=True):
     """evaluatePressLadderCore. steam: True / False / None (unknown). dated=False switches the dated rungs (STEAM-S, SOLO-Q) off, as
-    SharpFlow's sibling read for PRESS-M does (it passes no pick date)."""
+    The benchmark's sibling read for PRESS-M does (it passes no pick date)."""
     steam_on = steam is True
     fo = [r for r in rows if r["dir"] == "FOR"]
     ag = [r for r in rows if r["dir"] == "AG"]
@@ -692,7 +692,7 @@ def blend_edge(rows, market, odds):
 
 def stake_market(sides, market, pick_date=None, order=None, sport=None):
     """The whole chain for one market group. sides: {name: {rows, implied, ags, steam, pinn_odds}} where `rows` are that side's wallet
-    rows (FOR = on this side). order: the side order SharpFlow walks (away, home / over, under); default sorted names.
+    rows (FOR = on this side). order: the side order the benchmark walks (away, home / over, under); default sorted names.
     Returns {name: result} with `units` the size the chain gives each side and `chain`, the steps that moved it."""
     names = list(order or sorted(sides))
     odds = {s: american(sides[s]["implied"]) for s in names}
@@ -729,7 +729,7 @@ def stake_market(sides, market, pick_date=None, order=None, sport=None):
             r["chain"].append("press_edge_net")
     pre = {s: res[s]["units"] for s in names}
     done = set()
-    for s in names:                          # TOP3-PICK, then GAP-LEAD, side by side in SharpFlow's order
+    for s in names:                          # TOP3-PICK, then GAP-LEAD, side by side in the benchmark's order
         r, rows = res[s], sides[s]["rows"]
         opp = [o for o in names if o != s]
         opp_units = max([res[o]["units"] if o in done else pre[o] for o in opp] or [0])

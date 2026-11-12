@@ -2,7 +2,7 @@
 """Polymarket holders scan: who holds which side of every upcoming full-game NBA / NFL / CFB market, recorded point in time.
 
 Step 2 of the proven-sharps side card (docs/pm-holders.md). Step 1 (scripts/build_pm_ledger.py) grades each wallet's past bets;
-this records who is ON each side before a game, and freezes it at the cutoff (game start - 15 min, SharpFlow's T-15). Step 3 joins
+this records who is ON each side before a game, and freezes it at the cutoff (game start - 15 min, the benchmark's T-15). Step 3 joins
 the two. Sharp money stays context only (CLAUDE.md).
 
 Output (a checkout of the never-force-pushed `pm-holders-data` branch, folder pm_holders/<sport>/):

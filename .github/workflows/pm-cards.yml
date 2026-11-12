@@ -44,7 +44,7 @@ jobs:
           # the last published live cards: each shown size keeps the price it was first flagged at while the side stays the same
           git fetch -q --depth=1 origin +pm-cards-live:refs/remotes/origin/pm-cards-live 2>/dev/null \
             && git show origin/pm-cards-live:live.json > prev_live.json || echo '{"games":[]}' > prev_live.json
-          # SharpFlow's published exclusion list (market makers and traders), for the `sfx` shadow variant; on a failed fetch the
+          # The benchmark's published exclusion list (market makers and traders), for the `sfx` shadow variant; on a failed fetch the
           # variant is simply left out of this run, never built on an empty list
           curl -sf --max-time 30 https://raw.githubusercontent.com/dpk1212/nhl-savant/main/public/sharp_intel_excluded_wallets.json \
             -o sf_excluded.json || rm -f sf_excluded.json

@@ -5,7 +5,7 @@ For each frozen card (pm_cards/<sport>/frozen/<date>/<slug>@<gst>.json on pm-hol
 and variant (all, fwd), two plays are graded when the card has one:
   lock  the pre-registered lock (`lock_shadow`, docs/sharp-card-prereg.md): flat 1 unit at the stored price at the cut, plus the
         clean-ladder units as a second line
-  sf    the size the card shows (`sf`, SharpFlow's staking rules, labelled "untested rule"): flat 1 unit and the shown units
+  sf    the size the card shows (`sf`, the benchmark's staking rules, labelled "untested rule"): flat 1 unit and the shown units
 
 Rules, all from the pre-registration:
   - Result is the market's own Polymarket resolution (Gamma outcomePrices once closed and resolved). Every play is graded; none is
@@ -92,7 +92,7 @@ def plays(card, kf):
     """Every gradeable play on one card: (group, variant, play, side, cid, line, outs, price, price_t, units)."""
     out = []
     for g, m in (card.get("markets") or {}).items():
-        for variant in ("all", "fwd", "sfx"):                  # sfx: SharpFlow's own exclusion list (a shadow, not the test)
+        for variant in ("all", "fwd", "sfx"):                  # sfx: the benchmark's own exclusion list (a shadow, not the test)
             ls = (m.get("lock_shadow") or {}).get(variant) or {}
             if ls.get("side"):
                 out.append({"group": g, "variant": variant, "play": "lock", "side": ls["side"], "cid": ls.get("cid"),

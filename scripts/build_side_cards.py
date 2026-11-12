@@ -13,7 +13,7 @@ Outputs:
 Sharp money is context only (CLAUDE.md). The card's `lock_shadow` is the pre-registered rule of docs/sharp-card-prereg.md, recorded so
 it can be graded forward; it is never a pick, never feeds Top Reads, SM_GATE or any agree total.
 
-Every rule constant below is SharpFlow's, read from its public source (docs/sharpflow-teardown.md), never invented:
+Every rule constant below is the benchmark's, read from its public source (the teardown notes), never invented:
   PROVEN  Door-2 (src/lib/whitelistTier.js v5): sport book n >= 6, win rate >= 55%, dollar ROI > 3%
   LOSER   not proven and (book PnL < 0, else L30 ROI < 0, else losses > wins) (moneyRiver.js / cH)
   FLOOR   a wallet's money on a side counts from $250 (index.js Nj=250)
@@ -31,12 +31,12 @@ Every rule constant below is SharpFlow's, read from its public source (docs/shar
   SCORE   AGS-Unified v12 (src/lib/ags.js): wallet quality = 3 x clamp(prior ROI %, 0, 30) x clamp(size ratio, 0.5, 2.5) x
           min(1, sqrt(n / 20)), proven wallets only; side score = (mean for - mean against) / (for + against + 0.5); a score <= 0 is
           FADE, and positive scores are labelled by the fallback cut points 0.781 / 0.916 / 0.957 / 0.981 (WEAK, LEAN, LOCK,
-          PREMIUM, ELITE). SharpFlow's live cut points sit in its private calibration store, so Vault uses the published fallback.
+          PREMIUM, ELITE). The benchmark's live cut points sit in its private calibration store, so Vault uses the published fallback.
           Recorded per side as `ags`, a shadow field. It does not set the units: those stay the press ladder.
-  Vault approximations of SharpFlow admission filters (they filter discovery; Vault applies them on the card):
+  Vault approximations of the benchmark admission filters (they filter discovery; Vault applies them on the card):
   HEDGER  hedged-at-cutoff share of the wallet's ledger markets >= 25% with >= 8 markets (BOTH_SIDES_REJECT, MIN_SPORTS_MARKETS;
-          SharpFlow counts both-sides over all closed sports positions, early exits included)
-  CHURN   all-time (all categories, /v2/user-stats) volume / realized PnL > 100 (CHURN_VOL_PNL; SharpFlow reads the sports board;
+          The benchmark counts both-sides over all closed sports positions, early exits included)
+  CHURN   all-time (all categories, /v2/user-stats) volume / realized PnL > 100 (CHURN_VOL_PNL; the benchmark reads the sports board;
           its ROI < 2% clause is implied by vol/PnL > 100)
 
 Point-in-time rules
@@ -45,7 +45,7 @@ Point-in-time rules
     picked because it won this game can never count.
   - A frozen card stores when it was built; the pre-registration counts only cards built before game start on a ledger run that
     finished before the cut (`test.counts`).
-  - Every stat is computed twice: from all rows (SharpFlow's way, which includes `backfill` rows of wallets chosen with hindsight)
+  - Every stat is computed twice: from all rows (the benchmark's way, which includes `backfill` rows of wallets chosen with hindsight)
     and from `forward` rows only. Both are on the card; the pre-registration names which one is primary.
   - Hedged legs (a wallet on both outcomes at the cutoff) are left out of records. SPLIT-funded rows count in W/L, never in dollars.
   - Money on a side is shares x the market price at the cut (the keyframe's `usd_at_mark`), labelled as mark value, not cost.
@@ -81,7 +81,7 @@ EVENT_RE = re.compile(r"^(.*?-\d{4}-\d{2}-\d{2})")
 DATE_RE = re.compile(r"-(\d{4}-\d{2}-\d{2})$")
 START_GAP_FLAG = 10 * 60                  # Polymarket and Vault start times more than 10 min apart (prereg "known limits")
 VERSION = 1
-VARIANTS = ("all", "fwd")                  # plus "sfx" when SharpFlow's exclusion list is given (--sf-excluded)
+VARIANTS = ("all", "fwd")                  # plus "sfx" when the benchmark's exclusion list is given (--sf-excluded)
 SIZE_BANDS = (0.0, 0.75, 1.5, 3.0)        # size vs usual stake bands for the "at this size" record (below 0.75x, 0.75 to 1.5x, ...)
 CLOSE_STALE = 30 * 60                     # a keyframe price older than this at the cut is not a close (prereg "unpriced" rule)
 
@@ -155,7 +155,7 @@ class Ledger:
             v.sort(key=lambda s: s.get("at") or 0)
         self.run_at = run_at
         self.closes = closes or {}
-        self.sf_excluded = set()                     # SharpFlow's published exclusion list, for the `sfx` variant
+        self.sf_excluded = set()                     # The benchmark's published exclusion list, for the `sfx` variant
         self._wide, self._mb, self._t5 = {}, {}, {}   # ledger-wide reads for sf_rungs (TOP3-PICK, GAP-LEAD, season tier 5)
 
     @classmethod
@@ -196,14 +196,14 @@ class Ledger:
         out["churn"] = churn(snap[-1]) if snap else None
         out["excluded"] = ("hedger" if cids and len(cids) >= HEDGER_MIN_MARKETS and out["hedged_share"] >= HEDGER_SHARE
                            else "churn" if out["churn"] else None)
-        # variant `sfx`: the same all-rows book, but SharpFlow's own published exclusion list (market makers and traders) instead of
-        # Vault's hedger and churn approximations, which SharpFlow applies only when it discovers new wallets
+        # variant `sfx`: the same all-rows book, but the benchmark's own published exclusion list (market makers and traders) instead of
+        # Vault's hedger and churn approximations, which the benchmark applies only when it discovers new wallets
         out["sfx"] = out["all"]
         out["excluded_sfx"] = "sharpflow" if w in self.sf_excluded else None
         return out
 
 
-    # ---- ledger-wide reads for SharpFlow's market rules (scripts/sf_rungs.py) ----
+    # ---- ledger-wide reads for the benchmark's market rules (scripts/sf_rungs.py) ----
 
     def _wide_positions(self, variant):
         """Every wallet's positions (non-hedged rows; `fwd` forward rows only):
@@ -219,7 +219,7 @@ class Ledger:
         return self._wide[key]
 
     def population(self, variant, cut):
-        """The wallets in the universe at the cut (`sfx` leaves SharpFlow's excluded wallets out)."""
+        """The wallets in the universe at the cut (`sfx` leaves the benchmark's excluded wallets out)."""
         return [w for w in self.by_w if self.first_seen.get(w) is not None and self.first_seen[w] <= cut
                 and not (variant == "sfx" and w in self.sf_excluded)]
 
@@ -273,7 +273,7 @@ class Ledger:
 
 
 def positions(rows, markets, closes=None):
-    """Ledger rows -> SharpFlow positions: one per game x market type x side. Rungs of one side are summed; the result is the sign
+    """Ledger rows -> the benchmark positions: one per game x market type x side. Rungs of one side are summed; the result is the sign
     of the summed PnL; a position touched by a SPLIT row is kept out of dollar totals."""
     pos = {}
     for r in rows:
@@ -325,7 +325,7 @@ def book(rows, asof, markets, closes=None):
          "bets": sorted(([p["settled_at"], round(p["px"], 4), p["res"] == "win", p["mt"], round(p["stake"], 2), round(p["pnl"], 2),
                           ev_date(p["ev"]), p["split"]] for p in ps if p["res"] != "push" and p["px"]), key=lambda b: b[0]),
          "legs": sorted(([r["settled_at"], r["res"]] for r in legs.values()), reverse=True)[:LAST_N],
-         # price skill: positions with a stored close, and how many were bought below it (SharpFlow's "beat the closing line")
+         # price skill: positions with a stored close, and how many were bought below it (the benchmark's "beat the closing line")
          "clv_n": sum(1 for p in ps if p["clv"] is not None),
          "clv_beat": sum(1 for p in ps if p["clv"] is not None and p["clv"] > 0),
          "clv_mean": (sum(p["clv"] for p in ps if p["clv"] is not None) / sum(1 for p in ps if p["clv"] is not None))
@@ -378,7 +378,7 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
 
     legs_by = {}
     for (g, w, side), (usd, cid) in best.items():
-        if usd >= FLOOR_USD:                         # the floor applies to each position, as SharpFlow's board does
+        if usd >= FLOOR_USD:                         # the floor applies to each position, as the benchmark's board does
             legs_by.setdefault((g, w), []).append((side, usd, cid))
     groups, dust = {}, 0
     for (g, w), legs in legs_by.items():
@@ -440,7 +440,7 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
                     "list": [wallet_line(x, variant, cls[x["w"]]) for x in sorted(proven, key=lambda x: -x["usd"])[:SHOW_PROVEN]],
                     "losers": [wallet_line(x, variant, "loser") for x in
                                sorted((x for x in mine if cls[x["w"]] == "loser"), key=lambda x: -x["usd"])[:SHOW_LOSERS]],
-                    # tracked wallets that are not proven yet (SharpFlow's "secondary"), with whatever record they have
+                    # tracked wallets that are not proven yet (the benchmark's "secondary"), with whatever record they have
                     "unproven_list": [wallet_line(x, variant, "unproven") for x in
                                       sorted((x for x in mine if cls[x["w"]] == "unproven" and x["s"]["tracked"]),
                                              key=lambda x: -x["usd"])[:SHOW_PROVEN]],
@@ -459,7 +459,7 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
 
 
 def ags_quality(x, variant, k):
-    """SharpFlow agsV12WalletQuality. Only a proven (CONFIRMED) wallet scores; FLAT is no longer assigned (whitelistTier.js)."""
+    """The benchmark agsV12WalletQuality. Only a proven (CONFIRMED) wallet scores; FLAT is no longer assigned (whitelistTier.js)."""
     if k not in ("hc", "sharp"):
         return 0.0
     b = x["s"][variant]
@@ -479,10 +479,10 @@ def ags_tier(score):
 
 
 def ags_side(side, ws, cls, variant):
-    """SharpFlow's AGS-Unified v12 score for one side: (mean quality for - mean quality against) / (for + against + 0.5).
+    """The benchmark's AGS-Unified v12 score for one side: (mean quality for - mean quality against) / (for + against + 0.5).
     Every tracked wallet with a book counts in its side's mean (a wallet that is not proven counts as 0, as in aggregateSideV12);
-    excluded wallets and wallets with no book are left out. The tier uses SharpFlow's fallback cut points, which were fitted on
-    SharpFlow's picks, not Vault's: Vault has no calibration of its own. A shadow field: it never sets a size or a pick."""
+    excluded wallets and wallets with no book are left out. The tier uses the benchmark's fallback cut points, which were fitted on
+    The benchmark's picks, not Vault's: Vault has no calibration of its own. A shadow field: it never sets a size or a pick."""
     pool = [x for x in ws if cls[x["w"]] != "excluded" and x["s"][variant]["n"] > 0]
     f = [ags_quality(x, variant, cls[x["w"]]) for x in pool if x["side"] == side]
     a = [ags_quality(x, variant, cls[x["w"]]) for x in pool if x["side"] != side]
@@ -495,7 +495,7 @@ def ags_side(side, ws, cls, variant):
 
 
 def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None, tape=None, vault=None):
-    """SharpFlow's stake policy (scripts/sf_rungs.py, a replica with the gaps it lists) for this market group. One side at most is staked:
+    """The benchmark's stake policy (scripts/sf_rungs.py, a replica with the gaps it lists) for this market group. One side at most is staked:
     the side with the most units, ties to the higher AGS score. A shadow field; it never feeds the lock, Top Reads or an agree total.
     Steam per side is read from Vault's Pinnacle tape (`tape`), rows at or before the cut only."""
     cut = kf["cut"]
@@ -554,7 +554,7 @@ def sf_market(g, ws, cls, variant, kf, sides, sides_out, ledger=None, sport=None
             if mk.get("line") is not None:            # Polymarket's spread line is outcomes[0]'s; the other side has the opposite sign
                 line = mk["line"] if g == "total" or oi == 0 else -mk["line"]
         norm = norms.get(side)
-        if px is None and g == "ml" and game and norm:   # no Polymarket ticket: SharpFlow prices a moneyline from Pinnacle (mlOddsFromMeta)
+        if px is None and g == "ml" and game and norm:   # no Polymarket ticket: the benchmark prices a moneyline from Pinnacle (mlOddsFromMeta)
             px = SF.implied_of(pinnacle_price(game, g, norm, cut))
         if not game:
             st = {"on": None, "why": how}
@@ -729,7 +729,7 @@ def wallet_line(x, variant, k):
 
 
 def ladder_units(top_press, price):
-    """SharpFlow pressBand / pressUnits at a clean price step (step 0), then the dog cap on any market type."""
+    """The benchmark pressBand / pressUnits at a clean price step (step 0), then the dog cap on any market type."""
     units = BAND5_UNITS if top_press >= BAND5 else BAND4_UNITS if top_press >= BAND4 else BAND3_UNITS
     if price is not None and price < DOG_PX:
         units = min(units, DOG_UNITS)
@@ -737,7 +737,7 @@ def ladder_units(top_press, price):
 
 
 def lock_shadow(g, ws, cls, variant, kf):
-    """SharpFlow's press-ladder gates for one market group, clean-step ladder for units. A shadow record, never a pick."""
+    """The benchmark's press-ladder gates for one market group, clean-step ladder for units. A shadow record, never a pick."""
     res = {"side": None, "gates": None}
     live = [x for x in ws if cls[x["w"]] != "excluded"]
     for side in sorted({x["side"] for x in ws}):
@@ -807,7 +807,7 @@ def main():
     ap.add_argument("--sports", default="nba,nfl,cfb")
     ap.add_argument("--closes", default="data/pm_closes.json", help="Pendulum Flow closes, for wallet price skill")
     ap.add_argument("--prev-live", help="the last published live.json, to carry the price each shown size was first flagged at")
-    ap.add_argument("--sf-excluded", help="SharpFlow's public sharp_intel_excluded_wallets.json, for the `sfx` variant")
+    ap.add_argument("--sf-excluded", help="The benchmark's public sharp_intel_excluded_wallets.json, for the `sfx` variant")
     ap.add_argument("--book-tape", default="data/book_tape", help="Vault's book tape (Pinnacle rows), for the steam read of the `sf` size")
     a = ap.parse_args()
     import scan_pm_holders as H

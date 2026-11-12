@@ -8,9 +8,9 @@
    untested rule, and it never feeds Top Reads, SM_GATE or an agree total. The rule is the pre-registered lock of
    docs/sharp-card-prereg.md. Every number on the card is a stored field; a null prints "n/a".
 
-   Size: the card shows SharpFlow's clean-step press ladder exactly as the builder stores it (units_clean_ladder): 3u base, 2u at a
-   2x to 3x press, 5u at 3x or more, 1u for any side priced under 50 cents. SharpFlow's live picks also step the size down when the
-   price has moved and add rescue rungs; the builder does not record those, so the card can read higher than SharpFlow's own pick. */
+   Size: the card shows the benchmark's clean-step press ladder exactly as the builder stores it (units_clean_ladder): 3u base, 2u at a
+   2x to 3x press, 5u at 3x or more, 1u for any side priced under 50 cents. The benchmark's live picks also step the size down when the
+   price has moved and add rescue rungs; the builder does not record those, so the card can read higher than the benchmark's own pick. */
 (function(){
 'use strict';
 var OPT = {}, UI = {}, SHOWN = {};
@@ -94,7 +94,7 @@ var CHK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-wid
 var XX = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
 function counted(s){ return s.sharp_usd + s.unproven_usd + s.loser_usd; }
 function nProven(s){ return s.counts.sharp + s.counts.hc; }
-/* the market's play: SharpFlow's stake policy as the builder replicates it (m.sf), else the older lock rule on cards built before it existed */
+/* the market's play: the benchmark's stake policy as the builder replicates it (m.sf), else the older lock rule on cards built before it existed */
 function shadow(m, v){
   var sf = (m.sf || {})[v];
   if (sf && sf.side && !sf.outs && !sf._outs){                       /* cards built before sf stored its outcome order */
@@ -183,7 +183,7 @@ function half(s, max, dir){
   return '<div class="vc-half ' + dir + '">' + seg('hc', s.hc_usd) + seg('sharp', s.sharp_usd - s.hc_usd) + seg('unp', s.unproven_usd) + seg('loser', s.loser_usd) + seg('exc', s.excluded_usd) + '</div>';
 }
 /* v3: a stack of small modules. Verdict, money split, proven record, wallets (collapsed), data notes (collapsed). */
-/* SharpFlow's score and label for the market: the one side whose stored `ags` score is above zero, or nothing */
+/* The benchmark's score and label for the market: the one side whose stored `ags` score is above zero, or nothing */
 var TIER = {WEAK: 'Weak', LEAN: 'Lean', LOCK: 'Lock', PREMIUM: 'Prem', ELITE: 'Elite'};
 function agsRow(m, names, v){
   var n = names.filter(function(x){ var a = m.sides[x][v].ags; return a && a.score > 0 && TIER[a.tier]; })[0];
@@ -272,7 +272,7 @@ function body(g, st){
 }
 
 /* ---------- play detail: one market, every wallet on it, opened from the verdict ("See who's on it") ----------
-   SharpFlow's play page, built only from stored fields. Price skill is the share of a wallet's past bets bought below the stored close
+   The benchmark's play page, built only from stored fields. Price skill is the share of a wallet's past bets bought below the stored close
    (Vault's T-15 price, or the Pendulum Flow close); it is plotted only once a wallet has CLV_MIN bets with a close, and always shows its n.
    No "signals aligned" count: sharp money is context, never an agree total (CLAUDE.md). */
 var CLV_MIN = 5;
@@ -498,7 +498,7 @@ function card(g, o, folded){
   return el;
 }
 
-/* ---------- Record: the side card's graded results and the SharpFlow head-to-head (docs/side-card-record.md) ----------
+/* ---------- Record: the side card's graded results and the benchmark head-to-head (docs/side-card-record.md) ----------
    Files written every 2 hours by .github/workflows/pm-record.yml on pm-holders-data/pm_record. Interim and report-only: the
    pre-registered test (docs/sharp-card-prereg.md) gives a verdict once, on its final read date. Every number is a stored field. */
 var REC_BASE = (LOCAL && (location.search.match(/[?&]rec=([^&]+)/) || [])[1]) ? decodeURIComponent(location.search.match(/[?&]rec=([^&]+)/)[1])
@@ -573,7 +573,7 @@ function recSport(sp, D){
         if ((x.same_games || {}).games) bits.push(x.same_games.games + ' games both played, ' + x.same_games.same_side + ' on the same side');
         return bits.length ? g[1] + ': ' + bits.join(', ') : ''; }).filter(Boolean).join(' · ') + '</p></section>';
   }
-  /* recent games: our plays (variant all) and SharpFlow's, newest first */
+  /* recent games: our plays (variant all) and the benchmark's, newest first */
   var by = {};
   D.cardRows.filter(function(r){ return r.sport === sp && r.kind !== 'close' && r.side && (r.variant === 'all' || (r.variant === 'sfx' && r.play === 'sf')); }).forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).v.push(r); });
   D.sfRows.filter(function(r){ return r.sport === sp; }).forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).s.push(r); });

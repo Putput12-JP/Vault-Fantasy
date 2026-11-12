@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""SharpFlow head-to-head record: archive what SharpFlow showed at each of Vault's cuts, then grade both on the same games.
+"""The benchmark head-to-head record: archive what the benchmark showed at each of Vault's cuts, then grade both on the same games.
 
-SharpFlow (nhlsavant.com) publishes its sharp boards and picks as files in a public GitHub repo (dpk1212/nhl-savant, public/) and
+The benchmark publishes its sharp boards and picks as files in a public GitHub repo (public/) and
 rewrites them about every 10 minutes, so its page never shows what it said at a given time. This script keeps that copy:
 
   1. Archive. For every frozen Vault keyframe (pm_holders/<sport>/frozen/<date>/<slug>@<gst>.json) whose cut has passed, it finds the
-     last commit at or before the cut of each SharpFlow file (the version that was public at the cut), and stores that game's entry
+     last commit at or before the cut of each the benchmark file (the version that was public at the cut), and stores that game's entry
      from the three position files and that game's picks from sharp-flow-pnl.json:
        pm_record/sharpflow/<sport>/<date>/<slug>@<gst>.json          written once
-     Once the game is 12 hours old it stores SharpFlow's picks for it again from the current file (status, outcome, units, cancels):
+     Once the game is 12 hours old it stores the benchmark's picks for it again from the current file (status, outcome, units, cancels):
        pm_record/sharpflow/<sport>/<date>/<slug>@<gst>.final.json    written once
-     Comparing the two shows what SharpFlow cancelled, re-sized or relabelled after the cut.
-  2. Grade. Every SharpFlow real play (units > 0, not cancelled, in the final file) is graded by the Polymarket market's own resolution
-     at SharpFlow's locked price (oddsLock, American odds). Moneyline and total picks map to one market exactly. A spread pick names
-     only the team, so it is mapped to the spread rung carrying the most SharpFlow-listed money on that team, and labelled so.
+     Comparing the two shows what the benchmark cancelled, re-sized or relabelled after the cut.
+  2. Grade. Every the benchmark real play (units > 0, not cancelled, in the final file) is graded by the Polymarket market's own resolution
+     at the benchmark's locked price (oddsLock, American odds). Moneyline and total picks map to one market exactly. A spread pick names
+     only the team, so it is mapped to the spread rung carrying the most the benchmark-listed money on that team, and labelled so.
        pm_record/sharpflow/rows/<sport>/<YYYY-MM>.jsonl              append-only, keyed game|market|team
-  3. Record. pm_record/h2h_record.json: per sport and market, SharpFlow's real plays and Vault's card plays (shown size and the
+  3. Record. pm_record/h2h_record.json: per sport and market, the benchmark's real plays and Vault's card plays (shown size and the
      pre-registered lock, from scripts/grade_side_cards.py), on all games and on the games where both had a play.
 
-Never invents a number: prices are SharpFlow's stored oddsLock and Vault's stored card price; results are Polymarket resolutions.
+Never invents a number: prices are the benchmark's stored oddsLock and Vault's stored card price; results are Polymarket resolutions.
 Sharp money is context only (CLAUDE.md). This is a record, not a signal.
 
 usage: sharpflow_h2h.py --holders DIR --out DIR [--now EPOCH] [--days 10]
@@ -34,7 +34,7 @@ POS_FILES = {"ml": "public/sharp_positions.json", "spread": "public/sharp_spread
              "total": "public/sharp_total_positions.json"}
 PICKS_FILE = "public/sharp-flow-pnl.json"
 SPORT_KEY = {"nba": "NBA", "nfl": "NFL", "cfb": "CFB"}
-GROUP = {"ml": "ml", "spread": "spread", "total": "total"}     # SharpFlow marketType -> Vault market group
+GROUP = {"ml": "ml", "spread": "spread", "total": "total"}     # The benchmark marketType -> Vault market group
 MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
 SETTLE_CUT = 30 * 60         # archive a cut only once it is 30 minutes old, so a commit pushed late is already on GitHub
 LOOKBACK = 2 * 3600          # a file version older than this at the cut is not "what was shown" (their scanner was down)
@@ -67,7 +67,7 @@ def commit_before(commits, cut, lookback=LOOKBACK):
 
 
 def game_entry(j, sport, ev):
-    """(key, entry) of the game in one SharpFlow positions file, found by the Polymarket slug on its positions."""
+    """(key, entry) of the game in one the benchmark positions file, found by the Polymarket slug on its positions."""
     for k, g in ((j or {}).get(SPORT_KEY[sport]) or {}).items():
         if any((p.get("slug") or "").startswith(ev) for p in (g or {}).get("positions") or []):
             return k, g
@@ -79,7 +79,7 @@ def real_play(p):
 
 
 def map_pick(pick, markets, money):
-    """(cid, side, method) of the Polymarket market a SharpFlow pick is on. markets: {cid: fact}; money: {cid: {outcome: usd}}."""
+    """(cid, side, method) of the Polymarket market a benchmark pick is on. markets: {cid: fact}; money: {cid: {outcome: usd}}."""
     mt, team = MT.get(pick.get("marketType")), (pick.get("team") or "").strip()
     if mt == "moneyline":
         hits = [c for c, f in markets.items() if f.get("mt") == mt and team in (f.get("outs") or [])]
@@ -101,20 +101,20 @@ def map_pick(pick, markets, money):
 
 
 def picks_for(picks, sport, date, names):
-    """SharpFlow picks for one game: same sport and date, and both team names match the game's."""
+    """The benchmark picks for one game: same sport and date, and both team names match the game's."""
     names = {n for n in names if n}
     return [p for p in picks if p.get("sport") == SPORT_KEY[sport] and p.get("date") == date
             and len(names) == 2 and {p.get("away"), p.get("home")} == names]
 
 
 def play_rows(g, arc, fin, mk, money, now):
-    """Graded rows for one game. mk: {cid: Gamma fact} for every market of the game; money: SharpFlow-listed $ per cid and outcome.
+    """Graded rows for one game. mk: {cid: Gamma fact} for every market of the game; money: the benchmark-listed $ per cid and outcome.
 
     set "at_cut":    real plays (units > 0, not cancelled) in the picks file public at Vault's cut, graded at that file's units and
-                     oddsLock, whatever SharpFlow did later (a later cancel is kept and flagged: no survivorship). The headline.
+                     oddsLock, whatever the benchmark did later (a later cancel is kept and flagged: no survivorship). The headline.
     set "after_cut": real plays in the final file that were not real plays at the cut (posted or sized up after it). Reported apart.
     A spread pick names no line, so its Polymarket rung is a guess (most_money_rung). Its result there is kept as `res_mapped`, but it
-    gets no flat or units P/L: SharpFlow's price belongs to a line we cannot see. Its own stated result is kept as `their_res`.
+    gets no flat or units P/L: the benchmark's price belongs to a line we cannot see. Its own stated result is kept as `their_res`.
     Rows are skipped (not written) while a mapped market is unresolved."""
     at_cut = {(p.get("marketType"), p.get("team")): p for p in (arc.get("picks_at_cut") or {}).get("picks") or [] if real_play(p)}
     final = {(p.get("marketType"), p.get("team")): p for p in fin.get("picks") or []}
@@ -162,7 +162,7 @@ def h2h(sf_rows, card_rows, now):
     """Head-to-head per sport and market group. Vault plays are variant `all` (the card's primary)."""
     card_rows = [r for r in card_rows if r.get("kind") != "close"]     # close rows hold CLV only; the plays are the result rows
     out = {"generated": now, "v": VERSION, "context_only": True,
-           "note": "SharpFlow headline: real plays (units > 0, not cancelled) in the picks file public at Vault's cut, graded by "
+           "note": "The benchmark headline: real plays (units > 0, not cancelled) in the picks file public at Vault's cut, graded by "
                    "Polymarket resolution at that file's oddsLock, later cancels included; spread picks name no line, so they "
                    "get no priced result. "
                    "Vault rows: the card's shown size (sf, an untested rule) and the pre-registered lock (counted cards only).",
@@ -184,7 +184,7 @@ def h2h(sf_rows, card_rows, now):
                     "sharpflow_at_cut_cancelled_later": sum(1 for r in theirs if r.get("cancelled_later")),
                     "sharpflow_unpriced_spread_rungs": sum(1 for r in theirs if r.get("map") == "most_money_rung"),
                     "sharpflow_stated": {
-                        "note": "SharpFlow's own result and profit on the plays its final file counts",
+                        "note": "The benchmark's own result and profit on the plays its final file counts",
                         "n": len(counted), "units_pl": round(sum(r.get("their_profit") or 0 for r in counted), 3),
                         "disagree_with_polymarket": sum(1 for r in counted if r.get("their_res") and (r.get("res") or r.get("res_mapped"))
                                                         and r["their_res"] != (r.get("res") or r.get("res_mapped")))},
@@ -259,7 +259,7 @@ def iso(t):
 
 
 class Raw:
-    """SharpFlow files by commit, fetched once per run."""
+    """The benchmark files by commit, fetched once per run."""
 
     def __init__(self):
         self.cache = {}
@@ -371,7 +371,7 @@ def main():
                       "names": names, "picks": ps})
         finals += 1
 
-    # 3. grade SharpFlow's real plays by Polymarket resolution
+    # 3. grade the benchmark's real plays by Polymarket resolution
     have = load_jsonl(os.path.join(root, "rows", "*", "*.jsonl"))
     cache_p = os.path.join(a.out, "markets.json")
     facts = jload(cache_p, {})

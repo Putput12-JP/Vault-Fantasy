@@ -1,4 +1,4 @@
-"""Unit tests for the SharpFlow rules ported into scripts/sf_rungs.py: steam (STEAM-C, STEAM-S, SOLO-Q, the price step), TRUST-M,
+"""Unit tests for the benchmark rules ported into scripts/sf_rungs.py: steam (STEAM-C, STEAM-S, SOLO-Q, the price step), TRUST-M,
 PRESS-M, the odds cap, the edge clamps (press-edge-net, edge-under-5), GAP-LEAD and TOP3-PICK, plus the tape read in build_side_cards."""
 import json, os, sys, tempfile, unittest
 
@@ -95,7 +95,7 @@ class SteamRungs(unittest.TestCase):
         e = S.evaluate(dust, "ml", 0.55, 0.5, steam=False)
         self.assertEqual((e["rung"], e["units"]), ("SOLO-Q", 1.0))
         self.assertIsNone(S.evaluate(dust, "ml", 0.55, 0.5, steam=True)["rung"])
-        self.assertEqual(S.evaluate(dust, "ml", 0.55, 0.5, steam=None)["rung"], "SOLO-Q")     # unknown steam reads as off (SharpFlow passes false)
+        self.assertEqual(S.evaluate(dust, "ml", 0.55, 0.5, steam=None)["rung"], "SOLO-Q")     # unknown steam reads as off (the benchmark passes false)
         self.assertIsNone(S.evaluate(dust, "ml", 0.65, 0.5, steam=False)["rung"])             # outside .50-.60
         ordinary = [w("FOR", 400, ratio=1.2, l10=(8, 2))]
         self.assertEqual(S.evaluate(ordinary, "ml", 0.55, 0.5, steam=False)["rung"], "SOLO-Q")
