@@ -612,9 +612,12 @@ function defsHtml(){
     'pre-registered rule tracked in the background, on its own card toward 300 moneyline locks. Its plays are not listed here.</dd></div></dl>';
 }
 function recSport(sp, D){
-  var c = ((D.cards || {}).sports || {})[sp] || {};
+  /* 'all' sums every sport's stored records; one sport reads its own block */
+  var ALL = sp === 'all', SPS = ALL ? REC_SPORTS : [sp], inSp = function(s){ return SPS.indexOf(s) >= 0; };
+  var cs = function(s){ return ((D.cards || {}).sports || {})[s] || {}; }, c = ALL ? {} : cs(sp);
   var G = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']];
-  var vg = function(g){ return ((((c.sf || {}).all || {})[g] || {}).all_cards); };
+  var vgs = function(s, g){ return ((((cs(s).sf || {}).all || {})[g] || {}).all_cards); };
+  var vg = function(g){ return ALL ? sumRec(SPS.map(function(s){ return vgs(s, g); })) : vgs(sp, g); };
   var V = sumRec(G.map(function(g){ return vg(g[0]); }));
   /* one record: every Vault play, graded at its price at the lock by Polymarket's result */
   var hero = '<div class="vr-tile rec"><div class="vr-th"><b>Record</b></div>' +
@@ -627,7 +630,12 @@ function recSport(sp, D){
   var clvN = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n || 0); }, 0);
   var clvS = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n ? x.clv_mean * x.clv_n : 0); }, 0);
   var n = ml.n || 0, pct = Math.min(100, n / REC_N * 100), ft;
-  if (!REC_READ[sp]) ft = '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">not registered</span></div>' +
+  if (ALL) ft = '<section class="vr-card"><h3>By sport</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">Units</span><span class="vr-col">ROI</span>' +
+    ['nfl', 'cfb', 'nba', 'cbb'].filter(inSp).map(function(s){ var x = sumRec(G.map(function(g){ return vgs(s, g[0]); }));
+      return '<span class="vr-mk">' + s.toUpperCase() + '</span>' + (x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num ' + (x.units_pl > 0 ? 'up' : x.units_pl < 0 ? 'dn' : '') + '">' + u2(x.units_pl) + '</span><span class="vr-c num">' + roi(x.flat_roi) + '</span>'
+        : '<span class="vr-none">—</span><span class="vr-none">—</span><span class="vr-none">—</span>'); }).join('') + '</div>' +
+    '<p class="vr-fn">Each sport has its own forward test. Pick a sport to see its progress.</p></section>';
+  else if (!REC_READ[sp]) ft = '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">not registered</span></div>' +
     '<p class="vr-fn">This sport is not in a registered test. Its cards are graded here for reference only.</p></section>';
   else ft = '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">' + n + ' / ' + REC_N + '</span></div>' +
     '<div class="vr-bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + REC_N + '" aria-valuenow="' + n + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
@@ -643,35 +651,35 @@ function recSport(sp, D){
   /* open plays: Vault's suggested sizes on cards still live (they lock at T-15), and every locked play from either side still waiting for
      its result. Each one lands in the record above once its market settles (the record job runs every 2 hours). */
   var og = {}, nowS = Date.now() / 1000;
-  var addO = function(ev, gst, row){ (og[ev] = og[ev] || {gst: gst, rows: [], live: false}).rows.push(row); };
-  ((STORE.d || {}).games || []).filter(function(g){ return g.sport === sp && !g.frozen; }).forEach(function(g){
+  var addO = function(ev, gst, row){ (og[ev] = og[ev] || {gst: gst, rows: [], live: false, sp: row.sp}).rows.push(row); };
+  ((STORE.d || {}).games || []).filter(function(g){ return inSp(g.sport) && !g.frozen; }).forEach(function(g){
     Object.keys(g.markets).forEach(function(k){ var x = ((g.markets[k].sf || {}).all) || {};
-      if (x.side && x.units > 0){ addO(g.ev, g.gst, {who: 'Vault', side: x.side, group: k, label: playLabel(x.side, k, x.line, x.outs), units: x.units}); og[g.ev].live = true; og[g.ev].cut = g.cut; } }); });
+      if (x.side && x.units > 0){ addO(g.ev, g.gst, {sp: g.sport, who: 'Vault', side: x.side, group: k, label: playLabel(x.side, k, x.line, x.outs), units: x.units}); og[g.ev].live = true; og[g.ev].cut = g.cut; } }); });
   /* just locked: plays on cards frozen in the last 12 hours (published with the live cards at every lock), until their row is graded */
   var graded = {}; D.cardRows.forEach(function(r){ graded[r.key] = 1; });
   var seen = {}, addOnce = function(ev, gst, row){ var k = ev + '|' + row.who + '|' + row.label; if (seen[k]) return; seen[k] = 1; addO(ev, gst, row); };
-  ((STORE.d || {}).locked || []).filter(function(r){ return r.sport === sp && r.play === 'sf' && !graded[r.key]; }).forEach(function(r){
-    addOnce(r.ev, r.gst, {who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
-  (((D.cards || {}).open) || []).filter(function(r){ return r.sport === sp && r.play === 'sf' && r.gst > nowS - 7 * 86400; }).forEach(function(r){
-    addOnce(r.ev, r.gst, {who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
+  ((STORE.d || {}).locked || []).filter(function(r){ return inSp(r.sport) && r.play === 'sf' && !graded[r.key]; }).forEach(function(r){
+    addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
+  (((D.cards || {}).open) || []).filter(function(r){ return inSp(r.sport) && r.play === 'sf' && r.gst > nowS - 7 * 86400; }).forEach(function(r){
+    addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
   /* a live card past its lock time is locked, even before the live file drops it */
   Object.keys(og).forEach(function(e){ var x = og[e]; x.locked = !x.live || nowS >= (x.cut || x.gst - 900); });
   var oev = Object.keys(og).sort(function(a, b){ return (og[b].locked - og[a].locked) || (og[a].gst - og[b].gst); });
   if (oev.length){
     openHtml = '<section class="vr-card"><div class="vr-fh"><h3>Open plays</h3><span class="num">' + oev.reduce(function(t, e){ return t + og[e].rows.length; }, 0) + ' pending</span>' + helpBtn() + '</div>' + defsHtml() +
-      '<p class="vr-fn">They count in the record above once their games settle.</p><div class="vr-games">' + oev.map(function(ev){ var x = og[ev], gn = gameName(ev);
+      '<p class="vr-fn">They count in the record above once their games settle.</p><div class="vr-games">' + oev.map(function(ev){ var x = og[ev], gn = gameName(ev); if (ALL && x.sp) gn.d = x.sp.toUpperCase() + ' · ' + gn.d;
       var chip = !x.locked ? '<span class="vr-st live">Locks ' + ct(x.cut || x.gst - 900) + '</span>' : nowS < x.gst ? '<span class="vr-st lock">' + ICON.lock + 'Locked · starts ' + ct(x.gst) + '</span>' : '<span class="vr-st wait">' + ICON.lock + 'Locked · awaiting result</span>';
       return '<div class="vr-g"><div class="vr-gn"><b>' + gn.t + '</b><span>' + gn.d + '</span>' + chip + '</div><div class="vr-gp">' + x.rows.map(function(r){
-        return '<div class="vr-pl">' + whoTag(r.who) + '<span class="vr-lbl">' + recLogo(sp, ev, r.side, r.group) + '<b>' + esc(r.label) + '</b></span><span class="num vr-u">' + (r.units != null ? r.units + 'u' : '') + '</span>' + (x.locked ? '<span class="vr-res locked" title="Locked" aria-label="locked">' + ICON.lock + '</span>' : '<span class="vr-res open" aria-label="pending"></span>') + '</div>'; }).join('') + '</div></div>'; }).join('') + '</div></section>';
+        return '<div class="vr-pl">' + whoTag(r.who) + '<span class="vr-lbl">' + recLogo(r.sp || sp, ev, r.side, r.group) + '<b>' + esc(r.label) + '</b></span><span class="num vr-u">' + (r.units != null ? r.units + 'u' : '') + '</span>' + (x.locked ? '<span class="vr-res locked" title="Locked" aria-label="locked">' + ICON.lock + '</span>' : '<span class="vr-res open" aria-label="pending"></span>') + '</div>'; }).join('') + '</div></div>'; }).join('') + '</div></section>';
   }
   /* recent games: Vault's plays (suggested size, and the lock when it counts), newest first */
   var by = {};
-  D.cardRows.filter(function(r){ return r.sport === sp && r.kind !== 'close' && r.side && r.variant === 'all' && r.play === 'sf'; })
-    .forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: []}).v.push(r); });
+  D.cardRows.filter(function(r){ return inSp(r.sport) && r.kind !== 'close' && r.side && r.variant === 'all' && r.play === 'sf'; })
+    .forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: [], sp: r.sport}).v.push(r); });
   var evs = Object.keys(by).sort(function(a, b){ return by[b].gst - by[a].gst; }), shown = REC_ALL ? evs : evs.slice(0, 8);
   if (evs.length){
-    var pl = function(who, r, label, res, side, ev){ return '<div class="vr-pl">' + whoTag(who) + '<span class="vr-lbl">' + recLogo(sp, ev, side, r.group) + '<b>' + esc(label) + '</b></span><span class="num vr-u">' + (r.units != null ? r.units + 'u' : '') + '</span>' + resTag(res, res ? r.units_pl : null, r.status === 'unpriced') + '</div>'; };
-    recentHtml = '<section class="vr-card"><div class="vr-fh"><h3>Recent games</h3>' + helpBtn() + '</div>' + defsHtml() + '<div class="vr-games">' + shown.map(function(ev){ var x = by[ev], gn = gameName(ev);
+    var pl = function(who, r, label, res, side, ev){ return '<div class="vr-pl">' + whoTag(who) + '<span class="vr-lbl">' + recLogo(r.sport || sp, ev, side, r.group) + '<b>' + esc(label) + '</b></span><span class="num vr-u">' + (r.units != null ? r.units + 'u' : '') + '</span>' + resTag(res, res ? r.units_pl : null, r.status === 'unpriced') + '</div>'; };
+    recentHtml = '<section class="vr-card"><div class="vr-fh"><h3>Recent games</h3>' + helpBtn() + '</div>' + defsHtml() + '<div class="vr-games">' + shown.map(function(ev){ var x = by[ev], gn = gameName(ev); if (ALL && x.sp) gn.d = x.sp.toUpperCase() + ' · ' + gn.d;
       return '<div class="vr-g"><div class="vr-gn"><b>' + gn.t + '</b><span>' + gn.d + '</span></div><div class="vr-gp">' +
         x.v.map(function(r){ return pl('Vault', r, playLabel(r.side, r.group, r.line, r.outs), r.res, r.side, ev); }).join('') +
         '</div></div>'; }).join('') + '</div>' +
@@ -679,6 +687,9 @@ function recSport(sp, D){
   }
   if (openHtml || recentHtml) out += '<div class="vr-two">' + openHtml + recentHtml + '</div>';
   var notes = [], cc = c.cards || {};
+  if (ALL) cc = SPS.reduce(function(t, s){ var k = cs(s).cards || {}; t.frozen += k.frozen || 0; t.counted += k.counted || 0;
+    Object.keys(k.not_counted_by_reason || {}).forEach(function(r){ t.not_counted_by_reason[r] = (t.not_counted_by_reason[r] || 0) + k.not_counted_by_reason[r]; }); return t; },
+    {frozen: 0, counted: 0, not_counted_by_reason: {}});
   if (cc.frozen) notes.push(cc.frozen + ' cards frozen, ' + (cc.counted || 0) + ' count for the forward test' + Object.keys(cc.not_counted_by_reason || {}).map(function(k){ return '; ' + cc.not_counted_by_reason[k] + ' ' + esc(k); }).join('') + '.');
   if (notes.length) out += '<details class="vr-notes"><summary>Notes</summary><ul>' + notes.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ul></details>';
   return out;
@@ -689,12 +700,11 @@ function renderRecord(el, o){
     if (!document.contains(el)) return;                                  /* a newer render replaced this one */
     if (!REC.d){ el.innerHTML = '<div class="vc-note"><b>No record yet</b><p>The record fills in once frozen cards settle. It updates every 2 hours.</p></div>'; return; }
     /* every Sharp Money sport is on the switch, in the page's own order; a sport with nothing graded yet still shows its open plays */
-    var have = REC_SPORTS.filter(function(s){ return ((REC.d.cards || {}).sports || {})[s]; });
-    var all = ['nfl', 'cfb', 'nba', 'cbb'].filter(function(s){ return REC_SPORTS.indexOf(s) >= 0; });
-    var fixed = o.sport && o.sport !== 'all' ? o.sport : null, sp = fixed || (all.indexOf(REC_SP) >= 0 ? REC_SP : have[0] || all[0]);
+    var all = ['all'].concat(['nfl', 'cfb', 'nba', 'cbb'].filter(function(s){ return REC_SPORTS.indexOf(s) >= 0; }));
+    var fixed = o.sport && o.sport !== 'all' ? o.sport : null, sp = fixed || (all.indexOf(REC_SP) >= 0 ? REC_SP : 'all');
     var gen = (REC.d.cards || {}).generated || 0;
     var head = '<div class="vr-head">' + (!fixed ? '<div class="vseg sm vr-sp" role="tablist" aria-label="Sport"><i class="v-pill"></i>' +
-      all.map(function(s){ return '<button type="button" data-v="' + s + '"' + (s === sp ? ' class="on"' : '') + '>' + s.toUpperCase() + '</button>'; }).join('') + '</div>' : '<span></span>') +
+      all.map(function(s){ return '<button type="button" data-v="' + s + '"' + (s === sp ? ' class="on"' : '') + '>' + (s === 'all' ? 'All' : s.toUpperCase()) + '</button>'; }).join('') + '</div>' : '<span></span>') +
       '<span class="vr-upd">' + (gen ? 'Updated ' + ct(gen) + ' CT' : '') + '</span></div>';
     var body = sp ? recSport(sp, REC.d) : '', tl = topSlot(el);
     if (tl) tl.innerHTML = head.replace('<div class="vr-head">', '').replace(/<\/div>$/, '');
