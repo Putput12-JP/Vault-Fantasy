@@ -777,6 +777,36 @@ def lock_shadow(g, ws, cls, variant, kf):
     return res
 
 
+def locked_plays(frozen_out, now, hours=12):
+    """Plays on cards frozen in the last `hours` (game start within that window), for the Record page's Open plays: once a card locks
+    it leaves the live list, and the record job only lists it on its next run, up to 2 hours later. Shown size (variant all) on every
+    card, the pre-registered lock on counted cards. `key` matches the graded row's key, so the page drops a play once it is graded."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(frozen_out, "*", "frozen", "*", "*.json"))):
+        try:
+            gst = int(os.path.basename(path).rsplit("@", 1)[1].split(".")[0])
+        except (IndexError, ValueError):
+            continue
+        if gst < now - hours * 3600:
+            continue
+        try:
+            with open(path) as f:
+                c = json.load(f)
+        except (OSError, ValueError):
+            continue
+        rel = os.path.relpath(path, frozen_out)
+        for g, m in (c.get("markets") or {}).items():
+            sf = (m.get("sf") or {}).get("all") or {}
+            if sf.get("side") and (sf.get("units") or 0) > 0:
+                out.append({"key": f"{rel}|{g}|all|sf", "sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": g, "play": "sf",
+                            "side": sf["side"], "line": sf.get("line"), "outs": sf.get("outs"), "units": sf["units"]})
+            ls = (m.get("lock_shadow") or {}).get("all") or {}
+            if ls.get("side") and (c.get("test") or {}).get("counts"):
+                out.append({"key": f"{rel}|{g}|all|lock", "sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": g, "play": "lock",
+                            "side": ls["side"], "line": ls.get("line"), "outs": ls.get("outs"), "units": ls.get("units_clean_ladder")})
+    return out
+
+
 def carry_flagged(c, old, now):
     """`flagged` on each shown size and lock: the price and time this side was first flagged, carried from the previous live build
     while the side stays the same. A new side starts at its current price (live builds only; a frozen card only inherits)."""
@@ -885,6 +915,7 @@ def main():
                 c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape)
                 carry_flagged(c, prev.get((ev, gst)), now)
                 live["games"].append(c)
+    live["locked"] = locked_plays(a.frozen_out, now)
     os.makedirs(os.path.dirname(os.path.abspath(a.live_out)), exist_ok=True)
     with open(a.live_out + ".tmp", "w") as f:
         json.dump(live, f, separators=(",", ":"))

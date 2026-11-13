@@ -346,5 +346,25 @@ class BenchmarkExclusions(unittest.TestCase):
         self.assertEqual((m["B"]["all"]["unproven_usd"], m["B"]["sfx"]["excluded_usd"]), (900, 900))
 
 
+class LockedPlays(unittest.TestCase):
+    def test_recent_frozen_plays_are_listed_with_their_graded_key(self):
+        import json, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            def put(ev, gst, counts=True, units=2):
+                p = os.path.join(d, "nba", "frozen", "2026-11-13", f"{ev}@{gst}.json")
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, "w") as f:
+                    json.dump({"sport": "nba", "ev": ev, "gst": gst, "test": {"counts": counts}, "markets": {"ml": {
+                        "sf": {"all": {"side": "A", "units": units, "line": None, "outs": ["A", "B"]}},
+                        "lock_shadow": {"all": {"side": "A", "units_clean_ladder": 3, "line": None, "outs": ["A", "B"]}}}}}, f)
+            now = 1_800_000_000
+            put("nba-a-b-2026-11-12", now - 3600)
+            put("nba-c-d-2026-11-12", now - 3600, counts=False, units=0)
+            put("nba-old-2026-11-11", now - 13 * 3600)
+            got = C.locked_plays(d, now)
+        self.assertEqual(sorted((r["ev"], r["play"]) for r in got), [("nba-a-b-2026-11-12", "lock"), ("nba-a-b-2026-11-12", "sf")])
+        self.assertEqual({r["key"] for r in got}, {"nba/frozen/2026-11-13/nba-a-b-2026-11-12@%d.json|ml|all|%s" % (now - 3600, k) for k in ("sf", "lock")})
+
+
 if __name__ == "__main__":
     unittest.main()
