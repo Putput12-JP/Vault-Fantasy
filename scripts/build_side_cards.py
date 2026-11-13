@@ -198,6 +198,7 @@ class Ledger:
                            else "churn" if out["churn"] else None)
         # variant `sfx`: the same all-rows book, but the benchmark's own published exclusion list (market makers and traders) instead of
         # Vault's hedger and churn approximations, which the benchmark applies only when it discovers new wallets
+        out["all"]["_key"], out["fwd"]["_key"] = (w, "all", len(rs)), (w, "fwd", len(rs))
         out["sfx"] = out["all"]
         out["excluded_sfx"] = "benchmark" if w in self.sf_excluded else None
         return out
@@ -299,6 +300,55 @@ def positions(rows, markets, closes=None):
     return list(pos.values())
 
 
+def luck(pairs):
+    """How often a record this good happens by luck: P(wins >= the wallet's wins) if every bet won exactly as often as its own entry
+    price says (a Polymarket price is the market's chance, so a -150 favourite is a 60% coin, not a 50% one). Poisson-binomial, exact.
+    `pairs` is [(entry price, won)]. None under 2 bets."""
+    ps = [(px, won) for px, won in pairs if px is not None and 0 < px < 1]
+    if len(ps) < 2:
+        return None
+    dist = [1.0]
+    for px, _ in ps:
+        nxt = [0.0] * (len(dist) + 1)
+        for k, v in enumerate(dist):
+            nxt[k] += v * (1 - px)
+            nxt[k + 1] += v * px
+        dist = nxt
+    wins = sum(1 for _, won in ps if won)
+    return {"p": max(0.0, min(1.0, sum(dist[wins:]))), "exp_w": round(sum(px for px, _ in ps), 2), "n": len(ps)}
+
+
+DIVE_COLS = ["w", "l", "roi", "clv_n", "clv_beat", "luck"]   # one dive cell: [wins, losses, dollar ROI, bets with a close, beat it, luck]
+
+
+def dive(ps, usual):
+    """The wallet deep dive, from its positions settled before the cut: record, dollar ROI, closing-line beat rate and luck, split by
+    market group (its lane), by favourite or underdog (entry price at or above 50 cents is a favourite) and by size vs its usual stake.
+    Context only: shown in the wallet sheet, never read by the size, the lock or any record."""
+    dec = [p for p in ps if p["res"] in ("win", "loss")]
+
+    def cell(xs):
+        if not xs:
+            return None
+        cash = [p for p in xs if not p["split"] and p["stake"] > 0]
+        st, pnl = sum(p["stake"] for p in cash), sum(p["pnl"] for p in cash)
+        cl = [p["clv"] for p in xs if p["clv"] is not None]
+        lk = luck([(p["px"], p["res"] == "win") for p in xs])
+        return [sum(p["res"] == "win" for p in xs), sum(p["res"] == "loss" for p in xs), round(pnl / st, 4) if st > 0 else None,
+                len(cl), sum(1 for c in cl if c > 0), float("%.3g" % lk["p"]) if lk else None]
+    lk = luck([(p["px"], p["res"] == "win") for p in dec])
+    out = {"cols": DIVE_COLS, "exp_w": lk["exp_w"] if lk else None, "all": cell(dec),
+           "lane": {g: cell([p for p in dec if GROUP.get(p["mt"]) == g]) for g in ("ml", "spread", "total")},
+           "fav": cell([p for p in dec if p["px"] is not None and p["px"] >= 0.5]),
+           "dog": cell([p for p in dec if p["px"] is not None and p["px"] < 0.5])}
+    if usual:
+        sz = [p for p in dec if not p["split"] and p["stake"] > 0]
+        out["size"] = {"small": cell([p for p in sz if p["stake"] / usual < 0.75]),
+                       "usual": cell([p for p in sz if 0.75 <= p["stake"] / usual < PRESS]),
+                       "big": cell([p for p in sz if p["stake"] / usual >= PRESS])}
+    return out
+
+
 def book(rows, asof, markets, closes=None):
     ps = positions(rows, markets, closes)
     wins = sum(p["res"] == "win" for p in ps)
@@ -331,6 +381,7 @@ def book(rows, asof, markets, closes=None):
          "clv_mean": (sum(p["clv"] for p in ps if p["clv"] is not None) / sum(1 for p in ps if p["clv"] is not None))
          if any(p["clv"] is not None for p in ps) else None,
          "sizes": [[p["stake"], p["res"] == "win"] for p in cash if p["res"] in ("win", "loss") and p["stake"] > 0]}
+    b["_ps"] = ps                                    # kept for the deep dive, built only for the wallets a card lists (wallet_line)
     if b["l30_n"] < L30_MIN_N:
         b["l30_roi"] = None
     b["proven"] = bool(b["n"] >= PROVEN_N and b["wr"] is not None and b["wr"] >= PROVEN_WR and b["roi"] is not None
@@ -395,7 +446,7 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
             side, usd, cid = max(legs, key=lambda l: l[1])
         groups.setdefault(g, []).append({"w": w, "side": side, "usd": usd, "cid": cid, "two_way": two_way, "s": s})
     built = int(time.time())
-    out = {"v": VERSION, "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "cut": cut, "frozen": frozen, "sf_excluded_n": len(ledger.sf_excluded),
+    out = {"v": VERSION, "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "cut": cut, "frozen": frozen, "sf_excluded_n": len(ledger.sf_excluded), "pop": len(ledger.population("all", cut)),
            "built": built, "keyframe_written": kf.get("written"), "ledger_run_at": ledger.run_at,
            "money_basis": "shares x market price at the cut", "context_only": True,
            "coverage": {"markets_read": len(kf["mk"]), "markets_missed": len(kf.get("miss") or []),
@@ -727,6 +778,23 @@ def at_size(b, press):
     return {"lo": lo, "hi": hi, "w": sum(band), "l": len(band) - sum(band), "share": round(len(band) / len(b["sizes"]), 3)}
 
 
+def wallet_dive(b):
+    """The deep dive of a listed wallet, computed once per book (a wallet's book is cached per card)."""
+    if "_dive" not in b:
+        k = b.get("_key")                            # (wallet, variant, rows before the cut): the same book on another card
+        if k is None or k not in _DIVES:
+            d = dive(b["_ps"], b["usual"]) if b.get("_ps") else None
+            if k is None:
+                b["_dive"] = d
+                return d
+            _DIVES[k] = d
+        b["_dive"] = _DIVES[k]
+    return b["_dive"]
+
+
+_DIVES = {}
+
+
 def wallet_line(x, variant, k):
     b = x["s"][variant]
     press = round(x["usd"] / b["usual"], 2) if b["usual"] else None
@@ -735,7 +803,8 @@ def wallet_line(x, variant, k):
             "roi": round(b["roi"], 4) if b["roi"] is not None else None,
             "l30_roi": round(b["l30_roi"], 4) if b["l30_roi"] is not None else None, "pnl": b["pnl"], "n": b["n"],
             "usual": round(b["usual"]) if b["usual"] else None, "at_size": at_size(b, press),
-            "clv": {"n": b["clv_n"], "beat": b["clv_beat"], "mean": round(b["clv_mean"], 4) if b["clv_mean"] is not None else None}}
+            "clv": {"n": b["clv_n"], "beat": b["clv_beat"], "mean": round(b["clv_mean"], 4) if b["clv_mean"] is not None else None},
+            "dive": wallet_dive(b)}
 
 
 def ladder_units(top_press, price):
