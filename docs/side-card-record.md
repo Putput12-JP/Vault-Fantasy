@@ -105,3 +105,9 @@ suggested sizes from the live cards (games not yet locked) and shows them all un
 locked, or awaiting result. A play leaves the list once its row is graded. The benchmark's plays appear only after our lock, because
 its picks are archived at the cut.
 
+## One record on the page (2026-11-13)
+
+The Record tab shows one system: Vault's record (every suggested play) and its forward test. The benchmark head-to-head is no longer
+shown or fetched by the page. `benchmark_h2h.py` still archives and grades it on `pm-holders-data` (`h2h_record.json`,
+`pm_record/benchmark/`), so the comparison can be read from the data if it is ever needed again.
+
