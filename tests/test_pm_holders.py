@@ -192,6 +192,21 @@ class ReviewFixes(unittest.TestCase):
         kf = H.keyframe(st, "nba-bos-tor-2027-01-15", GST, CUT + 60)
         self.assertEqual((kf["mk"]["c1"]["px"], kf["h"][0][4]), ([0.6, 0.4], 60.0))
 
+    def test_freeze_read_confirms_an_unchanged_price(self):
+        st = state_with_market()                                             # price [0.6, 0.4] logged at t=1
+        class Cli:
+            def get(self, url):
+                return {"markets": [{"conditionId": "c1", "gameStartTime": None, "outcomePrices": '["0.6","0.4"]'}]}
+        self.assertEqual(H.price_rows(Cli(), st, ["c1"]), [])               # unchanged and not a freeze read: nothing logged
+        rows = H.price_rows(Cli(), st, ["c1"], confirm={"c1"})
+        self.assertEqual([(r["k"], r["px"]) for r in rows], [("p", [0.6, 0.4])])   # freeze read: logged, stamped now
+        for r in rows:
+            r["t"] = CUT - 120
+            st.apply(r)
+        read(st, "c1", {0: {"0xa": (100, None)}}, CUT - 60)
+        kf = H.keyframe(st, "nba-bos-tor-2027-01-15", GST, CUT + 60)
+        self.assertEqual(kf["mk"]["c1"]["px_t"], CUT - 120)                  # the lock price time is the freeze read, not t=1
+
     def test_empty_token_list_never_replaces_a_known_one(self):
         st = state_with_market()
         st.apply({"k": "m", "c": "c1", "ev": "nba-bos-tor-2027-01-15", "mt": "moneyline", "line": None, "outs": [], "tok": [],

@@ -317,8 +317,9 @@ def market_rows(st, events, sport):
     return rows
 
 
-def price_rows(cli, st, cids):
-    """Gamma prices (and game start, which can move) for the markets about to be read. Each row is stamped when its batch returned;
+def price_rows(cli, st, cids, confirm=()):
+    """Gamma prices (and game start, which can move) for the markets about to be read. A price is logged when it changes, and for the
+    `confirm` markets (the freeze read) also when it has not, so the keyframe's price time is when it was last read. Each row is stamped when its batch returned;
     a price that arrives after its market's cut is dropped (a moved start time is still recorded: it is a fact, not a holding)."""
     rows = []
     for i in range(0, len(cids), GAMMA_BATCH):
@@ -340,7 +341,7 @@ def price_rows(cli, st, cids):
                 px = [float(x) for x in json.loads(m.get("outcomePrices") or "[]")]
             except ValueError:
                 px = None
-            if px and px != cur.get("px") and t <= (gst or cur.get("gst") or 0) - CUTOFF_SEC:
+            if px and (px != cur.get("px") or c in confirm) and t <= (gst or cur.get("gst") or 0) - CUTOFF_SEC:
                 rows.append({"k": "p", "c": c, "t": t, "px": px})
     return rows
 
@@ -511,7 +512,9 @@ def cycle(cli, root, sport, st, dry):
         due_c.sort(key=lambda c: (due(st.m[c], now) != "freeze", st.m[c]["gst"]))   # freeze reads first, then earliest games
         stats["due"] = len(due_c)
         try:
-            for r in price_rows(cli, st, due_c):
+            # the freeze read re-logs every price even when unchanged, so the T-15 keyframe carries a price confirmed at the lock
+            # (prices were logged only on change, so a steady price kept the time it last moved: up to hours before the cut)
+            for r in price_rows(cli, st, due_c, confirm={c for c in due_c if due(st.m[c], now) == "freeze"}):
                 log.append(r)
                 st.apply(r)
         except PMDataError as e:
