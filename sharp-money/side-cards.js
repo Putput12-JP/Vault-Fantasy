@@ -727,7 +727,10 @@ function mountPage(el, o){
   }
   host(el, function(){
     OPT = o;
-    if (VIEW === 'record' && el._sp === (o.sport || '') && el.querySelector('.vr-body .vr, .vr-body .vc-note, .vr-body .vr-skel')) return;   /* a card refresh leaves the record alone */
+    if (VIEW === 'record' && el._sp === (o.sport || '') && el.querySelector('.vr-body .vr, .vr-body .vc-note, .vr-body .vr-skel')){
+      /* a card refresh redraws the record from its cached files, so Open plays picks up plays that just locked */
+      var rb = el.querySelector('.vr-body'), y = window.scrollY; renderRecord(rb, o); window.scrollTo(0, y); return;
+    }
     el._sp = o.sport || '';
     el.innerHTML = '<div class="vr-topbar"><div class="vr-tl"></div><div class="vseg sm vr-view" role="tablist" aria-label="View"><i class="v-pill"></i><button type="button" data-v="cards"' + (VIEW === 'cards' ? ' class="on"' : '') +
       '>Cards</button><button type="button" data-v="record"' + (VIEW === 'record' ? ' class="on"' : '') + '>Record</button></div></div><div class="vr-body"></div>';
