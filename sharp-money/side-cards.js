@@ -74,7 +74,7 @@ function logo(name, g){
   if (name === 'Over' || name === 'Under') return '<div class="vc-logo">' + name[0] + '</div>';
   var url = OPT.logo ? OPT.logo(g, name) : null, ab = null;
   if (!url && g.sport === 'cbb'){ var cs = cbbSide(g, name); url = cs && ((g.vault || {}).logo || {})[cs] || null; }   /* ESPN's own link, stored by the poller */
-  if (!url && g.sport === 'nba'){ ab = [g.vault.away, g.vault.home].filter(function(a){ return TEAMS[a] && TEAMS[a][0] === name; })[0];
+  if (!url && g.sport === 'nba'){ ab = [(g.vault || {}).away, (g.vault || {}).home].filter(function(a){ return TEAMS[a] && TEAMS[a][0] === name; })[0];
     if (ab) url = 'https://a.espncdn.com/i/teamlogos/nba/500/' + TEAMS[ab][1] + '.png'; }
   var mono = esc(ab || name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(function(w){ return w[0]; }).join('').slice(0, 3).toUpperCase());
   if (!url) return '<div class="vc-logo">' + mono + '</div>';
@@ -87,13 +87,16 @@ function cbbSide(g, name){
     return (T[k] || []).some(function(x){ x = String(x || '').toLowerCase(); return x && (n === x || n.indexOf(x + ' ') === 0); }); });
   return hit.length === 1 ? hit[0] : null;
 }
+/* a game Polymarket lists that Vault's schedule has not joined (g.vault null: FCS college games, next week's NFL) falls back to the
+   team codes in its slug, never "?" */
+function slugTeam(g, side){ var m = /^[a-z]+-([a-z0-9]+)-([a-z0-9]+)-\d{4}-\d{2}-\d{2}/.exec(g.ev || ''); return m ? (side === 'away' ? m[1] : m[2]).toUpperCase() : '?'; }
 function teamName(g, side){ var ab = g.vault && g.vault[side];
-  if (g.sport === 'cbb'){ var T = ((g.vault || {}).teams || {})[side] || []; return T[1] || T[0] || ab || '?'; }
-  return g.sport === 'nba' && TEAMS[ab] ? TEAMS[ab][0] : (ab || '?'); }
+  if (g.sport === 'cbb'){ var T = ((g.vault || {}).teams || {})[side] || []; return T[1] || T[0] || ab || slugTeam(g, side); }
+  return g.sport === 'nba' && TEAMS[ab] ? TEAMS[ab][0] : (ab || slugTeam(g, side)); }
 function sideOrder(g, m, key){
   var names = Object.keys(m.sides);
   if (key === 'total') return names.sort();                         /* Over, Under */
-  var away = g.sport === 'nba' && TEAMS[g.vault.away] ? TEAMS[g.vault.away][0] : null;
+  var away = g.sport === 'nba' && TEAMS[(g.vault || {}).away] ? TEAMS[(g.vault || {}).away][0] : null;
   if (g.sport === 'cbb') away = names.filter(function(x){ return cbbSide(g, x) === 'away'; })[0] || null;
   return names.sort(function(a, b){ return (a === away ? 0 : 1) - (b === away ? 0 : 1); });
 }
@@ -291,7 +294,8 @@ function body(g, st){
     'Oldest read ' + dur(cv.max_read_lag_s) + ' before ' + (g.frozen ? 'the lock' : 'this build') + '.', 'Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.'];
   if (names.some(function(n){ return m.sides[n][v].ags; })) bits.push('The score compares the average quality of the proven wallets on each side, from -1 to +1. The labels use published cut points (above 0.781 Lean, 0.916 Lock, 0.957 Prem, 0.981 Elite; any lower positive score is Weak). Those were fitted outside Vault, and the label does not set the size.');
   if (cv.two_way_dust_dropped) bits.push(cv.two_way_dust_dropped + ' two-way ' + (cv.two_way_dust_dropped === 1 ? 'wallet' : 'wallets') + ' dropped as balanced dust.');
-  if (g.vault.start_gap_flag) bits.push('Start times differ by ' + g.vault.start_gap_min + ' min between Polymarket and Vault.');
+  if ((g.vault || {}).start_gap_flag) bits.push('Start times differ by ' + g.vault.start_gap_min + ' min between Polymarket and Vault.');
+  if (!g.vault) bits.push('This game is on Polymarket but not yet in Vault\'s schedule, so team names come from its listing.');
   if (g.test) bits.push(g.test.counts ? 'Counts for the forward test.' : 'Does not count for the forward test: ' + g.test.why_not.join(', ') + '.');
   return h + '<details class="vc-mod vc-dt" data-d="n"' + (st.open.n ? ' open' : '') + '><summary>Data notes</summary><div class="vc-dtb"><p>' + bits.join(' ') + '</p></div></details>' +
     '<p class="vc-foot">Sharp money is context. The suggested size comes from an untested rule that is still in its forward test.</p>';
@@ -718,7 +722,9 @@ function renderCards(el, o){
     var tl = topSlot(el); (tl || el).appendChild(up); tickAgo(); }
   var sl = document.createElement('div'); sl.className = 'vc-sl'; slate(sl, {games: games.map(function(x){ return x.g; })}); el.appendChild(sl);
   var list = document.createElement('div'); list.className = 'vsc-list';
-  games.forEach(function(x){ list.appendChild(card(x.g, o, x.c === 'quiet' && !SHOWN[x.g.ev] && Object.keys(x.g.markets).length > 0)); });
+  games.forEach(function(x){ try { list.appendChild(card(x.g, o, x.c === 'quiet' && !SHOWN[x.g.ev] && Object.keys(x.g.markets).length > 0)); } catch (e) {
+    /* a card that fails to draw is skipped and reported, never allowed to stop the rest of the list */
+    if (window.console) console.warn('side card skipped', x.g && x.g.ev, e); } });
   el.appendChild(list);
   [].forEach.call(el.querySelectorAll('.vseg'), function(s){ rail(s, false); });
 }
