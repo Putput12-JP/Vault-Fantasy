@@ -134,6 +134,32 @@ class Grade(unittest.TestCase):
         c["test"]["counts"] = False
         self.assertEqual([r["play"] for r in G.open_plays(todo, set(), GST + 3600)], ["sf"])   # a lock that does not count is not listed
 
+    def test_steady_price_confirmed_by_a_later_read_is_priced(self):
+        import gzip, json, tempfile
+        stale = {**LOCK, "price_t": CUT - 4 * 3600}                     # logged 4h before the lock, never changed after
+        r = G.grade(card(stale), "k", None, FACT, CLOSES, GST + 3600)[0][0]
+        self.assertEqual(r["status"], "unpriced")
+        with tempfile.TemporaryDirectory() as d:
+            day = __import__("datetime").datetime.fromtimestamp(CUT, __import__("datetime").timezone.utc).strftime("%Y-%m-%d")
+            os.makedirs(os.path.join(d, "nba", "log", day))
+            def cyc(name, t, err=None):
+                with gzip.open(os.path.join(d, "nba", "log", day, name + ".jsonl.gz"), "wt") as f:
+                    for row in ({"k": "r", "c": "c1", "rt": t + 5}, {"k": "cyc", "t": t, "ok": True, "price_err": err}):
+                        f.write(json.dumps(row) + "\n")
+            cyc("a", CUT - 300)                                           # a good read 5 min before the lock
+            cyc("b", CUT - 120, err="gamma down")                         # a later cycle whose price read failed: not a confirmation
+            cyc("c", CUT + 60)                                            # after the lock: never used
+            conf = G.price_confirmations(d, "nba", {"c1"}, CUT - G.STALE_PRICE, CUT)
+        self.assertEqual([t for t, _ in conf["c1"]], [CUT - 300])
+        r = G.grade(card(stale), "k", None, FACT, CLOSES, GST + 3600, conf)[0][0]
+        self.assertEqual((r["status"], r["price_t"], r["flat"]), ("graded", CUT - 300, -1.0))
+        self.assertEqual(r["price_t_src"], "confirmed by a later unchanged read")
+
+    def test_no_confirmation_stays_unpriced(self):
+        stale = {**LOCK, "price_t": CUT - 4 * 3600}
+        conf = {"c1": [(CUT - 3600, CUT - 3595)]}                         # a read, but more than 30 min before the lock
+        self.assertEqual(G.grade(card(stale), "k", None, FACT, CLOSES, GST + 3600, conf)[0][0]["status"], "unpriced")
+
     def test_bootstrap_is_seeded(self):
         xs = [1.0, -1.0, 0.9, -1.0, 0.5]
         self.assertEqual(G.boot_ci(xs), G.boot_ci(xs))
