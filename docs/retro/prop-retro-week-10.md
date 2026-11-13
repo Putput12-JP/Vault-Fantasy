@@ -16,7 +16,7 @@ The closing line is the sharpest number the market posts, so it is our stand-in 
 rec_yd         n=  13      7-6 53.8% | CLV 69.2% | MAE  23.2 bias -12.90 | edge +0.033
 rec            n=  13      5-8 38.5% | CLV 84.6% | MAE   1.5 bias -1.00 | edge +0.020
 rush_yd        n=   6      3-3 50.0% | CLV 100.0% | MAE  17.7 bias +7.17 | edge -0.177
-rush_att       n=   6      4-2 66.7% | CLV 66.7% | MAE   2.7 bias +0.33 | edge -0.096
+rush_att       n=   6      4-2 66.7% | CLV 66.7% | MAE   2.9 bias +0.16 | edge -0.096
 rush_rec_yd    n=   4      2-2 50.0% | CLV 75.0% | MAE  24.4 bias +4.25 | edge   -  
 pass_td        n=   2      1-1 50.0% | CLV  0.0% | MAE   1.0 bias -0.71 | edge +0.030
 pass_rush_yd   n=   2      1-1 50.0% | CLV  0.0% | MAE  53.2 bias -53.16 | edge   -  
@@ -30,7 +30,7 @@ pass_int       n=   2      1-1 50.0% | CLV 50.0% | MAE   0.8 bias -0.84 | edge  
 
 ```
 RB     n=  18     12-6 66.7% | CLV 77.8% | MAE  12.8 bias +1.68 | edge -0.061
-QB     n=  16      7-9 43.8% | CLV 43.8% | MAE  17.7 bias -15.00 | edge -0.080
+QB     n=  16      7-9 43.8% | CLV 43.8% | MAE  17.7 bias -15.07 | edge -0.080
 WR     n=  12      3-9 25.0% | CLV 83.3% | MAE  10.8 bias -3.04 | edge -0.029
 TE     n=   8      4-4 50.0% | CLV 62.5% | MAE  17.4 bias -13.95 | edge +0.063
 ```
@@ -38,7 +38,7 @@ TE     n=   8      4-4 50.0% | CLV 62.5% | MAE  17.4 bias -13.95 | edge +0.063
 ## Over vs under
 
 ```
-over   n=  32    22-10 68.8% | CLV 65.6% | MAE  17.1 bias -4.56 | edge -0.012
+over   n=  32    22-10 68.8% | CLV 65.6% | MAE  17.1 bias -4.59 | edge -0.012
 under  n=  22     4-18 18.2% | CLV 68.2% | MAE  10.6 bias -9.64 | edge -0.072
 ```
 
