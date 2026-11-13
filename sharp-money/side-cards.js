@@ -623,8 +623,13 @@ function recSport(sp, D){
   ((STORE.d || {}).games || []).filter(function(g){ return g.sport === sp && !g.frozen; }).forEach(function(g){
     Object.keys(g.markets).forEach(function(k){ var x = ((g.markets[k].sf || {}).all) || {};
       if (x.side && x.units > 0){ addO(g.ev, g.gst, {who: 'Vault', side: x.side, group: k, label: playLabel(x.side, k, x.line, x.outs), units: x.units}); og[g.ev].live = true; og[g.ev].cut = g.cut; } }); });
+  /* just locked: plays on cards frozen in the last 12 hours (published with the live cards at every lock), until their row is graded */
+  var graded = {}; D.cardRows.forEach(function(r){ graded[r.key] = 1; });
+  var seen = {}, addOnce = function(ev, gst, row){ var k = ev + '|' + row.who + '|' + row.label; if (seen[k]) return; seen[k] = 1; addO(ev, gst, row); };
+  ((STORE.d || {}).locked || []).filter(function(r){ return r.sport === sp && !graded[r.key]; }).forEach(function(r){
+    addOnce(r.ev, r.gst, {who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
   (((D.cards || {}).open) || []).filter(function(r){ return r.sport === sp && r.gst > nowS - 7 * 86400; }).forEach(function(r){
-    addO(r.ev, r.gst, {who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
+    addOnce(r.ev, r.gst, {who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
   (((D.h2h || {}).open) || []).filter(function(r){ return r.sport === sp && r.gst > nowS - 7 * 86400; }).forEach(function(r){
     addO(r.ev, r.gst, {who: 'Bench', side: r.team, group: r.group, label: playLabel(r.team, r.group, null, null), units: r.units}); });
   /* a live card past its lock time is locked, even before the live file drops it */
