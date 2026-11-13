@@ -506,24 +506,6 @@ function mount(el, g, opt){
 
 
 function units(ls){ var u = ls.units != null ? ls.units : ls.units_clean_ladder; return u == null ? null : String(u); }
-/* slate strip: totals over every game in the file, stored fields only */
-function slate(el, data){
-  var usdSum = 0, sides = 0, wallets = {}, cl = {quiet:0, building:0, signal:0}, plays = 0, ex = 0;
-  data.games.forEach(function(g){
-    cl[climate(g, 'all')]++;
-    Object.keys(g.markets).forEach(function(k){ var m = g.markets[k]; if (shadow(m, 'all')) plays++;
-      Object.keys(m.sides).forEach(function(n){ var s = m.sides[n].all; usdSum += s.sharp_usd; ex += s.excluded_usd; if (s.sharp_usd > 0) sides++;
-        s.list.forEach(function(w){ wallets[w.w] = 1; }); }); });
-  });
-  var t = function(v, l, sub, cls){ return '<div class="vc-slt ' + (cls || '') + '"><span>' + l + '</span><b class="num">' + v + '</b><em>' + sub + '</em></div>'; };
-  el.innerHTML = t(plays, 'Suggested plays', 'of ' + data.games.length + ' games', 'good') +
-    t(usd(usdSum), 'Proven money', sides + ' sides, ' + Object.keys(wallets).length + ' wallets', 'gold') +
-    /* one stacked bar instead of a dot per game: with a few hundred games the dots made this tile, and so the whole row, tall */
-    '<div class="vc-slt clim"><span>Climate</span><div class="vc-slbar" role="img" aria-label="' + cl.signal + ' signal, ' + cl.building + ' building, ' + cl.quiet + ' quiet">' +
-      ['signal', 'building', 'quiet'].map(function(k){ return cl[k] ? '<i class="' + k + '" style="flex:' + cl[k] + ' 1 0"></i>' : ''; }).join('') + '</div><em>' +
-      cl.signal + ' signal · ' + cl.building + ' building · ' + cl.quiet + ' quiet</em></div>';
-}
-
 function foldHtml(g, key){
   var m = g.markets[key], tot = Object.keys(m.sides).reduce(function(t, n){ return t + counted(m.sides[n].all); }, 0);
   return '<button type="button" class="vc-fold"><b>No proven money yet</b>' + usd(tot) + ' on the ' + GNAME[key] + '<span>Show</span></button>';
@@ -555,7 +537,7 @@ function host(el, render){
 }
 function css(){
   if (document.getElementById('vsc-css')) return;
-  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA + DETAIL + RECORD_CSS + STEAM_CSS + HC_CSS; document.head.appendChild(s);
+  var s = document.createElement('style'); s.id = 'vsc-css'; s.textContent = RESET + CSS + NBA + DETAIL + RECORD_CSS + STEAM_CSS + HC_CSS + PLAY_CSS; document.head.appendChild(s);
 }
 function rootClass(el, o){ el.className = 'vsc' + (o.skin === 'new' ? ' vsc-new' : o.skin === 'nba' ? ' vsc-nba' : ''); }
 function card(g, o, folded){
@@ -760,6 +742,192 @@ function renderRecord(el, o){
     if (more) more.addEventListener('click', function(){ REC_ALL = !REC_ALL; renderRecord(el, o); });
   });
 }
+/* ---------- play feed: one ticket per suggested play, with the game list kept behind "All games" ----------
+   The Sharps page used to be a grid of equal game cards. It is now a feed of plays (size sets the weight of each ticket), with games
+   that have proven money but no play in a side list. Every number is a stored field. "See who's on it" opens the same play detail. */
+var EO = 'var(--ease-out,cubic-bezier(.16,1,.3,1))', ESP = 'var(--ease-spring,cubic-bezier(.34,1.56,.64,1))';
+var PLAY_CSS = [
+'.vsc .vp{container-type:inline-size;container-name:vp}',
+'.vsc .vp-slate{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 28px;padding:14px 2px 16px;margin:12px 0 18px;border-top:1px solid var(--c-line);border-bottom:1px solid var(--c-line)}',
+'.vsc .vp-f{display:flex;align-items:baseline;gap:8px}.vsc .vp-f b{font-size:30px;font-weight:600;letter-spacing:-.04em;line-height:1}',
+'.vsc .vp-f.good b{color:var(--c-good)}.vsc .vp-f.gold b{color:var(--c-gold)}.vsc .vp-f span{font-size:13px;color:var(--c-mut)}',
+'.vsc .vp-clim{flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px;align-self:center}',
+'.vsc .vp-clim div{display:flex;height:6px;border-radius:99px;overflow:hidden;background:var(--c-box)}',
+'.vsc .vp-clim i{display:block;height:100%}.vsc .vp-clim .signal{background:var(--c-good)}.vsc .vp-clim .building{background:var(--c-warn)}',
+'.vsc .vp-clim span{font-size:12px;color:var(--c-dim)}',
+'.vsc .vp-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 12px}.vsc .vp-head h2{margin:0;font-size:15px;font-weight:600;color:var(--c-ink)}.vsc .vp-head .sp{flex:1}',
+'.vsc .vp-cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}',
+'.vsc .vp-feed{display:flex;flex-direction:column;gap:14px}',
+'.vsc .vp-tk{display:grid;grid-template-columns:128px minmax(0,1fr);background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);overflow:hidden;box-shadow:var(--c-shadow,none)}',
+'.vsc .vp-stub{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:18px 10px;border-right:1.5px dashed var(--c-line2);text-align:center}',
+'.vsc .vp-u{font-size:54px;font-weight:600;line-height:.9;letter-spacing:-.06em;color:var(--c-good)}.vsc .vp-u small{font-size:22px;font-weight:500;letter-spacing:-.02em;margin-left:1px}',
+'.vsc .vp-rule{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-dim);line-height:1.35}.vsc .vp-rule b{display:block;font-weight:600;color:var(--c-mut)}',
+'.vsc .vp-lock{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--c-mut)}.vsc .vp-lock svg{width:12px;height:12px;flex:none}.vsc .vp-lock.soon{color:var(--c-warn)}',
+'.vsc .vp-tk.u2 .vp-stub{background:color-mix(in srgb,var(--c-good) 9%,transparent)}',
+'.vsc .vp-tk.u3{border-color:color-mix(in srgb,var(--c-good) 45%,var(--c-line))}.vsc .vp-tk.u3 .vp-stub{background:var(--c-good);border-right-color:transparent}',
+'.vsc .vp-tk.u3 .vp-u{color:var(--c-on-good)}.vsc .vp-tk.u3 .vp-rule,.vsc .vp-tk.u3 .vp-rule b,.vsc .vp-tk.u3 .vp-lock{color:color-mix(in srgb,var(--c-on-good) 80%,transparent)}',
+'.vsc .vp-tb{padding:18px 20px 16px;min-width:0;display:flex;flex-direction:column;gap:16px}',
+'.vsc .vp-call{display:flex;align-items:center;gap:14px}.vsc .vp-call .vc-logo{width:44px;height:44px;font-size:13px}.vsc .vp-t{min-width:0;flex:1}',
+'.vsc .vp-gm{display:flex;flex-wrap:wrap;gap:0 8px;font-size:12px;color:var(--c-dim)}.vsc .vp-gm b{font-weight:500;color:var(--c-mut)}',
+'.vsc .vp-t h3{margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-.03em;line-height:1.15;color:var(--c-ink);overflow-wrap:anywhere}',
+'.vsc .vp-px{text-align:right;flex:none}.vsc .vp-px b{display:block;font-size:20px;font-weight:500;line-height:1.1}.vsc .vp-px span{font-size:12px;color:var(--c-dim)}',
+'.vsc .vp-ends{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:7px}',
+'.vsc .vp-end{display:flex;align-items:baseline;gap:8px;min-width:0}.vsc .vp-end.r{flex-direction:row-reverse;text-align:right}',
+'.vsc .vp-end span{font-size:13px;color:var(--c-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vsc .vp-end.pk span{color:var(--c-ink);font-weight:600}.vsc .vp-end b{font-size:17px;font-weight:500}',
+'.vsc .vp-bar{display:grid;grid-template-columns:minmax(0,1fr) 2px minmax(0,1fr);align-items:center;height:10px}.vsc .vp-bar u{height:18px;background:var(--c-mut);border-radius:1px}',
+'.vsc .vp-half{display:flex;height:100%;gap:2px}.vsc .vp-half.l{flex-direction:row-reverse;transform-origin:right}.vsc .vp-half.r{transform-origin:left}',
+'.vsc .vp-half i{display:block;height:100%;min-width:3px}.vsc .vp-half.l i:last-child{border-radius:99px 0 0 99px}.vsc .vp-half.r i:last-child{border-radius:0 99px 99px 0}',
+'.vsc .vp-half .hc{background:var(--c-gold)}.vsc .vp-half .sharp{background:var(--c-good)}.vsc .vp-half .unp{background:var(--c-rb-unp);opacity:.55}.vsc .vp-half .loser{background:var(--c-bad)}',
+'.vsc .vp-key{display:flex;justify-content:space-between;gap:12px;margin-top:7px;font-size:12px;color:var(--c-dim)}',
+'.vsc .vp-key div{display:flex;flex-wrap:wrap;gap:2px 12px}.vsc .vp-key div.r{justify-content:flex-end}.vsc .vp-key span{white-space:nowrap}',
+'.vsc .vp-key b{font-weight:500}.vsc .vp-key .hc b{color:var(--c-gold)}.vsc .vp-key .sharp b{color:var(--c-good)}.vsc .vp-key .loser b{color:var(--c-bad)}',
+'.vsc .vp-cps{border-top:1px solid var(--c-line);padding-top:14px}',
+'.vsc .vp-cap{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--c-dim);margin-bottom:8px}',
+'.vsc .vp-cap em{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;font-size:12px}',
+'.vsc .vp-cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.vsc .vp-c{padding:9px 14px;border-left:1px solid var(--c-line);min-width:0}',
+'.vsc .vp-c:first-child{border-left:0;border-radius:10px;background:color-mix(in srgb,var(--c-good) 11%,transparent)}.vsc .vp-c:nth-child(2){border-left:0}',
+'.vsc .vp-c b{display:block;font-size:20px;font-weight:600;line-height:1.15;white-space:nowrap;color:var(--c-ink)}.vsc .vp-c b.up{color:var(--c-good)}.vsc .vp-c b.dn{color:var(--c-bad)}',
+'.vsc .vp-c span{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--c-dim)}',
+'.vsc .vp-form{display:flex;align-items:center;gap:5px;margin-top:10px;flex-wrap:wrap}.vsc .vp-form i{width:7px;height:7px;border-radius:50%;background:var(--c-good)}',
+'.vsc .vp-form i.L{background:var(--c-bad)}.vsc .vp-form i.P{background:var(--c-dim)}.vsc .vp-form i:last-of-type{width:10px;height:10px}',
+'.vsc .vp-form span{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--c-dim);margin-left:6px}',
+'.vsc .vp-none{margin:0;font-size:13px;line-height:1.45;color:var(--c-mut)}',
+'.vsc .vp-ft{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:12.5px;color:var(--c-mut)}.vsc .vp-ft .sp{flex:1}.vsc .vp-ft .on{color:var(--c-warn)}',
+'.vsc .vp-who{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 14px;border:0;border-radius:9px;background:var(--c-box);font-family:var(--c-sans);font-size:13px;font-weight:500;color:var(--c-ink);cursor:pointer}',
+'.vsc .vp-who:hover{background:var(--c-line2)}.vsc .vp-who:focus-visible,.vsc .vp-row:focus-visible{outline:2px solid var(--c-good);outline-offset:2px}',
+'.vsc .vp-rail{position:sticky;top:16px;display:flex;flex-direction:column;gap:22px}',
+'.vsc .vp-next{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:16px 18px}',
+'.vsc .vp-next span{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--c-dim)}',
+'.vsc .vp-next b{display:block;font-size:34px;font-weight:600;letter-spacing:-.04em;line-height:1.1;margin:4px 0 2px;color:var(--c-ink)}.vsc .vp-next em{font-style:normal;font-size:13px;color:var(--c-mut)}',
+'.vsc .vp-rsec h2{margin:0 0 2px;font-size:15px;font-weight:600;color:var(--c-ink)}.vsc .vp-rsec>p{margin:0 0 8px;font-size:12.5px;color:var(--c-dim)}',
+'.vsc .vp-row{display:block;width:100%;padding:11px 0;border:0;border-top:1px solid var(--c-line);background:none;text-align:left;font-family:var(--c-sans);color:var(--c-ink);cursor:pointer}',
+'.vsc .vp-ra{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;font-weight:500}.vsc .vp-ra span{font-size:11.5px;font-weight:400;color:var(--c-dim);white-space:nowrap}',
+'.vsc .vp-rb{font-size:12.5px;color:var(--c-mut);margin:1px 0 7px}.vsc .vp-rb b{font-weight:500;color:var(--c-good)}',
+'.vsc .vp-mini{display:grid;grid-template-columns:minmax(0,1fr) 2px minmax(0,1fr);align-items:center;height:5px}.vsc .vp-mini u{height:9px;background:var(--c-dim)}',
+'.vsc .vp-mini .vp-half{gap:1px}.vsc .vp-mini .vp-half i{min-width:2px;border-radius:1px}',
+'.vsc .vp-quiet{font-size:12.5px;color:var(--c-dim);border-top:1px solid var(--c-line);padding-top:11px;margin-top:0}.vsc .vp-row + .vp-quiet,.vsc .vp-quiet + .vp-quiet{margin-top:0}',
+'.vsc .vp-foot{margin:22px 2px 0;font-size:12.5px;line-height:1.5;color:var(--c-dim);max-width:70ch}',
+/* motion: tickets arrive in order, the bar grows from the centre line, the form dots pop oldest to newest; only on a fresh view */
+'.vsc .vp.in .vp-tk{animation:vp-rise .55s ' + EO + ' both;animation-delay:calc(var(--i) * 55ms)}',
+'.vsc .vp.in .vp-bar .vp-half{animation:vp-grow .8s ' + EO + ' both;animation-delay:calc(var(--i) * 55ms + 200ms)}',
+'.vsc .vp.in .vp-clim i{transform-origin:left;animation:vp-grow .9s ' + EO + ' both}',
+'.vsc .vp.in .vp-form i{animation:vp-pop .45s ' + ESP + ' both;animation-delay:calc(var(--i) * 55ms + 350ms + var(--d) * 22ms)}',
+'.vsc .vp-who,.vsc .vp-row{transition:transform var(--dur-release,500ms) ' + ESP + ',background .15s ease}',
+'.vsc .vp-who:active{transform:scale(var(--press-btn,.94));transition:transform var(--dur-press,80ms) ease-out}.vsc .vp-row:active{transform:scale(var(--press-row,.99));transition:transform var(--dur-press,80ms) ease-out}',
+'@keyframes vp-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}@keyframes vp-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}@keyframes vp-pop{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}',
+'@media (prefers-reduced-motion:reduce){.vsc .vp.in .vp-tk,.vsc .vp.in .vp-bar .vp-half,.vsc .vp.in .vp-clim i,.vsc .vp.in .vp-form i{animation:none}.vsc .vp-who,.vsc .vp-row,.vsc .vp-who:active,.vsc .vp-row:active{transition:none;transform:none}}',
+/* the side list drops under the feed when the page is narrow; the ticket stub moves to the top on a phone-width column */
+'@container vp (max-width:940px){.vsc .vp-cols{grid-template-columns:minmax(0,1fr)}.vsc .vp-rail{position:static}}',
+'@container vp (max-width:620px){',
+'.vsc .vp-slate{gap:4px 18px;padding:12px 2px;margin-bottom:14px}.vsc .vp-f b{font-size:22px}.vsc .vp-clim{flex-basis:100%}',
+'.vsc .vp-tk{grid-template-columns:minmax(0,1fr)}',
+'.vsc .vp-stub{flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 16px;border-right:0;border-bottom:1.5px dashed var(--c-line2);text-align:left}',
+'.vsc .vp-tk.u3 .vp-stub{border-bottom-color:transparent}.vsc .vp-u{font-size:32px}.vsc .vp-u small{font-size:15px}.vsc .vp-lock{margin-left:auto}',
+'.vsc .vp-tb{padding:14px 16px;gap:14px}.vsc .vp-t h3{font-size:20px}.vsc .vp-call .vc-logo{width:38px;height:38px;border-radius:10px}',
+'.vsc .vp-cells{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:4px}.vsc .vp-c{padding:8px 12px}.vsc .vp-c:nth-child(3){border-left:0}.vsc .vp-c b{font-size:18px}',
+'.vsc .vp-who{height:40px;flex:1}.vsc .vp-ft .sp{display:none}',
+'}'].join('\n');
+var PV = {sort: 'lock', all: false, seen: null, plays: [], rows: []};
+function lockLeft(g){ var s = g.cut - Date.now() / 1000; return g.frozen || s <= 0 ? null : dur(s); }
+var CD_T = null;
+function tickCd(){ if (CD_T) return; CD_T = setInterval(function(){ [].forEach.call(document.querySelectorAll('.vsc .vp-cd[data-cut]'), function(e){
+  var s = +e.dataset.cut - Date.now() / 1000; e.textContent = s > 0 ? dur(s) : 'locked'; }); }, 30000); }
+function matchName(g){ return teamName(g, 'away') + ' at ' + teamName(g, 'home'); }
+function playLabelP(ls, key){ return key === 'total' && ls.line != null ? ls.side + ' ' + ls.line : sideLabel(ls.side, key, ls); }
+function halfP(s, max, dir){
+  var seg = function(k, v){ return v > 0 ? '<i class="' + k + '" style="width:' + Math.max(1.2, v / max * 100).toFixed(2) + '%"></i>' : ''; };
+  return '<div class="vp-half ' + dir + '">' + seg('hc', s.hc_usd) + seg('sharp', s.sharp_usd - s.hc_usd) + seg('unp', s.unproven_usd) + seg('loser', s.loser_usd) + '</div>';
+}
+function keyP(s, dir){
+  var b = function(k, v, t){ return v > 0 ? '<span class="' + k + '"><b class="num">' + usd(v) + '</b> ' + t + '</span>' : ''; };
+  return '<div class="' + dir + '">' + (b('hc', s.hc_usd, 'sized up') + b('sharp', s.sharp_usd - s.hc_usd, 'proven') + b('loser', s.loser_usd, 'losers') || '<span>no proven or loser money</span>') + '</div>';
+}
+/* the benchmark's "combined proven sharps" strip, from the stored `proven` block of the suggested side; it always shows its wallet count */
+function combinedP(name, p){
+  var cap = '<div class="vp-cap">Combined proven sharps<em>on ' + esc(name) + (p && p.wallets ? ' · ' + p.wallets + (p.wallets === 1 ? ' wallet' : ' wallets') : '') + '</em></div>';
+  if (!p || !p.wallets) return '<section class="vp-cps">' + cap + '<p class="vp-none">No proven wallet on this side yet. The size here comes from the staking rule, not from a wallet record.</p></section>';
+  var c = function(v, l, cls){ return '<div class="vp-c"><b class="num ' + (cls || '') + '">' + v + '</b><span>' + l + '</span></div>'; };
+  var sign = function(x){ return x > 0 ? 'up' : x < 0 ? 'dn' : ''; }, f = p.last20 || [];
+  return '<section class="vp-cps">' + cap + '<div class="vp-cells">' + c(p.win_pct == null ? 'n/a' : p.win_pct + '%', 'Win') + c(roi(p.l30_roi), 'L30 ROI', sign(p.l30_roi)) +
+    c(susd(p.lifetime_pnl), 'Lifetime', sign(p.lifetime_pnl)) + c(p.w + '-' + p.l, 'Record') + '</div>' +
+    (f.length ? '<div class="vp-form" role="img" aria-label="Last ' + f.length + ' results, oldest first">' + f.map(function(r, i){ return '<i class="' + r + '" style="--d:' + i + '"></i>'; }).join('') + '<span>Last ' + f.length + '</span></div>' : '') + '</section>';
+}
+function ticketP(p, i){
+  var g = p.g, m = g.markets[p.k], ls = p.ls, nm = sideOrder(g, m, p.k), a = m.sides[nm[0]].all, b = m.sides[nm[1]].all, me = m.sides[ls.side].all;
+  var max = Math.max(counted(a), counted(b)) || 1, u = units(ls), un = parseFloat(u) || 0, t = lockLeft(g), soon = t && g.cut - Date.now() / 1000 < 3600;
+  var rg = ls.rung && RUNG[ls.rung], ag = me.ags, am = american(ls.price), st = steamState(ls.steam), bits = st ? steamBits(ls.steam, ls.side) : [];
+  return '<article class="vp-tk' + (un >= 3 ? ' u3' : un >= 2 ? ' u2' : '') + '" style="--i:' + Math.min(i, 8) + '">' +
+    '<div class="vp-stub"><b class="vp-u num">' + (u == null ? 'n/a' : u + '<small>u</small>') + '</b><span class="vp-rule">' + (rg ? '<b>' + rg[0] + '</b>' : '') + 'untested rule</span>' +
+      '<span class="vp-lock' + (soon ? ' soon' : '') + '" title="' + (t ? 'Locks ' + ct(g.cut, true) + ' CT' : 'Locked ' + ct(g.cut, true) + ' CT') + '">' + ICON.lock + '<span class="num vp-cd"' + (t ? ' data-cut="' + g.cut + '"' : '') + '>' + (t || 'locked') + '</span></span></div>' +
+    '<div class="vp-tb"><div class="vp-call">' + logo(ls.side, g) + '<div class="vp-t"><div class="vp-gm"><b>' + esc(matchName(g)) + '</b><span>' + g.sport.toUpperCase() + ' ' + GRP[p.k] + '</span><span class="num">' + ct(g.gst, true) + ' CT</span></div>' +
+      '<h3>' + esc(playLabelP(ls, p.k)) + '</h3></div><div class="vp-px">' + (ls.price != null ? '<b class="num">' + cents(ls.price) + '</b><span class="num">' + (am ? am + ' · ' : '') + (ls.price_t ? ct(ls.price_t) + ' CT' : '') + '</span>' : '<span>price n/a</span>') + '</div></div>' +
+    '<div class="vp-river"><div class="vp-ends"><div class="vp-end' + (ls.side === nm[0] ? ' pk' : '') + '"><span>' + esc(nm[0]) + '</span><b class="num">' + usd(counted(a)) + '</b></div>' +
+      '<div class="vp-end r' + (ls.side === nm[1] ? ' pk' : '') + '"><span>' + esc(nm[1]) + '</span><b class="num">' + usd(counted(b)) + '</b></div></div>' +
+      '<div class="vp-bar">' + halfP(a, max, 'l') + '<u></u>' + halfP(b, max, 'r') + '</div><div class="vp-key">' + keyP(a, 'l') + keyP(b, 'r') + '</div></div>' +
+    combinedP(ls.side, me.proven) +
+    '<div class="vp-ft">' + (ag && ag.score > 0 && TIER[ag.tier] ? '<span class="vc-tier ' + ag.tier + '">' + TIER[ag.tier] + '</span><span>score <span class="num">+' + ag.score.toFixed(2) + '</span></span>' : '') +
+      (st ? '<span class="' + st + '">' + (st === 'on' ? 'Pinnacle steam toward ' + esc(ls.side) : st === 'off' ? 'No Pinnacle steam' : 'Pinnacle steam unknown') + '</span>' : '') + (bits[0] ? '<span>' + bits[0] + '</span>' : '') +
+      '<span class="sp"></span><button type="button" class="vp-who" data-p="' + i + '">See who\'s on it</button></div></div></article>';
+}
+function leadSide(g){ var x = null; Object.keys(g.markets).forEach(function(k){ var m = g.markets[k]; Object.keys(m.sides).forEach(function(n){ var v = m.sides[n].all.sharp_usd; if (v > 0 && (!x || v > x.v)) x = {k: k, n: n, v: v}; }); }); return x; }
+function railRowP(g, i, showSport){
+  var x = leadSide(g), m = g.markets[x.k], nm = sideOrder(g, m, x.k), a = m.sides[nm[0]].all, b = m.sides[nm[1]].all, max = Math.max(counted(a), counted(b)) || 1, p = m.sides[x.n].all.proven;
+  return '<button type="button" class="vp-row" data-r="' + i + '"><div class="vp-ra">' + esc(matchName(g)) + '<span class="num">' + (showSport ? g.sport.toUpperCase() + ' · ' : '') + ct(g.gst, true) + '</span></div>' +
+    '<div class="vp-rb"><b class="num">' + usd(x.v) + '</b> proven on ' + esc(x.n) + (x.k === 'total' ? '' : ' ' + GNAME[x.k]) + (p && p.wallets ? ', <span class="num">' + p.w + '-' + p.l + '</span>' : '') + '</div>' +
+    '<div class="vp-mini">' + halfP(a, max, 'l') + '<u></u>' + halfP(b, max, 'r') + '</div></button>';
+}
+function slateP(games){
+  var usdSum = 0, cl = {quiet: 0, building: 0, signal: 0}, plays = 0, n = games.length;
+  games.forEach(function(x){ cl[x.c]++; Object.keys(x.g.markets).forEach(function(k){ var m = x.g.markets[k]; if (shadow(m, 'all')) plays++;
+    Object.keys(m.sides).forEach(function(s){ usdSum += m.sides[s].all.sharp_usd; }); }); });
+  return {cl: cl, html: '<div class="vp-slate"><div class="vp-f good"><b class="num">' + plays + '</b><span>suggested ' + (plays === 1 ? 'play' : 'plays') + ' across ' + n + (n === 1 ? ' game' : ' games') + '</span></div>' +
+    '<div class="vp-f gold"><b class="num">' + usd(usdSum) + '</b><span>proven money</span></div>' +
+    '<div class="vp-clim"><div role="img" aria-label="' + cl.signal + ' signal, ' + cl.building + ' building, ' + cl.quiet + ' quiet">' + ['signal', 'building'].map(function(k){ return cl[k] ? '<i class="' + k + '" style="width:' + (cl[k] / n * 100).toFixed(2) + '%"></i>' : ''; }).join('') +
+    '</div><span>' + cl.signal + ' signal, ' + cl.building + ' building, ' + cl.quiet + ' quiet</span></div></div>'};
+}
+function renderFeed(el, o, games, sp){
+  var sl = slateP(games), plays = [];
+  games.forEach(function(x){ Object.keys(x.g.markets).forEach(function(k){ var ls = shadow(x.g.markets[k], 'all'); if (ls) plays.push({g: x.g, k: k, ls: ls}); }); });
+  var lk = function(p){ return lockLeft(p.g) ? 0 : 1; }, un = function(p){ return parseFloat(units(p.ls)) || 0; };
+  plays.sort(function(a, b){ return (lk(a) - lk(b)) || (PV.sort === 'size' ? (un(b) - un(a)) || (a.g.cut - b.g.cut) : (a.g.cut - b.g.cut) || (un(b) - un(a))); });
+  var bld = games.filter(function(x){ return x.c === 'building'; }).map(function(x){ return x.g; }).sort(function(a, b){ return leadSide(b).v - leadSide(a).v; }), rows = bld.slice(0, 8);
+  PV.plays = plays; PV.rows = rows;
+  var key = [sp || 'all', PV.sort, PV.all ? 1 : 0].join('|'), fresh = PV.seen !== key; PV.seen = key;
+  var seg = function(k, opts, cur){ return '<div class="vseg sm" data-pv="' + k + '"><i class="v-pill"></i>' + opts.map(function(x){ return '<button type="button" data-v="' + x[0] + '"' + (x[0] === cur ? ' class="on"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>'; };
+  var head = '<div class="vp-head"><h2>' + (PV.all ? games.length + (games.length === 1 ? ' game' : ' games') : plays.length + (plays.length === 1 ? ' play' : ' plays')) + '</h2><span class="sp"></span>' +
+    (PV.all ? '' : seg('sort', [['lock', 'Soonest'], ['size', 'Biggest']], PV.sort)) + seg('all', [['0', 'Plays'], ['1', 'All games']], PV.all ? '1' : '0') + '</div>';
+  var box = document.createElement('div'); box.className = 'vp' + (fresh ? ' in' : '');
+  if (PV.all){
+    box.innerHTML = sl.html + head;
+    var list = document.createElement('div'); list.className = 'vsc-list';
+    games.forEach(function(x){ try { list.appendChild(card(x.g, o, x.c === 'quiet' && !SHOWN[x.g.ev] && Object.keys(x.g.markets).length > 0)); } catch (e) {
+      /* a card that fails to draw is skipped and reported, never allowed to stop the rest of the list */
+      if (window.console) console.warn('side card skipped', x.g && x.g.ev, e); } });
+    box.appendChild(list);
+  } else {
+    var feed = '';
+    plays.forEach(function(p, i){ try { feed += ticketP(p, i); } catch (e) { if (window.console) console.warn('play ticket skipped', p.g && p.g.ev, e); } });
+    var nx = plays.filter(function(p){ return lockLeft(p.g); }).sort(function(a, b){ return a.g.cut - b.g.cut; })[0];
+    box.innerHTML = sl.html + '<div class="vp-cols"><div>' + head + '<div class="vp-feed">' +
+      (feed || '<div class="vc-note"><b>No suggested plays right now</b><p>No side meets the staking rules yet. Games with proven money on one side are listed under Building, and every game is under All games.</p></div>') + '</div></div>' +
+      '<aside class="vp-rail">' + (nx ? '<div class="vp-next"><span>Next lock</span><b class="num vp-cd" data-cut="' + nx.g.cut + '">' + lockLeft(nx.g) + '</b><em>' + esc(playLabelP(nx.ls, nx.k)) + ', ' + ct(nx.g.cut) + ' CT</em></div>' : '') +
+      '<section class="vp-rsec"><h2>Building</h2><p>Proven money on a side, no play yet.</p>' + rows.map(function(g, i){ return railRowP(g, i, !sp); }).join('') +
+      (bld.length > rows.length ? '<div class="vp-quiet">' + (bld.length - rows.length) + ' more building, under All games</div>' : '') +
+      (bld.length ? '' : '<div class="vp-quiet">Nothing building.</div>') + '<div class="vp-quiet">' + sl.cl.quiet + ' quiet ' + (sl.cl.quiet === 1 ? 'game' : 'games') + ' with no proven money</div></section></aside></div>' +
+      '<p class="vp-foot">Sharp money is context. The suggested size comes from an untested rule that is still in its forward test.</p>';
+  }
+  box.addEventListener('click', function(e){
+    var w = e.target.closest('.vp-who'), r = e.target.closest('.vp-row'), b = e.target.closest('.vseg[data-pv] > button');
+    if (w){ var p = PV.plays[+w.dataset.p]; if (p) openDetail(w, p.g, p.k, 'all'); return; }
+    if (r){ var g = PV.rows[+r.dataset.r], x = g && leadSide(g); if (x) openDetail(r, g, x.k, 'all'); return; }
+    if (!b || b.classList.contains('on')) return;
+    var s = b.parentNode; [].forEach.call(s.children, function(c){ if (c.tagName === 'BUTTON') c.classList.toggle('on', c === b); }); rail(s, true);
+    if (s.dataset.pv === 'sort') PV.sort = b.dataset.v; else PV.all = b.dataset.v === '1';
+    box.remove(); renderFeed(el, o, games, sp);
+  });
+  el.appendChild(box); tickCd();
+  [].forEach.call(box.querySelectorAll('.vseg'), function(s){ rail(s, false); });
+}
 function topSlot(body){ var t = body && body.previousElementSibling; return t && t.classList.contains('vr-topbar') ? t.querySelector('.vr-tl') : null; }
 function renderCards(el, o){
   if (STORE.state === 'loading'){ el.innerHTML = '<div class="vc-note"><b>Loading the cards</b></div>'; return; }
@@ -771,13 +939,7 @@ function renderCards(el, o){
   if (!games.length){ el.innerHTML = '<div class="vc-note"><b>No upcoming games</b><p>No card has been built for this sport yet.</p></div>'; return; }
   if (STORE.d.built){ var up = document.createElement('div'); up.className = 'vc-upd'; up.title = 'When these cards were last built. The page checks for new ones every 2 minutes.'; up.innerHTML = updHtml(STORE.d.built);
     var tl = topSlot(el); (tl || el).appendChild(up); tickAgo(); }
-  var sl = document.createElement('div'); sl.className = 'vc-sl'; slate(sl, {games: games.map(function(x){ return x.g; })}); el.appendChild(sl);
-  var list = document.createElement('div'); list.className = 'vsc-list';
-  games.forEach(function(x){ try { list.appendChild(card(x.g, o, x.c === 'quiet' && !SHOWN[x.g.ev] && Object.keys(x.g.markets).length > 0)); } catch (e) {
-    /* a card that fails to draw is skipped and reported, never allowed to stop the rest of the list */
-    if (window.console) console.warn('side card skipped', x.g && x.g.ev, e); } });
-  el.appendChild(list);
-  [].forEach.call(el.querySelectorAll('.vseg'), function(s){ rail(s, false); });
+  renderFeed(el, o, games, sp);
 }
 var VIEW = 'cards';
 try { VIEW = localStorage.getItem('vsc-view') === 'record' ? 'record' : 'cards'; } catch (e) {}
