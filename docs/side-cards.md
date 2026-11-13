@@ -75,6 +75,21 @@ proven / unproven / losing split, a chart of every listed wallet by price skill 
 than 5 past positions with a stored close is listed but not plotted. There is no "signals aligned" count: sharp money is context,
 never an agree total.
 
+### Wallet deep dive (`dive` on each listed wallet, `pop` on each card)
+
+Every listed wallet carries `dive`, built from its positions settled before the cut (point in time, same rows as its record). Each
+cell is `[wins, losses, dollar ROI, positions with a stored close, how many were bought below it, luck]` (`cols` names them):
+- `all`, then `lane` (`ml`, `spread`, `total`), `fav` / `dog` (entry price at or above 50 cents is a favourite), and `size`
+  (`small` under 0.75x its usual stake, `usual` 0.75x to 1.5x, `big` 1.5x or more);
+- luck is P(wins >= the wallet's wins) if every position won exactly as often as its entry price says (Poisson-binomial, exact),
+  so a 60-cent favourite counts as a 60% coin, not a coin flip; `exp_w` is the expected wins on `all`;
+- `pop` is how many wallets were in the sport's universe at the cut. The sheet shows `pop x luck`: about how many tracked wallets
+  would post a record that rare by luck alone, which is the selection effect a "1 in N" figure on a hand-picked wallet leaves out.
+
+The sheet marks the row that matches the bet (its market group, favourite or underdog from the suggested side's price, and its
+size band) and says when a winning wallet is losing in this bet's lane (5 or more decided bets there). Context only: the dive never
+feeds the size, the lock, the forward test or any record.
+
 Each card also carries:
 - `coverage`: markets read, markets missed, late reads, and the oldest read's lag;
 - `vault`: the Vault game key, plus a flag when Polymarket's and Vault's start times are more than 10 minutes apart;

@@ -366,5 +366,32 @@ class LockedPlays(unittest.TestCase):
         self.assertEqual({r["key"] for r in got}, {"nba/frozen/2026-11-13/nba-a-b-2026-11-12@%d.json|ml|all|%s" % (now - 3600, k) for k in ("sf", "lock")})
 
 
+class WalletDive(unittest.TestCase):
+    def test_luck_coin_flip(self):
+        # 26-9 on even-money bets: about 1 in 334, the figure a plain coin-flip calculation gives
+        lk = C.luck([(0.5, True)] * 26 + [(0.5, False)] * 9)
+        self.assertAlmostEqual(1 / lk["p"], 334, delta=1)
+        self.assertEqual(lk["exp_w"], 17.5)
+
+    def test_luck_prices_favourites(self):
+        # 15-1 on 60-cent favourites is far less rare than 15-1 on coin flips
+        fav = C.luck([(0.6, True)] * 15 + [(0.6, False)])["p"]
+        coin = C.luck([(0.5, True)] * 15 + [(0.5, False)])["p"]
+        self.assertGreater(fav, 10 * coin)
+        self.assertIsNone(C.luck([(0.5, True)]))
+
+    def test_dive_splits(self):
+        P = lambda mt, px, res, stake=100.0: {"mt": mt, "px": px, "res": res, "stake": stake, "split": False, "clv": None,
+                                             "pnl": stake * (1 / px - 1) if res == "win" else -stake}
+        ps = [P("moneyline", 0.6, "win"), P("moneyline", 0.4, "loss"), P("spreads", 0.5, "win", 300.0), P("totals", 0.5, "push")]
+        d = C.dive(ps, 100.0)
+        self.assertEqual(d["cols"][:2], ["w", "l"])
+        self.assertEqual(d["all"][:2], [2, 1])
+        self.assertEqual(d["lane"]["ml"][:2], [1, 1])
+        self.assertIsNone(d["lane"]["total"])                 # a push is not a decided bet
+        self.assertEqual((d["fav"][0], d["dog"][1]), (2, 1))
+        self.assertEqual((d["size"]["big"][0], sum(d["size"]["usual"][:2])), (1, 2))
+
+
 if __name__ == "__main__":
     unittest.main()
