@@ -111,3 +111,13 @@ The Record tab shows one system: Vault's record (every suggested play) and its f
 shown or fetched by the page. `benchmark_h2h.py` still archives and grades it on `pm-holders-data` (`h2h_record.json`,
 `pm_record/benchmark/`), so the comparison can be read from the data if it is ever needed again.
 
+## Prices confirmed by a later read (2026-11-13)
+
+Until 2026-11-13 the holders scan logged a price only when it changed, so a steady price kept the time it last moved and a play
+could be graded "unpriced" although its price was current. The scan re-read every market's price on each holders read and logs
+whether that read succeeded (`price_err` on the cycle row). The grader now confirms such a price: when the stored price is older than
+30 minutes, the latest cycle that re-read the market's price successfully before the lock (and within 30 minutes of it) is its
+price time (`price_t_src: "confirmed by a later unchanged read"`). Rows already written as unpriced are corrected in place with a
+`corrected` note (when, what it was, why). From 2026-11-13 the scan also re-logs every price at the freeze read, so new cards carry a
+fresh price time directly. The 30-minute rule of the registration is unchanged; this fixes the recorded price time it reads.
+

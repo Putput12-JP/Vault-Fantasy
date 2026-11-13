@@ -26,7 +26,7 @@ Sharp money is context only (CLAUDE.md): this is a record of a shadow test and o
 
 usage: grade_side_cards.py --cards DIR --holders DIR --closes data/pm_closes.json --out DIR [--now EPOCH] [--no-fetch]
 """
-import argparse, glob, json, os, random, sys, time
+import argparse, datetime as dt, glob, gzip, json, os, random, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import Client, Budget, gamma_facts, jload, jsave  # noqa: E402
@@ -108,7 +108,39 @@ def plays(card, kf):
     return out
 
 
-def grade(card, rel, kf, facts, closes, now):
+def price_confirmations(holders, sport, cids, lo, hi):
+    """{cid: [times]}: holders-scan cycles that read the market's price successfully (cycle `price_err` null) and then its holders,
+    between lo and hi. Before 2026-11-13 the scan logged a price only when it changed, so a steady price kept the time it last moved;
+    each of these cycles re-read it and found it unchanged, so the stored price was the market's price at that cycle's start."""
+    out, cids = {}, set(cids)
+    if not cids or not holders:
+        return out
+    days = {dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%d") for t in range(int(lo) - 86400, int(hi) + 86400, 86400)}
+    for day in sorted(days):
+        for fn in sorted(glob.glob(os.path.join(holders, sport, "log", day, "*.jsonl*"))):
+            try:
+                op = gzip.open if fn.endswith(".gz") else open
+                with op(fn, "rt") as f:
+                    rows = [json.loads(l) for l in f if l.strip()]
+            except (OSError, ValueError):
+                continue
+            cyc = next((r for r in rows if r.get("k") == "cyc"), None)
+            if not cyc or cyc.get("price_err") or not cyc.get("ok", True) or cyc.get("t") is None:
+                continue
+            for r in rows:
+                if r.get("k") == "r" and r.get("c") in cids and r.get("rt") is not None and lo <= cyc["t"] <= hi:
+                    out.setdefault(r["c"], []).append((cyc["t"], r["rt"]))
+    return out
+
+
+def confirmed_price_t(p, cut, conf):
+    """The latest cycle that re-read this market's price before the cut, if it is within STALE_PRICE of the cut and not before the
+    stored price's own time. None otherwise."""
+    ts = [t for t, rt in (conf or {}).get(p.get("cid"), []) if rt <= cut and t >= cut - STALE_PRICE and t >= (p.get("price_t") or 0)]
+    return max(ts) if ts else None
+
+
+def grade(card, rel, kf, facts, closes, now, conf=None):
     """Rows ready to write for one card, and the plays still waiting (with why)."""
     rows, waiting = [], []
     sport, ev, cut, gst = card["sport"], card["ev"], card["cut"], card["gst"]
@@ -130,6 +162,12 @@ def grade(card, rel, kf, facts, closes, now):
             continue
         oi = outs.index(p["side"])
         priced = p["price"] is not None and 0 < p["price"] < 1 and p["price_t"] is not None and p["price_t"] >= cut - STALE_PRICE
+        if not priced and p["price"] is not None and 0 < p["price"] < 1:
+            ct_ = confirmed_price_t(p, cut, conf)                 # the price was re-read unchanged near the cut: it is the price at the cut
+            if ct_ is not None:
+                p = dict(p, price_t=ct_, price_t_src="confirmed by a later unchanged read")
+                base = dict(base, price_t=ct_, price_t_src=p["price_t_src"])
+                priced = True
         res, flat = flat_profit(f["final"], oi, p["price"]) if priced else (flat_profit(f["final"], oi, 0.5)[0], None)
         rows.append({**base, "kind": "result", "outs": outs, "final": f["final"], "res": res,
                      "status": "graded" if priced else "unpriced", "flat": round(flat, 6) if flat is not None else None,
@@ -244,6 +282,25 @@ def load_rows(root):
     return rows
 
 
+def rewrite_rows(root, fixed):
+    """Replace the given rows in place in their month files (same position), keeping every other line byte-for-byte."""
+    for fn in sorted(glob.glob(os.path.join(root, "cards", "*", "*.jsonl"))):
+        with open(fn) as f:
+            lines = f.readlines()
+        out, hit = [], False
+        for l in lines:
+            k = json.loads(l)["key"] if l.strip() else None
+            if k in fixed:
+                out.append(json.dumps(fixed[k], separators=(",", ":"), sort_keys=True) + "\n")
+                hit = True
+            else:
+                out.append(l)
+        if hit:
+            with open(fn + ".tmp", "w") as f:
+                f.writelines(out)
+            os.replace(fn + ".tmp", fn)
+
+
 def append_rows(root, rows):
     by = {}
     for r in rows:
@@ -298,11 +355,33 @@ def main():
         if f.get("final") is not None:
             facts[cid] = {k: f.get(k) for k in ("slug", "mt", "line", "outs", "gst", "closed_at", "final")}
 
-    new, waiting = [], []
+    # price confirmations for plays whose stored price time is older than the 30-minute rule (see price_confirmations)
+    conf = {}
+    by_sport = {}
     for rel, c, kf in todo:
-        rows, wait = grade(c, rel, kf, {**facts, **fetched}, closes, now)
-        new += [r for r in rows if r["key"] not in have]
+        for p in plays(c, kf):
+            if p["cid"] and p["price"] is not None and (p["price_t"] is None or p["price_t"] < c["cut"] - STALE_PRICE):
+                b = by_sport.setdefault(c["sport"], [set(), c["cut"], c["cut"]])
+                b[0].add(p["cid"]); b[1] = min(b[1], c["cut"]); b[2] = max(b[2], c["cut"])
+    for sp, (cids, lo, hi) in by_sport.items():
+        conf.update(price_confirmations(a.holders, sp, cids, lo - STALE_PRICE, hi))
+
+    new, waiting, fixed = [], [], {}
+    for rel, c, kf in todo:
+        rows, wait = grade(c, rel, kf, {**facts, **fetched}, closes, now, conf)
+        for r in rows:
+            old = have.get(r["key"])
+            if old is None:
+                new.append(r)
+            elif old.get("status") == "unpriced" and r.get("status") == "graded":
+                # a correction, not a new grade: the row was written unpriced from a recording gap (prices logged only on change)
+                fixed[r["key"]] = dict(r, corrected={"at": now, "was": "unpriced", "why": "price re-read unchanged at "
+                                                     + time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(r["price_t"])) + ", before the lock"})
         waiting += wait
+    if fixed:
+        rewrite_rows(a.out, fixed)
+        have.update(fixed)
+        print(f"corrected {len(fixed)} rows that were unpriced only because a steady price was not re-logged")
     append_rows(a.out, new)
     jsave(cache_p, facts)
     allrows = list(have.values()) + new
