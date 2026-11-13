@@ -4,6 +4,7 @@ import os, sys, unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 import build_side_cards as C  # noqa: E402
+import sf_publish as PUB  # noqa: E402
 
 CUT = 1_800_000_000
 
@@ -391,6 +392,31 @@ class WalletDive(unittest.TestCase):
         self.assertIsNone(d["lane"]["total"])                 # a push is not a decided bet
         self.assertEqual((d["fav"][0], d["dog"][1]), (2, 1))
         self.assertEqual((d["size"]["big"][0], sum(d["size"]["usual"][:2])), (1, 2))
+
+
+class PublishShadow(unittest.TestCase):
+    def mk(self, score, rung="TRUST-G", other_units=0.0, units=1.0):
+        sides = {"A": {"all": {"ags": None if score is None else {"score": score}}}, "B": {"all": {"ags": {"score": -0.5}}}}
+        sf = {"side": "A", "units": units, "rung": rung, "price": 0.6, "price_t": 1, "cid": "c", "outs": ["A", "B"],
+              "sides": {"A": {"units": units}, "B": {"units": other_units}}}
+        return {"sides": sides, "sf": {"all": sf}}
+
+    def test_keeps_positive_score(self):
+        p = PUB.pub_play(self.mk(0.4))
+        self.assertEqual((p["side"], p["units"], p["reason"]), ("A", 1.0, None))
+
+    def test_mutes_score_at_or_below_zero_and_missing(self):
+        for sc in (0.0, -0.2, None):
+            p = PUB.pub_play(self.mk(sc))
+            self.assertEqual((p["side"], p["reason"]), (None, "ags_v12_mute"))
+
+    def test_press_m_bypasses_the_mute(self):
+        self.assertEqual(PUB.pub_play(self.mk(-0.1, rung="PRESS-M"))["side"], "A")
+
+    def test_both_sides_and_no_sf(self):
+        self.assertEqual(PUB.pub_play(self.mk(0.4, other_units=1.0))["reason"], "both_sides")
+        self.assertIsNone(PUB.pub_play({"sides": {}}))
+        self.assertEqual(PUB.pub_play(self.mk(0.4, units=0))["reason"], "no_shown_size")
 
 
 if __name__ == "__main__":

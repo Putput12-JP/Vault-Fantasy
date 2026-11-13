@@ -31,6 +31,7 @@ import argparse, datetime as dt, glob, gzip, json, os, random, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import Client, Budget, gamma_facts, jload, jsave  # noqa: E402
 from pm_data_api import PMDataError  # noqa: E402
+import sf_publish as PUB  # noqa: E402
 
 GROUP_MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
 CLOSE_KEY = {"ml": "ml", "spread": "spreads", "total": "totals"}
@@ -105,6 +106,14 @@ def plays(card, kf):
                 out.append({"group": g, "variant": variant, "play": "sf", "side": sf["side"], "cid": cid, "line": sf.get("line"),
                             "outs": mk.get("outs"), "price": sf.get("price"), "price_t": sf.get("price_t"), "units": sf["units"],
                             "rung": sf.get("rung")})
+            if variant in ("all", "fwd"):                       # pub: derived from the stored sf + ags, so old cards grade too
+                pb = PUB.pub_play(m, variant) or {}
+                if pb.get("side") and (pb.get("units") or 0) > 0:
+                    cid = sf_cid(sf, g, kf)
+                    mk = (kf or {}).get("mk", {}).get(cid) or {}
+                    out.append({"group": g, "variant": variant, "play": "pub", "side": pb["side"], "cid": cid, "line": pb.get("line"),
+                                "outs": mk.get("outs"), "price": pb.get("price"), "price_t": pb.get("price_t"), "units": pb["units"],
+                                "rung": pb.get("rung")})
     return out
 
 
@@ -239,8 +248,8 @@ def record(rows, cards, now):
         rs = [r for r in rows if r["sport"] == sport and r.get("kind") != "close"]
         s = {"cards": {"frozen": len(cs), "counted": sum(1 for c in cs if (c.get("test") or {}).get("counts")),
                        "not_counted_by_reason": why},
-             "lock": {}, "sf": {}}
-        for play in ("lock", "sf"):
+             "lock": {}, "sf": {}, "pub": {}}
+        for play in ("lock", "sf", "pub"):
             for variant in ("all", "fwd", "sfx"):
                 for g in ("ml", "spread", "total"):
                     sub = [r for r in rs if r["play"] == play and r["variant"] == variant and r["group"] == g]

@@ -181,7 +181,8 @@ def h2h(sf_rows, card_rows, now):
            "note": "The benchmark headline: real plays (units > 0, not cancelled) in the picks file public at Vault's cut, graded by "
                    "Polymarket resolution at that file's oddsLock, later cancels included; spread picks name no line, so they "
                    "get no priced result. "
-                   "Vault rows: the card's shown size (sf, an untested rule) and the pre-registered lock (counted cards only).",
+                   "Vault rows: the card's shown size (sf, an untested rule), its publish-mute shadow (pub, scripts/sf_publish.py) and "
+                   "the pre-registered lock (counted cards only).",
            "sports": {}}
     for sport in sorted({r["sport"] for r in sf_rows} | {r["sport"] for r in card_rows}):
         s = out["sports"].setdefault(sport, {})
@@ -191,10 +192,12 @@ def h2h(sf_rows, card_rows, now):
             after = [r for r in mine_sport if r.get("set") == "after_cut"]
             vsf = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "sf" and r["variant"] == "all"]
             vsfx = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "sf" and r["variant"] == "sfx"]
+            vpub = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "pub" and r["variant"] == "all"]
             vlock = [r for r in card_rows if r["sport"] == sport and r["group"] == g and r["play"] == "lock"
                      and r["variant"] == "all" and r.get("counts")]
             both = {r["ev"] for r in theirs} & {r["ev"] for r in vsf}
             agree = sum(1 for ev in both if {r["side"] for r in theirs if r["ev"] == ev} == {r["side"] for r in vsf if r["ev"] == ev})
+            both_pub = {r["ev"] for r in theirs} & {r["ev"] for r in vpub}
             counted = [r for r in mine_sport if r.get("final_units") and not r.get("cancelled_later")]
             s[g] = {"benchmark": summarize(theirs), "benchmark_after_cut": summarize(after),
                     "benchmark_at_cut_cancelled_later": sum(1 for r in theirs if r.get("cancelled_later")),
@@ -205,9 +208,18 @@ def h2h(sf_rows, card_rows, now):
                         "disagree_with_polymarket": sum(1 for r in counted if r.get("their_res") and (r.get("res") or r.get("res_mapped"))
                                                         and r["their_res"] != (r.get("res") or r.get("res_mapped")))},
                     "vault_shown_size": summarize(vsf), "vault_sfx": summarize(vsfx), "vault_lock": summarize(vlock),
+                    "vault_pub": summarize(vpub),
+                    # how the two Vault sets line up with the benchmark's plays at the cut: same side, Vault only, benchmark only
+                    "overlap": {name: {"same_side": sum(1 for r in vs if any(t["ev"] == r["ev"] and t["side"] == r["side"] for t in theirs)),
+                                       "vault_only": sum(1 for r in vs if not any(t["ev"] == r["ev"] for t in theirs)),
+                                       "opposite": sum(1 for r in vs if any(t["ev"] == r["ev"] for t in theirs)
+                                                       and not any(t["ev"] == r["ev"] and t["side"] == r["side"] for t in theirs)),
+                                       "benchmark_only": sum(1 for t in theirs if not any(r["ev"] == t["ev"] for r in vs))}
+                                for name, vs in (("vault_shown_size", vsf), ("vault_pub", vpub))},
                     "same_games": {"games": len(both), "same_side": agree,
                                    "benchmark": summarize([r for r in theirs if r["ev"] in both]),
-                                   "vault_shown_size": summarize([r for r in vsf if r["ev"] in both])}}
+                                   "vault_shown_size": summarize([r for r in vsf if r["ev"] in both]),
+                                   "games_pub": len(both_pub), "vault_pub": summarize([r for r in vpub if r["ev"] in both_pub])}}
         days = {}
         for r in sf_rows:
             if r["sport"] == sport and r.get("set") == "at_cut":

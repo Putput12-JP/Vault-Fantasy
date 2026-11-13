@@ -75,6 +75,15 @@ proven / unproven / losing split, a chart of every listed wallet by price skill 
 than 5 past positions with a stored close is listed but not plotted. There is no "signals aligned" count: sharp money is context,
 never an agree total.
 
+### Publish-mute shadow (`pub`, `scripts/sf_publish.py`)
+
+Each card's market groups carry `pub` (variants `all` and `fwd`): the shown size (`sf`) with the benchmark's publish mute. A side
+whose AGS-Unified v12 score is 0 or below, or has none, is muted unless its rung is PRESS-M (the benchmark's
+evaluateBaseHealthV12; a MUTED side counts as cancelled in its record). A market where the port staked both sides is skipped.
+The benchmark's CONFIRMED-Q1 and CONFIRMED-UNOPP rescues are not ported. The grader derives `pub` from the stored `sf` and `ags`
+fields, so every frozen card since the shown size shipped is graded (`play: "pub"` rows, `cards_record.json` `sports.<s>.pub`), and
+`h2h_record.json` reports `vault_pub` and the overlap of each Vault set with the benchmark's plays at the cut. Context only.
+
 ### Wallet deep dive (`dive` on each listed wallet, `pop` on each card)
 
 Every listed wallet carries `dive`, built from its positions settled before the cut (point in time, same rows as its record). Each

@@ -61,6 +61,7 @@ import argparse, bisect, datetime as dt, glob, json, math, os, re, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import CUTOFF_SEC, FULL_GAME  # noqa: E402
 import sf_rungs as SF  # noqa: E402
+import sf_publish as PUB  # noqa: E402
 
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
 FLOOR_USD = 250
@@ -510,6 +511,8 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
             out["markets"][g]["lock_shadow"][variant] = lock_shadow(g, ws, cls, variant, kf)
             out["markets"][g].setdefault("sf", {})[variant] = sf_market(g, ws, cls, variant, kf, sides_all, out["markets"][g]["sides"],
                                                                         ledger, sport, tape, vault)
+        for variant in ("all", "fwd"):                # the publish-mute shadow of the shown size (scripts/sf_publish.py)
+            out["markets"][g].setdefault("pub", {})[variant] = PUB.pub_play(out["markets"][g], variant)
     return out
 
 
