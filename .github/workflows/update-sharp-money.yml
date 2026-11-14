@@ -71,6 +71,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pm-cards.yml --ref main --repo "${{ github.repository }}"
+      # A Refresh click (force=true) also regrades the proven-sharps record (pm-record.yml, otherwise every 2 hours; it takes about 30 s), so
+      # the Record view's Refresh button gets a new record. Never on the 10-minute schedule, and never twice inside 10 minutes.
+      - name: Regrade proven-sharps record
+        if: steps.gate.outputs.go == '1' && github.event.inputs.force == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(gh run list --workflow pm-record.yml --repo "${{ github.repository }}" --limit 1 --json createdAt --jq '.[0].createdAt // empty')
+          if [ -n "$last" ] && [ $(( $(date +%s) - $(date -d "$last" +%s) )) -lt 600 ]; then echo "pm-record started within the last 10 minutes; not starting another"; exit 0; fi
+          gh workflow run pm-record.yml --ref main --repo "${{ github.repository }}"
       - uses: actions/checkout@v5
         if: steps.gate.outputs.go == '1'
       - uses: actions/setup-node@v5
