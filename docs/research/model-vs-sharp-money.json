@@ -1,0 +1,8217 @@
+{
+ "generated_from": {
+  "alerts": 12952,
+  "alerts_first_ts": 1790598144,
+  "alerts_last_ts": 1794511904,
+  "model_games_live": {
+   "nfl": 71,
+   "cfb": 279
+  },
+  "nba_games_live": 142,
+  "model_rows_skipped_backfill_or_late": {
+   "nfl": 79,
+   "cfb": 156,
+   "nba": 56
+  },
+  "nba_alert_games_joined": 140
+ },
+ "families": {
+  "sharp": "Proven sharp accounts (Polymarket, record-qualified)",
+  "cross": "Sharp-account net position vs the crowd",
+  "whale": "Big tickets on exchanges (no record filter)",
+  "steam": "Pinnacle line move (steam)",
+  "split": "Money share above ticket share (handle split)",
+  "behind": "US book behind Pinnacle (+EV price)"
+ },
+ "signal_lens": {
+  "nfl": {
+   "sharp": {
+    "alerts": 239,
+    "with_model": 42,
+    "agree_rate": 0.548,
+    "agree_rate_ci": [
+     0.399,
+     0.688
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 12,
+      "disagree": 8,
+      "rate": 0.6
+     },
+     "1.5-3": {
+      "agree": 10,
+      "disagree": 11,
+      "rate": 0.476
+     },
+     "3-5": {
+      "agree": 1,
+      "disagree": 0,
+      "rate": 1.0
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 23,
+      "agree": 11
+     },
+     "ml": {
+      "n": 19,
+      "agree": 12
+     }
+    },
+    "all": {
+     "n": 239,
+     "games": 59,
+     "w": 110,
+     "l": 126,
+     "p": 3,
+     "win": 0.466,
+     "win_ci": [
+      0.404,
+      0.53
+     ],
+     "vs_fair": -0.036,
+     "fair_n": 235,
+     "roi": -0.022,
+     "roi_ci": [
+      -0.103,
+      0.057
+     ],
+     "roi_n": 239,
+     "clv": 0.002,
+     "clv_n": 236
+    },
+    "agree": {
+     "n": 23,
+     "games": 17,
+     "w": 9,
+     "l": 14,
+     "p": 0,
+     "win": 0.391,
+     "win_ci": [
+      0.222,
+      0.592
+     ],
+     "vs_fair": -0.112,
+     "fair_n": 23,
+     "roi": -0.251,
+     "roi_ci": [
+      -0.651,
+      0.187
+     ],
+     "roi_n": 23,
+     "clv": 0.009,
+     "clv_n": 23
+    },
+    "disagree": {
+     "n": 19,
+     "games": 17,
+     "w": 10,
+     "l": 9,
+     "p": 0,
+     "win": 0.526,
+     "win_ci": [
+      0.317,
+      0.727
+     ],
+     "vs_fair": 0.02,
+     "fair_n": 19,
+     "roi": 0.04,
+     "roi_ci": [
+      -0.441,
+      0.502
+     ],
+     "roi_n": 19,
+     "clv": -0.003,
+     "clv_n": 18
+    },
+    "no_model": {
+     "n": 197,
+     "games": 46,
+     "w": 91,
+     "l": 103,
+     "p": 3,
+     "win": 0.469,
+     "win_ci": [
+      0.4,
+      0.539
+     ],
+     "vs_fair": -0.033,
+     "fair_n": 193,
+     "roi": -0.001,
+     "roi_ci": [
+      -0.08,
+      0.074
+     ],
+     "roi_n": 197,
+     "clv": 0.001,
+     "clv_n": 195
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.132,
+     "ci": [
+      -0.437,
+      0.201
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 1,
+     "games": 1,
+     "w": 1,
+     "l": 0,
+     "p": 0,
+     "win": 1.0,
+     "win_ci": [
+      0.207,
+      1.0
+     ],
+     "vs_fair": 0.563,
+     "fair_n": 1,
+     "roi": 1.326,
+     "roi_ci": null,
+     "roi_n": 1,
+     "clv": 0.169,
+     "clv_n": 1
+    },
+    "disagree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    }
+   },
+   "cross": {
+    "alerts": 35,
+    "with_model": 0,
+    "agree_rate": null,
+    "agree_rate_ci": null,
+    "agree_by_model_edge": {},
+    "by_market": {},
+    "all": {
+     "n": 35,
+     "games": 32,
+     "w": 17,
+     "l": 18,
+     "p": 0,
+     "win": 0.486,
+     "win_ci": [
+      0.33,
+      0.644
+     ],
+     "vs_fair": -0.072,
+     "fair_n": 35,
+     "roi": -0.156,
+     "roi_ci": [
+      -0.416,
+      0.096
+     ],
+     "roi_n": 35,
+     "clv": 0.003,
+     "clv_n": 35
+    },
+    "agree": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "no_model": {
+     "n": 35,
+     "games": 32,
+     "w": 17,
+     "l": 18,
+     "p": 0,
+     "win": 0.486,
+     "win_ci": [
+      0.33,
+      0.644
+     ],
+     "vs_fair": -0.072,
+     "fair_n": 35,
+     "roi": -0.156,
+     "roi_ci": [
+      -0.408,
+      0.094
+     ],
+     "roi_n": 35,
+     "clv": 0.003,
+     "clv_n": 35
+    },
+    "agree_minus_disagree_win": null,
+    "agree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    }
+   },
+   "whale": {
+    "alerts": 402,
+    "with_model": 195,
+    "agree_rate": 0.492,
+    "agree_rate_ci": [
+     0.423,
+     0.562
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 44,
+      "disagree": 45,
+      "rate": 0.494
+     },
+     "1.5-3": {
+      "agree": 49,
+      "disagree": 53,
+      "rate": 0.48
+     },
+     "3-5": {
+      "agree": 3,
+      "disagree": 1,
+      "rate": 0.75
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 87,
+      "agree": 44
+     },
+     "ml": {
+      "n": 108,
+      "agree": 52
+     }
+    },
+    "all": {
+     "n": 402,
+     "games": 88,
+     "w": 204,
+     "l": 195,
+     "p": 3,
+     "win": 0.511,
+     "win_ci": [
+      0.462,
+      0.56
+     ],
+     "vs_fair": 0.009,
+     "fair_n": 392,
+     "roi": 0.027,
+     "roi_ci": [
+      -0.03,
+      0.089
+     ],
+     "roi_n": 402,
+     "clv": 0.002,
+     "clv_n": 395
+    },
+    "agree": {
+     "n": 96,
+     "games": 55,
+     "w": 39,
+     "l": 57,
+     "p": 0,
+     "win": 0.406,
+     "win_ci": [
+      0.313,
+      0.506
+     ],
+     "vs_fair": -0.09,
+     "fair_n": 94,
+     "roi": -0.178,
+     "roi_ci": [
+      -0.446,
+      0.13
+     ],
+     "roi_n": 96,
+     "clv": 0.005,
+     "clv_n": 94
+    },
+    "disagree": {
+     "n": 99,
+     "games": 57,
+     "w": 60,
+     "l": 39,
+     "p": 0,
+     "win": 0.606,
+     "win_ci": [
+      0.508,
+      0.697
+     ],
+     "vs_fair": 0.1,
+     "fair_n": 97,
+     "roi": 0.194,
+     "roi_ci": [
+      -0.051,
+      0.435
+     ],
+     "roi_n": 99,
+     "clv": -0.003,
+     "clv_n": 97
+    },
+    "no_model": {
+     "n": 207,
+     "games": 68,
+     "w": 105,
+     "l": 99,
+     "p": 3,
+     "win": 0.515,
+     "win_ci": [
+      0.446,
+      0.582
+     ],
+     "vs_fair": 0.012,
+     "fair_n": 201,
+     "roi": 0.042,
+     "roi_ci": [
+      -0.033,
+      0.117
+     ],
+     "roi_n": 207,
+     "clv": 0.002,
+     "clv_n": 204
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.19,
+     "ci": [
+      -0.36,
+      -0.026
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 3,
+     "games": 2,
+     "w": 0,
+     "l": 3,
+     "p": 0,
+     "win": 0.0,
+     "win_ci": [
+      0.0,
+      0.562
+     ],
+     "vs_fair": -0.459,
+     "fair_n": 2,
+     "roi": -1.0,
+     "roi_ci": null,
+     "roi_n": 3,
+     "clv": 0.023,
+     "clv_n": 2
+    },
+    "disagree_model_3plus": {
+     "n": 1,
+     "games": 1,
+     "w": 1,
+     "l": 0,
+     "p": 0,
+     "win": 1.0,
+     "win_ci": [
+      0.207,
+      1.0
+     ],
+     "vs_fair": 0.512,
+     "fair_n": 1,
+     "roi": 1.222,
+     "roi_ci": null,
+     "roi_n": 1,
+     "clv": 0.0,
+     "clv_n": 1
+    }
+   },
+   "steam": {
+    "alerts": 24,
+    "with_model": 16,
+    "agree_rate": 0.25,
+    "agree_rate_ci": [
+     0.102,
+     0.495
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 0,
+      "disagree": 7,
+      "rate": 0.0
+     },
+     "1.5-3": {
+      "agree": 4,
+      "disagree": 5,
+      "rate": 0.444
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 10,
+      "agree": 2
+     },
+     "ml": {
+      "n": 6,
+      "agree": 2
+     }
+    },
+    "all": {
+     "n": 24,
+     "games": 20,
+     "w": 7,
+     "l": 16,
+     "p": 1,
+     "win": 0.304,
+     "win_ci": [
+      0.156,
+      0.509
+     ],
+     "vs_fair": -0.203,
+     "fair_n": 23,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.012,
+     "clv_n": 24
+    },
+    "agree": {
+     "n": 4,
+     "games": 4,
+     "w": 1,
+     "l": 3,
+     "p": 0,
+     "win": 0.25,
+     "win_ci": [
+      0.046,
+      0.699
+     ],
+     "vs_fair": -0.112,
+     "fair_n": 4,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.033,
+     "clv_n": 4
+    },
+    "disagree": {
+     "n": 12,
+     "games": 10,
+     "w": 5,
+     "l": 7,
+     "p": 0,
+     "win": 0.417,
+     "win_ci": [
+      0.193,
+      0.68
+     ],
+     "vs_fair": -0.147,
+     "fair_n": 12,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.003,
+     "clv_n": 12
+    },
+    "no_model": {
+     "n": 8,
+     "games": 8,
+     "w": 1,
+     "l": 6,
+     "p": 1,
+     "win": 0.143,
+     "win_ci": [
+      0.026,
+      0.513
+     ],
+     "vs_fair": -0.35,
+     "fair_n": 7,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.016,
+     "clv_n": 8
+    },
+    "agree_minus_disagree_win": null,
+    "agree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    }
+   },
+   "split": {
+    "alerts": 68,
+    "with_model": 31,
+    "agree_rate": 0.645,
+    "agree_rate_ci": [
+     0.469,
+     0.789
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 8,
+      "disagree": 8,
+      "rate": 0.5
+     },
+     "1.5-3": {
+      "agree": 10,
+      "disagree": 3,
+      "rate": 0.769
+     },
+     "3-5": {
+      "agree": 2,
+      "disagree": 0,
+      "rate": 1.0
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 12,
+      "agree": 6
+     },
+     "ml": {
+      "n": 19,
+      "agree": 14
+     }
+    },
+    "all": {
+     "n": 68,
+     "games": 49,
+     "w": 30,
+     "l": 37,
+     "p": 1,
+     "win": 0.448,
+     "win_ci": [
+      0.335,
+      0.566
+     ],
+     "vs_fair": 0.02,
+     "fair_n": 60,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.008,
+     "clv_n": 59
+    },
+    "agree": {
+     "n": 20,
+     "games": 20,
+     "w": 5,
+     "l": 15,
+     "p": 0,
+     "win": 0.25,
+     "win_ci": [
+      0.112,
+      0.469
+     ],
+     "vs_fair": -0.139,
+     "fair_n": 20,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.033,
+     "clv_n": 20
+    },
+    "disagree": {
+     "n": 11,
+     "games": 9,
+     "w": 5,
+     "l": 6,
+     "p": 0,
+     "win": 0.455,
+     "win_ci": [
+      0.213,
+      0.72
+     ],
+     "vs_fair": -0.001,
+     "fair_n": 11,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.015,
+     "clv_n": 11
+    },
+    "no_model": {
+     "n": 37,
+     "games": 30,
+     "w": 20,
+     "l": 16,
+     "p": 1,
+     "win": 0.556,
+     "win_ci": [
+      0.396,
+      0.705
+     ],
+     "vs_fair": 0.137,
+     "fair_n": 29,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.002,
+     "clv_n": 28
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.138,
+     "ci": [
+      -0.542,
+      0.223
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 2,
+     "games": 2,
+     "w": 1,
+     "l": 1,
+     "p": 0,
+     "win": 0.5,
+     "win_ci": [
+      0.095,
+      0.905
+     ],
+     "vs_fair": 0.223,
+     "fair_n": 2,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.128,
+     "clv_n": 2
+    },
+    "disagree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    }
+   },
+   "behind": {
+    "alerts": 42,
+    "with_model": 14,
+    "agree_rate": 0.714,
+    "agree_rate_ci": [
+     0.454,
+     0.883
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 5,
+      "disagree": 4,
+      "rate": 0.556
+     },
+     "1.5-3": {
+      "agree": 5,
+      "disagree": 0,
+      "rate": 1.0
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 14,
+      "agree": 10
+     }
+    },
+    "all": {
+     "n": 42,
+     "games": 34,
+     "w": 18,
+     "l": 23,
+     "p": 1,
+     "win": 0.439,
+     "win_ci": [
+      0.299,
+      0.59
+     ],
+     "vs_fair": -0.075,
+     "fair_n": 41,
+     "roi": -0.065,
+     "roi_ci": [
+      -0.411,
+      0.295
+     ],
+     "roi_n": 42,
+     "clv": 0.036,
+     "clv_n": 39
+    },
+    "agree": {
+     "n": 10,
+     "games": 10,
+     "w": 2,
+     "l": 7,
+     "p": 1,
+     "win": 0.222,
+     "win_ci": [
+      0.063,
+      0.547
+     ],
+     "vs_fair": -0.315,
+     "fair_n": 9,
+     "roi": -0.513,
+     "roi_ci": [
+      -1.0,
+      -0.015
+     ],
+     "roi_n": 10,
+     "clv": 0.044,
+     "clv_n": 9
+    },
+    "disagree": {
+     "n": 4,
+     "games": 4,
+     "w": 3,
+     "l": 1,
+     "p": 0,
+     "win": 0.75,
+     "win_ci": [
+      0.301,
+      0.954
+     ],
+     "vs_fair": 0.218,
+     "fair_n": 4,
+     "roi": 0.481,
+     "roi_ci": null,
+     "roi_n": 4,
+     "clv": 0.045,
+     "clv_n": 4
+    },
+    "no_model": {
+     "n": 28,
+     "games": 26,
+     "w": 13,
+     "l": 15,
+     "p": 0,
+     "win": 0.464,
+     "win_ci": [
+      0.295,
+      0.642
+     ],
+     "vs_fair": -0.04,
+     "fair_n": 28,
+     "roi": 0.017,
+     "roi_ci": [
+      -0.427,
+      0.48
+     ],
+     "roi_n": 28,
+     "clv": 0.031,
+     "clv_n": 26
+    },
+    "agree_minus_disagree_win": null,
+    "agree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    }
+   }
+  },
+  "cfb": {
+   "sharp": {
+    "alerts": 408,
+    "with_model": 57,
+    "agree_rate": 0.614,
+    "agree_rate_ci": [
+     0.484,
+     0.729
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 7,
+      "disagree": 6,
+      "rate": 0.538
+     },
+     "1.5-3": {
+      "agree": 8,
+      "disagree": 5,
+      "rate": 0.615
+     },
+     "3-5": {
+      "agree": 9,
+      "disagree": 5,
+      "rate": 0.643
+     },
+     "5+": {
+      "agree": 11,
+      "disagree": 6,
+      "rate": 0.647
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 27,
+      "agree": 14
+     },
+     "ml": {
+      "n": 16,
+      "agree": 10
+     },
+     "tot": {
+      "n": 14,
+      "agree": 11
+     }
+    },
+    "all": {
+     "n": 408,
+     "games": 153,
+     "w": 199,
+     "l": 204,
+     "p": 5,
+     "win": 0.494,
+     "win_ci": [
+      0.445,
+      0.542
+     ],
+     "vs_fair": -0.019,
+     "fair_n": 390,
+     "roi": -0.016,
+     "roi_ci": [
+      -0.088,
+      0.059
+     ],
+     "roi_n": 408,
+     "clv": 0.0,
+     "clv_n": 390
+    },
+    "agree": {
+     "n": 35,
+     "games": 29,
+     "w": 15,
+     "l": 20,
+     "p": 0,
+     "win": 0.429,
+     "win_ci": [
+      0.28,
+      0.591
+     ],
+     "vs_fair": -0.038,
+     "fair_n": 35,
+     "roi": -0.04,
+     "roi_ci": [
+      -0.443,
+      0.376
+     ],
+     "roi_n": 35,
+     "clv": 0.003,
+     "clv_n": 34
+    },
+    "disagree": {
+     "n": 22,
+     "games": 20,
+     "w": 11,
+     "l": 10,
+     "p": 1,
+     "win": 0.524,
+     "win_ci": [
+      0.324,
+      0.717
+     ],
+     "vs_fair": -0.004,
+     "fair_n": 21,
+     "roi": -0.021,
+     "roi_ci": [
+      -0.411,
+      0.351
+     ],
+     "roi_n": 22,
+     "clv": 0.005,
+     "clv_n": 21
+    },
+    "no_model": {
+     "n": 351,
+     "games": 111,
+     "w": 173,
+     "l": 174,
+     "p": 4,
+     "win": 0.499,
+     "win_ci": [
+      0.446,
+      0.551
+     ],
+     "vs_fair": -0.018,
+     "fair_n": 334,
+     "roi": -0.013,
+     "roi_ci": [
+      -0.078,
+      0.058
+     ],
+     "roi_n": 351,
+     "clv": -0.0,
+     "clv_n": 335
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.035,
+     "ci": [
+      -0.296,
+      0.242
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 20,
+     "games": 19,
+     "w": 8,
+     "l": 12,
+     "p": 0,
+     "win": 0.4,
+     "win_ci": [
+      0.219,
+      0.613
+     ],
+     "vs_fair": -0.042,
+     "fair_n": 20,
+     "roi": -0.026,
+     "roi_ci": [
+      -0.585,
+      0.621
+     ],
+     "roi_n": 20,
+     "clv": -0.002,
+     "clv_n": 19
+    },
+    "disagree_model_3plus": {
+     "n": 11,
+     "games": 10,
+     "w": 6,
+     "l": 4,
+     "p": 1,
+     "win": 0.6,
+     "win_ci": [
+      0.313,
+      0.832
+     ],
+     "vs_fair": 0.075,
+     "fair_n": 10,
+     "roi": 0.133,
+     "roi_ci": [
+      -0.477,
+      0.668
+     ],
+     "roi_n": 11,
+     "clv": 0.015,
+     "clv_n": 11
+    }
+   },
+   "cross": {
+    "alerts": 50,
+    "with_model": 0,
+    "agree_rate": null,
+    "agree_rate_ci": null,
+    "agree_by_model_edge": {},
+    "by_market": {},
+    "all": {
+     "n": 50,
+     "games": 49,
+     "w": 28,
+     "l": 22,
+     "p": 0,
+     "win": 0.56,
+     "win_ci": [
+      0.423,
+      0.688
+     ],
+     "vs_fair": 0.022,
+     "fair_n": 46,
+     "roi": -0.028,
+     "roi_ci": [
+      -0.287,
+      0.233
+     ],
+     "roi_n": 50,
+     "clv": 0.006,
+     "clv_n": 46
+    },
+    "agree": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "no_model": {
+     "n": 50,
+     "games": 49,
+     "w": 28,
+     "l": 22,
+     "p": 0,
+     "win": 0.56,
+     "win_ci": [
+      0.423,
+      0.688
+     ],
+     "vs_fair": 0.022,
+     "fair_n": 46,
+     "roi": -0.028,
+     "roi_ci": [
+      -0.285,
+      0.243
+     ],
+     "roi_n": 50,
+     "clv": 0.006,
+     "clv_n": 46
+    },
+    "agree_minus_disagree_win": null,
+    "agree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    }
+   },
+   "whale": {
+    "alerts": 1022,
+    "with_model": 655,
+    "agree_rate": 0.478,
+    "agree_rate_ci": [
+     0.44,
+     0.516
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 102,
+      "disagree": 99,
+      "rate": 0.507
+     },
+     "1.5-3": {
+      "agree": 69,
+      "disagree": 85,
+      "rate": 0.448
+     },
+     "3-5": {
+      "agree": 67,
+      "disagree": 74,
+      "rate": 0.475
+     },
+     "5+": {
+      "agree": 75,
+      "disagree": 84,
+      "rate": 0.472
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 222,
+      "agree": 108
+     },
+     "ml": {
+      "n": 291,
+      "agree": 134
+     },
+     "tot": {
+      "n": 142,
+      "agree": 71
+     }
+    },
+    "all": {
+     "n": 1022,
+     "games": 338,
+     "w": 545,
+     "l": 471,
+     "p": 6,
+     "win": 0.536,
+     "win_ci": [
+      0.506,
+      0.567
+     ],
+     "vs_fair": 0.001,
+     "fair_n": 991,
+     "roi": 0.018,
+     "roi_ci": [
+      -0.023,
+      0.058
+     ],
+     "roi_n": 1022,
+     "clv": 0.001,
+     "clv_n": 989
+    },
+    "agree": {
+     "n": 313,
+     "games": 179,
+     "w": 147,
+     "l": 163,
+     "p": 3,
+     "win": 0.474,
+     "win_ci": [
+      0.419,
+      0.53
+     ],
+     "vs_fair": -0.02,
+     "fair_n": 307,
+     "roi": -0.049,
+     "roi_ci": [
+      -0.187,
+      0.098
+     ],
+     "roi_n": 313,
+     "clv": 0.001,
+     "clv_n": 307
+    },
+    "disagree": {
+     "n": 342,
+     "games": 189,
+     "w": 208,
+     "l": 133,
+     "p": 1,
+     "win": 0.61,
+     "win_ci": [
+      0.557,
+      0.66
+     ],
+     "vs_fair": 0.043,
+     "fair_n": 340,
+     "roi": 0.105,
+     "roi_ci": [
+      -0.013,
+      0.224
+     ],
+     "roi_n": 342,
+     "clv": -0.0,
+     "clv_n": 339
+    },
+    "no_model": {
+     "n": 367,
+     "games": 135,
+     "w": 190,
+     "l": 175,
+     "p": 2,
+     "win": 0.521,
+     "win_ci": [
+      0.469,
+      0.571
+     ],
+     "vs_fair": -0.021,
+     "fair_n": 344,
+     "roi": -0.005,
+     "roi_ci": [
+      -0.076,
+      0.076
+     ],
+     "roi_n": 367,
+     "clv": 0.001,
+     "clv_n": 343
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.064,
+     "ci": [
+      -0.152,
+      0.021
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 142,
+     "games": 99,
+     "w": 57,
+     "l": 83,
+     "p": 2,
+     "win": 0.407,
+     "win_ci": [
+      0.329,
+      0.49
+     ],
+     "vs_fair": -0.058,
+     "fair_n": 139,
+     "roi": -0.145,
+     "roi_ci": [
+      -0.363,
+      0.069
+     ],
+     "roi_n": 142,
+     "clv": 0.002,
+     "clv_n": 139
+    },
+    "disagree_model_3plus": {
+     "n": 158,
+     "games": 106,
+     "w": 105,
+     "l": 53,
+     "p": 0,
+     "win": 0.665,
+     "win_ci": [
+      0.588,
+      0.733
+     ],
+     "vs_fair": 0.064,
+     "fair_n": 157,
+     "roi": 0.129,
+     "roi_ci": [
+      -0.024,
+      0.281
+     ],
+     "roi_n": 158,
+     "clv": 0.003,
+     "clv_n": 156
+    }
+   },
+   "steam": {
+    "alerts": 197,
+    "with_model": 128,
+    "agree_rate": 0.312,
+    "agree_rate_ci": [
+     0.239,
+     0.397
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 16,
+      "disagree": 20,
+      "rate": 0.444
+     },
+     "1.5-3": {
+      "agree": 14,
+      "disagree": 21,
+      "rate": 0.4
+     },
+     "3-5": {
+      "agree": 4,
+      "disagree": 19,
+      "rate": 0.174
+     },
+     "5+": {
+      "agree": 6,
+      "disagree": 28,
+      "rate": 0.176
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 72,
+      "agree": 24
+     },
+     "ml": {
+      "n": 29,
+      "agree": 9
+     },
+     "tot": {
+      "n": 27,
+      "agree": 7
+     }
+    },
+    "all": {
+     "n": 197,
+     "games": 128,
+     "w": 99,
+     "l": 95,
+     "p": 3,
+     "win": 0.51,
+     "win_ci": [
+      0.44,
+      0.58
+     ],
+     "vs_fair": -0.003,
+     "fair_n": 194,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.012,
+     "clv_n": 167
+    },
+    "agree": {
+     "n": 40,
+     "games": 34,
+     "w": 17,
+     "l": 22,
+     "p": 1,
+     "win": 0.436,
+     "win_ci": [
+      0.293,
+      0.59
+     ],
+     "vs_fair": -0.058,
+     "fair_n": 39,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.01,
+     "clv_n": 34
+    },
+    "disagree": {
+     "n": 88,
+     "games": 57,
+     "w": 50,
+     "l": 36,
+     "p": 2,
+     "win": 0.581,
+     "win_ci": [
+      0.476,
+      0.68
+     ],
+     "vs_fair": 0.056,
+     "fair_n": 86,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.022,
+     "clv_n": 69
+    },
+    "no_model": {
+     "n": 69,
+     "games": 48,
+     "w": 32,
+     "l": 37,
+     "p": 0,
+     "win": 0.464,
+     "win_ci": [
+      0.351,
+      0.58
+     ],
+     "vs_fair": -0.046,
+     "fair_n": 69,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.003,
+     "clv_n": 64
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.114,
+     "ci": [
+      -0.31,
+      0.084
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 10,
+     "games": 10,
+     "w": 5,
+     "l": 5,
+     "p": 0,
+     "win": 0.5,
+     "win_ci": [
+      0.237,
+      0.763
+     ],
+     "vs_fair": 0.002,
+     "fair_n": 10,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.012,
+     "clv_n": 9
+    },
+    "disagree_model_3plus": {
+     "n": 47,
+     "games": 28,
+     "w": 23,
+     "l": 24,
+     "p": 0,
+     "win": 0.489,
+     "win_ci": [
+      0.353,
+      0.628
+     ],
+     "vs_fair": -0.052,
+     "fair_n": 47,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.04,
+     "clv_n": 31
+    }
+   },
+   "split": {
+    "alerts": 408,
+    "with_model": 241,
+    "agree_rate": 0.519,
+    "agree_rate_ci": [
+     0.456,
+     0.581
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 51,
+      "disagree": 37,
+      "rate": 0.58
+     },
+     "1.5-3": {
+      "agree": 28,
+      "disagree": 35,
+      "rate": 0.444
+     },
+     "3-5": {
+      "agree": 18,
+      "disagree": 26,
+      "rate": 0.409
+     },
+     "5+": {
+      "agree": 28,
+      "disagree": 18,
+      "rate": 0.609
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 61,
+      "agree": 29
+     },
+     "ml": {
+      "n": 126,
+      "agree": 73
+     },
+     "tot": {
+      "n": 54,
+      "agree": 23
+     }
+    },
+    "all": {
+     "n": 408,
+     "games": 280,
+     "w": 165,
+     "l": 238,
+     "p": 5,
+     "win": 0.409,
+     "win_ci": [
+      0.362,
+      0.458
+     ],
+     "vs_fair": 0.025,
+     "fair_n": 357,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.006,
+     "clv_n": 349
+    },
+    "agree": {
+     "n": 125,
+     "games": 108,
+     "w": 49,
+     "l": 74,
+     "p": 2,
+     "win": 0.398,
+     "win_ci": [
+      0.316,
+      0.487
+     ],
+     "vs_fair": 0.031,
+     "fair_n": 121,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.007,
+     "clv_n": 117
+    },
+    "disagree": {
+     "n": 116,
+     "games": 92,
+     "w": 53,
+     "l": 61,
+     "p": 2,
+     "win": 0.465,
+     "win_ci": [
+      0.376,
+      0.556
+     ],
+     "vs_fair": 0.042,
+     "fair_n": 114,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.01,
+     "clv_n": 115
+    },
+    "no_model": {
+     "n": 167,
+     "games": 129,
+     "w": 63,
+     "l": 103,
+     "p": 1,
+     "win": 0.38,
+     "win_ci": [
+      0.309,
+      0.455
+     ],
+     "vs_fair": 0.004,
+     "fair_n": 122,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.003,
+     "clv_n": 117
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.011,
+     "ci": [
+      -0.145,
+      0.129
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 46,
+     "games": 45,
+     "w": 17,
+     "l": 27,
+     "p": 2,
+     "win": 0.386,
+     "win_ci": [
+      0.257,
+      0.534
+     ],
+     "vs_fair": 0.091,
+     "fair_n": 44,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.011,
+     "clv_n": 44
+    },
+    "disagree_model_3plus": {
+     "n": 44,
+     "games": 37,
+     "w": 23,
+     "l": 19,
+     "p": 2,
+     "win": 0.548,
+     "win_ci": [
+      0.399,
+      0.688
+     ],
+     "vs_fair": 0.089,
+     "fair_n": 42,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.005,
+     "clv_n": 43
+    }
+   },
+   "behind": {
+    "alerts": 463,
+    "with_model": 235,
+    "agree_rate": 0.587,
+    "agree_rate_ci": [
+     0.523,
+     0.648
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 25,
+      "disagree": 40,
+      "rate": 0.385
+     },
+     "1.5-3": {
+      "agree": 40,
+      "disagree": 25,
+      "rate": 0.615
+     },
+     "3-5": {
+      "agree": 37,
+      "disagree": 20,
+      "rate": 0.649
+     },
+     "5+": {
+      "agree": 36,
+      "disagree": 12,
+      "rate": 0.75
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 125,
+      "agree": 79
+     },
+     "tot": {
+      "n": 110,
+      "agree": 59
+     }
+    },
+    "all": {
+     "n": 463,
+     "games": 247,
+     "w": 250,
+     "l": 209,
+     "p": 4,
+     "win": 0.545,
+     "win_ci": [
+      0.499,
+      0.59
+     ],
+     "vs_fair": 0.003,
+     "fair_n": 459,
+     "roi": 0.053,
+     "roi_ci": [
+      -0.024,
+      0.131
+     ],
+     "roi_n": 463,
+     "clv": 0.008,
+     "clv_n": 376
+    },
+    "agree": {
+     "n": 138,
+     "games": 109,
+     "w": 75,
+     "l": 62,
+     "p": 1,
+     "win": 0.547,
+     "win_ci": [
+      0.464,
+      0.628
+     ],
+     "vs_fair": -0.001,
+     "fair_n": 137,
+     "roi": 0.041,
+     "roi_ci": [
+      -0.112,
+      0.191
+     ],
+     "roi_n": 138,
+     "clv": -0.004,
+     "clv_n": 98
+    },
+    "disagree": {
+     "n": 97,
+     "games": 81,
+     "w": 58,
+     "l": 38,
+     "p": 1,
+     "win": 0.604,
+     "win_ci": [
+      0.504,
+      0.696
+     ],
+     "vs_fair": 0.055,
+     "fair_n": 96,
+     "roi": 0.149,
+     "roi_ci": [
+      -0.039,
+      0.34
+     ],
+     "roi_n": 97,
+     "clv": 0.008,
+     "clv_n": 79
+    },
+    "no_model": {
+     "n": 228,
+     "games": 132,
+     "w": 117,
+     "l": 109,
+     "p": 2,
+     "win": 0.518,
+     "win_ci": [
+      0.453,
+      0.582
+     ],
+     "vs_fair": -0.016,
+     "fair_n": 226,
+     "roi": 0.019,
+     "roi_ci": [
+      -0.103,
+      0.146
+     ],
+     "roi_n": 228,
+     "clv": 0.013,
+     "clv_n": 199
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.056,
+     "ci": [
+      -0.186,
+      0.075
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 73,
+     "games": 67,
+     "w": 38,
+     "l": 34,
+     "p": 1,
+     "win": 0.528,
+     "win_ci": [
+      0.414,
+      0.639
+     ],
+     "vs_fair": -0.022,
+     "fair_n": 72,
+     "roi": 0.003,
+     "roi_ci": [
+      -0.219,
+      0.216
+     ],
+     "roi_n": 73,
+     "clv": 0.003,
+     "clv_n": 49
+    },
+    "disagree_model_3plus": {
+     "n": 32,
+     "games": 31,
+     "w": 22,
+     "l": 10,
+     "p": 0,
+     "win": 0.688,
+     "win_ci": [
+      0.514,
+      0.82
+     ],
+     "vs_fair": 0.135,
+     "fair_n": 32,
+     "roi": 0.306,
+     "roi_ci": [
+      -0.017,
+      0.608
+     ],
+     "roi_n": 32,
+     "clv": 0.002,
+     "clv_n": 28
+    }
+   }
+  },
+  "nba": {
+   "sharp": {
+    "alerts": 284,
+    "with_model": 133,
+    "agree_rate": 0.526,
+    "agree_rate_ci": [
+     0.442,
+     0.609
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 25,
+      "disagree": 18,
+      "rate": 0.581
+     },
+     "1.5-3": {
+      "agree": 12,
+      "disagree": 11,
+      "rate": 0.522
+     },
+     "3-5": {
+      "agree": 12,
+      "disagree": 20,
+      "rate": 0.375
+     },
+     "5+": {
+      "agree": 21,
+      "disagree": 14,
+      "rate": 0.6
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 47,
+      "agree": 23
+     },
+     "ml": {
+      "n": 61,
+      "agree": 29
+     },
+     "tot": {
+      "n": 25,
+      "agree": 18
+     }
+    },
+    "all": {
+     "n": 284,
+     "games": 124,
+     "w": 141,
+     "l": 139,
+     "p": 4,
+     "win": 0.504,
+     "win_ci": [
+      0.445,
+      0.562
+     ],
+     "vs_fair": -0.021,
+     "fair_n": 205,
+     "roi": -0.01,
+     "roi_ci": [
+      -0.092,
+      0.07
+     ],
+     "roi_n": 284,
+     "clv": 0.003,
+     "clv_n": 207
+    },
+    "agree": {
+     "n": 70,
+     "games": 42,
+     "w": 29,
+     "l": 40,
+     "p": 1,
+     "win": 0.42,
+     "win_ci": [
+      0.311,
+      0.538
+     ],
+     "vs_fair": -0.07,
+     "fair_n": 65,
+     "roi": -0.123,
+     "roi_ci": [
+      -0.414,
+      0.162
+     ],
+     "roi_n": 70,
+     "clv": 0.009,
+     "clv_n": 65
+    },
+    "disagree": {
+     "n": 63,
+     "games": 45,
+     "w": 38,
+     "l": 24,
+     "p": 1,
+     "win": 0.613,
+     "win_ci": [
+      0.488,
+      0.724
+     ],
+     "vs_fair": 0.038,
+     "fair_n": 59,
+     "roi": 0.107,
+     "roi_ci": [
+      -0.149,
+      0.349
+     ],
+     "roi_n": 63,
+     "clv": -0.004,
+     "clv_n": 59
+    },
+    "no_model": {
+     "n": 151,
+     "games": 68,
+     "w": 74,
+     "l": 75,
+     "p": 2,
+     "win": 0.497,
+     "win_ci": [
+      0.417,
+      0.576
+     ],
+     "vs_fair": -0.025,
+     "fair_n": 81,
+     "roi": -0.007,
+     "roi_ci": [
+      -0.109,
+      0.095
+     ],
+     "roi_n": 151,
+     "clv": 0.004,
+     "clv_n": 83
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.109,
+     "ci": [
+      -0.299,
+      0.078
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 33,
+     "games": 23,
+     "w": 17,
+     "l": 16,
+     "p": 0,
+     "win": 0.515,
+     "win_ci": [
+      0.352,
+      0.675
+     ],
+     "vs_fair": 0.048,
+     "fair_n": 32,
+     "roi": 0.081,
+     "roi_ci": [
+      -0.392,
+      0.525
+     ],
+     "roi_n": 33,
+     "clv": 0.015,
+     "clv_n": 31
+    },
+    "disagree_model_3plus": {
+     "n": 34,
+     "games": 24,
+     "w": 19,
+     "l": 14,
+     "p": 1,
+     "win": 0.576,
+     "win_ci": [
+      0.408,
+      0.728
+     ],
+     "vs_fair": 0.011,
+     "fair_n": 33,
+     "roi": 0.047,
+     "roi_ci": [
+      -0.292,
+      0.362
+     ],
+     "roi_n": 34,
+     "clv": -0.005,
+     "clv_n": 33
+    }
+   },
+   "cross": {
+    "alerts": 40,
+    "with_model": 0,
+    "agree_rate": null,
+    "agree_rate_ci": null,
+    "agree_by_model_edge": {},
+    "by_market": {},
+    "all": {
+     "n": 40,
+     "games": 36,
+     "w": 23,
+     "l": 17,
+     "p": 0,
+     "win": 0.575,
+     "win_ci": [
+      0.422,
+      0.715
+     ],
+     "vs_fair": 0.029,
+     "fair_n": 40,
+     "roi": 0.075,
+     "roi_ci": [
+      -0.204,
+      0.372
+     ],
+     "roi_n": 40,
+     "clv": 0.005,
+     "clv_n": 40
+    },
+    "agree": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "no_model": {
+     "n": 40,
+     "games": 36,
+     "w": 23,
+     "l": 17,
+     "p": 0,
+     "win": 0.575,
+     "win_ci": [
+      0.422,
+      0.715
+     ],
+     "vs_fair": 0.029,
+     "fair_n": 40,
+     "roi": 0.075,
+     "roi_ci": [
+      -0.218,
+      0.382
+     ],
+     "roi_n": 40,
+     "clv": 0.005,
+     "clv_n": 40
+    },
+    "agree_minus_disagree_win": null,
+    "agree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    },
+    "disagree_model_3plus": {
+     "n": 0,
+     "games": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "win_ci": null,
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0
+    }
+   },
+   "whale": {
+    "alerts": 502,
+    "with_model": 385,
+    "agree_rate": 0.488,
+    "agree_rate_ci": [
+     0.439,
+     0.538
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 68,
+      "disagree": 84,
+      "rate": 0.447
+     },
+     "1.5-3": {
+      "agree": 52,
+      "disagree": 47,
+      "rate": 0.525
+     },
+     "3-5": {
+      "agree": 41,
+      "disagree": 41,
+      "rate": 0.5
+     },
+     "5+": {
+      "agree": 27,
+      "disagree": 25,
+      "rate": 0.519
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 128,
+      "agree": 62
+     },
+     "ml": {
+      "n": 207,
+      "agree": 100
+     },
+     "tot": {
+      "n": 50,
+      "agree": 26
+     }
+    },
+    "all": {
+     "n": 502,
+     "games": 178,
+     "w": 271,
+     "l": 226,
+     "p": 5,
+     "win": 0.545,
+     "win_ci": [
+      0.501,
+      0.589
+     ],
+     "vs_fair": 0.017,
+     "fair_n": 469,
+     "roi": 0.005,
+     "roi_ci": [
+      -0.039,
+      0.051
+     ],
+     "roi_n": 502,
+     "clv": 0.002,
+     "clv_n": 470
+    },
+    "agree": {
+     "n": 188,
+     "games": 114,
+     "w": 82,
+     "l": 104,
+     "p": 2,
+     "win": 0.441,
+     "win_ci": [
+      0.371,
+      0.513
+     ],
+     "vs_fair": -0.026,
+     "fair_n": 181,
+     "roi": -0.127,
+     "roi_ci": [
+      -0.291,
+      0.036
+     ],
+     "roi_n": 188,
+     "clv": 0.006,
+     "clv_n": 181
+    },
+    "disagree": {
+     "n": 197,
+     "games": 119,
+     "w": 128,
+     "l": 68,
+     "p": 1,
+     "win": 0.653,
+     "win_ci": [
+      0.584,
+      0.716
+     ],
+     "vs_fair": 0.068,
+     "fair_n": 191,
+     "roi": 0.135,
+     "roi_ci": [
+      -0.002,
+      0.279
+     ],
+     "roi_n": 197,
+     "clv": -0.003,
+     "clv_n": 190
+    },
+    "no_model": {
+     "n": 117,
+     "games": 47,
+     "w": 61,
+     "l": 54,
+     "p": 2,
+     "win": 0.53,
+     "win_ci": [
+      0.44,
+      0.619
+     ],
+     "vs_fair": -0.001,
+     "fair_n": 97,
+     "roi": -0.002,
+     "roi_ci": [
+      -0.101,
+      0.107
+     ],
+     "roi_n": 117,
+     "clv": 0.003,
+     "clv_n": 99
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.094,
+     "ci": [
+      -0.199,
+      0.02
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 68,
+     "games": 48,
+     "w": 27,
+     "l": 41,
+     "p": 0,
+     "win": 0.397,
+     "win_ci": [
+      0.289,
+      0.516
+     ],
+     "vs_fair": -0.044,
+     "fair_n": 65,
+     "roi": -0.16,
+     "roi_ci": [
+      -0.424,
+      0.116
+     ],
+     "roi_n": 68,
+     "clv": 0.011,
+     "clv_n": 63
+    },
+    "disagree_model_3plus": {
+     "n": 66,
+     "games": 49,
+     "w": 47,
+     "l": 19,
+     "p": 0,
+     "win": 0.712,
+     "win_ci": [
+      0.594,
+      0.807
+     ],
+     "vs_fair": 0.1,
+     "fair_n": 64,
+     "roi": 0.221,
+     "roi_ci": [
+      -0.014,
+      0.435
+     ],
+     "roi_n": 66,
+     "clv": -0.006,
+     "clv_n": 63
+    }
+   },
+   "steam": {
+    "alerts": 101,
+    "with_model": 85,
+    "agree_rate": 0.412,
+    "agree_rate_ci": [
+     0.313,
+     0.518
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 4,
+      "disagree": 16,
+      "rate": 0.2
+     },
+     "1.5-3": {
+      "agree": 12,
+      "disagree": 7,
+      "rate": 0.632
+     },
+     "3-5": {
+      "agree": 10,
+      "disagree": 16,
+      "rate": 0.385
+     },
+     "5+": {
+      "agree": 9,
+      "disagree": 11,
+      "rate": 0.45
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 22,
+      "agree": 9
+     },
+     "ml": {
+      "n": 26,
+      "agree": 12
+     },
+     "tot": {
+      "n": 37,
+      "agree": 14
+     }
+    },
+    "all": {
+     "n": 101,
+     "games": 47,
+     "w": 43,
+     "l": 56,
+     "p": 2,
+     "win": 0.434,
+     "win_ci": [
+      0.341,
+      0.533
+     ],
+     "vs_fair": -0.064,
+     "fair_n": 99,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.003,
+     "clv_n": 94
+    },
+    "agree": {
+     "n": 35,
+     "games": 24,
+     "w": 11,
+     "l": 23,
+     "p": 1,
+     "win": 0.324,
+     "win_ci": [
+      0.191,
+      0.492
+     ],
+     "vs_fair": -0.163,
+     "fair_n": 34,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.008,
+     "clv_n": 30
+    },
+    "disagree": {
+     "n": 50,
+     "games": 29,
+     "w": 24,
+     "l": 26,
+     "p": 0,
+     "win": 0.48,
+     "win_ci": [
+      0.348,
+      0.615
+     ],
+     "vs_fair": -0.024,
+     "fair_n": 50,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.008,
+     "clv_n": 49
+    },
+    "no_model": {
+     "n": 16,
+     "games": 7,
+     "w": 8,
+     "l": 7,
+     "p": 1,
+     "win": 0.533,
+     "win_ci": [
+      0.301,
+      0.752
+     ],
+     "vs_fair": 0.026,
+     "fair_n": 15,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.009,
+     "clv_n": 15
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.139,
+     "ci": [
+      -0.359,
+      0.095
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 19,
+     "games": 15,
+     "w": 4,
+     "l": 15,
+     "p": 0,
+     "win": 0.211,
+     "win_ci": [
+      0.085,
+      0.433
+     ],
+     "vs_fair": -0.235,
+     "fair_n": 19,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.02,
+     "clv_n": 17
+    },
+    "disagree_model_3plus": {
+     "n": 27,
+     "games": 21,
+     "w": 15,
+     "l": 12,
+     "p": 0,
+     "win": 0.556,
+     "win_ci": [
+      0.373,
+      0.724
+     ],
+     "vs_fair": 0.026,
+     "fair_n": 27,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.011,
+     "clv_n": 26
+    }
+   },
+   "split": {
+    "alerts": 133,
+    "with_model": 56,
+    "agree_rate": 0.625,
+    "agree_rate_ci": [
+     0.494,
+     0.74
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 11,
+      "disagree": 17,
+      "rate": 0.393
+     },
+     "1.5-3": {
+      "agree": 15,
+      "disagree": 1,
+      "rate": 0.938
+     },
+     "3-5": {
+      "agree": 5,
+      "disagree": 2,
+      "rate": 0.714
+     },
+     "5+": {
+      "agree": 4,
+      "disagree": 1,
+      "rate": 0.8
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 20,
+      "agree": 12
+     },
+     "ml": {
+      "n": 29,
+      "agree": 20
+     },
+     "tot": {
+      "n": 7,
+      "agree": 3
+     }
+    },
+    "all": {
+     "n": 133,
+     "games": 121,
+     "w": 52,
+     "l": 81,
+     "p": 0,
+     "win": 0.391,
+     "win_ci": [
+      0.312,
+      0.476
+     ],
+     "vs_fair": -0.061,
+     "fair_n": 65,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.006,
+     "clv_n": 60
+    },
+    "agree": {
+     "n": 35,
+     "games": 29,
+     "w": 11,
+     "l": 24,
+     "p": 0,
+     "win": 0.314,
+     "win_ci": [
+      0.186,
+      0.48
+     ],
+     "vs_fair": -0.083,
+     "fair_n": 35,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.013,
+     "clv_n": 30
+    },
+    "disagree": {
+     "n": 21,
+     "games": 20,
+     "w": 7,
+     "l": 14,
+     "p": 0,
+     "win": 0.333,
+     "win_ci": [
+      0.172,
+      0.546
+     ],
+     "vs_fair": -0.099,
+     "fair_n": 21,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": -0.009,
+     "clv_n": 21
+    },
+    "no_model": {
+     "n": 77,
+     "games": 76,
+     "w": 34,
+     "l": 43,
+     "p": 0,
+     "win": 0.442,
+     "win_ci": [
+      0.336,
+      0.553
+     ],
+     "vs_fair": 0.113,
+     "fair_n": 9,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.02,
+     "clv_n": 9
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": 0.016,
+     "ci": [
+      -0.214,
+      0.252
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 9,
+     "games": 8,
+     "w": 3,
+     "l": 6,
+     "p": 0,
+     "win": 0.333,
+     "win_ci": [
+      0.121,
+      0.646
+     ],
+     "vs_fair": -0.074,
+     "fair_n": 9,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.024,
+     "clv_n": 7
+    },
+    "disagree_model_3plus": {
+     "n": 3,
+     "games": 3,
+     "w": 1,
+     "l": 2,
+     "p": 0,
+     "win": 0.333,
+     "win_ci": [
+      0.061,
+      0.792
+     ],
+     "vs_fair": -0.197,
+     "fair_n": 3,
+     "roi": null,
+     "roi_ci": null,
+     "roi_n": 0,
+     "clv": 0.01,
+     "clv_n": 3
+    }
+   },
+   "behind": {
+    "alerts": 183,
+    "with_model": 117,
+    "agree_rate": 0.607,
+    "agree_rate_ci": [
+     0.516,
+     0.691
+    ],
+    "agree_by_model_edge": {
+     "0-1.5": {
+      "agree": 22,
+      "disagree": 19,
+      "rate": 0.537
+     },
+     "1.5-3": {
+      "agree": 12,
+      "disagree": 9,
+      "rate": 0.571
+     },
+     "3-5": {
+      "agree": 21,
+      "disagree": 8,
+      "rate": 0.724
+     },
+     "5+": {
+      "agree": 16,
+      "disagree": 10,
+      "rate": 0.615
+     }
+    },
+    "by_market": {
+     "sp": {
+      "n": 55,
+      "agree": 33
+     },
+     "tot": {
+      "n": 62,
+      "agree": 38
+     }
+    },
+    "all": {
+     "n": 183,
+     "games": 107,
+     "w": 104,
+     "l": 79,
+     "p": 0,
+     "win": 0.568,
+     "win_ci": [
+      0.496,
+      0.638
+     ],
+     "vs_fair": 0.017,
+     "fair_n": 183,
+     "roi": 0.077,
+     "roi_ci": [
+      -0.038,
+      0.2
+     ],
+     "roi_n": 183,
+     "clv": 0.016,
+     "clv_n": 159
+    },
+    "agree": {
+     "n": 71,
+     "games": 59,
+     "w": 38,
+     "l": 33,
+     "p": 0,
+     "win": 0.535,
+     "win_ci": [
+      0.42,
+      0.646
+     ],
+     "vs_fair": -0.014,
+     "fair_n": 71,
+     "roi": 0.018,
+     "roi_ci": [
+      -0.196,
+      0.227
+     ],
+     "roi_n": 71,
+     "clv": 0.028,
+     "clv_n": 60
+    },
+    "disagree": {
+     "n": 46,
+     "games": 40,
+     "w": 27,
+     "l": 19,
+     "p": 0,
+     "win": 0.587,
+     "win_ci": [
+      0.443,
+      0.717
+     ],
+     "vs_fair": 0.039,
+     "fair_n": 46,
+     "roi": 0.121,
+     "roi_ci": [
+      -0.129,
+      0.374
+     ],
+     "roi_n": 46,
+     "clv": 0.0,
+     "clv_n": 42
+    },
+    "no_model": {
+     "n": 66,
+     "games": 46,
+     "w": 39,
+     "l": 27,
+     "p": 0,
+     "win": 0.591,
+     "win_ci": [
+      0.47,
+      0.701
+     ],
+     "vs_fair": 0.036,
+     "fair_n": 66,
+     "roi": 0.11,
+     "roi_ci": [
+      -0.103,
+      0.318
+     ],
+     "roi_n": 66,
+     "clv": 0.015,
+     "clv_n": 57
+    },
+    "agree_minus_disagree_win": {
+     "measure": "win minus fair",
+     "diff": -0.053,
+     "ci": [
+      -0.227,
+      0.117
+     ]
+    },
+    "agree_model_3plus": {
+     "n": 37,
+     "games": 36,
+     "w": 21,
+     "l": 16,
+     "p": 0,
+     "win": 0.568,
+     "win_ci": [
+      0.409,
+      0.713
+     ],
+     "vs_fair": 0.02,
+     "fair_n": 37,
+     "roi": 0.084,
+     "roi_ci": [
+      -0.26,
+      0.395
+     ],
+     "roi_n": 37,
+     "clv": 0.036,
+     "clv_n": 30
+    },
+    "disagree_model_3plus": {
+     "n": 18,
+     "games": 18,
+     "w": 10,
+     "l": 8,
+     "p": 0,
+     "win": 0.556,
+     "win_ci": [
+      0.337,
+      0.754
+     ],
+     "vs_fair": 0.01,
+     "fair_n": 18,
+     "roi": 0.069,
+     "roi_ci": [
+      -0.361,
+      0.496
+     ],
+     "roi_n": 18,
+     "clv": -0.011,
+     "clv_n": 17
+    }
+   }
+  }
+ },
+ "model_lens": {
+  "nfl": {
+   "ats_all": {
+    "n": 57,
+    "games": 57,
+    "w": 22,
+    "l": 35,
+    "p": 0,
+    "win": 0.386,
+    "win_ci": [
+     0.271,
+     0.516
+    ],
+    "vs_fair": null,
+    "fair_n": 0,
+    "roi": null,
+    "roi_ci": null,
+    "roi_n": 0,
+    "clv": 0.149,
+    "clv_n": 57
+   },
+   "ats_by_family": {
+    "sharp": {
+     "agree": {
+      "n": 6,
+      "games": 6,
+      "w": 3,
+      "l": 3,
+      "p": 0,
+      "win": 0.5,
+      "win_ci": [
+       0.188,
+       0.812
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.167,
+      "clv_n": 6
+     },
+     "none": {
+      "n": 32,
+      "games": 32,
+      "w": 11,
+      "l": 21,
+      "p": 0,
+      "win": 0.344,
+      "win_ci": [
+       0.204,
+       0.517
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.219,
+      "clv_n": 32
+     },
+     "disagree": {
+      "n": 9,
+      "games": 9,
+      "w": 4,
+      "l": 5,
+      "p": 0,
+      "win": 0.444,
+      "win_ci": [
+       0.189,
+       0.733
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.111,
+      "clv_n": 9
+     },
+     "both": {
+      "n": 10,
+      "games": 10,
+      "w": 4,
+      "l": 6,
+      "p": 0,
+      "win": 0.4,
+      "win_ci": [
+       0.168,
+       0.687
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.15,
+      "clv_n": 10
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.056,
+      "ci": [
+       -0.444,
+       0.5
+      ]
+     },
+     "agree_rate": 0.4,
+     "agree_rate_ci": [
+      0.198,
+      0.643
+     ]
+    },
+    "cross": {
+     "agree": {
+      "n": 8,
+      "games": 8,
+      "w": 3,
+      "l": 5,
+      "p": 0,
+      "win": 0.375,
+      "win_ci": [
+       0.137,
+       0.694
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.062,
+      "clv_n": 8
+     },
+     "none": {
+      "n": 48,
+      "games": 48,
+      "w": 19,
+      "l": 29,
+      "p": 0,
+      "win": 0.396,
+      "win_ci": [
+       0.27,
+       0.537
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.188,
+      "clv_n": 48
+     },
+     "disagree": {
+      "n": 1,
+      "games": 1,
+      "w": 0,
+      "l": 1,
+      "p": 0,
+      "win": 0.0,
+      "win_ci": [
+       0.0,
+       0.793
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.0,
+      "clv_n": 1
+     },
+     "agree_minus_disagree_win": null,
+     "agree_rate": 0.889,
+     "agree_rate_ci": [
+      0.565,
+      0.98
+     ]
+    },
+    "whale": {
+     "both": {
+      "n": 55,
+      "games": 55,
+      "w": 21,
+      "l": 34,
+      "p": 0,
+      "win": 0.382,
+      "win_ci": [
+       0.265,
+       0.514
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.145,
+      "clv_n": 55
+     },
+     "disagree": {
+      "n": 2,
+      "games": 2,
+      "w": 1,
+      "l": 1,
+      "p": 0,
+      "win": 0.5,
+      "win_ci": [
+       0.095,
+       0.905
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.25,
+      "clv_n": 2
+     },
+     "agree_minus_disagree_win": null,
+     "agree_rate": 0.0,
+     "agree_rate_ci": [
+      0.0,
+      0.658
+     ]
+    },
+    "steam": {
+     "none": {
+      "n": 44,
+      "games": 44,
+      "w": 16,
+      "l": 28,
+      "p": 0,
+      "win": 0.364,
+      "win_ci": [
+       0.238,
+       0.511
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.136,
+      "clv_n": 44
+     },
+     "agree": {
+      "n": 5,
+      "games": 5,
+      "w": 1,
+      "l": 4,
+      "p": 0,
+      "win": 0.2,
+      "win_ci": [
+       0.036,
+       0.624
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.7,
+      "clv_n": 5
+     },
+     "disagree": {
+      "n": 8,
+      "games": 8,
+      "w": 5,
+      "l": 3,
+      "p": 0,
+      "win": 0.625,
+      "win_ci": [
+       0.306,
+       0.863
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.125,
+      "clv_n": 8
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.425,
+      "ci": [
+       -0.875,
+       0.1
+      ]
+     },
+     "agree_rate": 0.385,
+     "agree_rate_ci": [
+      0.177,
+      0.645
+     ]
+    },
+    "split": {
+     "none": {
+      "n": 29,
+      "games": 29,
+      "w": 13,
+      "l": 16,
+      "p": 0,
+      "win": 0.448,
+      "win_ci": [
+       0.284,
+       0.625
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.121,
+      "clv_n": 29
+     },
+     "agree": {
+      "n": 14,
+      "games": 14,
+      "w": 4,
+      "l": 10,
+      "p": 0,
+      "win": 0.286,
+      "win_ci": [
+       0.117,
+       0.546
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.464,
+      "clv_n": 14
+     },
+     "disagree": {
+      "n": 10,
+      "games": 10,
+      "w": 3,
+      "l": 7,
+      "p": 0,
+      "win": 0.3,
+      "win_ci": [
+       0.108,
+       0.603
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.1,
+      "clv_n": 10
+     },
+     "both": {
+      "n": 4,
+      "games": 4,
+      "w": 2,
+      "l": 2,
+      "p": 0,
+      "win": 0.5,
+      "win_ci": [
+       0.15,
+       0.85
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.125,
+      "clv_n": 4
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.014,
+      "ci": [
+       -0.386,
+       0.329
+      ]
+     },
+     "agree_rate": 0.583,
+     "agree_rate_ci": [
+      0.388,
+      0.755
+     ]
+    },
+    "behind": {
+     "none": {
+      "n": 39,
+      "games": 39,
+      "w": 16,
+      "l": 23,
+      "p": 0,
+      "win": 0.41,
+      "win_ci": [
+       0.271,
+       0.566
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.115,
+      "clv_n": 39
+     },
+     "agree": {
+      "n": 6,
+      "games": 6,
+      "w": 1,
+      "l": 5,
+      "p": 0,
+      "win": 0.167,
+      "win_ci": [
+       0.03,
+       0.564
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.583,
+      "clv_n": 6
+     },
+     "disagree": {
+      "n": 11,
+      "games": 11,
+      "w": 5,
+      "l": 6,
+      "p": 0,
+      "win": 0.455,
+      "win_ci": [
+       0.213,
+       0.72
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.091,
+      "clv_n": 11
+     },
+     "both": {
+      "n": 1,
+      "games": 1,
+      "w": 0,
+      "l": 1,
+      "p": 0,
+      "win": 0.0,
+      "win_ci": [
+       0.0,
+       0.793
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.5,
+      "clv_n": 1
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.288,
+      "ci": [
+       -0.652,
+       0.152
+      ]
+     },
+     "agree_rate": 0.353,
+     "agree_rate_ci": [
+      0.173,
+      0.587
+     ]
+    },
+    "sharp_net": {
+     "agree": {
+      "n": 13,
+      "games": 13,
+      "w": 4,
+      "l": 9,
+      "p": 0,
+      "win": 0.308,
+      "win_ci": [
+       0.127,
+       0.576
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.077,
+      "clv_n": 13
+     },
+     "none": {
+      "n": 32,
+      "games": 32,
+      "w": 11,
+      "l": 21,
+      "p": 0,
+      "win": 0.344,
+      "win_ci": [
+       0.204,
+       0.517
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.219,
+      "clv_n": 32
+     },
+     "disagree": {
+      "n": 12,
+      "games": 12,
+      "w": 7,
+      "l": 5,
+      "p": 0,
+      "win": 0.583,
+      "win_ci": [
+       0.32,
+       0.807
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.208,
+      "clv_n": 12
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.276,
+      "ci": [
+       -0.609,
+       0.122
+      ]
+     },
+     "agree_rate": 0.52,
+     "agree_rate_ci": [
+      0.335,
+      0.7
+     ]
+    },
+    "whale_net": {
+     "disagree": {
+      "n": 35,
+      "games": 35,
+      "w": 14,
+      "l": 21,
+      "p": 0,
+      "win": 0.4,
+      "win_ci": [
+       0.256,
+       0.564
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.143,
+      "clv_n": 35
+     },
+     "agree": {
+      "n": 22,
+      "games": 22,
+      "w": 8,
+      "l": 14,
+      "p": 0,
+      "win": 0.364,
+      "win_ci": [
+       0.197,
+       0.57
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.159,
+      "clv_n": 22
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.036,
+      "ci": [
+       -0.304,
+       0.219
+      ]
+     },
+     "agree_rate": 0.386,
+     "agree_rate_ci": [
+      0.271,
+      0.516
+     ]
+    },
+    "line_move_open_to_last": {
+     "none": {
+      "n": 4,
+      "games": 4,
+      "w": 3,
+      "l": 1,
+      "p": 0,
+      "win": 0.75,
+      "win_ci": [
+       0.301,
+       0.954
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.0,
+      "clv_n": 4
+     },
+     "disagree": {
+      "n": 35,
+      "games": 35,
+      "w": 14,
+      "l": 21,
+      "p": 0,
+      "win": 0.4,
+      "win_ci": [
+       0.256,
+       0.564
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.271,
+      "clv_n": 35
+     },
+     "agree": {
+      "n": 18,
+      "games": 18,
+      "w": 5,
+      "l": 13,
+      "p": 0,
+      "win": 0.278,
+      "win_ci": [
+       0.125,
+       0.509
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.056,
+      "clv_n": 18
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.122,
+      "ci": [
+       -0.375,
+       0.133
+      ]
+     },
+     "agree_rate": 0.34,
+     "agree_rate_ci": [
+      0.227,
+      0.474
+     ]
+    }
+   },
+   "price_note": "No price is stored on NFL/CFB board rows, so no ROI; CLV is points (close minus entry)."
+  },
+  "cfb": {
+   "ats_all": {
+    "n": 221,
+    "games": 221,
+    "w": 98,
+    "l": 117,
+    "p": 6,
+    "win": 0.456,
+    "win_ci": [
+     0.391,
+     0.523
+    ],
+    "vs_fair": null,
+    "fair_n": 0,
+    "roi": null,
+    "roi_ci": null,
+    "roi_n": 0,
+    "clv": 0.067,
+    "clv_n": 215
+   },
+   "ats_by_family": {
+    "sharp": {
+     "none": {
+      "n": 183,
+      "games": 183,
+      "w": 82,
+      "l": 98,
+      "p": 3,
+      "win": 0.456,
+      "win_ci": [
+       0.384,
+       0.528
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.107,
+      "clv_n": 178
+     },
+     "disagree": {
+      "n": 16,
+      "games": 16,
+      "w": 8,
+      "l": 6,
+      "p": 2,
+      "win": 0.571,
+      "win_ci": [
+       0.326,
+       0.786
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.233,
+      "clv_n": 15
+     },
+     "agree": {
+      "n": 18,
+      "games": 18,
+      "w": 5,
+      "l": 12,
+      "p": 1,
+      "win": 0.294,
+      "win_ci": [
+       0.133,
+       0.531
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.0,
+      "clv_n": 18
+     },
+     "both": {
+      "n": 4,
+      "games": 4,
+      "w": 3,
+      "l": 1,
+      "p": 0,
+      "win": 0.75,
+      "win_ci": [
+       0.301,
+       0.954
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.25,
+      "clv_n": 4
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.277,
+      "ci": [
+       -0.597,
+       0.067
+      ]
+     },
+     "agree_rate": 0.529,
+     "agree_rate_ci": [
+      0.367,
+      0.685
+     ]
+    },
+    "cross": {
+     "none": {
+      "n": 210,
+      "games": 210,
+      "w": 93,
+      "l": 111,
+      "p": 6,
+      "win": 0.456,
+      "win_ci": [
+       0.389,
+       0.524
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.071,
+      "clv_n": 205
+     },
+     "disagree": {
+      "n": 6,
+      "games": 6,
+      "w": 4,
+      "l": 2,
+      "p": 0,
+      "win": 0.667,
+      "win_ci": [
+       0.3,
+       0.903
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.1,
+      "clv_n": 5
+     },
+     "agree": {
+      "n": 5,
+      "games": 5,
+      "w": 1,
+      "l": 4,
+      "p": 0,
+      "win": 0.2,
+      "win_ci": [
+       0.036,
+       0.624
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.1,
+      "clv_n": 5
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.467,
+      "ci": [
+       -0.833,
+       0.067
+      ]
+     },
+     "agree_rate": 0.455,
+     "agree_rate_ci": [
+      0.213,
+      0.72
+     ]
+    },
+    "whale": {
+     "none": {
+      "n": 12,
+      "games": 12,
+      "w": 7,
+      "l": 5,
+      "p": 0,
+      "win": 0.583,
+      "win_ci": [
+       0.32,
+       0.807
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.583,
+      "clv_n": 12
+     },
+     "disagree": {
+      "n": 35,
+      "games": 35,
+      "w": 10,
+      "l": 24,
+      "p": 1,
+      "win": 0.294,
+      "win_ci": [
+       0.168,
+       0.462
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.147,
+      "clv_n": 34
+     },
+     "both": {
+      "n": 149,
+      "games": 149,
+      "w": 69,
+      "l": 75,
+      "p": 5,
+      "win": 0.479,
+      "win_ci": [
+       0.399,
+       0.56
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.094,
+      "clv_n": 144
+     },
+     "agree": {
+      "n": 25,
+      "games": 25,
+      "w": 12,
+      "l": 13,
+      "p": 0,
+      "win": 0.48,
+      "win_ci": [
+       0.3,
+       0.665
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.04,
+      "clv_n": 25
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.186,
+      "ci": [
+       -0.062,
+       0.434
+      ]
+     },
+     "agree_rate": 0.417,
+     "agree_rate_ci": [
+      0.301,
+      0.543
+     ]
+    },
+    "steam": {
+     "none": {
+      "n": 154,
+      "games": 154,
+      "w": 67,
+      "l": 83,
+      "p": 4,
+      "win": 0.447,
+      "win_ci": [
+       0.369,
+       0.527
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.117,
+      "clv_n": 149
+     },
+     "agree": {
+      "n": 21,
+      "games": 21,
+      "w": 9,
+      "l": 10,
+      "p": 2,
+      "win": 0.474,
+      "win_ci": [
+       0.273,
+       0.683
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.175,
+      "clv_n": 20
+     },
+     "disagree": {
+      "n": 34,
+      "games": 34,
+      "w": 16,
+      "l": 18,
+      "p": 0,
+      "win": 0.471,
+      "win_ci": [
+       0.315,
+       0.633
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.162,
+      "clv_n": 34
+     },
+     "both": {
+      "n": 12,
+      "games": 12,
+      "w": 6,
+      "l": 6,
+      "p": 0,
+      "win": 0.5,
+      "win_ci": [
+       0.254,
+       0.746
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.083,
+      "clv_n": 12
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.003,
+      "ci": [
+       -0.266,
+       0.291
+      ]
+     },
+     "agree_rate": 0.382,
+     "agree_rate_ci": [
+      0.265,
+      0.514
+     ]
+    },
+    "split": {
+     "agree": {
+      "n": 77,
+      "games": 77,
+      "w": 31,
+      "l": 44,
+      "p": 2,
+      "win": 0.413,
+      "win_ci": [
+       0.309,
+       0.526
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.12,
+      "clv_n": 75
+     },
+     "both": {
+      "n": 30,
+      "games": 30,
+      "w": 15,
+      "l": 15,
+      "p": 0,
+      "win": 0.5,
+      "win_ci": [
+       0.332,
+       0.668
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.037,
+      "clv_n": 27
+     },
+     "disagree": {
+      "n": 65,
+      "games": 65,
+      "w": 30,
+      "l": 33,
+      "p": 2,
+      "win": 0.476,
+      "win_ci": [
+       0.358,
+       0.597
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.031,
+      "clv_n": 64
+     },
+     "none": {
+      "n": 49,
+      "games": 49,
+      "w": 22,
+      "l": 25,
+      "p": 2,
+      "win": 0.468,
+      "win_ci": [
+       0.333,
+       0.608
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.133,
+      "clv_n": 49
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.063,
+      "ci": [
+       -0.236,
+       0.107
+      ]
+     },
+     "agree_rate": 0.542,
+     "agree_rate_ci": [
+      0.46,
+      0.622
+     ]
+    },
+    "behind": {
+     "none": {
+      "n": 106,
+      "games": 106,
+      "w": 46,
+      "l": 58,
+      "p": 2,
+      "win": 0.442,
+      "win_ci": [
+       0.351,
+       0.538
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.225,
+      "clv_n": 102
+     },
+     "agree": {
+      "n": 49,
+      "games": 49,
+      "w": 27,
+      "l": 19,
+      "p": 3,
+      "win": 0.587,
+      "win_ci": [
+       0.443,
+       0.717
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.117,
+      "clv_n": 47
+     },
+     "both": {
+      "n": 28,
+      "games": 28,
+      "w": 12,
+      "l": 15,
+      "p": 1,
+      "win": 0.444,
+      "win_ci": [
+       0.276,
+       0.627
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.089,
+      "clv_n": 28
+     },
+     "disagree": {
+      "n": 38,
+      "games": 38,
+      "w": 13,
+      "l": 25,
+      "p": 0,
+      "win": 0.342,
+      "win_ci": [
+       0.212,
+       0.501
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.145,
+      "clv_n": 38
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.245,
+      "ci": [
+       0.035,
+       0.446
+      ]
+     },
+     "agree_rate": 0.563,
+     "agree_rate_ci": [
+      0.459,
+      0.663
+     ]
+    },
+    "sharp_net": {
+     "none": {
+      "n": 183,
+      "games": 183,
+      "w": 82,
+      "l": 98,
+      "p": 3,
+      "win": 0.456,
+      "win_ci": [
+       0.384,
+       0.528
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.107,
+      "clv_n": 178
+     },
+     "disagree": {
+      "n": 19,
+      "games": 19,
+      "w": 10,
+      "l": 7,
+      "p": 2,
+      "win": 0.588,
+      "win_ci": [
+       0.36,
+       0.784
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.194,
+      "clv_n": 18
+     },
+     "agree": {
+      "n": 19,
+      "games": 19,
+      "w": 6,
+      "l": 12,
+      "p": 1,
+      "win": 0.333,
+      "win_ci": [
+       0.163,
+       0.563
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.053,
+      "clv_n": 19
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.255,
+      "ci": [
+       -0.546,
+       0.085
+      ]
+     },
+     "agree_rate": 0.5,
+     "agree_rate_ci": [
+      0.348,
+      0.652
+     ]
+    },
+    "whale_net": {
+     "none": {
+      "n": 12,
+      "games": 12,
+      "w": 7,
+      "l": 5,
+      "p": 0,
+      "win": 0.583,
+      "win_ci": [
+       0.32,
+       0.807
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.583,
+      "clv_n": 12
+     },
+     "disagree": {
+      "n": 120,
+      "games": 120,
+      "w": 51,
+      "l": 65,
+      "p": 4,
+      "win": 0.44,
+      "win_ci": [
+       0.353,
+       0.53
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.013,
+      "clv_n": 118
+     },
+     "agree": {
+      "n": 89,
+      "games": 89,
+      "w": 40,
+      "l": 47,
+      "p": 2,
+      "win": 0.46,
+      "win_ci": [
+       0.359,
+       0.564
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.071,
+      "clv_n": 85
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.02,
+      "ci": [
+       -0.118,
+       0.167
+      ]
+     },
+     "agree_rate": 0.426,
+     "agree_rate_ci": [
+      0.361,
+      0.494
+     ]
+    },
+    "line_move_open_to_last": {
+     "disagree": {
+      "n": 114,
+      "games": 114,
+      "w": 45,
+      "l": 66,
+      "p": 3,
+      "win": 0.405,
+      "win_ci": [
+       0.319,
+       0.498
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.135,
+      "clv_n": 111
+     },
+     "agree": {
+      "n": 84,
+      "games": 84,
+      "w": 42,
+      "l": 40,
+      "p": 2,
+      "win": 0.512,
+      "win_ci": [
+       0.406,
+       0.617
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.018,
+      "clv_n": 82
+     },
+     "none": {
+      "n": 23,
+      "games": 23,
+      "w": 11,
+      "l": 11,
+      "p": 1,
+      "win": 0.5,
+      "win_ci": [
+       0.307,
+       0.693
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.091,
+      "clv_n": 22
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.107,
+      "ci": [
+       -0.041,
+       0.258
+      ]
+     },
+     "agree_rate": 0.424,
+     "agree_rate_ci": [
+      0.357,
+      0.494
+     ]
+    }
+   },
+   "price_note": "No price is stored on NFL/CFB board rows, so no ROI; CLV is points (close minus entry).",
+   "totals_all": {
+    "n": 218,
+    "games": 218,
+    "w": 94,
+    "l": 121,
+    "p": 3,
+    "win": 0.437,
+    "win_ci": [
+     0.373,
+     0.504
+    ],
+    "vs_fair": null,
+    "fair_n": 0,
+    "roi": null,
+    "roi_ci": null,
+    "roi_n": 0,
+    "clv": 0.05,
+    "clv_n": 218
+   },
+   "totals_by_family": {
+    "sharp": {
+     "none": {
+      "n": 204,
+      "games": 204,
+      "w": 88,
+      "l": 113,
+      "p": 3,
+      "win": 0.438,
+      "win_ci": [
+       0.371,
+       0.507
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.071,
+      "clv_n": 204
+     },
+     "agree": {
+      "n": 10,
+      "games": 10,
+      "w": 5,
+      "l": 5,
+      "p": 0,
+      "win": 0.5,
+      "win_ci": [
+       0.237,
+       0.763
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.1,
+      "clv_n": 10
+     },
+     "disagree": {
+      "n": 3,
+      "games": 3,
+      "w": 1,
+      "l": 2,
+      "p": 0,
+      "win": 0.333,
+      "win_ci": [
+       0.061,
+       0.792
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.167,
+      "clv_n": 3
+     },
+     "both": {
+      "n": 1,
+      "games": 1,
+      "w": 0,
+      "l": 1,
+      "p": 0,
+      "win": 0.0,
+      "win_ci": [
+       0.0,
+       0.793
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -2.0,
+      "clv_n": 1
+     },
+     "agree_minus_disagree_win": null
+    },
+    "cross": {
+     "none": {
+      "n": 218,
+      "games": 218,
+      "w": 94,
+      "l": 121,
+      "p": 3,
+      "win": 0.437,
+      "win_ci": [
+       0.373,
+       0.504
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.05,
+      "clv_n": 218
+     },
+     "agree_minus_disagree_win": null
+    },
+    "whale": {
+     "none": {
+      "n": 112,
+      "games": 112,
+      "w": 42,
+      "l": 69,
+      "p": 1,
+      "win": 0.378,
+      "win_ci": [
+       0.294,
+       0.471
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.058,
+      "clv_n": 112
+     },
+     "disagree": {
+      "n": 34,
+      "games": 34,
+      "w": 15,
+      "l": 19,
+      "p": 0,
+      "win": 0.441,
+      "win_ci": [
+       0.289,
+       0.605
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.118,
+      "clv_n": 34
+     },
+     "agree": {
+      "n": 33,
+      "games": 33,
+      "w": 18,
+      "l": 14,
+      "p": 1,
+      "win": 0.562,
+      "win_ci": [
+       0.393,
+       0.718
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.273,
+      "clv_n": 33
+     },
+     "both": {
+      "n": 39,
+      "games": 39,
+      "w": 19,
+      "l": 19,
+      "p": 1,
+      "win": 0.5,
+      "win_ci": [
+       0.348,
+       0.652
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.013,
+      "clv_n": 39
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.121,
+      "ci": [
+       -0.123,
+       0.36
+      ]
+     }
+    },
+    "steam": {
+     "none": {
+      "n": 197,
+      "games": 197,
+      "w": 84,
+      "l": 112,
+      "p": 1,
+      "win": 0.429,
+      "win_ci": [
+       0.361,
+       0.499
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.056,
+      "clv_n": 197
+     },
+     "agree": {
+      "n": 7,
+      "games": 7,
+      "w": 6,
+      "l": 1,
+      "p": 0,
+      "win": 0.857,
+      "win_ci": [
+       0.487,
+       0.974
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.214,
+      "clv_n": 7
+     },
+     "both": {
+      "n": 6,
+      "games": 6,
+      "w": 2,
+      "l": 3,
+      "p": 1,
+      "win": 0.4,
+      "win_ci": [
+       0.118,
+       0.769
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.25,
+      "clv_n": 6
+     },
+     "disagree": {
+      "n": 8,
+      "games": 8,
+      "w": 2,
+      "l": 5,
+      "p": 1,
+      "win": 0.286,
+      "win_ci": [
+       0.082,
+       0.641
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.0,
+      "clv_n": 8
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.571,
+      "ci": [
+       0.143,
+       1.0
+      ]
+     }
+    },
+    "split": {
+     "none": {
+      "n": 160,
+      "games": 160,
+      "w": 74,
+      "l": 83,
+      "p": 3,
+      "win": 0.471,
+      "win_ci": [
+       0.395,
+       0.549
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.019,
+      "clv_n": 160
+     },
+     "disagree": {
+      "n": 30,
+      "games": 30,
+      "w": 7,
+      "l": 23,
+      "p": 0,
+      "win": 0.233,
+      "win_ci": [
+       0.118,
+       0.409
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.55,
+      "clv_n": 30
+     },
+     "agree": {
+      "n": 28,
+      "games": 28,
+      "w": 13,
+      "l": 15,
+      "p": 0,
+      "win": 0.464,
+      "win_ci": [
+       0.295,
+       0.642
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.875,
+      "clv_n": 28
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": 0.231,
+      "ci": [
+       -0.014,
+       0.474
+      ]
+     }
+    },
+    "behind": {
+     "disagree": {
+      "n": 51,
+      "games": 51,
+      "w": 22,
+      "l": 28,
+      "p": 1,
+      "win": 0.44,
+      "win_ci": [
+       0.312,
+       0.577
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.01,
+      "clv_n": 51
+     },
+     "none": {
+      "n": 117,
+      "games": 117,
+      "w": 50,
+      "l": 66,
+      "p": 1,
+      "win": 0.431,
+      "win_ci": [
+       0.345,
+       0.522
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": -0.06,
+      "clv_n": 117
+     },
+     "agree": {
+      "n": 40,
+      "games": 40,
+      "w": 17,
+      "l": 22,
+      "p": 1,
+      "win": 0.436,
+      "win_ci": [
+       0.293,
+       0.59
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.325,
+      "clv_n": 40
+     },
+     "both": {
+      "n": 10,
+      "games": 10,
+      "w": 5,
+      "l": 5,
+      "p": 0,
+      "win": 0.5,
+      "win_ci": [
+       0.237,
+       0.763
+      ],
+      "vs_fair": null,
+      "fair_n": 0,
+      "roi": null,
+      "roi_ci": null,
+      "roi_n": 0,
+      "clv": 0.55,
+      "clv_n": 10
+     },
+     "agree_minus_disagree_win": {
+      "measure": "win %",
+      "diff": -0.004,
+      "ci": [
+       -0.215,
+       0.204
+      ]
+     }
+    }
+   }
+  },
+  "nba": {
+   "ats_f": {
+    "all": {
+     "n": 141,
+     "games": 141,
+     "w": 62,
+     "l": 79,
+     "p": 0,
+     "win": 0.44,
+     "win_ci": [
+      0.36,
+      0.522
+     ],
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": -0.159,
+     "roi_ci": [
+      -0.32,
+      0.004
+     ],
+     "roi_n": 141,
+     "clv": -0.007,
+     "clv_n": 141
+    },
+    "by_family": {
+     "sharp": {
+      "both": {
+       "n": 28,
+       "games": 28,
+       "w": 13,
+       "l": 15,
+       "p": 0,
+       "win": 0.464,
+       "win_ci": [
+        0.295,
+        0.642
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.108,
+       "roi_ci": [
+        -0.452,
+        0.242
+       ],
+       "roi_n": 28,
+       "clv": 0.036,
+       "clv_n": 28
+      },
+      "disagree": {
+       "n": 16,
+       "games": 16,
+       "w": 7,
+       "l": 9,
+       "p": 0,
+       "win": 0.438,
+       "win_ci": [
+        0.231,
+        0.668
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.171,
+       "roi_ci": [
+        -0.646,
+        0.3
+       ],
+       "roi_n": 16,
+       "clv": -0.312,
+       "clv_n": 16
+      },
+      "agree": {
+       "n": 7,
+       "games": 7,
+       "w": 1,
+       "l": 6,
+       "p": 0,
+       "win": 0.143,
+       "win_ci": [
+        0.026,
+        0.513
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.727,
+       "roi_ci": [
+        -1.0,
+        -0.182
+       ],
+       "roi_n": 7,
+       "clv": 0.0,
+       "clv_n": 7
+      },
+      "none": {
+       "n": 90,
+       "games": 90,
+       "w": 41,
+       "l": 49,
+       "p": 0,
+       "win": 0.456,
+       "win_ci": [
+        0.357,
+        0.558
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.129,
+       "roi_ci": [
+        -0.321,
+        0.07
+       ],
+       "roi_n": 90,
+       "clv": 0.033,
+       "clv_n": 90
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.556,
+       "ci": [
+        -1.181,
+        0.193
+       ]
+      },
+      "agree_rate": 0.304,
+      "agree_rate_ci": [
+       0.156,
+       0.509
+      ]
+     },
+     "cross": {
+      "none": {
+       "n": 118,
+       "games": 118,
+       "w": 53,
+       "l": 65,
+       "p": 0,
+       "win": 0.449,
+       "win_ci": [
+        0.362,
+        0.539
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.141,
+       "roi_ci": [
+        -0.306,
+        0.026
+       ],
+       "roi_n": 118,
+       "clv": 0.0,
+       "clv_n": 118
+      },
+      "disagree": {
+       "n": 12,
+       "games": 12,
+       "w": 4,
+       "l": 8,
+       "p": 0,
+       "win": 0.333,
+       "win_ci": [
+        0.138,
+        0.609
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.361,
+       "roi_ci": [
+        -0.844,
+        0.13
+       ],
+       "roi_n": 12,
+       "clv": -0.583,
+       "clv_n": 12
+      },
+      "agree": {
+       "n": 8,
+       "games": 8,
+       "w": 3,
+       "l": 5,
+       "p": 0,
+       "win": 0.375,
+       "win_ci": [
+        0.137,
+        0.694
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.279,
+       "roi_ci": [
+        -1.0,
+        0.431
+       ],
+       "roi_n": 8,
+       "clv": 0.25,
+       "clv_n": 8
+      },
+      "both": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.242,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": 1.333,
+       "clv_n": 3
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.081,
+       "ci": [
+        -0.721,
+        0.882
+       ]
+      },
+      "agree_rate": 0.4,
+      "agree_rate_ci": [
+       0.219,
+       0.613
+      ]
+     },
+     "whale": {
+      "both": {
+       "n": 96,
+       "games": 96,
+       "w": 37,
+       "l": 59,
+       "p": 0,
+       "win": 0.385,
+       "win_ci": [
+        0.294,
+        0.485
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.261,
+       "roi_ci": [
+        -0.44,
+        -0.064
+       ],
+       "roi_n": 96,
+       "clv": -0.052,
+       "clv_n": 96
+      },
+      "disagree": {
+       "n": 27,
+       "games": 27,
+       "w": 15,
+       "l": 12,
+       "p": 0,
+       "win": 0.556,
+       "win_ci": [
+        0.373,
+        0.724
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.053,
+       "roi_ci": [
+        -0.297,
+        0.403
+       ],
+       "roi_n": 27,
+       "clv": 0.148,
+       "clv_n": 27
+      },
+      "agree": {
+       "n": 15,
+       "games": 15,
+       "w": 8,
+       "l": 7,
+       "p": 0,
+       "win": 0.533,
+       "win_ci": [
+        0.301,
+        0.752
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.016,
+       "roi_ci": [
+        -0.492,
+        0.515
+       ],
+       "roi_n": 15,
+       "clv": 0.067,
+       "clv_n": 15
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.305,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": -0.333,
+       "clv_n": 3
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.037,
+       "ci": [
+        -0.631,
+        0.553
+       ]
+      },
+      "agree_rate": 0.357,
+      "agree_rate_ci": [
+       0.23,
+       0.508
+      ]
+     },
+     "steam": {
+      "none": {
+       "n": 114,
+       "games": 114,
+       "w": 49,
+       "l": 65,
+       "p": 0,
+       "win": 0.43,
+       "win_ci": [
+        0.343,
+        0.522
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.178,
+       "roi_ci": [
+        -0.349,
+        -0.008
+       ],
+       "roi_n": 114,
+       "clv": 0.035,
+       "clv_n": 114
+      },
+      "disagree": {
+       "n": 14,
+       "games": 14,
+       "w": 8,
+       "l": 6,
+       "p": 0,
+       "win": 0.571,
+       "win_ci": [
+        0.326,
+        0.786
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.086,
+       "roi_ci": [
+        -0.449,
+        0.506
+       ],
+       "roi_n": 14,
+       "clv": -0.429,
+       "clv_n": 14
+      },
+      "both": {
+       "n": 5,
+       "games": 5,
+       "w": 1,
+       "l": 4,
+       "p": 0,
+       "win": 0.2,
+       "win_ci": [
+        0.036,
+        0.624
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.604,
+       "roi_ci": [
+        -1.0,
+        0.188
+       ],
+       "roi_n": 5,
+       "clv": -0.8,
+       "clv_n": 5
+      },
+      "agree": {
+       "n": 8,
+       "games": 8,
+       "w": 4,
+       "l": 4,
+       "p": 0,
+       "win": 0.5,
+       "win_ci": [
+        0.215,
+        0.785
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.034,
+       "roi_ci": [
+        -0.752,
+        0.677
+       ],
+       "roi_n": 8,
+       "clv": 0.625,
+       "clv_n": 8
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.121,
+       "ci": [
+        -0.948,
+        0.727
+       ]
+      },
+      "agree_rate": 0.364,
+      "agree_rate_ci": [
+       0.197,
+       0.57
+      ]
+     },
+     "split": {
+      "none": {
+       "n": 76,
+       "games": 76,
+       "w": 36,
+       "l": 40,
+       "p": 0,
+       "win": 0.474,
+       "win_ci": [
+        0.365,
+        0.584
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.095,
+       "roi_ci": [
+        -0.319,
+        0.11
+       ],
+       "roi_n": 76,
+       "clv": -0.118,
+       "clv_n": 76
+      },
+      "disagree": {
+       "n": 19,
+       "games": 19,
+       "w": 8,
+       "l": 11,
+       "p": 0,
+       "win": 0.421,
+       "win_ci": [
+        0.231,
+        0.637
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.19,
+       "roi_ci": [
+        -0.596,
+        0.221
+       ],
+       "roi_n": 19,
+       "clv": 0.053,
+       "clv_n": 19
+      },
+      "agree": {
+       "n": 44,
+       "games": 44,
+       "w": 16,
+       "l": 28,
+       "p": 0,
+       "win": 0.364,
+       "win_ci": [
+        0.238,
+        0.511
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.305,
+       "roi_ci": [
+        -0.568,
+        -0.041
+       ],
+       "roi_n": 44,
+       "clv": 0.159,
+       "clv_n": 44
+      },
+      "both": {
+       "n": 2,
+       "games": 2,
+       "w": 2,
+       "l": 0,
+       "p": 0,
+       "win": 1.0,
+       "win_ci": [
+        0.342,
+        1.0
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.931,
+       "roi_ci": null,
+       "roi_n": 2,
+       "clv": 0.0,
+       "clv_n": 2
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.115,
+       "ci": [
+        -0.647,
+        0.395
+       ]
+      },
+      "agree_rate": 0.698,
+      "agree_rate_ci": [
+       0.576,
+       0.798
+      ]
+     },
+     "behind": {
+      "none": {
+       "n": 84,
+       "games": 84,
+       "w": 40,
+       "l": 44,
+       "p": 0,
+       "win": 0.476,
+       "win_ci": [
+        0.373,
+        0.582
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.089,
+       "roi_ci": [
+        -0.295,
+        0.116
+       ],
+       "roi_n": 84,
+       "clv": -0.012,
+       "clv_n": 84
+      },
+      "disagree": {
+       "n": 20,
+       "games": 20,
+       "w": 6,
+       "l": 14,
+       "p": 0,
+       "win": 0.3,
+       "win_ci": [
+        0.145,
+        0.519
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.432,
+       "roi_ci": [
+        -0.809,
+        -0.049
+       ],
+       "roi_n": 20,
+       "clv": 0.0,
+       "clv_n": 20
+      },
+      "agree": {
+       "n": 21,
+       "games": 21,
+       "w": 8,
+       "l": 13,
+       "p": 0,
+       "win": 0.381,
+       "win_ci": [
+        0.208,
+        0.591
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.27,
+       "roi_ci": [
+        -0.639,
+        0.177
+       ],
+       "roi_n": 21,
+       "clv": 0.143,
+       "clv_n": 21
+      },
+      "both": {
+       "n": 16,
+       "games": 16,
+       "w": 8,
+       "l": 8,
+       "p": 0,
+       "win": 0.5,
+       "win_ci": [
+        0.28,
+        0.72
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.041,
+       "roi_ci": [
+        -0.52,
+        0.442
+       ],
+       "roi_n": 16,
+       "clv": -0.188,
+       "clv_n": 16
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.162,
+       "ci": [
+        -0.399,
+        0.64
+       ]
+      },
+      "agree_rate": 0.512,
+      "agree_rate_ci": [
+       0.365,
+       0.657
+      ]
+     },
+     "sharp_net": {
+      "agree": {
+       "n": 17,
+       "games": 17,
+       "w": 6,
+       "l": 11,
+       "p": 0,
+       "win": 0.353,
+       "win_ci": [
+        0.173,
+        0.587
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.318,
+       "roi_ci": [
+        -0.771,
+        0.138
+       ],
+       "roi_n": 17,
+       "clv": -0.059,
+       "clv_n": 17
+      },
+      "disagree": {
+       "n": 34,
+       "games": 34,
+       "w": 15,
+       "l": 19,
+       "p": 0,
+       "win": 0.441,
+       "win_ci": [
+        0.289,
+        0.605
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.16,
+       "roi_ci": [
+        -0.492,
+        0.173
+       ],
+       "roi_n": 34,
+       "clv": -0.088,
+       "clv_n": 34
+      },
+      "none": {
+       "n": 90,
+       "games": 90,
+       "w": 41,
+       "l": 49,
+       "p": 0,
+       "win": 0.456,
+       "win_ci": [
+        0.357,
+        0.558
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.129,
+       "roi_ci": [
+        -0.321,
+        0.069
+       ],
+       "roi_n": 90,
+       "clv": 0.033,
+       "clv_n": 90
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.157,
+       "ci": [
+        -0.674,
+        0.4
+       ]
+      },
+      "agree_rate": 0.333,
+      "agree_rate_ci": [
+       0.22,
+       0.47
+      ]
+     },
+     "whale_net": {
+      "disagree": {
+       "n": 77,
+       "games": 77,
+       "w": 33,
+       "l": 44,
+       "p": 0,
+       "win": 0.429,
+       "win_ci": [
+        0.324,
+        0.54
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.184,
+       "roi_ci": [
+        -0.405,
+        0.015
+       ],
+       "roi_n": 77,
+       "clv": -0.039,
+       "clv_n": 77
+      },
+      "agree": {
+       "n": 61,
+       "games": 61,
+       "w": 27,
+       "l": 34,
+       "p": 0,
+       "win": 0.443,
+       "win_ci": [
+        0.325,
+        0.567
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.15,
+       "roi_ci": [
+        -0.375,
+        0.076
+       ],
+       "roi_n": 61,
+       "clv": 0.049,
+       "clv_n": 61
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.305,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": -0.333,
+       "clv_n": 3
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.034,
+       "ci": [
+        -0.273,
+        0.346
+       ]
+      },
+      "agree_rate": 0.442,
+      "agree_rate_ci": [
+       0.362,
+       0.525
+      ]
+     }
+    }
+   },
+   "winner_f": {
+    "all": {
+     "n": 142,
+     "games": 142,
+     "w": 97,
+     "l": 45,
+     "p": 0,
+     "win": 0.683,
+     "win_ci": [
+      0.603,
+      0.754
+     ],
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": -0.041,
+     "roi_ci": [
+      -0.155,
+      0.075
+     ],
+     "roi_n": 142,
+     "clv": -0.003,
+     "clv_n": 142
+    },
+    "by_family": {
+     "sharp": {
+      "both": {
+       "n": 28,
+       "games": 28,
+       "w": 18,
+       "l": 10,
+       "p": 0,
+       "win": 0.643,
+       "win_ci": [
+        0.458,
+        0.793
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.021,
+       "roi_ci": [
+        -0.32,
+        0.263
+       ],
+       "roi_n": 28,
+       "clv": -0.004,
+       "clv_n": 28
+      },
+      "agree": {
+       "n": 15,
+       "games": 15,
+       "w": 12,
+       "l": 3,
+       "p": 0,
+       "win": 0.8,
+       "win_ci": [
+        0.548,
+        0.93
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.057,
+       "roi_ci": [
+        -0.245,
+        0.302
+       ],
+       "roi_n": 15,
+       "clv": 0.001,
+       "clv_n": 15
+      },
+      "disagree": {
+       "n": 8,
+       "games": 8,
+       "w": 5,
+       "l": 3,
+       "p": 0,
+       "win": 0.625,
+       "win_ci": [
+        0.306,
+        0.863
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.209,
+       "roi_ci": [
+        -0.661,
+        0.175
+       ],
+       "roi_n": 8,
+       "clv": -0.009,
+       "clv_n": 8
+      },
+      "none": {
+       "n": 91,
+       "games": 91,
+       "w": 62,
+       "l": 29,
+       "p": 0,
+       "win": 0.681,
+       "win_ci": [
+        0.58,
+        0.768
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.048,
+       "roi_ci": [
+        -0.176,
+        0.091
+       ],
+       "roi_n": 91,
+       "clv": -0.002,
+       "clv_n": 91
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.265,
+       "ci": [
+        -0.241,
+        0.773
+       ]
+      },
+      "agree_rate": 0.652,
+      "agree_rate_ci": [
+       0.449,
+       0.812
+      ]
+     },
+     "cross": {
+      "none": {
+       "n": 119,
+       "games": 119,
+       "w": 85,
+       "l": 34,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.627,
+        0.788
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.008,
+       "roi_ci": [
+        -0.127,
+        0.108
+       ],
+       "roi_n": 119,
+       "clv": -0.003,
+       "clv_n": 119
+      },
+      "disagree": {
+       "n": 6,
+       "games": 6,
+       "w": 1,
+       "l": 5,
+       "p": 0,
+       "win": 0.167,
+       "win_ci": [
+        0.03,
+        0.564
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.822,
+       "roi_ci": [
+        -1.0,
+        -0.466
+       ],
+       "roi_n": 6,
+       "clv": -0.009,
+       "clv_n": 6
+      },
+      "agree": {
+       "n": 14,
+       "games": 14,
+       "w": 10,
+       "l": 4,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.454,
+        0.883
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.05,
+       "roi_ci": [
+        -0.323,
+        0.38
+       ],
+       "roi_n": 14,
+       "clv": 0.002,
+       "clv_n": 14
+      },
+      "both": {
+       "n": 3,
+       "games": 3,
+       "w": 1,
+       "l": 2,
+       "p": 0,
+       "win": 0.333,
+       "win_ci": [
+        0.061,
+        0.792
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.183,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": 0.0,
+       "clv_n": 3
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.872,
+       "ci": [
+        0.348,
+        1.338
+       ]
+      },
+      "agree_rate": 0.7,
+      "agree_rate_ci": [
+       0.481,
+       0.855
+      ]
+     },
+     "whale": {
+      "both": {
+       "n": 96,
+       "games": 96,
+       "w": 59,
+       "l": 37,
+       "p": 0,
+       "win": 0.615,
+       "win_ci": [
+        0.515,
+        0.706
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.108,
+       "roi_ci": [
+        -0.263,
+        0.037
+       ],
+       "roi_n": 96,
+       "clv": -0.003,
+       "clv_n": 96
+      },
+      "agree": {
+       "n": 36,
+       "games": 36,
+       "w": 31,
+       "l": 5,
+       "p": 0,
+       "win": 0.861,
+       "win_ci": [
+        0.713,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.118,
+       "roi_ci": [
+        -0.043,
+        0.262
+       ],
+       "roi_n": 36,
+       "clv": -0.001,
+       "clv_n": 36
+      },
+      "disagree": {
+       "n": 7,
+       "games": 7,
+       "w": 5,
+       "l": 2,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.359,
+        0.918
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.013,
+       "roi_ci": [
+        -0.45,
+        0.451
+       ],
+       "roi_n": 7,
+       "clv": 0.001,
+       "clv_n": 7
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.084,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": 0.0,
+       "clv_n": 3
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.105,
+       "ci": [
+        -0.357,
+        0.633
+       ]
+      },
+      "agree_rate": 0.837,
+      "agree_rate_ci": [
+       0.7,
+       0.919
+      ]
+     },
+     "steam": {
+      "none": {
+       "n": 115,
+       "games": 115,
+       "w": 77,
+       "l": 38,
+       "p": 0,
+       "win": 0.67,
+       "win_ci": [
+        0.579,
+        0.749
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.057,
+       "roi_ci": [
+        -0.182,
+        0.069
+       ],
+       "roi_n": 115,
+       "clv": -0.003,
+       "clv_n": 115
+      },
+      "agree": {
+       "n": 13,
+       "games": 13,
+       "w": 9,
+       "l": 4,
+       "p": 0,
+       "win": 0.692,
+       "win_ci": [
+        0.424,
+        0.873
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.08,
+       "roi_ci": [
+        -0.435,
+        0.284
+       ],
+       "roi_n": 13,
+       "clv": 0.012,
+       "clv_n": 13
+      },
+      "both": {
+       "n": 5,
+       "games": 5,
+       "w": 3,
+       "l": 2,
+       "p": 0,
+       "win": 0.6,
+       "win_ci": [
+        0.231,
+        0.882
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.026,
+       "roi_ci": [
+        -0.741,
+        0.688
+       ],
+       "roi_n": 5,
+       "clv": -0.002,
+       "clv_n": 5
+      },
+      "disagree": {
+       "n": 9,
+       "games": 9,
+       "w": 8,
+       "l": 1,
+       "p": 0,
+       "win": 0.889,
+       "win_ci": [
+        0.565,
+        0.98
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.216,
+       "roi_ci": [
+        -0.129,
+        0.455
+       ],
+       "roi_n": 9,
+       "clv": -0.024,
+       "clv_n": 9
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.296,
+       "ci": [
+        -0.726,
+        0.169
+       ]
+      },
+      "agree_rate": 0.591,
+      "agree_rate_ci": [
+       0.387,
+       0.767
+      ]
+     },
+     "split": {
+      "none": {
+       "n": 77,
+       "games": 77,
+       "w": 51,
+       "l": 26,
+       "p": 0,
+       "win": 0.662,
+       "win_ci": [
+        0.551,
+        0.758
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.05,
+       "roi_ci": [
+        -0.21,
+        0.108
+       ],
+       "roi_n": 77,
+       "clv": -0.001,
+       "clv_n": 77
+      },
+      "disagree": {
+       "n": 56,
+       "games": 56,
+       "w": 42,
+       "l": 14,
+       "p": 0,
+       "win": 0.75,
+       "win_ci": [
+        0.623,
+        0.845
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.025,
+       "roi_ci": [
+        -0.131,
+        0.183
+       ],
+       "roi_n": 56,
+       "clv": -0.006,
+       "clv_n": 56
+      },
+      "agree": {
+       "n": 7,
+       "games": 7,
+       "w": 2,
+       "l": 5,
+       "p": 0,
+       "win": 0.286,
+       "win_ci": [
+        0.082,
+        0.641
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.572,
+       "roi_ci": [
+        -1.0,
+        0.015
+       ],
+       "roi_n": 7,
+       "clv": 0.006,
+       "clv_n": 7
+      },
+      "both": {
+       "n": 2,
+       "games": 2,
+       "w": 2,
+       "l": 0,
+       "p": 0,
+       "win": 1.0,
+       "win_ci": [
+        0.342,
+        1.0
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.372,
+       "roi_ci": null,
+       "roi_n": 2,
+       "clv": 0.008,
+       "clv_n": 2
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.596,
+       "ci": [
+        -1.083,
+        -0.012
+       ]
+      },
+      "agree_rate": 0.111,
+      "agree_rate_ci": [
+       0.055,
+       0.212
+      ]
+     },
+     "behind": {
+      "none": {
+       "n": 84,
+       "games": 84,
+       "w": 60,
+       "l": 24,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.61,
+        0.8
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.002,
+       "roi_ci": [
+        -0.147,
+        0.142
+       ],
+       "roi_n": 84,
+       "clv": -0.003,
+       "clv_n": 84
+      },
+      "disagree": {
+       "n": 20,
+       "games": 20,
+       "w": 11,
+       "l": 9,
+       "p": 0,
+       "win": 0.55,
+       "win_ci": [
+        0.342,
+        0.742
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.236,
+       "roi_ci": [
+        -0.533,
+        0.086
+       ],
+       "roi_n": 20,
+       "clv": -0.004,
+       "clv_n": 20
+      },
+      "agree": {
+       "n": 22,
+       "games": 22,
+       "w": 14,
+       "l": 8,
+       "p": 0,
+       "win": 0.636,
+       "win_ci": [
+        0.43,
+        0.803
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.049,
+       "roi_ci": [
+        -0.395,
+        0.274
+       ],
+       "roi_n": 22,
+       "clv": -0.0,
+       "clv_n": 22
+      },
+      "both": {
+       "n": 16,
+       "games": 16,
+       "w": 12,
+       "l": 4,
+       "p": 0,
+       "win": 0.75,
+       "win_ci": [
+        0.505,
+        0.898
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.011,
+       "roi_ci": [
+        -0.328,
+        0.268
+       ],
+       "roi_n": 16,
+       "clv": -0.002,
+       "clv_n": 16
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.187,
+       "ci": [
+        -0.281,
+        0.628
+       ]
+      },
+      "agree_rate": 0.524,
+      "agree_rate_ci": [
+       0.377,
+       0.666
+      ]
+     },
+     "sharp_net": {
+      "agree": {
+       "n": 34,
+       "games": 34,
+       "w": 25,
+       "l": 9,
+       "p": 0,
+       "win": 0.735,
+       "win_ci": [
+        0.569,
+        0.854
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.04,
+       "roi_ci": [
+        -0.176,
+        0.269
+       ],
+       "roi_n": 34,
+       "clv": -0.001,
+       "clv_n": 34
+      },
+      "disagree": {
+       "n": 17,
+       "games": 17,
+       "w": 10,
+       "l": 7,
+       "p": 0,
+       "win": 0.588,
+       "win_ci": [
+        0.36,
+        0.784
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.161,
+       "roi_ci": [
+        -0.521,
+        0.185
+       ],
+       "roi_n": 17,
+       "clv": -0.008,
+       "clv_n": 17
+      },
+      "none": {
+       "n": 91,
+       "games": 91,
+       "w": 62,
+       "l": 29,
+       "p": 0,
+       "win": 0.681,
+       "win_ci": [
+        0.58,
+        0.768
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.048,
+       "roi_ci": [
+        -0.19,
+        0.085
+       ],
+       "roi_n": 91,
+       "clv": -0.002,
+       "clv_n": 91
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.201,
+       "ci": [
+        -0.219,
+        0.617
+       ]
+      },
+      "agree_rate": 0.667,
+      "agree_rate_ci": [
+       0.53,
+       0.78
+      ]
+     },
+     "whale_net": {
+      "disagree": {
+       "n": 39,
+       "games": 39,
+       "w": 23,
+       "l": 16,
+       "p": 0,
+       "win": 0.59,
+       "win_ci": [
+        0.434,
+        0.729
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.131,
+       "roi_ci": [
+        -0.377,
+        0.116
+       ],
+       "roi_n": 39,
+       "clv": -0.008,
+       "clv_n": 39
+      },
+      "agree": {
+       "n": 100,
+       "games": 100,
+       "w": 72,
+       "l": 28,
+       "p": 0,
+       "win": 0.72,
+       "win_ci": [
+        0.625,
+        0.799
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.009,
+       "roi_ci": [
+        -0.142,
+        0.114
+       ],
+       "roi_n": 100,
+       "clv": -0.0,
+       "clv_n": 100
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.084,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": 0.0,
+       "clv_n": 3
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.122,
+       "ci": [
+        -0.168,
+        0.376
+       ]
+      },
+      "agree_rate": 0.719,
+      "agree_rate_ci": [
+       0.64,
+       0.787
+      ]
+     }
+    }
+   },
+   "ats_c": {
+    "all": {
+     "n": 142,
+     "games": 142,
+     "w": 63,
+     "l": 79,
+     "p": 0,
+     "win": 0.444,
+     "win_ci": [
+      0.364,
+      0.526
+     ],
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": -0.154,
+     "roi_ci": [
+      -0.315,
+      0.006
+     ],
+     "roi_n": 142,
+     "clv": null,
+     "clv_n": 0
+    },
+    "by_family": {
+     "sharp": {
+      "both": {
+       "n": 28,
+       "games": 28,
+       "w": 13,
+       "l": 15,
+       "p": 0,
+       "win": 0.464,
+       "win_ci": [
+        0.295,
+        0.642
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.112,
+       "roi_ci": [
+        -0.456,
+        0.235
+       ],
+       "roi_n": 28,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 16,
+       "games": 16,
+       "w": 6,
+       "l": 10,
+       "p": 0,
+       "win": 0.375,
+       "win_ci": [
+        0.185,
+        0.614
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.288,
+       "roi_ci": [
+        -0.761,
+        0.185
+       ],
+       "roi_n": 16,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 7,
+       "games": 7,
+       "w": 1,
+       "l": 6,
+       "p": 0,
+       "win": 0.143,
+       "win_ci": [
+        0.026,
+        0.513
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.721,
+       "roi_ci": [
+        -1.0,
+        -0.163
+       ],
+       "roi_n": 7,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 91,
+       "games": 91,
+       "w": 43,
+       "l": 48,
+       "p": 0,
+       "win": 0.473,
+       "win_ci": [
+        0.373,
+        0.574
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.099,
+       "roi_ci": [
+        -0.288,
+        0.093
+       ],
+       "roi_n": 91,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.433,
+       "ci": [
+        -1.066,
+        0.247
+       ]
+      },
+      "agree_rate": 0.304,
+      "agree_rate_ci": [
+       0.156,
+       0.509
+      ]
+     },
+     "cross": {
+      "none": {
+       "n": 119,
+       "games": 119,
+       "w": 53,
+       "l": 66,
+       "p": 0,
+       "win": 0.445,
+       "win_ci": [
+        0.359,
+        0.535
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.15,
+       "roi_ci": [
+        -0.312,
+        0.021
+       ],
+       "roi_n": 119,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 12,
+       "games": 12,
+       "w": 5,
+       "l": 7,
+       "p": 0,
+       "win": 0.417,
+       "win_ci": [
+        0.193,
+        0.68
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.215,
+       "roi_ci": [
+        -0.69,
+        0.264
+       ],
+       "roi_n": 12,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 8,
+       "games": 8,
+       "w": 4,
+       "l": 4,
+       "p": 0,
+       "win": 0.5,
+       "win_ci": [
+        0.215,
+        0.785
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.05,
+       "roi_ci": [
+        -0.759,
+        0.662
+       ],
+       "roi_n": 8,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 3,
+       "games": 3,
+       "w": 1,
+       "l": 2,
+       "p": 0,
+       "win": 0.333,
+       "win_ci": [
+        0.061,
+        0.792
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.349,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.165,
+       "ci": [
+        -0.634,
+        0.956
+       ]
+      },
+      "agree_rate": 0.4,
+      "agree_rate_ci": [
+       0.219,
+       0.613
+      ]
+     },
+     "whale": {
+      "both": {
+       "n": 96,
+       "games": 96,
+       "w": 39,
+       "l": 57,
+       "p": 0,
+       "win": 0.406,
+       "win_ci": [
+        0.313,
+        0.506
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.226,
+       "roi_ci": [
+        -0.421,
+        -0.031
+       ],
+       "roi_n": 96,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 26,
+       "games": 26,
+       "w": 13,
+       "l": 13,
+       "p": 0,
+       "win": 0.5,
+       "win_ci": [
+        0.321,
+        0.679
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.042,
+       "roi_ci": [
+        -0.41,
+        0.328
+       ],
+       "roi_n": 26,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 17,
+       "games": 17,
+       "w": 9,
+       "l": 8,
+       "p": 0,
+       "win": 0.529,
+       "win_ci": [
+        0.31,
+        0.738
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.008,
+       "roi_ci": [
+        -0.435,
+        0.457
+       ],
+       "roi_n": 17,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.27,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.049,
+       "ci": [
+        -0.507,
+        0.615
+       ]
+      },
+      "agree_rate": 0.395,
+      "agree_rate_ci": [
+       0.264,
+       0.544
+      ]
+     },
+     "steam": {
+      "none": {
+       "n": 115,
+       "games": 115,
+       "w": 47,
+       "l": 68,
+       "p": 0,
+       "win": 0.409,
+       "win_ci": [
+        0.323,
+        0.5
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.221,
+       "roi_ci": [
+        -0.387,
+        -0.068
+       ],
+       "roi_n": 115,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 13,
+       "games": 13,
+       "w": 9,
+       "l": 4,
+       "p": 0,
+       "win": 0.692,
+       "win_ci": [
+        0.424,
+        0.873
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.329,
+       "roi_ci": [
+        -0.119,
+        0.773
+       ],
+       "roi_n": 13,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 5,
+       "games": 5,
+       "w": 2,
+       "l": 3,
+       "p": 0,
+       "win": 0.4,
+       "win_ci": [
+        0.118,
+        0.769
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.244,
+       "roi_ci": [
+        -1.0,
+        0.519
+       ],
+       "roi_n": 5,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 9,
+       "games": 9,
+       "w": 5,
+       "l": 4,
+       "p": 0,
+       "win": 0.556,
+       "win_ci": [
+        0.267,
+        0.811
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.053,
+       "roi_ci": [
+        -0.58,
+        0.685
+       ],
+       "roi_n": 9,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.276,
+       "ci": [
+        -1.063,
+        0.497
+       ]
+      },
+      "agree_rate": 0.409,
+      "agree_rate_ci": [
+       0.233,
+       0.613
+      ]
+     },
+     "split": {
+      "none": {
+       "n": 77,
+       "games": 77,
+       "w": 38,
+       "l": 39,
+       "p": 0,
+       "win": 0.494,
+       "win_ci": [
+        0.385,
+        0.603
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.056,
+       "roi_ci": [
+        -0.275,
+        0.167
+       ],
+       "roi_n": 77,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 19,
+       "games": 19,
+       "w": 8,
+       "l": 11,
+       "p": 0,
+       "win": 0.421,
+       "win_ci": [
+        0.231,
+        0.637
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.202,
+       "roi_ci": [
+        -0.605,
+        0.2
+       ],
+       "roi_n": 19,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 44,
+       "games": 44,
+       "w": 16,
+       "l": 28,
+       "p": 0,
+       "win": 0.364,
+       "win_ci": [
+        0.238,
+        0.511
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.309,
+       "roi_ci": [
+        -0.57,
+        -0.045
+       ],
+       "roi_n": 44,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 2,
+       "games": 2,
+       "w": 1,
+       "l": 1,
+       "p": 0,
+       "win": 0.5,
+       "win_ci": [
+        0.095,
+        0.905
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.024,
+       "roi_ci": null,
+       "roi_n": 2,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.107,
+       "ci": [
+        -0.63,
+        0.387
+       ]
+      },
+      "agree_rate": 0.698,
+      "agree_rate_ci": [
+       0.576,
+       0.798
+      ]
+     },
+     "behind": {
+      "none": {
+       "n": 84,
+       "games": 84,
+       "w": 37,
+       "l": 47,
+       "p": 0,
+       "win": 0.44,
+       "win_ci": [
+        0.339,
+        0.547
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.162,
+       "roi_ci": [
+        -0.364,
+        0.043
+       ],
+       "roi_n": 84,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 22,
+       "games": 22,
+       "w": 9,
+       "l": 13,
+       "p": 0,
+       "win": 0.409,
+       "win_ci": [
+        0.233,
+        0.613
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.214,
+       "roi_ci": [
+        -0.569,
+        0.215
+       ],
+       "roi_n": 22,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 20,
+       "games": 20,
+       "w": 10,
+       "l": 10,
+       "p": 0,
+       "win": 0.5,
+       "win_ci": [
+        0.299,
+        0.701
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.045,
+       "roi_ci": [
+        -0.433,
+        0.341
+       ],
+       "roi_n": 20,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 16,
+       "games": 16,
+       "w": 7,
+       "l": 9,
+       "p": 0,
+       "win": 0.438,
+       "win_ci": [
+        0.231,
+        0.668
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.163,
+       "roi_ci": [
+        -0.639,
+        0.313
+       ],
+       "roi_n": 16,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.17,
+       "ci": [
+        -0.421,
+        0.728
+       ]
+      },
+      "agree_rate": 0.476,
+      "agree_rate_ci": [
+       0.334,
+       0.623
+      ]
+     },
+     "sharp_net": {
+      "agree": {
+       "n": 19,
+       "games": 19,
+       "w": 7,
+       "l": 12,
+       "p": 0,
+       "win": 0.368,
+       "win_ci": [
+        0.191,
+        0.59
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.299,
+       "roi_ci": [
+        -0.7,
+        0.107
+       ],
+       "roi_n": 19,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 32,
+       "games": 32,
+       "w": 13,
+       "l": 19,
+       "p": 0,
+       "win": 0.406,
+       "win_ci": [
+        0.255,
+        0.577
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.223,
+       "roi_ci": [
+        -0.525,
+        0.085
+       ],
+       "roi_n": 32,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 91,
+       "games": 91,
+       "w": 43,
+       "l": 48,
+       "p": 0,
+       "win": 0.473,
+       "win_ci": [
+        0.373,
+        0.574
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.099,
+       "roi_ci": [
+        -0.288,
+        0.097
+       ],
+       "roi_n": 91,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.076,
+       "ci": [
+        -0.597,
+        0.468
+       ]
+      },
+      "agree_rate": 0.373,
+      "agree_rate_ci": [
+       0.253,
+       0.51
+      ]
+     },
+     "whale_net": {
+      "disagree": {
+       "n": 80,
+       "games": 80,
+       "w": 34,
+       "l": 46,
+       "p": 0,
+       "win": 0.425,
+       "win_ci": [
+        0.323,
+        0.534
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.189,
+       "roi_ci": [
+        -0.401,
+        0.023
+       ],
+       "roi_n": 80,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 59,
+       "games": 59,
+       "w": 27,
+       "l": 32,
+       "p": 0,
+       "win": 0.458,
+       "win_ci": [
+        0.337,
+        0.583
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.128,
+       "roi_ci": [
+        -0.355,
+        0.103
+       ],
+       "roi_n": 59,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.27,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.061,
+       "ci": [
+        -0.264,
+        0.397
+       ]
+      },
+      "agree_rate": 0.424,
+      "agree_rate_ci": [
+       0.345,
+       0.508
+      ]
+     }
+    }
+   },
+   "winner_c": {
+    "all": {
+     "n": 142,
+     "games": 142,
+     "w": 97,
+     "l": 45,
+     "p": 0,
+     "win": 0.683,
+     "win_ci": [
+      0.603,
+      0.754
+     ],
+     "vs_fair": null,
+     "fair_n": 0,
+     "roi": -0.039,
+     "roi_ci": [
+      -0.157,
+      0.073
+     ],
+     "roi_n": 142,
+     "clv": null,
+     "clv_n": 0
+    },
+    "by_family": {
+     "sharp": {
+      "both": {
+       "n": 28,
+       "games": 28,
+       "w": 18,
+       "l": 10,
+       "p": 0,
+       "win": 0.643,
+       "win_ci": [
+        0.458,
+        0.793
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.015,
+       "roi_ci": [
+        -0.295,
+        0.299
+       ],
+       "roi_n": 28,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 15,
+       "games": 15,
+       "w": 12,
+       "l": 3,
+       "p": 0,
+       "win": 0.8,
+       "win_ci": [
+        0.548,
+        0.93
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.056,
+       "roi_ci": [
+        -0.234,
+        0.309
+       ],
+       "roi_n": 15,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 8,
+       "games": 8,
+       "w": 5,
+       "l": 3,
+       "p": 0,
+       "win": 0.625,
+       "win_ci": [
+        0.306,
+        0.863
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.202,
+       "roi_ci": [
+        -0.687,
+        0.213
+       ],
+       "roi_n": 8,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 91,
+       "games": 91,
+       "w": 62,
+       "l": 29,
+       "p": 0,
+       "win": 0.681,
+       "win_ci": [
+        0.58,
+        0.768
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.047,
+       "roi_ci": [
+        -0.185,
+        0.098
+       ],
+       "roi_n": 91,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.258,
+       "ci": [
+        -0.227,
+        0.78
+       ]
+      },
+      "agree_rate": 0.652,
+      "agree_rate_ci": [
+       0.449,
+       0.812
+      ]
+     },
+     "cross": {
+      "none": {
+       "n": 119,
+       "games": 119,
+       "w": 85,
+       "l": 34,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.627,
+        0.788
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.004,
+       "roi_ci": [
+        -0.131,
+        0.114
+       ],
+       "roi_n": 119,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 6,
+       "games": 6,
+       "w": 1,
+       "l": 5,
+       "p": 0,
+       "win": 0.167,
+       "win_ci": [
+        0.03,
+        0.564
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.821,
+       "roi_ci": [
+        -1.0,
+        -0.463
+       ],
+       "roi_n": 6,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 14,
+       "games": 14,
+       "w": 10,
+       "l": 4,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.454,
+        0.883
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.04,
+       "roi_ci": [
+        -0.317,
+        0.399
+       ],
+       "roi_n": 14,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 3,
+       "games": 3,
+       "w": 1,
+       "l": 2,
+       "p": 0,
+       "win": 0.333,
+       "win_ci": [
+        0.061,
+        0.792
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.2,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.861,
+       "ci": [
+        0.347,
+        1.3
+       ]
+      },
+      "agree_rate": 0.7,
+      "agree_rate_ci": [
+       0.481,
+       0.855
+      ]
+     },
+     "whale": {
+      "both": {
+       "n": 96,
+       "games": 96,
+       "w": 59,
+       "l": 37,
+       "p": 0,
+       "win": 0.615,
+       "win_ci": [
+        0.515,
+        0.706
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.106,
+       "roi_ci": [
+        -0.261,
+        0.04
+       ],
+       "roi_n": 96,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 36,
+       "games": 36,
+       "w": 31,
+       "l": 5,
+       "p": 0,
+       "win": 0.861,
+       "win_ci": [
+        0.713,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.122,
+       "roi_ci": [
+        -0.04,
+        0.269
+       ],
+       "roi_n": 36,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 7,
+       "games": 7,
+       "w": 5,
+       "l": 2,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.359,
+        0.918
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.015,
+       "roi_ci": [
+        -0.447,
+        0.45
+       ],
+       "roi_n": 7,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.084,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.107,
+       "ci": [
+        -0.367,
+        0.644
+       ]
+      },
+      "agree_rate": 0.837,
+      "agree_rate_ci": [
+       0.7,
+       0.919
+      ]
+     },
+     "steam": {
+      "none": {
+       "n": 115,
+       "games": 115,
+       "w": 77,
+       "l": 38,
+       "p": 0,
+       "win": 0.67,
+       "win_ci": [
+        0.579,
+        0.749
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.053,
+       "roi_ci": [
+        -0.188,
+        0.07
+       ],
+       "roi_n": 115,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 13,
+       "games": 13,
+       "w": 9,
+       "l": 4,
+       "p": 0,
+       "win": 0.692,
+       "win_ci": [
+        0.424,
+        0.873
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.099,
+       "roi_ci": [
+        -0.429,
+        0.219
+       ],
+       "roi_n": 13,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 5,
+       "games": 5,
+       "w": 3,
+       "l": 2,
+       "p": 0,
+       "win": 0.6,
+       "win_ci": [
+        0.231,
+        0.882
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.061,
+       "roi_ci": [
+        -0.722,
+        0.6
+       ],
+       "roi_n": 5,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 9,
+       "games": 9,
+       "w": 8,
+       "l": 1,
+       "p": 0,
+       "win": 0.889,
+       "win_ci": [
+        0.565,
+        0.98
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.244,
+       "roi_ci": [
+        -0.091,
+        0.494
+       ],
+       "roi_n": 9,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.343,
+       "ci": [
+        -0.775,
+        0.155
+       ]
+      },
+      "agree_rate": 0.591,
+      "agree_rate_ci": [
+       0.387,
+       0.767
+      ]
+     },
+     "split": {
+      "none": {
+       "n": 77,
+       "games": 77,
+       "w": 51,
+       "l": 26,
+       "p": 0,
+       "win": 0.662,
+       "win_ci": [
+        0.551,
+        0.758
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.05,
+       "roi_ci": [
+        -0.217,
+        0.11
+       ],
+       "roi_n": 77,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 56,
+       "games": 56,
+       "w": 42,
+       "l": 14,
+       "p": 0,
+       "win": 0.75,
+       "win_ci": [
+        0.623,
+        0.845
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.031,
+       "roi_ci": [
+        -0.138,
+        0.193
+       ],
+       "roi_n": 56,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 7,
+       "games": 7,
+       "w": 2,
+       "l": 5,
+       "p": 0,
+       "win": 0.286,
+       "win_ci": [
+        0.082,
+        0.641
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.583,
+       "roi_ci": [
+        -1.0,
+        -0.069
+       ],
+       "roi_n": 7,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 2,
+       "games": 2,
+       "w": 2,
+       "l": 0,
+       "p": 0,
+       "win": 1.0,
+       "win_ci": [
+        0.342,
+        1.0
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.349,
+       "roi_ci": null,
+       "roi_n": 2,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": -0.614,
+       "ci": [
+        -1.089,
+        -0.01
+       ]
+      },
+      "agree_rate": 0.111,
+      "agree_rate_ci": [
+       0.055,
+       0.212
+      ]
+     },
+     "behind": {
+      "none": {
+       "n": 84,
+       "games": 84,
+       "w": 60,
+       "l": 24,
+       "p": 0,
+       "win": 0.714,
+       "win_ci": [
+        0.61,
+        0.8
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.008,
+       "roi_ci": [
+        -0.131,
+        0.152
+       ],
+       "roi_n": 84,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 20,
+       "games": 20,
+       "w": 11,
+       "l": 9,
+       "p": 0,
+       "win": 0.55,
+       "win_ci": [
+        0.342,
+        0.742
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.231,
+       "roi_ci": [
+        -0.539,
+        0.08
+       ],
+       "roi_n": 20,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 22,
+       "games": 22,
+       "w": 14,
+       "l": 8,
+       "p": 0,
+       "win": 0.636,
+       "win_ci": [
+        0.43,
+        0.803
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.058,
+       "roi_ci": [
+        -0.389,
+        0.243
+       ],
+       "roi_n": 22,
+       "clv": null,
+       "clv_n": 0
+      },
+      "both": {
+       "n": 16,
+       "games": 16,
+       "w": 12,
+       "l": 4,
+       "p": 0,
+       "win": 0.75,
+       "win_ci": [
+        0.505,
+        0.898
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.015,
+       "roi_ci": [
+        -0.331,
+        0.249
+       ],
+       "roi_n": 16,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.173,
+       "ci": [
+        -0.28,
+        0.621
+       ]
+      },
+      "agree_rate": 0.524,
+      "agree_rate_ci": [
+       0.377,
+       0.666
+      ]
+     },
+     "sharp_net": {
+      "agree": {
+       "n": 34,
+       "games": 34,
+       "w": 25,
+       "l": 9,
+       "p": 0,
+       "win": 0.735,
+       "win_ci": [
+        0.569,
+        0.854
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.042,
+       "roi_ci": [
+        -0.186,
+        0.269
+       ],
+       "roi_n": 34,
+       "clv": null,
+       "clv_n": 0
+      },
+      "disagree": {
+       "n": 17,
+       "games": 17,
+       "w": 10,
+       "l": 7,
+       "p": 0,
+       "win": 0.588,
+       "win_ci": [
+        0.36,
+        0.784
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.155,
+       "roi_ci": [
+        -0.513,
+        0.198
+       ],
+       "roi_n": 17,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 91,
+       "games": 91,
+       "w": 62,
+       "l": 29,
+       "p": 0,
+       "win": 0.681,
+       "win_ci": [
+        0.58,
+        0.768
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.047,
+       "roi_ci": [
+        -0.184,
+        0.094
+       ],
+       "roi_n": 91,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.198,
+       "ci": [
+        -0.239,
+        0.617
+       ]
+      },
+      "agree_rate": 0.667,
+      "agree_rate_ci": [
+       0.53,
+       0.78
+      ]
+     },
+     "whale_net": {
+      "disagree": {
+       "n": 39,
+       "games": 39,
+       "w": 23,
+       "l": 16,
+       "p": 0,
+       "win": 0.59,
+       "win_ci": [
+        0.434,
+        0.729
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.112,
+       "roi_ci": [
+        -0.357,
+        0.141
+       ],
+       "roi_n": 39,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree": {
+       "n": 100,
+       "games": 100,
+       "w": 72,
+       "l": 28,
+       "p": 0,
+       "win": 0.72,
+       "win_ci": [
+        0.625,
+        0.799
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": -0.013,
+       "roi_ci": [
+        -0.136,
+        0.119
+       ],
+       "roi_n": 100,
+       "clv": null,
+       "clv_n": 0
+      },
+      "none": {
+       "n": 3,
+       "games": 3,
+       "w": 2,
+       "l": 1,
+       "p": 0,
+       "win": 0.667,
+       "win_ci": [
+        0.208,
+        0.939
+       ],
+       "vs_fair": null,
+       "fair_n": 0,
+       "roi": 0.084,
+       "roi_ci": null,
+       "roi_n": 3,
+       "clv": null,
+       "clv_n": 0
+      },
+      "agree_minus_disagree_win": {
+       "measure": "ROI at stored price",
+       "diff": 0.099,
+       "ci": [
+        -0.171,
+        0.379
+       ]
+      },
+      "agree_rate": 0.719,
+      "agree_rate_ci": [
+       0.64,
+       0.787
+      ]
+     }
+    }
+   },
+   "clock_note": "'f' is the model's first sighting (the published record, CLV stored); 'c' is the last row before tip (no CLV, it is the close)."
+  }
+ },
+ "top_reads": {
+  "nfl": {
+   "graded": 129,
+   "point_in_time": 53,
+   "dropped_stamp_after_kick_or_missing": 76,
+   "agree_rate": 0.34,
+   "agree_rate_ci": [
+    0.227,
+    0.474
+   ],
+   "agree": {
+    "n": 18,
+    "games": 17,
+    "w": 8,
+    "l": 9,
+    "p": 1,
+    "win": 0.471,
+    "win_ci": [
+     0.262,
+     0.69
+    ],
+    "vs_fair": -0.105,
+    "fair_n": 17,
+    "roi": -0.149,
+    "roi_ci": [
+     -0.508,
+     0.248
+    ],
+    "roi_n": 14,
+    "clv": 0.019,
+    "clv_n": 18
+   },
+   "disagree": {
+    "n": 35,
+    "games": 26,
+    "w": 16,
+    "l": 19,
+    "p": 0,
+    "win": 0.457,
+    "win_ci": [
+     0.305,
+     0.618
+    ],
+    "vs_fair": 0.033,
+    "fair_n": 35,
+    "roi": -0.228,
+    "roi_ci": [
+     -0.666,
+     0.262
+    ],
+    "roi_n": 27,
+    "clv": 0.014,
+    "clv_n": 35
+   },
+   "agree_minus_disagree_win": {
+    "measure": "win minus fair",
+    "diff": -0.138,
+    "ci": [
+     -0.417,
+     0.136
+    ]
+   }
+  },
+  "cfb": {
+   "graded": 412,
+   "point_in_time": 281,
+   "dropped_stamp_after_kick_or_missing": 131,
+   "agree_rate": 0.313,
+   "agree_rate_ci": [
+    0.262,
+    0.37
+   ],
+   "agree": {
+    "n": 88,
+    "games": 71,
+    "w": 47,
+    "l": 40,
+    "p": 1,
+    "win": 0.54,
+    "win_ci": [
+     0.436,
+     0.641
+    ],
+    "vs_fair": 0.041,
+    "fair_n": 83,
+    "roi": 0.165,
+    "roi_ci": [
+     -0.116,
+     0.443
+    ],
+    "roi_n": 66,
+    "clv": 0.011,
+    "clv_n": 75
+   },
+   "disagree": {
+    "n": 193,
+    "games": 139,
+    "w": 94,
+    "l": 99,
+    "p": 0,
+    "win": 0.487,
+    "win_ci": [
+     0.417,
+     0.557
+    ],
+    "vs_fair": 0.093,
+    "fair_n": 186,
+    "roi": 0.219,
+    "roi_ci": [
+     -0.015,
+     0.462
+    ],
+    "roi_n": 162,
+    "clv": 0.01,
+    "clv_n": 176
+   },
+   "agree_minus_disagree_win": {
+    "measure": "win minus fair",
+    "diff": -0.052,
+    "ci": [
+     -0.195,
+     0.095
+    ]
+   }
+  },
+  "nba": {
+   "graded": 313,
+   "point_in_time": 181,
+   "dropped_stamp_after_kick_or_missing": 132,
+   "agree_rate": 0.481,
+   "agree_rate_ci": [
+    0.409,
+    0.553
+   ],
+   "agree": {
+    "n": 87,
+    "games": 75,
+    "w": 50,
+    "l": 35,
+    "p": 2,
+    "win": 0.588,
+    "win_ci": [
+     0.482,
+     0.687
+    ],
+    "vs_fair": 0.027,
+    "fair_n": 85,
+    "roi": 0.027,
+    "roi_ci": [
+     -0.185,
+     0.246
+    ],
+    "roi_n": 87,
+    "clv": 0.011,
+    "clv_n": 82
+   },
+   "disagree": {
+    "n": 94,
+    "games": 76,
+    "w": 44,
+    "l": 49,
+    "p": 1,
+    "win": 0.473,
+    "win_ci": [
+     0.375,
+     0.574
+    ],
+    "vs_fair": 0.059,
+    "fair_n": 93,
+    "roi": 0.043,
+    "roi_ci": [
+     -0.221,
+     0.313
+    ],
+    "roi_n": 94,
+    "clv": 0.009,
+    "clv_n": 82
+   },
+   "agree_minus_disagree_win": {
+    "measure": "win minus fair",
+    "diff": -0.032,
+    "ci": [
+     -0.191,
+     0.139
+    ]
+   }
+  }
+ },
+ "side_cards": {
+  "cfb": {
+   "graded_plays": 0,
+   "w": 0,
+   "l": 0,
+   "note": "Side cards started 2026-11-11; far too few to compare with the model."
+  },
+  "nba": {
+   "graded_plays": 1,
+   "w": 0,
+   "l": 1,
+   "note": "Side cards started 2026-11-11; far too few to compare with the model."
+  },
+  "nfl": {
+   "graded_plays": 0,
+   "w": 0,
+   "l": 0,
+   "note": "Side cards started 2026-11-11; far too few to compare with the model."
+  }
+ },
+ "method": {
+  "bootstrap": "2000 resamples of games (clustered), seed 20261112",
+  "roi": "flat 1u at the stored price (exchange price as probability, or American)",
+  "clv": "alerts: stored close minus stored fair (probability); NFL/CFB board: points, stored; NBA: clv_pts / clv_p stored on the first-sighting row"
+ }
+}
