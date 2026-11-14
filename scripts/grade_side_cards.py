@@ -32,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import Client, Budget, gamma_facts, jload, jsave  # noqa: E402
 from pm_data_api import PMDataError  # noqa: E402
 import sf_publish as PUB  # noqa: E402
+import sf_solo as SOLO  # noqa: E402
 import build_side_cards as BSC  # noqa: E402                # card_signals, BookTape (the signals are re-derived for every card)
 
 GROUP_MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
@@ -115,6 +116,13 @@ def plays(card, kf):
                     out.append({"group": g, "variant": variant, "play": "pub", "side": pb["side"], "cid": cid, "line": pb.get("line"),
                                 "outs": mk.get("outs"), "price": pb.get("price"), "price_t": pb.get("price_t"), "units": pb["units"],
                                 "rung": pb.get("rung")})
+                so = SOLO.solo_play(m, variant) or {}            # solo: the shown size capped at 1u on one wallet or a small lead bet
+                if so.get("side") and (so.get("units") or 0) > 0:
+                    cid = sf_cid(sf, g, kf)
+                    mk = (kf or {}).get("mk", {}).get(cid) or {}
+                    out.append({"group": g, "variant": variant, "play": "solo", "side": so["side"], "cid": cid, "line": so.get("line"),
+                                "outs": mk.get("outs"), "price": so.get("price"), "price_t": so.get("price_t"), "units": so["units"],
+                                "rung": so.get("rung"), "capped": so.get("capped"), "was_units": so.get("was"), "cap_reason": so.get("reason")})
     return out
 
 
@@ -200,6 +208,8 @@ def open_plays(todo, graded, now, days=7):
     for rel, c, kf in todo:
         for p in plays(c, kf):
             key = f"{rel}|{p['group']}|{p['variant']}|{p['play']}"
+            if p["play"] in ("pub", "solo"):                        # shadows of the shown size are graded, never listed as open plays
+                continue
             if key in graded or c["gst"] < now - days * 86400 or p["variant"] != "all" or (p["play"] == "lock" and not (c.get("test") or {}).get("counts")):
                 continue
             out.append({"sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": p["group"], "play": p["play"], "side": p["side"],
@@ -280,8 +290,8 @@ def record(rows, cards, now, sig=None):
         rs = [r for r in rows if r["sport"] == sport and r.get("kind") != "close"]
         s = {"cards": {"frozen": len(cs), "counted": sum(1 for c in cs if (c.get("test") or {}).get("counts")),
                        "not_counted_by_reason": why},
-             "lock": {}, "sf": {}, "pub": {}}
-        for play in ("lock", "sf", "pub"):
+             "lock": {}, "sf": {}, "pub": {}, "solo": {}}
+        for play in ("lock", "sf", "pub", "solo"):
             for variant in ("all", "fwd", "sfx"):
                 for g in ("ml", "spread", "total"):
                     sub = [r for r in rs if r["play"] == play and r["variant"] == variant and r["group"] == g]

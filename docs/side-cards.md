@@ -75,6 +75,18 @@ proven / unproven / losing split, a chart of every listed wallet by price skill 
 than 5 past positions with a stored close is listed but not plotted. There is no "signals aligned" count: sharp money is context,
 never an agree total.
 
+### One-wallet cap shadow (`solo`, `scripts/sf_solo.py`)
+
+The benchmark's T5-LEAD seats floor a stake at 3u when a wallet that has held season tier 5 for 14+ days is on the side and no tier-5
+wallet is against, whatever that wallet bet on this game and however many wallets are on it. `solo` is the shown size (`sf`) capped at
+1u when exactly one proven wallet is on the shown side, or when the largest proven wallet bet under 1.0x its usual stake. A cap never
+raises a size. It is derived from the stored `sf`, each side's `counts` and its largest proven wallet's `press`, so the grader covers
+every frozen card (`play: "solo"` rows with `capped`, `was_units` and `cap_reason`; `cards_record.json` `sports.<s>.solo`). Shadow
+only: the shown size, the pre-registered lock and the forward test are unchanged. Shadow plays are graded but never listed as open plays.
+
+The card's "Combined proven sharps" strip shows proven wallets out of every wallet holding $250 or more on the side
+(`counts.hc + sharp` of `hc + sharp + unproven + loser + excluded`).
+
 ### Pinnacle limit and price check (`signals` on the shown size, `scripts/sf_signals.py`)
 
 Two reads of the benchmark's "signals aligned" row that Vault can make from its own Pinnacle tape (`data/book_tape`), at the cut:
