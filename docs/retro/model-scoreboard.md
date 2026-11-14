@@ -52,7 +52,7 @@ rush_yd               61%   +0.1pp        47%    -56.3u         47%    -69.7u
 games   n= 374  LL 0.6953 vs 0.6764  skill -0.028 z -2.3    market better than Vault                 beat close   29%  units  -19.6u
 ml      n= 110  LL 0.6424 vs 0.6352  skill -0.011 z -0.5    level with the market (within noise)     beat close   45%  units   +2.0u
 spread  n= 130  LL 0.7144 vs 0.6945  skill -0.029 z -1.6    level with the market (within noise)     beat close   25%  units  -17.4u
-total   n= 134  LL 0.7202 vs 0.6926  skill -0.040 z -1.8    level with the market (within noise)     beat close   19%  units   -4.2u
+total   n= 134  LL 0.7203 vs 0.6926  skill -0.040 z -1.8    level with the market (within noise)     beat close   19%  units   -4.2u
 ```
 
 ## News triggers (plan Week 3)
@@ -83,10 +83,10 @@ spread  FanDuel     n= 73  toward  45 / away  17  avg move toward +0.33 pts ±0.
 total   Pinnacle    n= 45  toward  27 / away  15  avg move toward +0.23 pts ±0.15
 total   FanDuel     n= 45  toward  26 / away  14  avg move toward +0.17 pts ±0.15
         -> too few games (45 of 50)
-props   Pinnacle    n=265  toward 136 / away  20  net share toward +0.44 ±0.06
+props   Pinnacle    n=266  toward 139 / away  20  net share toward +0.45 ±0.06
 props   FanDuel     n= 84  toward  44 / away  11  net share toward +0.39 ±0.10
 props   DraftKings  n= 41  toward  14 / away   7  net share toward +0.17 ±0.15
-        -> NO-GO: not ahead of the controls (+0.04, z +0.4)
+        -> NO-GO: not ahead of the controls (+0.05, z +0.5)
 ```
 
 ## Signals: Kalshi, Polymarket sharp accounts, withheld props
