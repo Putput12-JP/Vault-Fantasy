@@ -75,6 +75,22 @@ proven / unproven / losing split, a chart of every listed wallet by price skill 
 than 5 past positions with a stored close is listed but not plotted. There is no "signals aligned" count: sharp money is context,
 never an agree total.
 
+### Pinnacle limit and price check (`signals` on the shown size, `scripts/sf_signals.py`)
+
+Two reads of the benchmark's "signals aligned" row that Vault can make from its own Pinnacle tape (`data/book_tape`), at the cut:
+- **Limit:** Pinnacle's max stake on the market group at the first tape row and at the lock. `rising` is up $500 or more, or 1.45x or
+  more (the benchmark's `buildLockedMarketSignals`); `tested` is $3,000 or more. The first tape row is when Vault first recorded the
+  game, not Pinnacle's open. NFL rows carry no limit; CBB has no tape.
+- **Price vs fair:** the Polymarket price for the shown side minus Pinnacle's no-vig fair price for it, in points (positive = under
+  fair); `on` at +0.3 or more. Spreads and totals read only when the side's line is Pinnacle's main line at the cut. The benchmark
+  uses its wallets' average entry price against a blend of sharp books; Vault has neither, so this is Pinnacle alone.
+
+The builder stores `signals` on each shown size; the grader re-derives it from the card and the tape, so every frozen card is covered,
+and `cards_record.json` `sports.<s>.signals.{sf,pub}` splits the record by each signal (yes / no / unknown). The Record page shows a
+row only when plays fall on both sides of it. Findings on the first 23 graded plays: the limit was up on every play that had one
+(Pinnacle raises limits toward every game), and the price sat under Pinnacle's fair price on 1 of 12 plays that could be read, so
+neither separates plays yet. Context only: no size, lock, forward test, Top Reads, SM_GATE or agree total reads them.
+
 ### Publish-mute shadow (`pub`, `scripts/sf_publish.py`)
 
 Each card's market groups carry `pub` (variants `all` and `fwd`): the shown size (`sf`) with the benchmark's publish mute. A side

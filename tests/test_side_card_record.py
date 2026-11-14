@@ -234,5 +234,23 @@ class Benchmark(unittest.TestCase):
         self.assertFalse(H.real_play({"units": 2, "cancelled": True}))
 
 
+class SignalSlices(unittest.TestCase):
+    def row(self, key, group, res, flat):
+        return {"key": key, "card": "c1", "group": group, "variant": "all", "play": "sf", "status": "graded", "res": res, "flat": flat,
+                "units": 1, "units_pl": flat, "sport": "nba", "kind": "result", "counts": False}
+
+    def test_record_splits_by_signal_with_unknown(self):
+        rows = [self.row("a", "ml", "win", 0.5), self.row("b", "spread", "loss", -1.0), self.row("c", "total", "win", 1.0)]
+        sig = {("c1", "ml", "all"): {"limit": {"rising": True}, "ev": {"on": False}},
+               ("c1", "spread", "all"): {"limit": {"rising": False}, "ev": {"on": None}}}
+        s = G.signal_slices(rows, sig, {})
+        self.assertEqual((s["limit_rising"]["yes"]["w"], s["limit_rising"]["no"]["l"], s["limit_rising"]["unknown"]["n"]), (1, 1, 1))
+        self.assertEqual((s["ev_on"]["yes"]["n"], s["ev_on"]["no"]["n"], s["ev_on"]["unknown"]["n"]), (0, 1, 2))
+        c = card(sf={"side": "Jazz", "units": 1, "line": -4.5, "price": 0.5, "cid": "c1", "outs": ["Magic", "Jazz"]})
+        rec = G.record(rows, [c], 0, sig)["sports"]["nba"]["signals"]
+        self.assertEqual(rec["sf"]["limit_rising"]["yes"]["n"], 1)
+        self.assertNotIn("signals", G.record(rows, [c], 0)["sports"]["nba"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -61,6 +61,7 @@ import argparse, bisect, datetime as dt, glob, json, math, os, re, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import CUTOFF_SEC, FULL_GAME  # noqa: E402
 import sf_rungs as SF  # noqa: E402
+import sf_signals as SIG  # noqa: E402
 import sf_publish as PUB  # noqa: E402
 
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
@@ -513,6 +514,9 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
                                                                         ledger, sport, tape, vault)
         for variant in ("all", "fwd"):                # the publish-mute shadow of the shown size (scripts/sf_publish.py)
             out["markets"][g].setdefault("pub", {})[variant] = PUB.pub_play(out["markets"][g], variant)
+            sg = card_signals(out, g, variant, tape)               # the limit and price reads of the shown side (scripts/sf_signals.py)
+            if sg is not None:
+                out["markets"][g]["sf"][variant]["signals"] = sg
     return out
 
 
@@ -740,7 +744,7 @@ class BookTape:
                             continue
                         if r.get("book") != "Pinnacle" or r.get("t") is None or r.get("bf"):
                             continue
-                        c = {"t": r["t"], "ml": r.get("ml"), "sp": r.get("sp"), "tot": r.get("tot"), "start": r.get("start")}
+                        c = {"t": r["t"], "ml": r.get("ml"), "sp": r.get("sp"), "tot": r.get("tot"), "start": r.get("start"), "lim": r.get("lim")}
                         if r.get("gk"):
                             gk.setdefault(r["gk"], []).append(c)
                         a, h = NFL_ALIAS.get(r.get("away"), r.get("away")), NFL_ALIAS.get(r.get("home"), r.get("home"))
@@ -760,6 +764,22 @@ class BookTape:
             pair = slug_teams(ev, sport)
         rows = [r for r in teams.get(pair, []) if r.get("start") is not None and abs(r["start"] - gst) <= TAPE_START_GAP] if pair else []
         return (rows, "teams") if rows else ([], "no_tape_rows_for_game")
+
+
+def card_signals(c, g, variant, tape):
+    """The two tape reads of scripts/sf_signals.py for the card's shown side in market group `g` (None when nothing is shown there).
+    Derived only from the card's stored fields and the tape rows at or before its cut, so the grader re-derives it for old cards."""
+    m = (c.get("markets") or {}).get(g) or {}
+    sf = (m.get("sf") or {}).get(variant) or {}
+    if not sf.get("side") or not (sf.get("units") or 0) > 0 or tape is None:
+        return None
+    rows, how = tape.game(c["sport"], c.get("vault"), c["ev"], c["gst"])
+    if not rows:
+        return {"limit": None, "ev": None, "why": how}
+    sides = list((m.get("sides") or {}).keys())
+    norm = side_norms(g, sides, team_names(c.get("vault"), c["ev"], c["sport"])).get(sf["side"])
+    return {"limit": SIG.limit_read(rows, g, c["cut"]), "ev": SIG.ev_read(rows, g, norm, sf.get("line"), c["cut"], sf.get("price")),
+            "how": how, "why": None}
 
 
 def classify(x, variant):
