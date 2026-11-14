@@ -587,7 +587,7 @@ async function refreshCards(){
     /* 429 is the shared cooldown: a build was started within the last minute, so wait for that one */
     if (!r.ok && r.status !== 429) throw new Error(r.status);
     var fresh = false;
-    for (var i = 0; i < 70 && !fresh; i++){                      /* the build takes about 5 minutes, then the new file has to be served */
+    for (var i = 0; i < 70 && !fresh; i++){                      /* the build runs on GitHub, then the new file has to be served; give it up to about 10 minutes */
       await rfWait(i < 6 ? 15000 : 8000);
       await load(true);
       fresh = !!(STORE.d && (STORE.d.built || 0) > was);
@@ -1024,7 +1024,7 @@ function renderCards(el, o){
   if (!games.length){ el.innerHTML = '<div class="vc-note"><b>No upcoming games</b><p>No card has been built for this sport yet.</p></div>'; return; }
   if (STORE.d.built){ var up = document.createElement('div'); up.className = 'vc-upd'; up.title = 'When these cards were last built. The page checks for new ones every 2 minutes.'; up.innerHTML = updHtml(STORE.d.built);
     var rf = document.createElement('button'); rf.type = 'button'; rf.className = 'vc-rf press press-chip'; rf.setAttribute('aria-label', 'Rebuild the cards now');
-    rf.title = 'Starts a fresh card build on GitHub and reloads the cards when it lands, about 5 minutes.'; rf.innerHTML = rfHtml(); rf.disabled = RF.state === 'busy'; rf.classList.toggle('busy', RF.state === 'busy');
+    rf.title = 'Starts a fresh card build on GitHub and reloads the cards when it lands.'; rf.innerHTML = rfHtml(); rf.disabled = RF.state === 'busy'; rf.classList.toggle('busy', RF.state === 'busy');
     rf.addEventListener('click', refreshCards); up.appendChild(rf);
     var tl = topSlot(el); (tl || el).appendChild(up); tickAgo(); }
   renderFeed(el, o, games, sp);
