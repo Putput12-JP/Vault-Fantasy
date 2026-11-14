@@ -75,6 +75,16 @@ proven / unproven / losing split, a chart of every listed wallet by price skill 
 than 5 past positions with a stored close is listed but not plotted. There is no "signals aligned" count: sharp money is context,
 never an agree total.
 
+### Refresh button (`sharp-money/side-cards.js`)
+
+The "Updated" line above the cards has a Refresh button. It uses the same Cloudflare Worker as the page's own Refresh button
+(`workers/sharp-refresh`: Turnstile check, one shared 60 s cooldown): a click dispatches `update-sharp-money.yml` with `force`, which
+skips that workflow's quiet-hours gate and starts `pm-cards.yml`. The button then polls `live.json` (a fresh cache key each time) and
+stops when its `built` time moves past the one it started with, showing the build timer; a 429 from the cooldown means a build was
+just started, so it waits for that one. It gives up after about 10 minutes ("Try again"). Without a click, the board still reloads
+every 2 minutes. `?rfurl=` (localhost only) points the button at a stand-in Worker for testing. The Record view is rebuilt by
+`pm-record.yml` every 2 hours; the Worker has no route for it, so the button does not refresh it.
+
 ### One-wallet cap shadow (`solo`, `scripts/sf_solo.py`)
 
 The benchmark's T5-LEAD seats floor a stake at 3u when a wallet that has held season tier 5 for 14+ days is on the side and no tier-5
