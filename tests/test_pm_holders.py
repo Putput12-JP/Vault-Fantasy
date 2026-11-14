@@ -276,5 +276,35 @@ class CardsKick(unittest.TestCase):
         self.assertEqual(H.kick_cards("r", ["a"], "main", run=self.run_fail), ["a"])
 
 
+class MarketIndex(unittest.TestCase):
+    """State.hc groups holdings by market so a read walks only its own market's holdings (the replay used to walk every market's)."""
+
+    def two_markets(self):
+        st = state_with_market("c1")
+        st.apply({"k": "m", "c": "c2", "ev": "nba-lal-mil-2027-01-15", "mt": "moneyline", "line": None, "outs": ["Lakers", "Bucks"],
+                  "tok": ["t2", "t3"], "gst": GST})
+        read(st, "c1", {0: {"0xa": (10, None)}}, 10)
+        read(st, "c2", {0: {"0xa": (5, None), "0xb": (7, None)}}, 11)
+        return st
+
+    def test_a_read_confirms_only_its_own_market(self):
+        st = self.two_markets()
+        st.apply({"k": "r", "c": "c1", "rt": 50, "n": [1, 0], "lim": [False, False]})
+        self.assertEqual((st.h[("c1", 0, "0xa")]["conf"], st.h[("c2", 0, "0xa")]["conf"], st.h[("c2", 0, "0xb")]["conf"]), (50, 11, 11))
+
+    def test_index_holds_the_same_holding_dicts_and_follows_prune(self):
+        st = self.two_markets()
+        self.assertEqual(sum(len(v) for v in st.hc.values()), len(st.h))
+        for (c, oi, w), v in st.h.items():
+            self.assertIs(st.hc[c][(oi, w)], v)
+        read(st, "c1", {}, 60)                                           # a holder leaving zeroes it in place, in both
+        self.assertEqual(st.hc["c1"][(0, "0xa")]["a"], 0)
+        st.m["c1"]["gst"] = 1                                            # long past: prune drops the market everywhere
+        st.prune(GST)
+        self.assertNotIn("c1", st.hc)
+        self.assertFalse([k for k in st.h if k[0] == "c1"])
+        self.assertEqual(sorted(st.hc), ["c2"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -72,6 +72,7 @@ class State:
     def __init__(self):
         self.m = {}          # cid -> {"ev","mt","line","outs","tok","gst","px","px_hist":[(t,px)],"obs0","reads":[(rt,lim)]}
         self.h = {}          # (cid, oi, w) -> {"a","fs","fs_prev","conf"}   (live)
+        self.hc = {}         # cid -> {(oi, w): the same holding dict as in self.h}: a read walks only its own market's holdings, not every market's
         self.hist = {}       # (cid, oi, w) -> [(rt, a)]                      (every change, for as-of-cut rebuilds)
         self.cfh = {}        # (cid, oi, w) -> [rt]  confirmations by a page-limited read that listed the wallet
         self.names = {}
@@ -101,8 +102,9 @@ class State:
             m["reads"].append((r["rt"], lim))
             # A read confirms every holding it served: on a token below the page limit that is every current holder (the ones it
             # did not serve get an a=0 row right after); on a token at the limit, only the wallets listed in `cf`.
-            for (c, oi, w), v in self.h.items():
-                if c != r["c"] or v["a"] <= 0:
+            c = r["c"]
+            for (oi, w), v in self.hc.get(c, {}).items():
+                if v["a"] <= 0:
                     continue
                 if not (oi < len(lim) and lim[oi]):
                     v["conf"] = r["rt"]
@@ -117,7 +119,7 @@ class State:
                 if cur is None or cur["a"] == 0:
                     fs = cur["fs"] if cur and cur.get("fs") else r["rt"]
                     fs_prev = cur["fs_prev"] if cur and cur.get("fs") else self.prev_read(r["c"], r["rt"])
-                    self.h[key] = {"a": r["a"], "fs": fs, "fs_prev": fs_prev, "conf": r["rt"]}
+                    self.h[key] = self.hc.setdefault(r["c"], {})[(r["o"], r["w"])] = {"a": r["a"], "fs": fs, "fs_prev": fs_prev, "conf": r["rt"]}
                 else:
                     cur.update(a=r["a"], conf=r["rt"])
             elif cur is not None:
@@ -136,6 +138,7 @@ class State:
         for c in dead:
             del self.m[c]
             self.fail_at.pop(c, None)
+            self.hc.pop(c, None)
         for d in (self.h, self.hist, self.cfh):
             for k in [k for k in d if k[0] in dead]:
                 del d[k]
