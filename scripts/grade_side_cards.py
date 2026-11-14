@@ -32,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import Client, Budget, gamma_facts, jload, jsave  # noqa: E402
 from pm_data_api import PMDataError  # noqa: E402
 import sf_publish as PUB  # noqa: E402
+import build_side_cards as BSC  # noqa: E402                # card_signals, BookTape (the signals are re-derived for every card)
 
 GROUP_MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
 CLOSE_KEY = {"ml": "ml", "spread": "spreads", "total": "totals"}
@@ -234,7 +235,38 @@ def summarize(rows, boot=True, closes=None):
     return out
 
 
-def record(rows, cards, now):
+SIGNAL_DEFS = {"limit_rising": "Pinnacle's max stake up $500 or 1.45x between the first tape row and the lock (scripts/sf_signals.py)",
+               "ev_on": "Polymarket price at the lock at least 0.3 points under Pinnacle's no-vig fair price for the side"}
+
+
+def derive_signals(todo, tape):
+    """{(card path, group, variant): signals} for the shown side of every frozen card, read from the tape at each card's lock. Derived, not
+    stored in the append-only card files, so cards from before the signals existed are covered too."""
+    out = {}
+    for rel, c, kf in todo:
+        for g in (c.get("markets") or {}):
+            for variant in ("all", "fwd"):
+                s = BSC.card_signals(c, g, variant, tape)
+                if s is not None:
+                    out[(rel, g, variant)] = s
+    return out
+
+
+def signal_slices(rs, sig, closes):
+    """The record of one play type split by each signal: yes, no, and unknown (the read was not possible). Variant `all`, every market."""
+    def val(r, name):
+        s = sig.get((r.get("card"), r["group"], r["variant"])) or {}
+        if name == "limit_rising":
+            return (s.get("limit") or {}).get("rising")
+        return (s.get("ev") or {}).get("on")
+    out = {}
+    for name in ("limit_rising", "ev_on"):
+        out[name] = {k: summarize([r for r in rs if val(r, name) is v], boot=False, closes=closes)
+                     for k, v in (("yes", True), ("no", False), ("unknown", None))}
+    return out
+
+
+def record(rows, cards, now, sig=None):
     """The report every read gives (prereg "What every read reports"), per sport. Report-only until the final read date."""
     out = {"generated": now, "v": VERSION, "prereg": "docs/sharp-card-prereg.md", "report_only": True,
            "note": "Interim. Only the final read on the registered date gives a verdict. Sharp money is context only.", "sports": {}}
@@ -258,6 +290,10 @@ def record(rows, cards, now):
                     s[play].setdefault(variant, {})[g] = {
                         "counted": summarize([r for r in sub if r["counts"]], closes=closes),
                         "all_cards": summarize(sub, boot=False, closes=closes)}
+        if sig is not None:
+            s["signals"] = {"defs": SIGNAL_DEFS, "context_only": True}
+            for play in ("sf", "pub"):
+                s["signals"][play] = signal_slices([r for r in rs if r["play"] == play and r["variant"] == "all"], sig, closes)
         # prereg: if unpriced locks exceed 10% of a sport's counted moneyline locks (variant A), that sport gets no verdict
         ml = [r for r in rs if r["play"] == "lock" and r["variant"] == "all" and r["group"] == "ml" and r["counts"]
               and r.get("status") in ("graded", "unpriced")]
@@ -329,6 +365,7 @@ def main():
     ap.add_argument("--holders", required=True, help="pm_holders folder (T-15 keyframes)")
     ap.add_argument("--closes", default="data/pm_closes.json")
     ap.add_argument("--out", required=True, help="pm_record folder")
+    ap.add_argument("--book-tape", default="data/book_tape", help="Vault's book tape (Pinnacle rows), for the limit and price signals")
     ap.add_argument("--now", type=int)
     ap.add_argument("--no-fetch", action="store_true", help="use only the cached Gamma facts (tests, offline)")
     a = ap.parse_args()
@@ -394,7 +431,7 @@ def main():
     append_rows(a.out, new)
     jsave(cache_p, facts)
     allrows = list(have.values()) + new
-    rec = record(allrows, cards, now)
+    rec = record(allrows, cards, now, derive_signals(todo, BSC.BookTape(a.book_tape)))
     rec["waiting"] = {"plays": len(waiting), "why": {w: sum(1 for _, x in waiting if x == w) for _, w in waiting}}
     rec["open"] = open_plays(todo, {r["key"] for r in allrows}, now)
     save_record(os.path.join(a.out, "cards_record.json"), rec)

@@ -5,6 +5,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 import build_side_cards as C  # noqa: E402
 import sf_publish as PUB  # noqa: E402
+import sf_signals as SIG  # noqa: E402
 
 CUT = 1_800_000_000
 
@@ -417,6 +418,53 @@ class PublishShadow(unittest.TestCase):
         self.assertEqual(PUB.pub_play(self.mk(0.4, other_units=1.0))["reason"], "both_sides")
         self.assertIsNone(PUB.pub_play({"sides": {}}))
         self.assertEqual(PUB.pub_play(self.mk(0.4, units=0))["reason"], "no_shown_size")
+
+
+class TapeSignals(unittest.TestCase):
+    CUT = 1000
+
+    def rows(self, lims, ml=(150, -170)):
+        return [{"t": 100 * (i + 1), "lim": lim, "ml": list(ml)} for i, lim in enumerate(lims)]
+
+    def test_limit_rising_by_dollars_or_ratio(self):
+        r = SIG.limit_read(self.rows([[1500, 3000, 1000], [3000, 3000, 1000]]), "ml", self.CUT)
+        self.assertEqual((r["open"], r["now"], r["rising"], r["tested"]), (1500, 3000, True, True))
+        self.assertTrue(SIG.limit_read(self.rows([[1000, 0, 0], [1450, 0, 0]]), "ml", self.CUT)["rising"])      # +450 but exactly 1.45x
+        self.assertFalse(SIG.limit_read(self.rows([[2000, 0, 0], [2400, 0, 0]]), "ml", self.CUT)["rising"])     # +400, 1.2x
+        self.assertTrue(SIG.limit_read(self.rows([[3000, 0, 0], [2000, 0, 0]]), "ml", self.CUT)["falling"])
+
+    def test_limit_reads_only_rows_before_the_cut_and_the_right_market(self):
+        rows = self.rows([[1500, 3000, 1000], [9000, 9000, 9000]])
+        self.assertEqual(SIG.limit_read(rows, "ml", 150)["rising"], False)          # the second row is after the cut
+        self.assertEqual(SIG.limit_read(rows, "spread", self.CUT)["now"], 9000)
+        none = SIG.limit_read([{"t": 1, "ml": [1, 2]}], "ml", self.CUT)
+        self.assertEqual((none["rising"], none["why"]), (None, "no_limit_before_cut"))
+
+    def test_ev_read_devigs_pinnacle_and_reads_the_sign(self):
+        r = SIG.ev_read(self.rows([[1, 1, 1]], ml=(100, -100)), "ml", "home", None, self.CUT, 0.48)     # fair 50%, price 48c
+        self.assertEqual((r["fair"], r["pts"], r["on"]), (0.5, 2.0, True))
+        r = SIG.ev_read(self.rows([[1, 1, 1]], ml=(100, -100)), "ml", "away", None, self.CUT, 0.51)
+        self.assertEqual((r["pts"], r["on"]), (-1.0, False))
+
+    def test_ev_read_spread_total_need_the_main_line(self):
+        rows = [{"t": 1, "sp": [-5, -110, -110], "tot": [200.5, -110, -110]}]
+        self.assertTrue(SIG.ev_read(rows, "spread", "home", -5, self.CUT, 0.49)["on"])
+        self.assertEqual(SIG.ev_read(rows, "spread", "away", -5, self.CUT, 0.49)["why"], "ticket_line_not_main_at_cut")   # away line is +5
+        self.assertEqual(SIG.ev_read(rows, "spread", "away", 5, self.CUT, 0.49)["why"], None)
+        self.assertEqual(SIG.ev_read(rows, "total", "over", 201.5, self.CUT, 0.49)["why"], "ticket_line_not_main_at_cut")
+        self.assertEqual(SIG.ev_read(rows, "ml", "home", None, self.CUT, 0.49)["why"], "no_pinnacle_before_cut")
+        self.assertEqual(SIG.ev_read(rows, "total", None, 200.5, self.CUT, 0.49)["why"], "side_unmapped")
+
+    def test_card_signals_for_the_shown_side(self):
+        class T:
+            def game(self, sport, vault, ev, gst):
+                return [{"t": 1, "ml": [150, -170], "lim": [1500, 3000, 1000]}, {"t": 2, "ml": [150, -170], "lim": [3000, 3000, 1000]}], "gk"
+        c = {"sport": "nba", "ev": "nba-aaa-bbb-2026-11-11", "gst": 5000, "cut": 4000, "vault": None,
+             "markets": {"ml": {"sides": {"Aaa": {}, "Bbb": {}}, "sf": {"all": {"side": "Bbb", "units": 1, "price": 0.60, "line": None}}}}}
+        s = C.card_signals(c, "ml", "all", T())
+        self.assertTrue(s["limit"]["rising"])
+        self.assertEqual(s["ev"]["why"], "side_unmapped")                    # no team names for this card: the limit still reads
+        self.assertIsNone(C.card_signals(c, "ml", "fwd", T()))                # nothing shown for this variant
 
 
 if __name__ == "__main__":
