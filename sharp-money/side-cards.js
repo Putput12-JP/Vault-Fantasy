@@ -657,14 +657,19 @@ function recSport(sp, D){
   /* the stricter shadow (scripts/sf_publish.py): the same plays minus sides whose wallet-quality score is not above zero, graded the same way */
   var pgs = function(s, g){ return ((((cs(s).pub || {}).all || {})[g] || {}).all_cards); };
   var P = sumRec(G.map(function(g){ return ALL ? sumRec(SPS.map(function(s){ return pgs(s, g[0]); })) : pgs(sp, g[0]); }));
+  /* the single-wallet cap (scripts/sf_solo.py): the same plays, capped at 1u on one proven wallet or a lead bet under its usual stake */
+  var qgs = function(s, g){ return ((((cs(s).solo || {}).all || {})[g] || {}).all_cards); };
+  var Q = sumRec(G.map(function(g){ return ALL ? sumRec(SPS.map(function(s){ return qgs(s, g[0]); })) : qgs(sp, g[0]); }));
+  var shadowLine = function(name, X, how){ return X.n ? '<p class="vr-shadow num"><b>' + name + '</b> ' + wl(X) + ' · <span class="' + (X.units_pl > 0 ? 'up' : X.units_pl < 0 ? 'dn' : '') + '">' + u2(X.units_pl) + '</span>' + (X.flat_roi != null ? ' · ' + roi(X.flat_roi) + ' ROI' : '') + ' · ' + X.n + (X.n === 1 ? ' play' : ' plays') +
+    '<span class="vr-tsub">' + how + '</span></p>' : ''; };
   /* one record: every Vault play, graded at its price at the lock by Polymarket's result */
   var hero = '<div class="vr-tile rec"><div class="vr-th"><b>Record</b></div>' +
     (V.n ? '<div class="vr-big num ' + (V.units_pl > 0 ? 'up' : V.units_pl < 0 ? 'dn' : '') + '">' + u2(V.units_pl) + '</div>' +
       '<p class="vr-ts num">' + wl(V) + (V.flat_roi != null ? ' · ' + roi(V.flat_roi) + ' ROI' : '') + ' · ' + V.n + (V.n === 1 ? ' play' : ' plays') + '</p>'
       : '<div class="vr-big num dim">—</div><p class="vr-ts">No graded plays yet</p>') +
     '<p class="vr-tsub">Every suggested play, graded by Polymarket\'s result at its price at the lock. Small samples swing hard.</p>' +
-    (P.n ? '<p class="vr-shadow num"><b>Stricter rule (shadow)</b> ' + wl(P) + ' · <span class="' + (P.units_pl > 0 ? 'up' : P.units_pl < 0 ? 'dn' : '') + '">' + u2(P.units_pl) + '</span>' + (P.flat_roi != null ? ' · ' + roi(P.flat_roi) + ' ROI' : '') + ' · ' + P.n + (P.n === 1 ? ' play' : ' plays') +
-      '<span class="vr-tsub">Skips plays where the wallets against outweigh the wallets for, and markets where both sides qualify. Tracked beside the record, not shown on cards.</span></p>' : '') + '</div>';
+    shadowLine('Stricter rule (shadow)', P, 'Skips plays where the wallets against outweigh the wallets for, and markets where both sides qualify. Tracked beside the record, not shown on cards.') +
+    shadowLine('One-wallet cap (shadow)', Q, 'The same plays at 1u when one proven wallet is on the side, or when it bet under its usual stake. Tracked beside the record, not shown on cards.') + '</div>';
   /* the pre-registered forward test: counted moneyline locks toward 300, and the lock record over every market */
   var ml = ((((c.lock || {}).all || {}).ml || {}).counted) || {}, L = sumRec(G.map(function(g){ return ((((c.lock || {}).all || {})[g[0]] || {}).counted); }));
   var clvN = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n || 0); }, 0);
@@ -685,7 +690,7 @@ function recSport(sp, D){
   /* the shown plays split by two tape reads (scripts/sf_signals.py); a row appears only once plays fall on both sides of it */
   var SIGS = [['limit_rising', 'Pinnacle limit rising'], ['ev_on', 'Price 0.3+ pts under fair']];
   var sg = function(name, k){ return sumRec(SPS.map(function(x){ return ((((cs(x).signals || {}).sf || {})[name] || {})[k]); })); };
-  var sigRows = SIGS.map(function(d){ var y = sg(d[0], 'yes'), n = sg(d[0], 'no'); return y.n && n.n ? '<span class="vr-mk">' + d[1] + '</span>' + cell(y) + cell(n) : ''; }).join('');
+  var sigRows = SIGS.map(function(d){ var y = sg(d[0], 'yes'), n = sg(d[0], 'no'); return y.n && n.n ? '<span class="vr-mk">' + d[1] + '</span><span class="vr-c">' + cell(y) + '</span><span class="vr-c">' + cell(n) + '</span>' : ''; }).join('');
   var sigHtml = sigRows ? '<section class="vr-card"><h3>By signal</h3><div class="vr-grid"><span></span><span class="vr-col">When on</span><span class="vr-col">When off</span>' + sigRows + '</div>' +
     '<p class="vr-fn">The same plays split by what Pinnacle showed at the lock. Context only, and small samples swing hard.</p></section>' : '';
   var out = '<div class="vr-hero">' + hero + ft + '</div>';
@@ -866,8 +871,10 @@ function keyP(s, dir){
   return '<div class="' + dir + '">' + (b('hc', s.hc_usd, 'sized up') + b('sharp', s.sharp_usd - s.hc_usd, 'proven') + b('loser', s.loser_usd, 'losers') || '<span>no proven or loser money</span>') + '</div>';
 }
 /* the benchmark's "combined proven sharps" strip, from the stored `proven` block of the suggested side; it always shows its wallet count */
-function combinedP(name, p){
-  var cap = '<div class="vp-cap">Combined proven sharps<em>on ' + esc(name) + (p && p.wallets ? ' · ' + p.wallets + (p.wallets === 1 ? ' wallet' : ' wallets') : '') + '</em></div>';
+function combinedP(name, p, cn){
+  /* the wallet count is proven wallets out of every wallet holding $250 or more on the side (the counts block), so one proven wallet never reads as the whole side */
+  var tot = cn ? (cn.hc || 0) + (cn.sharp || 0) + (cn.unproven || 0) + (cn.loser || 0) + (cn.excluded || 0) : 0;
+  var cap = '<div class="vp-cap">Combined proven sharps<em>on ' + esc(name) + (p && p.wallets ? ' · ' + p.wallets + ' proven' + (tot > p.wallets ? ' of ' + tot + ' wallets over $250' : (p.wallets === 1 ? ' wallet' : ' wallets')) : (tot ? ' · ' + tot + (tot === 1 ? ' wallet' : ' wallets') + ' over $250' : '')) + '</em></div>';
   if (!p || !p.wallets) return '<section class="vp-cps">' + cap + '<p class="vp-none">No proven wallet on this side yet. The size here comes from the staking rule, not from a wallet record.</p></section>';
   var c = function(v, l, cls){ return '<div class="vp-c"><b class="num ' + (cls || '') + '">' + v + '</b><span>' + l + '</span></div>'; };
   var sign = function(x){ return x > 0 ? 'up' : x < 0 ? 'dn' : ''; }, f = p.last20 || [];
@@ -887,7 +894,7 @@ function ticketP(p, i){
     '<div class="vp-river"><div class="vp-ends"><div class="vp-end' + (ls.side === nm[0] ? ' pk' : '') + '"><span>' + esc(nm[0]) + '</span><b class="num">' + usd(counted(a)) + '</b></div>' +
       '<div class="vp-end r' + (ls.side === nm[1] ? ' pk' : '') + '"><span>' + esc(nm[1]) + '</span><b class="num">' + usd(counted(b)) + '</b></div></div>' +
       '<div class="vp-bar">' + halfP(a, max, 'l') + '<u></u>' + halfP(b, max, 'r') + '</div><div class="vp-key">' + keyP(a, 'l') + keyP(b, 'r') + '</div></div>' +
-    combinedP(ls.side, me.proven) +
+    combinedP(ls.side, me.proven, me.counts) +
     '<div class="vp-ft">' + (ag && ag.score > 0 && TIER[ag.tier] ? '<span class="vc-tier ' + ag.tier + '">' + TIER[ag.tier] + '</span><span>score <span class="num">+' + ag.score.toFixed(2) + '</span></span>' : '') +
       (st ? '<span class="' + st + '">' + (st === 'on' ? 'Pinnacle steam toward ' + esc(ls.side) : st === 'off' ? 'No Pinnacle steam' : 'Pinnacle steam unknown') + '</span>' : '') + (bits[0] ? '<span>' + bits[0] + '</span>' : '') +
       '<span class="sp"></span><button type="button" class="vp-who" data-p="' + i + '">See who\'s on it</button></div></div></article>';

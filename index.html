@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-11-14T10:00', tag:'Improved', title:'Sharp Money: clearer wallet counts',
+    items:[
+      'The "Combined proven sharps" strip now says how many proven wallets are on a side out of every wallet holding $250 or more there, for example "1 proven of 4 wallets over $250", so one proven wallet no longer reads like the whole side.',
+      'The Sharps record also tracks a one-wallet cap beside the main record: the same plays at 1u when a single proven wallet is on the side, or when it bet under its usual stake. It is tracked only and does not change any suggested size.'
+    ]
+  },
+  {
     ts:'2026-11-14T09:30', tag:'New', title:'Sharp Money: Pinnacle limits and price check',
     items:[
       'Open "See who\'s on it" on a Sharps play to see Pinnacle\'s betting limit, from its first read to the lock, and how the Polymarket price compares with Pinnacle\'s fair price.',

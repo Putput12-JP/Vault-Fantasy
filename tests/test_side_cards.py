@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 import build_side_cards as C  # noqa: E402
 import sf_publish as PUB  # noqa: E402
 import sf_signals as SIG  # noqa: E402
+import sf_solo as SOLO  # noqa: E402
 
 CUT = 1_800_000_000
 
@@ -465,6 +466,32 @@ class TapeSignals(unittest.TestCase):
         self.assertTrue(s["limit"]["rising"])
         self.assertEqual(s["ev"]["why"], "side_unmapped")                    # no team names for this card: the limit still reads
         self.assertIsNone(C.card_signals(c, "ml", "fwd", T()))                # nothing shown for this variant
+
+
+class SoloCap(unittest.TestCase):
+    def mk(self, units=3.0, hc=0, sharp=1, press=0.27, lst=True):
+        side = {"counts": {"hc": hc, "sharp": sharp, "unproven": 1, "loser": 0, "excluded": 0}, "list": [{"press": press}] if lst else []}
+        return {"sides": {"A": {"all": side}}, "sf": {"all": {"side": "A", "units": units, "rung": "TRUST-S", "price": 0.5, "cid": "c", "outs": ["A", "B"]}}}
+
+    def test_one_proven_wallet_caps_to_one_unit(self):
+        p = SOLO.solo_play(self.mk(press=1.4))
+        self.assertEqual((p["units"], p["capped"], p["was"], p["reason"]), (1.0, True, 3.0, "one_proven_wallet"))
+
+    def test_small_lead_bet_caps_even_with_several_wallets(self):
+        p = SOLO.solo_play(self.mk(sharp=3, press=0.27))
+        self.assertEqual((p["units"], p["reason"]), (1.0, "lead_under_usual"))
+
+    def test_both_reasons_and_no_cap(self):
+        self.assertEqual(SOLO.solo_play(self.mk(press=0.5))["reason"], "one_proven_wallet,lead_under_usual")
+        p = SOLO.solo_play(self.mk(sharp=3, press=1.2))
+        self.assertEqual((p["units"], p["capped"], p["reason"]), (3.0, False, None))
+
+    def test_never_raises_a_size_and_skips_what_is_not_shown(self):
+        self.assertEqual(SOLO.solo_play(self.mk(units=0.5))["units"], 0.5)            # a cap never lifts a smaller stake
+        self.assertEqual(SOLO.solo_play(self.mk(units=0))["reason"], "no_shown_size")
+        self.assertIsNone(SOLO.solo_play({"sides": {}}))
+        p = SOLO.solo_play(self.mk(sharp=0, lst=False))                              # no proven wallet at all: not a one-wallet play
+        self.assertEqual((p["units"], p["reason"]), (3.0, None))
 
 
 if __name__ == "__main__":

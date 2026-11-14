@@ -80,7 +80,9 @@ class Grade(unittest.TestCase):
                      "c2": {"mt": "spreads", "line": -6.5, "outs": ["Magic", "Jazz"], "px": [0.4, 0.6]}}}
         sf = {"side": "Jazz", "units": 2, "line": -4.5, "price": 0.515, "price_t": CUT - 60, "rung": "PRESS"}
         rows = [r for r in G.grade(card(sf=sf), "k", kf, FACT, CLOSES, GST + 3600)[0] if r["kind"] == "result"]
-        self.assertEqual([(r["play"], r["cid"], r["units_pl"]) for r in rows], [("sf", "c1", -2.0)])
+        self.assertEqual([(r["play"], r["cid"], r["units_pl"]) for r in rows if r["play"] != "solo"], [("sf", "c1", -2.0)])
+        solo = [r for r in rows if r["play"] == "solo"]               # the cap shadow grades beside it (no wallet counts on this card: no cap)
+        self.assertEqual([(r["units"], r["capped"]) for r in solo], [(2, False)])
 
     def test_record_reads_counted_cards_only(self):
         a = G.grade(card(LOCK), "a", None, FACT, CLOSES, GST + 3600)[0]
