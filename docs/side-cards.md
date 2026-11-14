@@ -95,8 +95,12 @@ The "Updated" line above the cards has a Refresh button. It uses the same Cloudf
 skips that workflow's quiet-hours gate and starts `pm-cards.yml`. The button then polls `live.json` (a fresh cache key each time) and
 stops when its `built` time moves past the one it started with, showing the build timer; a 429 from the cooldown means a build was
 just started, so it waits for that one. It gives up after about 10 minutes ("Try again"). Without a click, the board still reloads
-every 2 minutes. `?rfurl=` (localhost only) points the button at a stand-in Worker for testing. The Record view is rebuilt by
-`pm-record.yml` every 2 hours; the Worker has no route for it, so the button does not refresh it.
+every 2 minutes. `?rfurl=` (localhost only) points the button at a stand-in Worker for testing.
+
+The Record view has the same button in its header. A forced `update-sharp-money.yml` run also starts `pm-record.yml` (the "Regrade
+proven-sharps record" step: only when `force` is true, and not if a record run started in the last 10 minutes), so the Worker needs no
+change. That button waits for `cards_record.json`'s `generated` time to move, then redraws the Record view. `pm-record.yml` otherwise
+runs every 2 hours and takes about 30 s.
 
 ### One-wallet cap shadow (`solo`, `scripts/sf_solo.py`)
 
