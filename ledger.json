@@ -2,9 +2,9 @@
  "version": 1,
  "paper_only": true,
  "live_orders": false,
- "updated": "2026-11-16T20:51:33Z",
+ "updated": "2026-11-16T22:56:15Z",
  "bankroll_start": 1000.0,
- "cash": 910.62,
+ "cash": 860.78,
  "trades": [
   {
    "id": "KXNCAAFGAME-26OCT15GASOODU-ODU:1791901778",
@@ -7629,7 +7629,7 @@
   {
    "id": "KXNCAAFGAME-26NOV14USCIND-USC:1794439797",
    "ts": "2026-11-11T23:29:57Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_ml",
    "ticker": "KXNCAAFGAME-26NOV14USCIND-USC",
    "event": "KXNCAAFGAME-26NOV14USCIND",
@@ -7685,14 +7685,14 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-11-16T22:56:15Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -18.46,
    "close_mid": null,
    "clv": null,
    "mark_value": 16.33,
-   "won": null,
+   "won": false,
    "fee_total": 1.42
   },
   {
@@ -8756,13 +8756,157 @@
    "pnl": null,
    "close_mid": null,
    "clv": null,
-   "mark_value": 44.1,
+   "mark_value": 44.94,
    "won": null,
    "exit_pnl_pc": null,
    "hold_status": "pending",
    "hold_pnl_pc": null,
    "hold_pnl": null,
    "hold_result": null
+  },
+  {
+   "id": "KXNBATOTAL-26NOV16PORMIN-219:1794869775",
+   "ts": "2026-11-16T22:56:15Z",
+   "status": "open",
+   "source": "nba_total",
+   "ticker": "KXNBATOTAL-26NOV16PORMIN-219",
+   "event": "KXNBATOTAL-26NOV16PORMIN",
+   "title": "Full Game: Over 218.5 points scored",
+   "game": "POR @ MIN",
+   "side": "no",
+   "strike": 218.5,
+   "model_prob": 0.4089,
+   "edge": 0.1089,
+   "yes_bid": 0.7,
+   "yes_ask": 0.71,
+   "price": 0.3,
+   "fee_per": 0.02,
+   "contracts": 44,
+   "stake": 14.08,
+   "ask_size": 50.0,
+   "bankroll_before": 908.01,
+   "detail": {
+    "mu": 222.72,
+    "sigma": 18.31,
+    "sigma_from": "model_state.game.sd_total",
+    "formula": "P(over) = 1 - Phi((strike - mu) / sigma)",
+    "b2b_home": 1.0,
+    "b2b_away": 1.0,
+    "home": "MIN",
+    "away": "POR",
+    "tip": 1794963600
+   },
+   "llm": {
+    "enabled": false,
+    "veto": false,
+    "reason": "filter off",
+    "definitive": false
+   },
+   "settled_ts": null,
+   "result": null,
+   "payout": null,
+   "pnl": null,
+   "close_mid": null,
+   "clv": null,
+   "mark_value": 12.76,
+   "won": null,
+   "fee_total": 0.88
+  },
+  {
+   "id": "KXNBATOTAL-26NOV16PORMIN-221:1794869775",
+   "ts": "2026-11-16T22:56:15Z",
+   "status": "open",
+   "source": "nba_total",
+   "ticker": "KXNBATOTAL-26NOV16PORMIN-221",
+   "event": "KXNBATOTAL-26NOV16PORMIN",
+   "title": "Full Game: Over 220.5 points scored",
+   "game": "POR @ MIN",
+   "side": "no",
+   "strike": 220.5,
+   "model_prob": 0.4518,
+   "edge": 0.1118,
+   "yes_bid": 0.66,
+   "yes_ask": 0.67,
+   "price": 0.34,
+   "fee_per": 0.02,
+   "contracts": 50,
+   "stake": 18.0,
+   "ask_size": 450.0,
+   "bankroll_before": 909.51,
+   "detail": {
+    "mu": 222.72,
+    "sigma": 18.31,
+    "sigma_from": "model_state.game.sd_total",
+    "formula": "P(over) = 1 - Phi((strike - mu) / sigma)",
+    "b2b_home": 1.0,
+    "b2b_away": 1.0,
+    "home": "MIN",
+    "away": "POR",
+    "tip": 1794963600
+   },
+   "llm": {
+    "enabled": false,
+    "veto": false,
+    "reason": "filter off",
+    "definitive": false
+   },
+   "settled_ts": null,
+   "result": null,
+   "payout": null,
+   "pnl": null,
+   "close_mid": null,
+   "clv": null,
+   "mark_value": 16.5,
+   "won": null,
+   "fee_total": 1.0
+  },
+  {
+   "id": "KXNBATOTAL-26NOV16PORMIN-227:1794869775",
+   "ts": "2026-11-16T22:56:15Z",
+   "status": "open",
+   "source": "nba_total",
+   "ticker": "KXNBATOTAL-26NOV16PORMIN-227",
+   "event": "KXNBATOTAL-26NOV16PORMIN",
+   "title": "Full Game: Over 226.5 points scored",
+   "game": "POR @ MIN",
+   "side": "no",
+   "strike": 226.5,
+   "model_prob": 0.5819,
+   "edge": 0.1219,
+   "yes_bid": 0.54,
+   "yes_ask": 0.55,
+   "price": 0.46,
+   "fee_per": 0.02,
+   "contracts": 37,
+   "stake": 17.76,
+   "ask_size": 2759.6,
+   "bankroll_before": 910.62,
+   "detail": {
+    "mu": 222.72,
+    "sigma": 18.31,
+    "sigma_from": "model_state.game.sd_total",
+    "formula": "P(over) = 1 - Phi((strike - mu) / sigma)",
+    "b2b_home": 1.0,
+    "b2b_away": 1.0,
+    "home": "MIN",
+    "away": "POR",
+    "tip": 1794963600
+   },
+   "llm": {
+    "enabled": false,
+    "veto": false,
+    "reason": "filter off",
+    "definitive": false
+   },
+   "settled_ts": null,
+   "result": null,
+   "payout": null,
+   "pnl": null,
+   "close_mid": null,
+   "clv": null,
+   "mark_value": 16.65,
+   "won": null,
+   "fee_total": 0.74
   }
  ],
  "equity": [
@@ -8885,6 +9029,11 @@
    "ts": "2026-11-11T23:29:57Z",
    "cash": 910.62,
    "equity": 926.95
+  },
+  {
+   "ts": "2026-11-16T22:56:15Z",
+   "cash": 860.78,
+   "equity": 906.69
   }
  ],
  "runs": [
@@ -9269,6 +9418,23 @@
    ],
    "equity": 926.95,
    "cash": 910.62
+  },
+  {
+   "ts": "2026-11-16T22:56:15Z",
+   "settled": 1,
+   "opened": 3,
+   "vetoed": 0,
+   "skipped": 11,
+   "halt": null,
+   "notes": [
+    "cfb_jp_novig: 0 new games, 30 snapshots, 0 entered, 0 exited, 0 graded; pass bar 51/60 collecting, 2 triggered games not listed on Novig yet | cfb:289708: no entry, day cap leaves no room; cfb:290078: no entry, day cap leaves no room; cfb:290088: no entry, day cap leaves no room; cfb:290089: no entry, day cap leaves no room; cfb:290091: no entry, day cap leaves no room; cfb:290101: no entry, day cap leaves no room",
+    "nba total: 17 eligible games; 14 signals; 195 quotes unmatched; skipped 8 first four weeks",
+    "cfb moneyline: 62 projected games, 0 signals, 124 events unmatched, min week 4",
+    "llm filter off",
+    "11 proposals were already on the ledger or came in under the size caps"
+   ],
+   "equity": 906.69,
+   "cash": 860.78
   }
  ],
  "summary": {
@@ -9364,17 +9530,17 @@
    }
   },
   "overall": {
-   "settled": 6,
+   "settled": 7,
    "wins": 1,
-   "losses": 5,
+   "losses": 6,
    "pending": 0,
-   "stake": 99.92,
-   "pnl": -70.92,
-   "roi": -0.7098,
+   "stake": 118.38,
+   "pnl": -89.38,
+   "roi": -0.755,
    "clv_n": 6,
    "clv_mean": -0.0,
-   "brier": 0.2377,
-   "open": 1,
+   "brier": 0.219,
+   "open": 3,
    "void": 0,
    "vetoed": 0
   },
@@ -9394,17 +9560,31 @@
     "vetoed": 0
    },
    "cfb_ml": {
-    "settled": 6,
+    "settled": 7,
     "wins": 1,
-    "losses": 5,
+    "losses": 6,
     "pending": 0,
-    "stake": 99.92,
-    "pnl": -70.92,
-    "roi": -0.7098,
+    "stake": 118.38,
+    "pnl": -89.38,
+    "roi": -0.755,
     "clv_n": 6,
     "clv_mean": -0.0,
-    "brier": 0.2377,
-    "open": 1,
+    "brier": 0.219,
+    "open": 0,
+    "vetoed": 0
+   },
+   "nba_total": {
+    "settled": 0,
+    "wins": 0,
+    "losses": 0,
+    "pending": 0,
+    "stake": 0.0,
+    "pnl": 0.0,
+    "roi": null,
+    "clv_n": 0,
+    "clv_mean": null,
+    "brier": null,
+    "open": 3,
     "vetoed": 0
    }
   },
@@ -9413,6 +9593,11 @@
     "pnl": -70.92,
     "stake": 99.92,
     "n": 6
+   },
+   "2026-11": {
+    "pnl": -18.46,
+    "stake": 18.46,
+    "n": 1
    }
   },
   "calibration": [
@@ -9440,9 +9625,9 @@
    {
     "lo": 0.3,
     "hi": 0.4,
-    "n": 1,
+    "n": 2,
     "hit": 0.0,
-    "pred": 0.3095
+    "pred": 0.3183
    },
    {
     "lo": 0.4,
@@ -9487,9 +9672,9 @@
     "pred": null
    }
   ],
-  "fees": 6.76,
-  "cash": 910.62,
-  "open_mark": 16.33
+  "fees": 9.38,
+  "cash": 860.78,
+  "open_mark": 45.91
  },
  "config": {
   "paper_only": true,
@@ -10990,7 +11175,8 @@
       "listed_ts": 1794759979,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.54,0.58,3552.0,2007.25"
+       "1794862293,0.54,0.58,3552.0,2007.25",
+       "1794869775,0.54,0.58,1852.0,2109.25"
       ]
      },
      "kalshi": {
@@ -11002,7 +11188,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.52,0.57,101.0,"
+       "1794862293,0.52,0.57,101.0,",
+       "1794869775,0.52,0.57,101.0,"
       ]
      }
     },
@@ -14869,7 +15056,8 @@
       "listed_ts": 1794759915,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.535,0.62,1746.0,1602.0"
+       "1794862293,0.535,0.62,1746.0,1602.0",
+       "1794869775,0.535,0.62,1746.0,1602.0"
       ]
      },
      "kalshi": {
@@ -14881,7 +15069,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.59,76.0,"
+       "1794862293,0.56,0.59,76.0,",
+       "1794869775,0.56,0.59,76.0,"
       ]
      }
     },
@@ -14917,7 +15106,8 @@
       "listed_ts": 1794760814,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.635,2203.0,2350.0"
+       "1794862293,0.56,0.635,2203.0,2350.0",
+       "1794869775,0.555,0.635,2203.0,2153.0"
       ]
      },
      "kalshi": {
@@ -14929,7 +15119,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.58,0.62,75.0,"
+       "1794862293,0.58,0.62,75.0,",
+       "1794869775,0.56,0.62,75.0,"
       ]
      }
     },
@@ -14965,7 +15156,8 @@
       "listed_ts": 1794759948,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.535,0.615,3210.0,1052.0"
+       "1794862293,0.535,0.615,3210.0,1052.0",
+       "1794869775,0.535,0.61,1310.0,1052.0"
       ]
      },
      "kalshi": {
@@ -14977,7 +15169,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.54,0.59,379.0,"
+       "1794862293,0.54,0.59,379.0,",
+       "1794869775,0.55,0.58,224.0,"
       ]
      }
     },
@@ -15013,7 +15206,8 @@
       "listed_ts": 1794720007,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.55,0.575,3494.71,347.42"
+       "1794862293,0.55,0.575,3494.71,347.42",
+       "1794869775,0.545,0.575,3694.71,544.25"
       ]
      },
      "kalshi": {
@@ -15025,7 +15219,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.53,0.56,70.3,"
+       "1794862293,0.53,0.56,70.3,",
+       "1794869775,0.54,0.56,70.3,"
       ]
      }
     },
@@ -15061,7 +15256,8 @@
       "listed_ts": 1794757547,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.555,0.62,902.0,1713.32"
+       "1794862293,0.555,0.62,902.0,1713.32",
+       "1794869775,0.555,0.625,1311.0,1763.32"
       ]
      },
      "kalshi": {
@@ -15073,7 +15269,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.55,0.61,202.0,"
+       "1794862293,0.55,0.61,202.0,",
+       "1794869775,0.55,0.6,75.0,"
       ]
      }
     },
@@ -15109,7 +15306,8 @@
       "listed_ts": 1794732658,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.64,1105.0,1103.0"
+       "1794862293,0.56,0.64,1105.0,1103.0",
+       "1794869775,0.555,0.65,760.0,714.0"
       ]
      },
      "kalshi": {
@@ -15121,7 +15319,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.57,0.61,10.0,"
+       "1794862293,0.57,0.61,10.0,",
+       "1794869775,0.58,0.63,76.0,"
       ]
      }
     },
@@ -15157,7 +15356,8 @@
       "listed_ts": 1794700281,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.45,0.51,1662.0,1856.0"
+       "1794862293,0.45,0.51,1662.0,1856.0",
+       "1794869775,0.45,0.51,1712.0,1702.0"
       ]
      },
      "kalshi": {
@@ -15169,7 +15369,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.45,0.48,21.0,"
+       "1794862293,0.45,0.48,21.0,",
+       "1794869775,0.46,0.48,20.0,"
       ]
      }
     },
@@ -15205,7 +15406,8 @@
       "listed_ts": 1794546940,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.54,0.57,234.0,1679.0"
+       "1794862293,0.54,0.57,234.0,1679.0",
+       "1794869775,0.545,0.57,1637.0,179.0"
       ]
      },
      "kalshi": {
@@ -15217,7 +15419,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.53,0.55,65.0,"
+       "1794862293,0.53,0.55,65.0,",
+       "1794869775,0.54,0.55,140.44,"
       ]
      }
     },
@@ -15253,7 +15456,8 @@
       "listed_ts": 1794546939,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.61,1428.0,265.82"
+       "1794862293,0.56,0.61,1428.0,265.82",
+       "1794869775,0.57,0.59,2466.03,909.44"
       ]
      },
      "kalshi": {
@@ -15265,7 +15469,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.58,0.6,230.0,"
+       "1794862293,0.58,0.6,230.0,",
+       "1794869775,0.58,0.6,5711.0,"
       ]
      }
     },
@@ -15301,7 +15506,8 @@
       "listed_ts": 1794756717,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.455,0.505,3677.03,4061.35"
+       "1794862293,0.455,0.505,3677.03,4061.35",
+       "1794869775,0.465,0.49,2582.39,2652.45"
       ]
      },
      "kalshi": {
@@ -15313,7 +15519,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.46,0.51,575.0,"
+       "1794862293,0.46,0.51,575.0,",
+       "1794869775,0.46,0.49,2977.0,"
       ]
      }
     },
@@ -15349,7 +15556,8 @@
       "listed_ts": 1794546941,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.54,0.595,1710.0,1563.0"
+       "1794862293,0.54,0.595,1710.0,1563.0",
+       "1794869775,0.54,0.59,1597.0,1557.0"
       ]
      },
      "kalshi": {
@@ -15361,7 +15569,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.57,124.0,"
+       "1794862293,0.56,0.57,124.0,",
+       "1794869775,0.54,0.56,234.0,"
       ]
      },
      "entry_ts": 1794862293
@@ -15398,7 +15607,8 @@
       "listed_ts": 1794732658,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.58,1252.55,705.3"
+       "1794862293,0.56,0.58,1252.55,705.3",
+       "1794869775,0.56,0.6,1508.0,705.3"
       ]
      },
      "kalshi": {
@@ -15410,7 +15620,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.57,0.58,81.0,"
+       "1794862293,0.57,0.58,81.0,",
+       "1794869775,0.57,0.58,81.0,"
       ]
      },
      "entry_ts": 1794862293
@@ -15447,7 +15658,8 @@
       "listed_ts": 1794760814,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.45,0.52,3252.0,3507.0"
+       "1794862293,0.45,0.52,3252.0,3507.0",
+       "1794869775,0.445,0.51,1806.0,1754.0"
       ]
      },
      "kalshi": {
@@ -15459,7 +15671,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.48,0.52,699.0,"
+       "1794862293,0.48,0.52,699.0,",
+       "1794869775,0.46,0.5,500.0,"
       ]
      }
     },
@@ -15495,7 +15708,8 @@
       "listed_ts": 1794617204,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.505,0.565,2604.0,2854.0"
+       "1794862293,0.505,0.565,2604.0,2854.0",
+       "1794869775,0.5,0.56,1752.0,1956.0"
       ]
      },
      "kalshi": {
@@ -15507,7 +15721,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.52,0.54,10.03,"
+       "1794862293,0.52,0.54,10.03,",
+       "1794869775,0.51,0.55,78.03,"
       ]
      }
     },
@@ -15543,7 +15758,8 @@
       "listed_ts": 1794725479,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.485,0.525,4651.66,4695.17"
+       "1794862293,0.485,0.525,4651.66,4695.17",
+       "1794869775,0.475,0.5,140.0,4408.54"
       ]
      },
      "kalshi": {
@@ -15555,7 +15771,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.48,0.5,440.0,"
+       "1794862293,0.48,0.5,440.0,",
+       "1794869775,0.48,0.5,370.0,"
       ]
      }
     },
@@ -15591,7 +15808,8 @@
       "listed_ts": 1794617203,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.53,0.6,2232.0,4569.48"
+       "1794862293,0.53,0.6,2232.0,4569.48",
+       "1794869775,0.53,0.615,1840.0,4193.48"
       ]
      },
      "kalshi": {
@@ -15603,7 +15821,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.55,0.6,1690.0,"
+       "1794862293,0.55,0.6,1690.0,",
+       "1794869775,0.56,0.6,1116.0,"
       ]
      }
     },
@@ -15639,7 +15858,8 @@
       "listed_ts": 1794617203,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.61,0.69,1310.0,1004.0"
+       "1794862293,0.61,0.69,1310.0,1004.0",
+       "1794869775,0.61,0.69,1270.0,1004.0"
       ]
      },
      "kalshi": {
@@ -15651,7 +15871,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.61,0.66,318.0,"
+       "1794862293,0.61,0.66,318.0,",
+       "1794869775,0.63,0.66,375.0,"
       ]
      }
     },
@@ -15687,7 +15908,8 @@
       "listed_ts": 1794730564,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.34,0.425,1816.0,1762.0"
+       "1794862293,0.34,0.425,1816.0,1762.0",
+       "1794869775,0.34,0.425,1816.0,1762.0"
       ]
      },
      "kalshi": {
@@ -15699,7 +15921,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.36,0.4,1.0,"
+       "1794862293,0.36,0.4,1.0,",
+       "1794869775,0.36,0.4,1.0,"
       ]
      }
     },
@@ -15735,7 +15958,8 @@
       "listed_ts": 1794760514,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.645,0.715,1063.0,1150.0"
+       "1794862293,0.645,0.715,1063.0,1150.0",
+       "1794869775,0.645,0.715,1061.0,1150.0"
       ]
      },
      "kalshi": {
@@ -15747,7 +15971,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.63,0.67,1.0,"
+       "1794862293,0.63,0.67,1.0,",
+       "1794869775,0.64,0.67,1.0,"
       ]
      }
     },
@@ -15783,7 +16008,8 @@
       "listed_ts": 1794760814,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.525,0.595,1350.0,1489.05"
+       "1794862293,0.525,0.595,1350.0,1489.05",
+       "1794869775,0.535,0.6,1600.0,1739.05"
       ]
      },
      "kalshi": {
@@ -15830,7 +16056,8 @@
       "listed_ts": 1794718212,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.375,0.435,1278.09,1218.0"
+       "1794862293,0.375,0.435,1278.09,1218.0",
+       "1794869775,0.38,0.455,1389.49,1356.0"
       ]
      },
      "kalshi": {
@@ -15876,7 +16103,8 @@
       "listed_ts": 1794757579,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.525,0.595,1609.0,1504.0"
+       "1794862293,0.525,0.595,1609.0,1504.0",
+       "1794869775,0.555,0.575,2584.02,588.94"
       ]
      },
      "kalshi": {
@@ -15888,7 +16116,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.53,0.58,650.0,"
+       "1794862293,0.53,0.58,650.0,",
+       "1794869775,0.55,0.58,3626.0,"
       ]
      }
     },
@@ -15924,7 +16153,8 @@
       "listed_ts": 1794731239,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.445,0.51,2000.0,1950.0"
+       "1794862293,0.445,0.51,2000.0,1950.0",
+       "1794869775,0.455,0.515,4000.0,1958.0"
       ]
      },
      "kalshi": {
@@ -15970,7 +16200,8 @@
       "listed_ts": 1794756979,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.615,1256.0,1403.23"
+       "1794862293,0.56,0.615,1256.0,1403.23",
+       "1794869775,0.56,0.62,1100.5,1381.48"
       ]
      },
      "kalshi": {
@@ -15982,7 +16213,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.59,249.0,"
+       "1794862293,0.56,0.59,249.0,",
+       "1794869775,0.56,0.59,1.0,"
       ]
      }
     },
@@ -16075,7 +16307,8 @@
       "listed_ts": 1794719712,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.455,0.485,165.17,1875.0"
+       "1794862293,0.455,0.485,165.17,1875.0",
+       "1794869775,0.45,0.485,208.17,1887.91"
       ]
      },
      "kalshi": {
@@ -16087,7 +16320,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.48,0.5,46.48,"
+       "1794862293,0.48,0.5,46.48,",
+       "1794869775,0.47,0.49,74.94,"
       ]
      }
     },
@@ -16123,7 +16357,8 @@
       "listed_ts": 1794759915,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.515,0.525,1577.0,1.49"
+       "1794862293,0.515,0.525,1577.0,1.49",
+       "1794869775,0.515,0.525,1850.0,1.49"
       ]
      },
      "kalshi": {
@@ -16135,7 +16370,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.49,0.51,23.0,"
+       "1794862293,0.49,0.51,23.0,",
+       "1794869775,0.49,0.5,562.0,"
       ]
      }
     },
@@ -16171,7 +16407,8 @@
       "listed_ts": 1794759908,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.505,0.58,1106.0,1204.0"
+       "1794862293,0.505,0.58,1106.0,1204.0",
+       "1794869775,0.51,0.59,1400.0,1400.0"
       ]
      },
      "kalshi": {
@@ -16183,7 +16420,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.53,0.56,106.0,"
+       "1794862293,0.53,0.56,106.0,",
+       "1794869775,0.53,0.56,125.0,"
       ]
      }
     },
@@ -16374,7 +16612,8 @@
       "listed_ts": 1794760508,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.54,0.58,1202.0,620.36"
+       "1794862293,0.54,0.58,1202.0,620.36",
+       "1794869775,0.54,0.58,1302.0,620.36"
       ]
      },
      "kalshi": {
@@ -16386,7 +16625,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.56,0.57,119.0,"
+       "1794862293,0.56,0.57,119.0,",
+       "1794869775,0.56,0.57,152.0,"
       ]
      }
     },
@@ -16422,7 +16662,8 @@
       "listed_ts": 1794760514,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.51,0.57,4102.0,4102.0"
+       "1794862293,0.51,0.57,4102.0,4102.0",
+       "1794869775,0.51,0.57,4002.0,4002.0"
       ]
      },
      "kalshi": {
@@ -16434,7 +16675,8 @@
       "push_mismatch": false,
       "first_seen_ts": 1794862293,
       "snaps": [
-       "1794862293,0.51,0.56,101.0,"
+       "1794862293,0.51,0.56,101.0,",
+       "1794869775,0.51,0.56,101.0,"
       ]
      }
     }
@@ -20300,14 +20542,14 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": null,
      "kalshi_side": null,
-     "novig_snaps": 1,
+     "novig_snaps": 2,
      "kalshi_snaps": 0,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.375,
-      "ask": 0.435,
-      "ask_size": 1278.09,
-      "bid_size": 1218.0
+      "ts": 1794869775,
+      "bid": 0.38,
+      "ask": 0.455,
+      "ask_size": 1389.49,
+      "bid_size": 1356.0
      },
      "kalshi_last": null
     },
@@ -20331,20 +20573,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV20UNMWYO-UNM11",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.56,
-      "ask": 0.615,
-      "ask_size": 1256.0,
-      "bid_size": 1403.23
+      "ask": 0.62,
+      "ask_size": 1100.5,
+      "bid_size": 1381.48
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.56,
       "ask": 0.59,
-      "ask_size": 249.0,
+      "ask_size": 1.0,
       "bid_size": null
      }
     },
@@ -20368,20 +20610,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21WAKEGT-WAKE21",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.45,
       "ask": 0.51,
-      "ask_size": 1662.0,
-      "bid_size": 1856.0
+      "ask_size": 1712.0,
+      "bid_size": 1702.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.45,
+      "ts": 1794869775,
+      "bid": 0.46,
       "ask": 0.48,
-      "ask_size": 21.0,
+      "ask_size": 20.0,
       "bid_size": null
      }
     },
@@ -20405,20 +20647,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21OSUNEB-OSU6",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.56,
-      "ask": 0.61,
-      "ask_size": 1428.0,
-      "bid_size": 265.82
+      "ts": 1794869775,
+      "bid": 0.57,
+      "ask": 0.59,
+      "ask_size": 2466.03,
+      "bid_size": 909.44
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.58,
       "ask": 0.6,
-      "ask_size": 230.0,
+      "ask_size": 5711.0,
       "bid_size": null
      }
     },
@@ -20442,20 +20684,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21ECUARMY-ARMY5",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.455,
-      "ask": 0.505,
-      "ask_size": 3677.03,
-      "bid_size": 4061.35
+      "ts": 1794869775,
+      "bid": 0.465,
+      "ask": 0.49,
+      "ask_size": 2582.39,
+      "bid_size": 2652.45
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.46,
-      "ask": 0.51,
-      "ask_size": 575.0,
+      "ask": 0.49,
+      "ask_size": 2977.0,
       "bid_size": null
      }
     },
@@ -20479,20 +20721,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21VANFLA-FLA14",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.485,
-      "ask": 0.525,
-      "ask_size": 4651.66,
-      "bid_size": 4695.17
+      "ts": 1794869775,
+      "bid": 0.475,
+      "ask": 0.5,
+      "ask_size": 140.0,
+      "bid_size": 4408.54
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.48,
       "ask": 0.5,
-      "ask_size": 440.0,
+      "ask_size": 370.0,
       "bid_size": null
      }
     },
@@ -20516,18 +20758,18 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21UNTTULN-UNT14",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.645,
       "ask": 0.715,
-      "ask_size": 1063.0,
+      "ask_size": 1061.0,
       "bid_size": 1150.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.63,
+      "ts": 1794869775,
+      "bid": 0.64,
       "ask": 0.67,
       "ask_size": 1.0,
       "bid_size": null
@@ -20553,20 +20795,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21MEMNAVY-MEM3",
      "kalshi_side": "yes",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.525,
-      "ask": 0.595,
-      "ask_size": 1609.0,
-      "bid_size": 1504.0
+      "ts": 1794869775,
+      "bid": 0.555,
+      "ask": 0.575,
+      "ask_size": 2584.02,
+      "bid_size": 588.94
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.53,
+      "ts": 1794869775,
+      "bid": 0.55,
       "ask": 0.58,
-      "ask_size": 650.0,
+      "ask_size": 3626.0,
       "bid_size": null
      }
     },
@@ -20590,17 +20832,17 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21MOSUJVST-JVST10",
      "kalshi_side": "yes",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.54,
       "ask": 0.58,
-      "ask_size": 3552.0,
-      "bid_size": 2007.25
+      "ask_size": 1852.0,
+      "bid_size": 2109.25
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.52,
       "ask": 0.57,
       "ask_size": 101.0,
@@ -20627,20 +20869,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21CCARULL-ULL8",
      "kalshi_side": "yes",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.535,
-      "ask": 0.615,
-      "ask_size": 3210.0,
+      "ask": 0.61,
+      "ask_size": 1310.0,
       "bid_size": 1052.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.54,
-      "ask": 0.59,
-      "ask_size": 379.0,
+      "ts": 1794869775,
+      "bid": 0.55,
+      "ask": 0.58,
+      "ask_size": 224.0,
       "bid_size": null
      }
     },
@@ -20664,20 +20906,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21DELNMSU-DEL5",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.54,
       "ask": 0.58,
-      "ask_size": 1202.0,
+      "ask_size": 1302.0,
       "bid_size": 620.36
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.56,
       "ask": 0.57,
-      "ask_size": 119.0,
+      "ask_size": 152.0,
       "bid_size": null
      }
     },
@@ -20701,17 +20943,17 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21FIUKENN-KENN5",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.51,
       "ask": 0.57,
-      "ask_size": 4102.0,
-      "bid_size": 4102.0
+      "ask_size": 4002.0,
+      "bid_size": 4002.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.51,
       "ask": 0.56,
       "ask_size": 101.0,
@@ -20738,18 +20980,18 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21ARKTEX-TEX22",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.55,
+      "ts": 1794869775,
+      "bid": 0.545,
       "ask": 0.575,
-      "ask_size": 3494.71,
-      "bid_size": 347.42
+      "ask_size": 3694.71,
+      "bid_size": 544.25
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.53,
+      "ts": 1794869775,
+      "bid": 0.54,
       "ask": 0.56,
       "ask_size": 70.3,
       "bid_size": null
@@ -20775,20 +21017,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21UCLAMICH-UCLA6",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.54,
+      "ts": 1794869775,
+      "bid": 0.545,
       "ask": 0.57,
-      "ask_size": 234.0,
-      "bid_size": 1679.0
+      "ask_size": 1637.0,
+      "bid_size": 179.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.53,
+      "ts": 1794869775,
+      "bid": 0.54,
       "ask": 0.55,
-      "ask_size": 65.0,
+      "ask_size": 140.44,
       "bid_size": null
      }
     },
@@ -20812,17 +21054,17 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21RUTGPSU-PSU21",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.34,
       "ask": 0.425,
       "ask_size": 1816.0,
       "bid_size": 1762.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.36,
       "ask": 0.4,
       "ask_size": 1.0,
@@ -20849,20 +21091,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21INDWASH-IND8",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.455,
+      "ts": 1794869775,
+      "bid": 0.45,
       "ask": 0.485,
-      "ask_size": 165.17,
-      "bid_size": 1875.0
+      "ask_size": 208.17,
+      "bid_size": 1887.91
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.48,
-      "ask": 0.5,
-      "ask_size": 46.48,
+      "ts": 1794869775,
+      "bid": 0.47,
+      "ask": 0.49,
+      "ask_size": 74.94,
       "bid_size": null
      }
     },
@@ -20886,20 +21128,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21GASOTROY-GASO9",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.515,
       "ask": 0.525,
-      "ask_size": 1577.0,
+      "ask_size": 1850.0,
       "bid_size": 1.49
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.49,
-      "ask": 0.51,
-      "ask_size": 23.0,
+      "ask": 0.5,
+      "ask_size": 562.0,
       "bid_size": null
      }
     },
@@ -20923,20 +21165,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21USAUSM-USA6",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.505,
-      "ask": 0.58,
-      "ask_size": 1106.0,
-      "bid_size": 1204.0
+      "ts": 1794869775,
+      "bid": 0.51,
+      "ask": 0.59,
+      "ask_size": 1400.0,
+      "bid_size": 1400.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.53,
       "ask": 0.56,
-      "ask_size": 106.0,
+      "ask_size": 125.0,
       "bid_size": null
      }
     },
@@ -20960,18 +21202,18 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21WSUTXST-TXST15",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.56,
+      "ts": 1794869775,
+      "bid": 0.555,
       "ask": 0.635,
       "ask_size": 2203.0,
-      "bid_size": 2350.0
+      "bid_size": 2153.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.58,
+      "ts": 1794869775,
+      "bid": 0.56,
       "ask": 0.62,
       "ask_size": 75.0,
       "bid_size": null
@@ -20997,17 +21239,17 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21ARSTLT-LT17",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.535,
       "ask": 0.62,
       "ask_size": 1746.0,
       "bid_size": 1602.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.56,
       "ask": 0.59,
       "ask_size": 76.0,
@@ -21034,20 +21276,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21ARIZKSU-ARIZ11",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.56,
-      "ask": 0.64,
-      "ask_size": 1105.0,
-      "bid_size": 1103.0
+      "ts": 1794869775,
+      "bid": 0.555,
+      "ask": 0.65,
+      "ask_size": 760.0,
+      "bid_size": 714.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.57,
-      "ask": 0.61,
-      "ask_size": 10.0,
+      "ts": 1794869775,
+      "bid": 0.58,
+      "ask": 0.63,
+      "ask_size": 76.0,
       "bid_size": null
      }
     },
@@ -21071,20 +21313,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21CSUFRES-FRES20",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.45,
-      "ask": 0.52,
-      "ask_size": 3252.0,
-      "bid_size": 3507.0
+      "ts": 1794869775,
+      "bid": 0.445,
+      "ask": 0.51,
+      "ask_size": 1806.0,
+      "bid_size": 1754.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.48,
-      "ask": 0.52,
-      "ask_size": 699.0,
+      "ts": 1794869775,
+      "bid": 0.46,
+      "ask": 0.5,
+      "ask_size": 500.0,
       "bid_size": null
      }
     },
@@ -21108,20 +21350,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21UKMIZZ-MIZZ7",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.505,
-      "ask": 0.565,
-      "ask_size": 2604.0,
-      "bid_size": 2854.0
+      "ts": 1794869775,
+      "bid": 0.5,
+      "ask": 0.56,
+      "ask_size": 1752.0,
+      "bid_size": 1956.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.52,
-      "ask": 0.54,
-      "ask_size": 10.03,
+      "ts": 1794869775,
+      "bid": 0.51,
+      "ask": 0.55,
+      "ask_size": 78.03,
       "bid_size": null
      }
     },
@@ -21145,20 +21387,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21SMUND-ND18",
      "kalshi_side": "yes",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.53,
-      "ask": 0.6,
-      "ask_size": 2232.0,
-      "bid_size": 4569.48
+      "ask": 0.615,
+      "ask_size": 1840.0,
+      "bid_size": 4193.48
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.55,
+      "ts": 1794869775,
+      "bid": 0.56,
       "ask": 0.6,
-      "ask_size": 1690.0,
+      "ask_size": 1116.0,
       "bid_size": null
      }
     },
@@ -21182,20 +21424,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21UGASCAR-UGA11",
      "kalshi_side": "yes",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.61,
       "ask": 0.69,
-      "ask_size": 1310.0,
+      "ask_size": 1270.0,
       "bid_size": 1004.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.61,
+      "ts": 1794869775,
+      "bid": 0.63,
       "ask": 0.66,
-      "ask_size": 318.0,
+      "ask_size": 375.0,
       "bid_size": null
      }
     },
@@ -21219,14 +21461,14 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": null,
      "kalshi_side": null,
-     "novig_snaps": 1,
+     "novig_snaps": 2,
      "kalshi_snaps": 0,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.445,
-      "ask": 0.51,
-      "ask_size": 2000.0,
-      "bid_size": 1950.0
+      "ts": 1794869775,
+      "bid": 0.455,
+      "ask": 0.515,
+      "ask_size": 4000.0,
+      "bid_size": 1958.0
      },
      "kalshi_last": null
     },
@@ -21250,20 +21492,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21UTSAUAB-UTSA8",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.555,
-      "ask": 0.62,
-      "ask_size": 902.0,
-      "bid_size": 1713.32
+      "ask": 0.625,
+      "ask_size": 1311.0,
+      "bid_size": 1763.32
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.55,
-      "ask": 0.61,
-      "ask_size": 202.0,
+      "ask": 0.6,
+      "ask_size": 75.0,
       "bid_size": null
      }
     },
@@ -21287,20 +21529,20 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21UTAHTCU-UTAH6",
      "kalshi_side": "yes",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.54,
-      "ask": 0.595,
-      "ask_size": 1710.0,
-      "bid_size": 1563.0
+      "ask": 0.59,
+      "ask_size": 1597.0,
+      "bid_size": 1557.0
      },
      "kalshi_last": {
-      "ts": 1794862293,
-      "bid": 0.56,
-      "ask": 0.57,
-      "ask_size": 124.0,
+      "ts": 1794869775,
+      "bid": 0.54,
+      "ask": 0.56,
+      "ask_size": 234.0,
       "bid_size": null
      }
     },
@@ -21324,14 +21566,14 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": null,
      "kalshi_side": null,
-     "novig_snaps": 1,
+     "novig_snaps": 2,
      "kalshi_snaps": 0,
      "novig_last": {
-      "ts": 1794862293,
-      "bid": 0.525,
-      "ask": 0.595,
-      "ask_size": 1350.0,
-      "bid_size": 1489.05
+      "ts": 1794869775,
+      "bid": 0.535,
+      "ask": 0.6,
+      "ask_size": 1600.0,
+      "bid_size": 1739.05
      },
      "kalshi_last": null
     },
@@ -21355,17 +21597,17 @@
      "kalshi_first_seen_ts": 1794862293,
      "kalshi_ticker": "KXNCAAFSPREAD-26NOV21OKSTASU-OKST5",
      "kalshi_side": "no",
-     "novig_snaps": 1,
-     "kalshi_snaps": 1,
+     "novig_snaps": 2,
+     "kalshi_snaps": 2,
      "novig_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.56,
-      "ask": 0.58,
-      "ask_size": 1252.55,
+      "ask": 0.6,
+      "ask_size": 1508.0,
       "bid_size": 705.3
      },
      "kalshi_last": {
-      "ts": 1794862293,
+      "ts": 1794869775,
       "bid": 0.57,
       "ask": 0.58,
       "ask_size": 81.0,
@@ -21373,7 +21615,7 @@
      }
     }
    ],
-   "updated": "2026-11-16T20:51:33Z",
+   "updated": "2026-11-16T22:56:15Z",
    "version": 1,
    "config": {
     "min_week": 7,
@@ -21387,30 +21629,30 @@
     "fees": 0
    },
    "last_run": {
-    "ts": "2026-11-16T20:51:33Z",
+    "ts": "2026-11-16T22:56:15Z",
     "notes": [
-     "cfb:290101: no entry, day cap leaves no room",
-     "cfb:290137: no entry, day cap leaves no room",
-     "cfb:290164: no entry, day cap leaves no room",
-     "cfb:290138: no entry, day cap leaves no room",
-     "cfb:290142: no entry, day cap leaves no room",
-     "cfb:290146: no entry, day cap leaves no room",
-     "cfb:290103: no entry, day cap leaves no room",
+     "cfb:289708: no entry, day cap leaves no room",
      "cfb:290078: no entry, day cap leaves no room",
      "cfb:290088: no entry, day cap leaves no room",
-     "cfb:290177: no entry, day cap leaves no room",
-     "cfb:290176: no entry, day cap leaves no room",
-     "cfb:290150: no entry, day cap leaves no room",
-     "cfb:290091: no entry, day cap leaves no room",
-     "cfb:290172: no entry, day cap leaves no room",
-     "cfb:290115: no entry, day cap leaves no room",
-     "cfb:290395: no entry, day cap leaves no room",
-     "cfb:290394: no entry, day cap leaves no room",
      "cfb:290089: no entry, day cap leaves no room",
-     "cfb:289708: no entry, day cap leaves no room",
-     "cfb:290120: no entry, day cap leaves no room"
+     "cfb:290091: no entry, day cap leaves no room",
+     "cfb:290101: no entry, day cap leaves no room",
+     "cfb:290103: no entry, day cap leaves no room",
+     "cfb:290113: no entry, day cap leaves no room",
+     "cfb:290115: no entry, day cap leaves no room",
+     "cfb:290117: no entry, day cap leaves no room",
+     "cfb:290120: no entry, day cap leaves no room",
+     "cfb:290137: no entry, day cap leaves no room",
+     "cfb:290138: no entry, day cap leaves no room",
+     "cfb:290141: no entry, day cap leaves no room",
+     "cfb:290142: no entry, day cap leaves no room",
+     "cfb:290146: no entry, day cap leaves no room",
+     "cfb:290150: no entry, day cap leaves no room",
+     "cfb:290154: no entry, day cap leaves no room",
+     "cfb:290157: no entry, day cap leaves no room",
+     "cfb:290158: no entry, day cap leaves no room"
     ],
-    "novig_requests": 61,
+    "novig_requests": 31,
     "novig_errors": 0
    }
   }
