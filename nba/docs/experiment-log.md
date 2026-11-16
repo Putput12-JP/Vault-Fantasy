@@ -318,3 +318,8 @@ Bankroll Builder picks, `scripts/bankroll_combos.py` (local: SmartStake prices),
 - **Backfill (`--backfill`):** rebuilt from the picks on file for games already played, same rules. Entry = product of the legs' own logged entry prices, close = product of their logged closes (the other leg's price at the later pick's moment was not stored, so nothing is invented). Tagged `source: replay`; the page splits live from replayed. In-sample: the picks themselves were chosen after seeing those nights. Refuses to run when live combos are on file unless `--force`.
 - **Backfilled result (2026-10-27):** 50 combos, 49 settled, +3.59u, ROI +7.3% (z 0.33), CLV +12.2% (n 50). mates 8 settled, +4.74u (**n=8**); cross 41 settled, -1.15u. All improvements are small, in-sample and correlated within a night.
 
+
+## 2026-11-16 Exchange depth against a side (shadow, `p_dep`)
+
+- **Registered:** `docs/exchange-depth-prereg.md`. Novig prop strike with $500+ at the top of one side's book and 2x the other side's; the alert is the heavier side. Context only, no page, no gate.
+- **Reading it:** first look at 100 graded alerts and not before 2026-12-07; mean CLV against Pinnacle's close above zero with t >= 2 (clustered by game), positive in both halves. No history exists to backfill: per-side depth was not stored before today.

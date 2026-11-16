@@ -126,6 +126,8 @@ def read_book(mk, book):
     L = [sorted(orders.get(o) or [], key=lambda x: -float(x['price'])) for o in outs]
     best = [float(l[0]['price']) if l else None for l in L]
     depth = [sum(dollars(x['price'], x['qty']) for x in l if best[i] - float(x['price']) <= CLOSE + 1e-9) for i, l in enumerate(L) if l]
+    # dp = the same top-of-book dollars PER OUTCOME ([A, B], 0 for an empty side). `depth` above is their sum and is kept as it was.
+    dp = [round(sum(dollars(x['price'], x['qty']) for x in l if best[i] - float(x['price']) <= CLOSE + 1e-9)) if l else 0 for i, l in enumerate(L)]
     ask = [(1 - best[1]) if best[1] is not None else None, (1 - best[0]) if best[0] is not None else None]
     bid = best
     mid = None
@@ -133,7 +135,7 @@ def read_book(mk, book):
         mid = round((bid[0] + ask[0]) / 2, 4)
     return {'bid': [None if b is None else round(b, 3) for b in bid], 'ask': [None if a is None else round(a, 3) for a in ask],
             'mid': mid, 'depth': round(sum(depth)), 'rest': round(sum(dollars(x['price'], x['qty']) for l in L for x in l)),
-            'lv': [len(l) for l in L]}
+            'lv': [len(l) for l in L], 'dp': dp}
 
 
 def market_kind(mk):
@@ -469,6 +471,34 @@ def prop_quotes(out, games):
                 continue
             key = f"{gid}|{p['p']}|{p['s']}|{r['k']}"
             rows[key] = [bid, ask, int(round(r['depth'] / 250.0)) * 250]
+            meta[key] = {'g': gid, 'p': p['p'], 's': p['s'], 'line': r['k'], 'mid': r['id']}
+    return rows, meta
+
+
+DEPTH_STEP = 100                                         # novigdepth rounds each side's depth to this many dollars, so a wobble is not a row
+
+
+def depth_quotes(out, games):
+    """board['novig']['props'] -> (rows, meta) for Day.record('novigdepth', ...): per player prop strike the OVER side's
+    [bid, ask, over depth, under depth], depth in dollars within CLOSE of that side's best bid, rounded to DEPTH_STEP. Same
+    keys and carry-forward rules as prop_quotes. Per-side depth was never stored before 2026-11-16 (`novigprops` keeps only the
+    both-sides total to the nearest $250), so there is no history to backfill (docs/exchange-depth-prereg.md)."""
+    ids = {str(g['id']) for g in games}
+    rows, meta = {}, {}
+    for pk, p in (out.get('props') or {}).items():
+        gid = str(p['g'])
+        if gid not in ids:
+            continue
+        for r in p.get('lad') or []:
+            o = [str(x).lower() for x in r.get('o') or []]
+            if len(o) != 2 or r.get('k') is None or not (o[0].startswith('over') or o[1].startswith('over')) or not r.get('dp'):
+                continue
+            i = 0 if o[0].startswith('over') else 1
+            bid, ask = r['bid'][i], r['ask'][i]
+            if bid is None and ask is None:
+                continue
+            key = f"{gid}|{p['p']}|{p['s']}|{r['k']}"
+            rows[key] = [bid, ask, int(round(r['dp'][i] / DEPTH_STEP)) * DEPTH_STEP, int(round(r['dp'][1 - i] / DEPTH_STEP)) * DEPTH_STEP]
             meta[key] = {'g': gid, 'p': p['p'], 's': p['s'], 'line': r['k'], 'mid': r['id']}
     return rows, meta
 
