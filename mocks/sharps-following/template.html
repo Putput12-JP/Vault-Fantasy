@@ -116,6 +116,16 @@ button{font-family:inherit}
 .fw-prof dt{color:var(--c-ink)}.fw-prof dd{margin:0;text-align:right}
 .fw-prof .none{color:var(--c-dim)}
 .fw-prof .fw-pn{grid-column:1/-1;margin:0;font-size:11.5px;color:var(--c-mut)}
+.fw-ob{grid-column:1/-1;padding-bottom:14px;border-bottom:1px solid var(--c-line2)}
+.fw-ob h4{color:var(--c-ink);font-size:12.5px;font-weight:600}
+.fw-obh,.fw-obr{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(170px,1.5fr) 80px 80px 96px 130px;gap:10px;align-items:center}
+.fw-obh{font-size:11px;color:var(--c-dim);padding-bottom:4px}
+.fw-obh span:nth-child(n+3),.fw-obr>span:nth-child(n+3){text-align:right}
+.fw-obr{min-height:40px;border-top:1px solid var(--c-line);font-size:12.5px}
+.fw-obr i{font-style:normal;color:var(--c-mut);font-size:11.5px}
+.fw-obr .gm b{font-weight:500;margin-right:8px}.fw-obr .bt b{font-weight:500}
+.fw-obr .sn{color:var(--c-mut);font-size:11.5px}
+.fw-two{font-style:normal;font-size:10.5px;color:var(--c-warn)}
 .fw-more{display:block;margin:10px auto 6px}
 .fw-note{margin:22px 0 0;font-size:11.5px;line-height:1.55;color:var(--c-dim)}
 .fw-note b{color:var(--c-mut);font-weight:600}
@@ -134,6 +144,11 @@ button{font-family:inherit}
   .fw-row>.c-roi{display:block;grid-area:roi;font-size:17px}.fw-row>.c-open{display:block;grid-area:o}
   .fw-row>.c-meta{display:block;grid-area:m;font-size:11.5px;color:var(--c-mut);text-align:left}
   .fw-prof{grid-template-columns:1fr;padding:14px 16px 18px}
+  .fw-obh{display:none}
+  .fw-obr{grid-template-columns:1fr auto auto;grid-template-areas:"gm gm st" "bt bt sz" "sn sn px";gap:3px 10px;padding:10px 0}
+  .fw-obr .gm{grid-area:gm}.fw-obr .bt{grid-area:bt;font-size:14px}.fw-obr .st{grid-area:st;font-size:17px}.fw-obr .sz{grid-area:sz}
+  .fw-obr .px{grid-area:px;color:var(--c-mut);font-size:13px}.fw-obr .sn{grid-area:sn;text-align:left!important}
+  .fw-obr .px::before{content:"now "}.fw-obr .sn::before{content:"held since "}
   .fw-bet .usd{font-size:16px}
   .vseg>button{min-height:36px}
 }
@@ -154,8 +169,12 @@ var SEASONED = 20, PRESS = 1.5, PAGE = 12;
 /* follows live in this browser only. The mock seeds a few so the feed is not empty on first open. */
 var KEY = 'vault-sharps-following-mock', follows;
 try { follows = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { follows = null; }
-var openBy = {};
-D.games.forEach(function(g){ g.pos.forEach(function(p){ var k = g.sport + '|' + p.w; openBy[k] = (openBy[k] || 0) + 1; }); });
+var openBy = {}, GM = {};
+D.games.forEach(function(g){ GM[g.id] = g; g.pos = []; });
+D.wallets.forEach(function(w){ if (w.pos.length) openBy[w.sport + '|' + w.w] = w.pos.length;
+  w.pos.forEach(function(p){ GM[p.gm].pos.push({w: w.w, g: p.g, side: p.side, line: p.line, usd: p.usd, px: p.px, press: p.press}); }); });
+function lineTxt(g, line){ return line == null ? '' : g === 'total' ? ' ' + line : ' ' + (line > 0 ? '+' : '') + line; }
+function cents(px){ return px == null ? '' : Math.round(px * 100) + '¢'; }
 if (!follows){ follows = Object.keys(openBy).sort(function(a, b){ return openBy[b] - openBy[a]; }).slice(0, 6); }
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(follows)); } catch (e) {} }
 var book = {}; D.wallets.forEach(function(w){ book[w.sport + '|' + w.w] = w; });
@@ -180,6 +199,7 @@ function feed(){
         return '<div class="fw-side"><div class="fw-side-h"><span>' + D.groups[k] + '</span><b>' + esc(side) + '</b></div>' +
           x.by[k][side].sort(function(a, b){ return b.usd - a.usd; }).map(function(p){ var w = book[g.sport + '|' + p.w] || {};
             return '<div class="fw-bet"><span class="nm">' + esc(w.name) + '</span><span class="rec num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
+              (p.line != null ? '<span class="rec num">' + lineTxt(p.g, p.line).trim() + '</span>' : '') +
               '<span class="usd num">' + usd(p.usd) + '</span><span class="fw-x num' + (p.press >= PRESS ? ' hot' : '') + '">' + (p.press != null ? p.press.toFixed(1) + 'x usual' : 'no usual') + '</span></div>'; }).join('') + '</div>'; }).join(''); }).join('') +
       '</article>'; }).join('');
   return {html: html, games: games.length, bets: bets, agree: agree};
@@ -197,12 +217,24 @@ function split3(title, items){
   return '<div><h4>' + title + '</h4><dl>' + items.map(function(i){ var v = i[1];
     return '<dt>' + i[0] + '</dt>' + (v ? '<dd class="num">' + v[0] + '-' + v[1] + '</dd><dd class="num ' + cls(v[2]) + '">' + pct(v[2]) + '</dd>' : '<dd class="none">no bets</dd><dd></dd>'); }).join('') + '</dl></div>';
 }
+function openBets(w){
+  if (!w.pos.length) return '<div class="fw-ob"><h4>Open bets</h4><p class="fw-pn">Nothing open right now.</p></div>';
+  var tot = w.pos.reduce(function(t, p){ return t + p.usd; }, 0);
+  return '<div class="fw-ob"><h4>Open bets · ' + w.pos.length + ' · ' + usd(tot) + ' at the current price</h4>' +
+    '<div class="fw-obh"><span>Game</span><span>Bet</span><span>Price now</span><span>Stake</span><span>Size</span><span>Held since</span></div>' +
+    w.pos.map(function(p){ var g = GM[p.gm];
+      return '<div class="fw-obr"><span class="gm"><b>' + esc(g.away) + ' at ' + esc(g.home) + '</b><i>' + g.when + '</i></span>' +
+        '<span class="bt"><i>' + D.groups[p.g] + '</i> ' + esc(p.side) + '<b class="num">' + lineTxt(p.g, p.line) + '</b>' + (p.two ? ' <em class="fw-two">both sides</em>' : '') + '</span>' +
+        '<span class="num px">' + cents(p.px) + '</span><span class="num st">' + usd(p.usd) + '</span>' +
+        '<span class="sz"><i class="fw-x num' + (p.press >= PRESS ? ' hot' : '') + '">' + (p.press != null ? p.press.toFixed(1) + 'x usual' : 'no usual') + '</i></span>' +
+        '<span class="num sn">' + (p.since || '') + '</span></div>'; }).join('') + '</div>';
+}
 function profile(w){
-  return '<div class="fw-prof">' +
+  return '<div class="fw-prof">' + openBets(w) +
     split3('By market', [['Moneyline', w.lane.ml], ['Spread', w.lane.spread], ['Total', w.lane.total]]) +
     split3('Favorite or underdog', [['Favorites', w.fav], ['Underdogs', w.dog]]) +
     split3('By bet size', [['Under usual stake', w.size.small], ['Usual stake', w.size.usual], ['1.5x or more', w.size.big]]) +
-    '<p class="fw-pn">Record and dollar ROI in ' + w.sport.toUpperCase() + ' as of this wallet\'s latest card. Lifetime profit ' + usd(Math.abs(w.pnl)).replace('$', w.pnl < 0 ? '-$' : '$') + '.' +
+    '<p class="fw-pn">Record and dollar ROI in ' + w.sport.toUpperCase() + ' as of the last ledger run. Lifetime profit ' + usd(Math.abs(w.pnl)).replace('$', w.pnl < 0 ? '-$' : '$') + '.' +
     (w.n < SEASONED ? ' <b class="dn">Only ' + w.n + ' graded bets: treat this record as thin.</b>' : '') + '</p></div>';
 }
 function dir(){
@@ -237,12 +269,12 @@ function draw(){
       (follows.length ? 'Their next bets land here as soon as a card picks them up.' : 'Tap a star in the list below. Their open bets show up here.') + '</div>') +
     '<div class="fw-h"><h2>Since you followed</h2><p>Graded forward from the day you follow each wallet. Nothing is backfilled.</p></div>' +
     '<div class="fw-card fw-empty">No bets have settled since you followed. The first results show up after tonight\'s games.</div>' +
-    '<div class="fw-h"><h2>Proven wallets</h2><p>' + rows().length + ' wallets with a winning graded record</p><span class="sp"></span><div class="fw-tools">' +
+    '<div class="fw-h"><h2>Proven wallets</h2><p>' + rows().length + ' proven wallets</p><span class="sp"></span><div class="fw-tools">' +
       '<label class="fw-chk"><input type="checkbox" id="fw-seas"' + (S.seasoned ? ' checked' : '') + '>20+ bets only</label>' +
       seg('sort', [['open', 'Open now'], ['roi', 'ROI'], ['n', 'Bets'], ['clv', 'Beat the close']], S.sort) + '</div></div>' +
     '<div class="fw-card fw-dir" style="padding-left:0;padding-right:0">' + dir() + '</div>' +
     '<p class="fw-note"><b>Mock notes.</b> Every number is a stored value from the cards. Proven means 6+ graded bets, a 55%+ win rate and a dollar ROI above 3% in that sport. ' +
-      'Stake is the position\'s value at the last scan, and "x usual" compares it with the wallet\'s usual stake. The cards do not store a wallet\'s entry price or its exact line, so neither is shown. ' +
+      'Stake is the position\'s value at the last scan, and "x usual" compares it with the wallet\'s usual stake. Price is the market\'s price now, not what the wallet paid: no entry price is stored. "Held since" is the first scan that saw the position. ' +
       'Follows are saved in this browser only. This page shows who holds what and never suggests a size.</p>';
   rails();
 }
