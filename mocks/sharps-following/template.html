@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Following · Sharp Money (mock)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap">
+<style>
+/* Sharp Money skin, inlined (standalone mocks cannot link vault-ds.css). Desktop = classic page palette, phone = the new/ layout. */
+:root{
+  --c-bg:#1a1a1a;--c-card:#222222;--c-line:#2f2f2f;--c-line2:#3a3a3a;--c-ink:#d8d8d8;--c-mut:#999999;--c-dim:#6a6a6a;
+  --c-good:#4ade80;--c-bad:#f87171;--c-warn:#fbbf24;--c-gold:#e8c66a;--c-box:#2a2a2a;--c-sel:rgba(216,216,216,.10);
+  --c-good-bg:rgba(74,222,128,.10);--c-warn-bg:rgba(251,191,36,.10);
+  --c-r:16px;--c-pad:22px;--c-sans:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--c-num:'Geist Mono','SF Mono',monospace;--c-num-ls:-.02em;
+  --vseg-bg:#2a2a2a;--vseg-border:transparent;--vseg-ink:#999999;--vseg-on-ink:#1a1a1a;--vseg-pill:#d8d8d8;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);--ease-rail:cubic-bezier(0.65,0,0.35,1);--ease-spring:cubic-bezier(0.34,1.56,0.64,1);
+  --dur-press:80ms;--dur-release:500ms;--dur-rail:400ms;--press-chip:.88;--press-btn:.94;--press-row:.99;
+  color-scheme:dark;
+}
+:root[data-theme=light]{
+  --c-bg:#fafafa;--c-card:#ffffff;--c-line:#eeeeee;--c-line2:#dcdcdc;--c-ink:#2b2b2b;--c-mut:#777777;--c-dim:#a0a0a0;
+  --c-good:#16a34a;--c-bad:#dc2626;--c-warn:#d97706;--c-gold:#a8780a;--c-box:#f5f5f5;--c-sel:rgba(0,0,0,.07);
+  --c-good-bg:#f0fdf4;--c-warn-bg:#fffbeb;
+  --vseg-bg:#f0f0f0;--vseg-border:#e5e5e5;--vseg-ink:#888888;--vseg-on-ink:#ffffff;--vseg-pill:#3d3d3d;
+  color-scheme:light;
+}
+@media (max-width:767px){
+  :root,:root[data-theme=light]{
+    --c-bg:#0b0b0d;--c-card:#1c1c1e;--c-line:rgba(255,255,255,.09);--c-line2:rgba(255,255,255,.16);--c-ink:#fff;--c-mut:#98989f;--c-dim:#636366;
+    --c-good:#32d583;--c-bad:#ff6b6b;--c-warn:#f5b84a;--c-gold:#f0cf7a;--c-box:#2c2c2e;--c-sel:rgba(255,255,255,.10);
+    --c-good-bg:rgba(50,213,131,.12);--c-warn-bg:rgba(245,184,74,.12);
+    --c-r:24px;--c-pad:16px;--c-sans:-apple-system,'SF Pro Text',Geist,system-ui,sans-serif;
+    --c-num:'Barlow Condensed','SF Pro Rounded',Geist,sans-serif;--c-num-ls:.01em;
+    --vseg-bg:#2c2c2e;--vseg-border:transparent;--vseg-ink:#98989f;--vseg-on-ink:#000;--vseg-pill:#fff;
+    color-scheme:dark;
+  }
+  #fw-theme{display:none}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--c-bg);color:var(--c-ink);font-family:var(--c-sans);-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+.num{font-family:var(--c-num);letter-spacing:var(--c-num-ls);font-variant-numeric:tabular-nums}
+.up{color:var(--c-good)}.dn{color:var(--c-bad)}
+
+/* press primitive (vault-ds.css 19.1) */
+.press{transition:transform var(--dur-release) var(--ease-spring)}
+.press:active{transform:scale(var(--press-scale,.94));transition:transform var(--dur-press) ease-out}
+.press-chip{--press-scale:var(--press-chip)}.press-row{--press-scale:var(--press-row)}
+
+/* .vseg (vault-ds.css 20) with the travelling pill (19.2), retinted through the vars only */
+.vseg{position:relative;display:inline-flex;align-items:center;flex-shrink:0;gap:2px;padding:3px;max-width:100%;
+  background:var(--vseg-bg);border:1px solid var(--vseg-border);border-radius:9px}
+.vseg>button{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:0 13px;
+  border:0;background:transparent;border-radius:6px;color:var(--vseg-ink);font-size:12.5px;font-weight:600;letter-spacing:-.01em;
+  white-space:nowrap;cursor:pointer;transition:color .12s ease}
+.vseg>button.on{color:var(--vseg-on-ink)}
+.vseg .v-pill{position:absolute;top:3px;bottom:3px;left:0;width:0;border-radius:6px;background:var(--vseg-pill);
+  transition:left var(--dur-rail) var(--ease-rail),width var(--dur-rail) var(--ease-rail)}
+.vseg.rail-noanim .v-pill{transition:none}
+.vseg.scroll{overflow-x:auto;scrollbar-width:none}.vseg.scroll::-webkit-scrollbar{display:none}
+
+/* ---------- Following page (fw-) ---------- */
+.fw{max-width:1120px;margin:0 auto;padding:18px 28px 80px}
+.fw-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--c-line)}
+.fw-crumb{font-family:var(--c-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-dim)}
+.fw-crumb b{font-family:var(--c-sans);font-size:17px;font-weight:600;letter-spacing:-.01em;text-transform:none;color:var(--c-ink);margin-left:6px}
+.fw-sub{flex-basis:100%;order:5;margin:0;font-size:12px;color:var(--c-mut)}
+.fw-top .sp{flex:1}
+.fw-ctx{font-family:var(--c-num);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-mut);padding:6px 10px;border:1px solid var(--c-line2);border-radius:999px}
+.fw-ico{width:34px;height:34px;border-radius:50%;border:1px solid var(--c-line2);background:transparent;color:var(--c-mut);cursor:pointer;font-size:14px}
+.fw-sum{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline;margin:18px 0 12px;font-size:13px;color:var(--c-mut)}
+.fw-sum b{font-size:22px;font-weight:600;color:var(--c-ink);margin-right:6px}
+.fw-sum .fw-link{margin-left:auto}
+.fw-link{border:0;background:none;color:var(--c-mut);font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 0}
+.fw-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:30px 0 12px}
+.fw-h h2{margin:0;font-size:15px;font-weight:600}
+.fw-h p{margin:0;font-size:12px;color:var(--c-mut)}
+.fw-h .sp{flex:1}
+.fw-card{background:var(--c-card);border:1px solid var(--c-line);border-radius:var(--c-r);padding:var(--c-pad)}
+.fw-feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.fw-g{padding:16px 18px}
+.fw-gh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.fw-tag{font-family:var(--c-num);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-mut);background:var(--c-box);border-radius:5px;padding:3px 6px}
+.fw-gh b{font-size:14.5px;font-weight:600}
+.fw-gh time{margin-left:auto;font-size:12px;color:var(--c-mut)}
+.fw-badge{font-size:11px;font-weight:600;border-radius:999px;padding:3px 9px}
+.fw-badge.agree{background:var(--c-good-bg);color:var(--c-good)}.fw-badge.split{background:var(--c-warn-bg);color:var(--c-warn)}
+.fw-side{padding:11px 0 2px;border-top:1px solid var(--c-line);margin-top:8px}
+.fw-side-h{display:flex;align-items:baseline;gap:8px;font-size:13px}
+.fw-side-h span{color:var(--c-mut);font-size:11.5px}
+.fw-side-h b{font-weight:600}
+.fw-bet{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:12.5px}
+.fw-bet .nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-bet .rec{color:var(--c-mut);font-size:11.5px;white-space:nowrap}
+.fw-bet .usd{margin-left:auto;font-size:13px;white-space:nowrap}
+.fw-x{font-size:11.5px;border-radius:5px;padding:2px 6px;background:var(--c-box);color:var(--c-mut);white-space:nowrap}
+.fw-x.hot{background:var(--c-good-bg);color:var(--c-good)}
+.fw-empty{padding:26px var(--c-pad);font-size:13px;color:var(--c-mut);text-align:center}
+.fw-empty b{display:block;color:var(--c-ink);font-size:14px;margin-bottom:4px}
+
+.fw-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fw-chk{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--c-mut);cursor:pointer;min-height:36px}
+.fw-chk input{accent-color:var(--c-ink)}
+.fw-dir{padding:4px 0}
+.fw-cols,.fw-row{display:grid;grid-template-columns:40px minmax(150px,1.6fr) 54px 84px 76px 60px 96px 96px 70px;align-items:center;gap:8px;padding:0 var(--c-pad)}
+.fw-cols{font-size:11px;color:var(--c-dim);padding-top:12px;padding-bottom:8px}
+.fw-cols span:nth-child(n+4),.fw-row>span:nth-child(n+4){text-align:right}
+.fw-row{min-height:50px;border-top:1px solid var(--c-line);font-size:13px;cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;color:inherit;text-align:left}
+.fw-row:hover{background:var(--c-sel)}
+.fw-row .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-row .thin{font-size:10.5px;color:var(--c-warn);margin-left:7px;font-weight:500}
+.fw-star{width:34px;height:34px;border-radius:50%;border:0;background:transparent;color:var(--c-dim);font-size:17px;cursor:pointer;line-height:1}
+.fw-star.on{color:var(--c-gold)}
+.fw-open{display:inline-block;min-width:22px;text-align:center;border-radius:999px;padding:2px 7px;font-size:11.5px;background:var(--c-box);color:var(--c-mut)}
+.fw-open.has{background:var(--c-good-bg);color:var(--c-good)}
+.fw-prof{border-top:1px solid var(--c-line);padding:16px var(--c-pad) 20px;background:var(--c-box);display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.fw-prof h4{margin:0 0 8px;font-size:11px;font-weight:500;color:var(--c-mut)}
+.fw-prof dl{margin:0;display:grid;grid-template-columns:1fr auto auto;gap:6px 14px;font-size:12.5px}
+.fw-prof dt{color:var(--c-ink)}.fw-prof dd{margin:0;text-align:right}
+.fw-prof .none{color:var(--c-dim)}
+.fw-prof .fw-pn{grid-column:1/-1;margin:0;font-size:11.5px;color:var(--c-mut)}
+.fw-more{display:block;margin:10px auto 6px}
+.fw-note{margin:22px 0 0;font-size:11.5px;line-height:1.55;color:var(--c-dim)}
+.fw-note b{color:var(--c-mut);font-weight:600}
+
+@media (max-width:767px){
+  .fw{padding:12px 16px 80px}
+  .fw-top{border:0;padding-bottom:4px}.fw-ctx{display:none}.fw-sub{display:none}
+  .fw-sum{gap:14px;margin:10px 0 10px;font-size:12px}.fw-sum b{font-size:24px}
+  .fw-feed{grid-template-columns:1fr;gap:10px}
+  .fw-card{border-width:0}
+  .fw-h{margin-top:24px}.fw-h p{flex-basis:100%;order:3}
+  .fw-cols{display:none}
+  .fw-row{grid-template-columns:40px 1fr auto auto;grid-template-areas:"s n roi o" "s m roi o";row-gap:2px;padding:9px 12px;min-height:58px}
+  .fw-row>span{display:none}
+  .fw-row>.c-star{display:block;grid-area:s}.fw-row>.c-name{display:block;grid-area:n}
+  .fw-row>.c-roi{display:block;grid-area:roi;font-size:17px}.fw-row>.c-open{display:block;grid-area:o}
+  .fw-row>.c-meta{display:block;grid-area:m;font-size:11.5px;color:var(--c-mut);text-align:left}
+  .fw-prof{grid-template-columns:1fr;padding:14px 16px 18px}
+  .fw-bet .usd{font-size:16px}
+  .vseg>button{min-height:36px}
+}
+@media (min-width:768px){.fw-row>.c-meta{display:none}}
+@media (prefers-reduced-motion:reduce){.press,.vseg .v-pill{transition:none}}
+</style></head>
+<body>
+<div class="fw" id="fw"></div>
+<script>
+var D = /*DATA*/null;
+var $ = function(s, r){ return (r || document).querySelector(s); };
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function usd(v){ return v == null ? '' : '$' + (v >= 10000 ? Math.round(v / 1000) + 'K' : v >= 1000 ? (v / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : Math.round(v)); }
+function pct(v){ return v == null ? '' : (v > 0 ? '+' : '') + (v * 100).toFixed(1) + '%'; }
+function cls(v){ return v > 0 ? 'up' : v < 0 ? 'dn' : ''; }
+var SEASONED = 20, PRESS = 1.5, PAGE = 12;
+
+/* follows live in this browser only. The mock seeds a few so the feed is not empty on first open. */
+var KEY = 'vault-sharps-following-mock', follows;
+try { follows = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { follows = null; }
+var openBy = {};
+D.games.forEach(function(g){ g.pos.forEach(function(p){ var k = g.sport + '|' + p.w; openBy[k] = (openBy[k] || 0) + 1; }); });
+if (!follows){ follows = Object.keys(openBy).sort(function(a, b){ return openBy[b] - openBy[a]; }).slice(0, 6); }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(follows)); } catch (e) {} }
+var book = {}; D.wallets.forEach(function(w){ book[w.sport + '|' + w.w] = w; });
+var S = {sport: 'all', sort: 'open', seasoned: false, open: null, shown: PAGE};
+
+function seg(id, opts, cur){ return '<div class="vseg scroll" data-seg="' + id + '">' + opts.map(function(o){ return '<button type="button" class="' + (o[0] === cur ? 'on' : '') + '" data-v="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
+function inSport(s){ return S.sport === 'all' || s === S.sport; }
+
+function feed(){
+  var games = [], bets = 0, agree = 0;
+  D.games.forEach(function(g){ if (!inSport(g.sport)) return;
+    var mine = g.pos.filter(function(p){ return follows.indexOf(g.sport + '|' + p.w) >= 0; }); if (!mine.length) return;
+    var by = {}; mine.forEach(function(p){ (by[p.g] = by[p.g] || {})[p.side] = (by[p.g][p.side] || []).concat(p); });
+    var ag = false, sp = false;
+    Object.keys(by).forEach(function(k){ var sides = Object.keys(by[k]); if (sides.length > 1) sp = true; sides.forEach(function(s){ if (by[k][s].length > 1) ag = true; }); });
+    bets += mine.length; if (ag) agree++;
+    games.push({g: g, by: by, ag: ag, sp: sp}); });
+  var html = games.map(function(x){ var g = x.g;
+    return '<article class="fw-card fw-g"><div class="fw-gh"><span class="fw-tag">' + g.sport + '</span><b>' + esc(g.away) + ' at ' + esc(g.home) + '</b>' +
+      (x.sp ? '<span class="fw-badge split">Split</span>' : x.ag ? '<span class="fw-badge agree">Agree</span>' : '') + '<time>' + g.when + '</time></div>' +
+      ['ml', 'spread', 'total'].filter(function(k){ return x.by[k]; }).map(function(k){ return Object.keys(x.by[k]).map(function(side){
+        return '<div class="fw-side"><div class="fw-side-h"><span>' + D.groups[k] + '</span><b>' + esc(side) + '</b></div>' +
+          x.by[k][side].sort(function(a, b){ return b.usd - a.usd; }).map(function(p){ var w = book[g.sport + '|' + p.w] || {};
+            return '<div class="fw-bet"><span class="nm">' + esc(w.name) + '</span><span class="rec num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
+              '<span class="usd num">' + usd(p.usd) + '</span><span class="fw-x num' + (p.press >= PRESS ? ' hot' : '') + '">' + (p.press != null ? p.press.toFixed(1) + 'x usual' : 'no usual') + '</span></div>'; }).join('') + '</div>'; }).join(''); }).join('') +
+      '</article>'; }).join('');
+  return {html: html, games: games.length, bets: bets, agree: agree};
+}
+
+function rows(){
+  var ws = D.wallets.filter(function(w){ return inSport(w.sport) && (!S.seasoned || w.n >= SEASONED); });
+  var o = function(w){ return openBy[w.sport + '|' + w.w] || 0; }, f = function(w){ return follows.indexOf(w.sport + '|' + w.w) >= 0 ? 1 : 0; };
+  var beat = function(w){ return w.clv[1] ? w.clv[0] / w.clv[1] : -1; };
+  var by = {open: function(a, b){ return f(b) - f(a) || o(b) - o(a) || b.n - a.n; }, roi: function(a, b){ return b.roi - a.roi; },
+    n: function(a, b){ return b.n - a.n; }, clv: function(a, b){ return beat(b) - beat(a); }};
+  return ws.sort(by[S.sort]);
+}
+function split3(title, items){
+  return '<div><h4>' + title + '</h4><dl>' + items.map(function(i){ var v = i[1];
+    return '<dt>' + i[0] + '</dt>' + (v ? '<dd class="num">' + v[0] + '-' + v[1] + '</dd><dd class="num ' + cls(v[2]) + '">' + pct(v[2]) + '</dd>' : '<dd class="none">no bets</dd><dd></dd>'); }).join('') + '</dl></div>';
+}
+function profile(w){
+  return '<div class="fw-prof">' +
+    split3('By market', [['Moneyline', w.lane.ml], ['Spread', w.lane.spread], ['Total', w.lane.total]]) +
+    split3('Favorite or underdog', [['Favorites', w.fav], ['Underdogs', w.dog]]) +
+    split3('By bet size', [['Under usual stake', w.size.small], ['Usual stake', w.size.usual], ['1.5x or more', w.size.big]]) +
+    '<p class="fw-pn">Record and dollar ROI in ' + w.sport.toUpperCase() + ' as of this wallet\'s latest card. Lifetime profit ' + usd(Math.abs(w.pnl)).replace('$', w.pnl < 0 ? '-$' : '$') + '.' +
+    (w.n < SEASONED ? ' <b class="dn">Only ' + w.n + ' graded bets: treat this record as thin.</b>' : '') + '</p></div>';
+}
+function dir(){
+  var all = rows(), ws = all.slice(0, S.shown);
+  var head = '<div class="fw-cols"><span></span><span>Wallet</span><span>Sport</span><span>Record</span><span>ROI</span><span>Bets</span><span>Usual stake</span><span>Beat the close</span><span>Open now</span></div>';
+  var body = ws.map(function(w){ var k = w.sport + '|' + w.w, on = follows.indexOf(k) >= 0, n = openBy[k] || 0, beat = w.clv[1] ? Math.round(w.clv[0] / w.clv[1] * 100) + '%' : '';
+    return '<div class="fw-row press press-row" role="button" tabindex="0" data-k="' + k + '" aria-expanded="' + (S.open === k) + '">' +
+      '<span class="c-star"><button type="button" class="fw-star press press-chip' + (on ? ' on' : '') + '" data-star="' + k + '" aria-pressed="' + on + '" aria-label="' + (on ? 'Unfollow ' : 'Follow ') + esc(w.name) + '">' + (on ? '★' : '☆') + '</button></span>' +
+      '<span class="c-name nm">' + esc(w.name) + (w.n < SEASONED ? '<i class="thin">thin</i>' : '') + '</span>' +
+      '<span><i class="fw-tag">' + w.sport + '</i></span>' +
+      '<span class="num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
+      '<span class="c-roi num ' + cls(w.roi) + '">' + pct(w.roi) + '</span>' +
+      '<span class="num">' + w.n + '</span><span class="num">' + usd(w.usual) + '</span><span class="num">' + beat + '</span>' +
+      '<span class="c-open"><i class="fw-open num' + (n ? ' has' : '') + '">' + n + '</i></span>' +
+      '<span class="c-meta num">' + w.sport.toUpperCase() + ' · ' + w.wl[0] + '-' + w.wl[1] + ' · ' + w.n + ' bets · ' + usd(w.usual) + ' usual</span></div>' +
+      (S.open === k ? profile(w) : ''); }).join('');
+  return head + (body || '<div class="fw-empty"><b>No proven wallets here</b>Try another sport or turn off the 20+ bets filter.</div>') +
+    (all.length > S.shown ? '<button type="button" class="fw-link fw-more" id="fw-more">Show ' + Math.min(PAGE * 2, all.length - S.shown) + ' more of ' + all.length + '</button>' : '');
+}
+
+function draw(){
+  var F = feed(), nf = follows.filter(function(k){ return inSport(k.split('|')[0]); }).length;
+  var sports = [['all', 'All'], ['nfl', 'NFL'], ['cfb', 'CFB'], ['nba', 'NBA'], ['cbb', 'CBB']];
+  $('#fw').innerHTML =
+    '<header class="fw-top"><span class="fw-crumb">Sharp Money /<b>Following</b></span>' + seg('sport', sports, S.sport) + '<span class="sp"></span>' +
+      '<span class="fw-ctx">Context only</span><button type="button" class="fw-ico press press-chip" id="fw-theme" aria-label="Switch theme">☼</button>' +
+      '<p class="fw-sub">Open bets from the proven wallets you follow. Updated ' + D.built + '.</p></header>' +
+    '<div class="fw-sum"><span><b class="num">' + nf + '</b>following</span><span><b class="num">' + F.bets + '</b>open bets</span><span><b class="num">' + F.agree + '</b>' + (F.agree === 1 ? 'game' : 'games') + ' where two agree</span>' +
+      (follows.length ? '<button type="button" class="fw-link" id="fw-clear">Clear follows</button>' : '') + '</div>' +
+    (F.html ? '<div class="fw-feed">' + F.html + '</div>' :
+      '<div class="fw-card fw-empty"><b>' + (follows.length ? 'No open bets from your wallets right now' : 'Follow a wallet to start your feed') + '</b>' +
+      (follows.length ? 'Their next bets land here as soon as a card picks them up.' : 'Tap a star in the list below. Their open bets show up here.') + '</div>') +
+    '<div class="fw-h"><h2>Since you followed</h2><p>Graded forward from the day you follow each wallet. Nothing is backfilled.</p></div>' +
+    '<div class="fw-card fw-empty">No bets have settled since you followed. The first results show up after tonight\'s games.</div>' +
+    '<div class="fw-h"><h2>Proven wallets</h2><p>' + rows().length + ' wallets with a winning graded record</p><span class="sp"></span><div class="fw-tools">' +
+      '<label class="fw-chk"><input type="checkbox" id="fw-seas"' + (S.seasoned ? ' checked' : '') + '>20+ bets only</label>' +
+      seg('sort', [['open', 'Open now'], ['roi', 'ROI'], ['n', 'Bets'], ['clv', 'Beat the close']], S.sort) + '</div></div>' +
+    '<div class="fw-card fw-dir" style="padding-left:0;padding-right:0">' + dir() + '</div>' +
+    '<p class="fw-note"><b>Mock notes.</b> Every number is a stored value from the cards. Proven means 6+ graded bets, a 55%+ win rate and a dollar ROI above 3% in that sport. ' +
+      'Stake is the position\'s value at the last scan, and "x usual" compares it with the wallet\'s usual stake. The cards do not store a wallet\'s entry price or its exact line, so neither is shown. ' +
+      'Follows are saved in this browser only. This page shows who holds what and never suggests a size.</p>';
+  rails();
+}
+
+/* travelling pill: seeded from the last position so a re-rendered strip still animates (CLAUDE.md motion trap 0b); no rAF */
+var lastGeom = {};
+function rails(){
+  document.querySelectorAll('.vseg').forEach(function(el){ var on = $('button.on', el); if (!on) return;
+    var p = document.createElement('i'); p.className = 'v-pill'; el.insertBefore(p, el.firstChild);
+    var id = el.dataset.seg, was = lastGeom[id], to = {l: on.offsetLeft, w: on.offsetWidth};
+    el.classList.add('rail-noanim'); p.style.left = (was || to).l + 'px'; p.style.width = (was || to).w + 'px';
+    void p.offsetWidth; el.classList.remove('rail-noanim');
+    p.style.left = to.l + 'px'; p.style.width = to.w + 'px'; lastGeom[id] = to; });
+}
+document.addEventListener('click', function(e){
+  var t = e.target, b;
+  if ((b = t.closest('[data-star]'))){ var k = b.dataset.star, i = follows.indexOf(k); if (i >= 0) follows.splice(i, 1); else follows.push(k); save(); draw(); return; }
+  if ((b = t.closest('.vseg>button'))){ var id = b.parentNode.dataset.seg; S[id] = b.dataset.v; if (id !== 'sort') S.open = null; S.shown = PAGE; draw(); return; }
+  if (t.id === 'fw-more'){ S.shown += PAGE * 2; draw(); return; }
+  if (t.id === 'fw-clear'){ follows = []; save(); draw(); return; }
+  if (t.id === 'fw-theme'){ var r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? '' : 'light'; return; }
+  if ((b = t.closest('.fw-row'))){ S.open = S.open === b.dataset.k ? null : b.dataset.k; draw(); }
+});
+document.addEventListener('change', function(e){ if (e.target.id === 'fw-seas'){ S.seasoned = e.target.checked; S.shown = PAGE; draw(); } });
+document.addEventListener('keydown', function(e){ var r = e.target.closest && e.target.closest('.fw-row'); if (r && e.target === r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); r.click(); } });
+window.addEventListener('resize', function(){ lastGeom = {}; draw(); });
+draw();
+</script>
+</body></html>
