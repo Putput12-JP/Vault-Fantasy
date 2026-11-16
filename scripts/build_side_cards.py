@@ -9,6 +9,7 @@ Step 3 of the side-card build (docs/side-cards.md). Inputs:
 Outputs:
   - frozen cards: pm_cards/<sport>/frozen/<YYYY-MM-DD>/<slug>@<gst>.json, one per keyframe, written once (append-only branch)
   - live cards: one JSON of every upcoming game, rebuilt every run (published to a force-pushed branch, never to history)
+  - wallets file (--wallets-out): every proven wallet's book and ALL of its open positions, rebuilt every run beside the live cards
 
 Sharp money is context only (CLAUDE.md). The card's `lock_shadow` is the pre-registered rule of docs/sharp-card-prereg.md, recorded so
 it can be graded forward; it is never a pick, never feeds Top Reads, SM_GATE or any agree total.
@@ -830,6 +831,60 @@ def wallet_line(x, variant, k):
             "dive": wallet_dive(b)}
 
 
+def wallet_book(s, name=None):
+    """A proven wallet's sport book for the wallets file (variant `all`): the card's wallet line without the position fields, plus the
+    wallet's name and its last settled legs ([settled_at, result], newest first), so a page can count results since a follow date."""
+    b = s["all"]
+    return {"name": name, "w_": b["w"], "l_": b["l"], "n": b["n"],
+            "roi": round(b["roi"], 4) if b["roi"] is not None else None,
+            "l30_roi": round(b["l30_roi"], 4) if b["l30_roi"] is not None else None, "pnl": b["pnl"],
+            "usual": round(b["usual"]) if b["usual"] else None,
+            "clv": {"n": b["clv_n"], "beat": b["clv_beat"], "mean": round(b["clv_mean"], 4) if b["clv_mean"] is not None else None},
+            "dive": wallet_dive(b), "legs": [[t, r] for t, r in b["legs"]]}
+
+
+def wallet_positions(kf, ledger, sport):
+    """{wallet: [position]}: every open position of every proven wallet on one game, for the wallets file. Unlike a card, which keeps a
+    wallet's largest rung per side and lists the 4 largest wallets, this keeps every rung at or above the $250 floor for every proven
+    wallet that Vault does not exclude (variant `all`, as of the keyframe's cut). Stored values only: the line and price are the
+    market's at the scan, `since` is the first scan that saw the wallet holding it, and no entry price is known or estimated.
+    `two_way` marks a wallet holding more than one side of the market group above the floor (a card may collapse or drop it)."""
+    cut, ix = kf["cut"], {c: i for i, c in enumerate(kf["cols"])}
+    rows, sides = [], {}
+    for h in kf["h"]:
+        cid, oi, w, usd = h[ix["cid"]], h[ix["oi"]], h[ix["wallet"]], h[ix["usd_at_mark"]]
+        mk = kf["mk"].get(cid)
+        if not mk or usd is None or usd < FLOOR_USD or mk["mt"] not in GROUP or oi >= len(mk.get("outs") or []):
+            continue
+        rows.append((w, GROUP[mk["mt"]], mk, cid, oi, usd, h))
+        sides.setdefault((w, GROUP[mk["mt"]]), set()).add(mk["outs"][oi])
+    out, stats = {}, {}
+    for w, g, mk, cid, oi, usd, h in rows:
+        if w not in stats:
+            stats[w] = ledger.stats(w, cut)
+        s = stats[w]
+        if not s["all"]["proven"] or s["excluded"]:
+            continue
+        usual, px = s["all"]["usual"], (mk.get("px") or [None] * (oi + 1))[oi]
+        out.setdefault(w, []).append({
+            "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "g": g, "side": mk["outs"][oi], "line": mk.get("line"), "cid": cid,
+            "usd": round(usd), "shares": round(h[ix["shares"]], 2) if h[ix["shares"]] is not None else None,
+            "px": px, "px_t": mk.get("px_t"), "press": round(usd / usual, 2) if usual else None,
+            "since": h[ix["fs"]] if "fs" in ix else None, "two_way": len(sides[(w, g)]) > 1})
+    for ps in out.values():
+        ps.sort(key=lambda p: -p["usd"])
+    return out, stats
+
+
+def wallets_file(per_sport, now):
+    """The wallets file: per sport, every proven wallet (variant `all`, not excluded) with its book and its open positions."""
+    return {"built": now, "v": VERSION, "context_only": True, "floor_usd": FLOOR_USD,
+            "proven_rule": "sport book n >= %d, win rate >= %d%%, dollar ROI > %d%%, not excluded (hedger, churn)" % (PROVEN_N, PROVEN_WR * 100, PROVEN_ROI * 100),
+            "note": "Who holds what, as of the last holders scan. Money is shares x market price, not what the wallet paid. No entry price "
+                    "is stored. Context only: never a pick, a size or an agree total.",
+            "sports": per_sport}
+
+
 def ladder_units(top_press, price):
     """The benchmark pressBand / pressUnits at a clean price step (step 0), then the dog cap on any market type."""
     units = BAND5_UNITS if top_press >= BAND5 else BAND4_UNITS if top_press >= BAND4 else BAND3_UNITS
@@ -938,6 +993,7 @@ def main():
     ap.add_argument("--sharp-data", help="sharp-data data.json, for the Vault game key")
     ap.add_argument("--frozen-out", required=True, help="pm_cards folder on pm-holders-data")
     ap.add_argument("--live-out", required=True)
+    ap.add_argument("--wallets-out", help="per-wallet file: every proven wallet's book and all of its open positions (for a follow page)")
     ap.add_argument("--sports", default="nba,nfl,cfb,cbb")
     ap.add_argument("--closes", default="data/pm_closes.json", help="Pendulum Flow closes, for wallet price skill")
     ap.add_argument("--prev-live", help="the last published live.json, to carry the price each shown size was first flagged at")
@@ -972,6 +1028,14 @@ def main():
                 prev = {(g["ev"], g["gst"]): g for g in (json.load(f).get("games") or [])}
         except (OSError, ValueError, KeyError):
             prev = {}
+    names, wallets = {}, {}
+    uni = sorted(glob.glob(os.path.join(a.ledger, "universe", "*.json")))
+    if a.wallets_out and uni:
+        try:
+            with open(uni[-1]) as f:
+                names = {w: (x or {}).get("name") for w, x in (json.load(f).get("wallets") or {}).items()}
+        except (OSError, ValueError):
+            names = {}
     tape = BookTape(a.book_tape)
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
         ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
@@ -1007,11 +1071,32 @@ def main():
                 c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape)
                 carry_flagged(c, prev.get((ev, gst)), now)
                 live["games"].append(c)
+                if a.wallets_out:
+                    pos, sts = wallet_positions(kf, ledger, sport)
+                    names.update({w: n for w, n in (kf.get("names") or {}).items() if n})
+                    for w, ps in pos.items():
+                        e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w]), positions=[]))
+                        e["positions"] += ps
+        if a.wallets_out:                            # proven wallets with nothing open: the directory lists them too
+            for w in ledger.population("all", now):
+                if w in wallets.get(sport, {}):
+                    continue
+                s = ledger.stats(w, now)
+                if s["all"]["proven"] and not s["excluded"]:
+                    wallets.setdefault(sport, {})[w] = dict(wallet_book(s), positions=[])
+            for w, e in wallets.get(sport, {}).items():
+                e["name"] = names.get(w)
+                e["positions"].sort(key=lambda p: (p["gst"], -p["usd"]))
     live["locked"] = locked_plays(a.frozen_out, now)
     os.makedirs(os.path.dirname(os.path.abspath(a.live_out)), exist_ok=True)
     with open(a.live_out + ".tmp", "w") as f:
         json.dump(live, f, separators=(",", ":"))
     os.replace(a.live_out + ".tmp", a.live_out)
+    if a.wallets_out:
+        os.makedirs(os.path.dirname(os.path.abspath(a.wallets_out)), exist_ok=True)
+        with open(a.wallets_out + ".tmp", "w") as f:
+            json.dump(wallets_file(wallets, now), f, separators=(",", ":"))
+        os.replace(a.wallets_out + ".tmp", a.wallets_out)
     print(json.dumps({"frozen_written": wrote, "live_games": len(live["games"])}))
     return 0
 

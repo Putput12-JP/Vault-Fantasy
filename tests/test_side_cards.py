@@ -494,5 +494,37 @@ class SoloCap(unittest.TestCase):
         self.assertEqual((p["units"], p["reason"]), (3.0, None))
 
 
+class WalletPositions(unittest.TestCase):
+    """The wallets file (--wallets-out): every proven wallet's open positions, all rungs, not only a card's 4 largest wallets."""
+    def setUp(self):
+        won = lambda w: [row(w, i, "win") for i in range(6)]
+        self.led = ledger(won("0xp") + won("0xq") + [row("0xu", 0, "win")])          # 0xu: one bet, unproven
+
+    def test_every_rung_of_a_proven_wallet_above_the_floor(self):
+        k = kf([("m1", 0, "0xp", 900), ("s1", 1, "0xp", 400), ("s2", 1, "0xp", 300), ("s2", 1, "0xq", 100), ("m1", 1, "0xu", 5000)])
+        pos, _ = C.wallet_positions(k, self.led, "nba")
+        self.assertEqual(sorted(pos), ["0xp"])                                    # 0xq is under the floor, 0xu is not proven
+        self.assertEqual([(p["g"], p["side"], p["line"], p["usd"], p["px"]) for p in pos["0xp"]],
+                         [("ml", "A", None, 900, 0.6), ("spread", "A", -3.5, 400, 0.5), ("spread", "A", -4.5, 300, 0.55)])
+        self.assertEqual(pos["0xp"][0]["press"], 9.0)                             # usual stake 100
+        self.assertFalse(any(p["two_way"] for p in pos["0xp"]))
+
+    def test_two_way_is_flagged_and_excluded_wallets_are_left_out(self):
+        k = kf([("m1", 0, "0xp", 900), ("m1", 1, "0xp", 300), ("m1", 0, "0xh", 900)])
+        hedger = [row("0xh", i, "win", hedged=True, cid=f"h{i}") for i in range(8)] + [row("0xh", 20 + i, "win") for i in range(8)]
+        led = ledger([row("0xp", i, "win") for i in range(6)] + hedger)
+        pos, _ = C.wallet_positions(k, led, "nba")
+        self.assertEqual(sorted(pos), ["0xp"])
+        self.assertEqual([p["two_way"] for p in pos["0xp"]], [True, True])
+
+    def test_book_has_no_position_fields_and_keeps_recent_legs(self):
+        b = C.wallet_book(self.led.stats("0xp", CUT), "Name")
+        self.assertEqual((b["name"], b["w_"], b["l_"], b["n"], b["usual"]), ("Name", 6, 0, 6, 100))
+        self.assertNotIn("usd", b)
+        self.assertIsInstance(b["legs"], list)
+        f = C.wallets_file({"nba": {"0xp": dict(b, positions=[])}}, CUT)
+        self.assertTrue(f["context_only"] and f["floor_usd"] == 250)
+
+
 if __name__ == "__main__":
     unittest.main()
