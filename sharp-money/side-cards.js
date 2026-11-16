@@ -721,6 +721,11 @@ function recSport(sp, D){
   /* the single-wallet cap (scripts/sf_solo.py): the same plays, capped at 1u on one proven wallet or a lead bet under its usual stake */
   var qgs = function(s, g){ return ((((cs(s).solo || {}).all || {})[g] || {}).all_cards); };
   var Q = sumRec(G.map(function(g){ return ALL ? sumRec(SPS.map(function(s){ return qgs(s, g[0]); })) : qgs(sp, g[0]); }));
+  /* three rules registered 2026-11-16 (scripts/sf_shadows.py): the shown play only when the rule holds. `forward` counts plays locked since then */
+  var rgs = function(rule, key){ return sumRec(G.map(function(g){ return sumRec(SPS.map(function(s){ return ((((cs(s)[rule] || {}).all || {})[g[0]] || {})[key]); })); })); };
+  var since = function(rule){ var f = rgs(rule, 'forward'); return ' ' + (f.n || 0) + (f.n === 1 ? ' play' : ' plays') + ' since the rule was written on Nov 16. Earlier plays were already known when it was chosen.'; };
+  /* flat 1u: the shown plays at one unit each, from the stored flat ROI (no new rows) */
+  var F = {n: V.n, w: V.w, l: V.l, p: V.p, flat_roi: V.flat_roi, units_pl: V.flat_roi != null ? V.flat_roi * V.n : 0};
   var shadowLine = function(name, X, how){ return X.n ? '<p class="vr-shadow num"><b>' + name + '</b> ' + wl(X) + ' · <span class="' + (X.units_pl > 0 ? 'up' : X.units_pl < 0 ? 'dn' : '') + '">' + u2(X.units_pl) + '</span>' + (X.flat_roi != null ? ' · ' + roi(X.flat_roi) + ' ROI' : '') + ' · ' + X.n + (X.n === 1 ? ' play' : ' plays') +
     '<span class="vr-tsub">' + how + '</span></p>' : ''; };
   /* one record: every Vault play, graded at its price at the lock by Polymarket's result */
@@ -730,7 +735,11 @@ function recSport(sp, D){
       : '<div class="vr-big num dim">—</div><p class="vr-ts">No graded plays yet</p>') +
     '<p class="vr-tsub">Every suggested play, graded by Polymarket\'s result at its price at the lock. Small samples swing hard.</p>' +
     shadowLine('Stricter rule (shadow)', P, 'Skips plays where the wallets against outweigh the wallets for, and markets where both sides qualify. Tracked beside the record, not shown on cards.') +
-    shadowLine('One-wallet cap (shadow)', Q, 'The same plays at 1u when one proven wallet is on the side, or when it bet under its usual stake. Tracked beside the record, not shown on cards.') + '</div>';
+    shadowLine('One-wallet cap (shadow)', Q, 'The same plays at 1u when one proven wallet is on the side, or when it bet under its usual stake. Tracked beside the record, not shown on cards.') +
+    shadowLine('Sharps only (shadow)', rgs('only', 'all_cards'), 'Only plays with a proven wallet on the side and none against.' + since('only')) +
+    shadowLine('Two sharps (shadow)', rgs('two', 'all_cards'), 'Only plays with two or more proven wallets on the side and none against.' + since('two')) +
+    shadowLine('Seasoned wallets (shadow)', rgs('seas', 'all_cards'), 'Sharps only, counting a wallet as proven only with 20 or more graded bets.' + since('seas')) +
+    shadowLine('Flat 1u (shadow)', F, 'Every suggested play at one unit, to test whether the sizing adds anything.') + '</div>';
   /* the pre-registered forward test: counted moneyline locks toward 300, and the lock record over every market */
   var ml = ((((c.lock || {}).all || {}).ml || {}).counted) || {}, L = sumRec(G.map(function(g){ return ((((c.lock || {}).all || {})[g[0]] || {}).counted); }));
   var clvN = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n || 0); }, 0);

@@ -33,6 +33,7 @@ from build_pm_ledger import Client, Budget, gamma_facts, jload, jsave  # noqa: E
 from pm_data_api import PMDataError  # noqa: E402
 import sf_publish as PUB  # noqa: E402
 import sf_solo as SOLO  # noqa: E402
+import sf_shadows as SHD  # noqa: E402
 import build_side_cards as BSC  # noqa: E402                # card_signals, BookTape (the signals are re-derived for every card)
 
 GROUP_MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
@@ -42,6 +43,7 @@ UNPRICED_FAIL = 0.10               # prereg: unpriced over 10% of a sport's coun
 NO_CLOSES = {"cfb", "cbb"}         # prereg: CFB has no stored close, read on ROI only; CBB likewise (data/pm_closes.json has none)
 BOOT_N, BOOT_SEED = 10000, 20261111
 VERSION = 1
+SHADOWS = ("pub", "solo") + SHD.RULES      # shadows of the shown size: graded beside it, never listed as open plays
 
 
 # ---------- pure logic (tests/test_side_card_record.py) ----------
@@ -123,6 +125,14 @@ def plays(card, kf):
                     out.append({"group": g, "variant": variant, "play": "solo", "side": so["side"], "cid": cid, "line": so.get("line"),
                                 "outs": mk.get("outs"), "price": so.get("price"), "price_t": so.get("price_t"), "units": so["units"],
                                 "rung": so.get("rung"), "capped": so.get("capped"), "was_units": so.get("was"), "cap_reason": so.get("reason")})
+                for rule, sh in (SHD.shadow_plays(m, variant) or {}).items():   # only / two / seas: the shown play when the rule holds
+                    if sh.get("side") and (sh.get("units") or 0) > 0:
+                        cid = sf_cid(sf, g, kf)
+                        mk = (kf or {}).get("mk", {}).get(cid) or {}
+                        out.append({"group": g, "variant": variant, "play": rule, "side": sh["side"], "cid": cid, "line": sh.get("line"),
+                                    "outs": mk.get("outs"), "price": sh.get("price"), "price_t": sh.get("price_t"), "units": sh["units"],
+                                    "rung": sh.get("rung"), "proven_for": sh.get("proven_for"), "proven_against": sh.get("proven_against"),
+                                    "in_sample": (card.get("cut") or 0) < SHD.REGISTERED_T})
     return out
 
 
@@ -208,7 +218,7 @@ def open_plays(todo, graded, now, days=7):
     for rel, c, kf in todo:
         for p in plays(c, kf):
             key = f"{rel}|{p['group']}|{p['variant']}|{p['play']}"
-            if p["play"] in ("pub", "solo"):                        # shadows of the shown size are graded, never listed as open plays
+            if p["play"] in SHADOWS:                        # shadows of the shown size are graded, never listed as open plays
                 continue
             if key in graded or c["gst"] < now - days * 86400 or p["variant"] != "all" or (p["play"] == "lock" and not (c.get("test") or {}).get("counts")):
                 continue
@@ -290,8 +300,8 @@ def record(rows, cards, now, sig=None):
         rs = [r for r in rows if r["sport"] == sport and r.get("kind") != "close"]
         s = {"cards": {"frozen": len(cs), "counted": sum(1 for c in cs if (c.get("test") or {}).get("counts")),
                        "not_counted_by_reason": why},
-             "lock": {}, "sf": {}, "pub": {}, "solo": {}}
-        for play in ("lock", "sf", "pub", "solo"):
+             "lock": {}, "sf": {}, **{k: {} for k in SHADOWS}}
+        for play in ("lock", "sf") + SHADOWS:
             for variant in ("all", "fwd", "sfx"):
                 for g in ("ml", "spread", "total"):
                     sub = [r for r in rs if r["play"] == play and r["variant"] == variant and r["group"] == g]
@@ -300,6 +310,8 @@ def record(rows, cards, now, sig=None):
                     s[play].setdefault(variant, {})[g] = {
                         "counted": summarize([r for r in sub if r["counts"]], closes=closes),
                         "all_cards": summarize(sub, boot=False, closes=closes)}
+                    if play in SHD.RULES:                       # rows from before the rules were registered are in-sample
+                        s[play][variant][g]["forward"] = summarize([r for r in sub if not r.get("in_sample")], boot=False, closes=closes)
         if sig is not None:
             s["signals"] = {"defs": SIGNAL_DEFS, "context_only": True}
             for play in ("sf", "pub"):

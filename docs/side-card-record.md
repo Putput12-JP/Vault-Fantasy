@@ -13,6 +13,20 @@ variant (`all`, `fwd`), two plays are graded when the card has them:
 | `lock` | the pre-registered lock (`lock_shadow`, `docs/sharp-card-prereg.md`) | the clean-ladder units, a second line only |
 | `sf` | the size the card shows (SharpFlow's staking rules, labelled "untested rule") | the shown units |
 
+Shadows of the shown size are graded beside it with the same rules, and never appear on a card or as an open play:
+
+| Play | What it is | Source |
+|---|---|---|
+| `pub` | the shown play minus sides the benchmark would mute | `scripts/sf_publish.py` |
+| `solo` | the shown play capped at 1u on one proven wallet or a small lead bet | `scripts/sf_solo.py` |
+| `only` | the shown play only with a proven wallet for and none against | `scripts/sf_shadows.py`, `docs/sharp-shadow-rules-nov16.md` |
+| `two` | `only`, with two or more proven wallets for | same |
+| `seas` | `only`, counting a wallet as proven only with 20+ graded positions | same |
+
+`only`, `two` and `seas` rows carry `in_sample` (the card was cut before the rules were written), and `cards_record.json` gives a
+`forward` line beside `all_cards` for them. "Flat 1u" on the Record page is not a play: it is the shown plays' stored flat ROI
+times their count.
+
 The rules are the pre-registration's:
 - **Result:** the market's own Polymarket resolution. Every play is graded, and none is dropped.
 - **Payout, flat 1 unit:** a win pays 1 / price - 1, a loss pays -1, and a push or 0.5 resolution pays 0.
