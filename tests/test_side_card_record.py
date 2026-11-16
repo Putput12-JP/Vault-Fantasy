@@ -168,6 +168,56 @@ class Grade(unittest.TestCase):
         self.assertIsNone(G.boot_ci([1.0]))
 
 
+class ShadowRules(unittest.TestCase):
+    """scripts/sf_shadows.py: only / two / seas, shadows of the shown size registered 2026-11-16."""
+    SF = {"side": "Jazz", "units": 2, "line": -4.5, "price": 0.515, "price_t": CUT - 60, "rung": "PRESS", "cid": "c1"}
+
+    def market(self, mine, other):
+        side = lambda proven, ns: {"all": {"counts": {"hc": 0, "sharp": proven}, "list": [{"w": str(i), "n": n} for i, n in enumerate(ns)]}}
+        return {"sf": {"all": self.SF}, "sides": {"Jazz": side(*mine), "Magic": side(*other)}}
+
+    def kept(self, mine, other):
+        return sorted(r for r, p in G.SHD.shadow_plays(self.market(mine, other)).items() if p["side"])
+
+    def test_no_proven_wallet_for_keeps_nothing(self):
+        self.assertEqual(self.kept((0, []), (0, [])), [])
+
+    def test_one_thin_proven_wallet_is_sharps_only(self):
+        self.assertEqual(self.kept((1, [8]), (0, [])), ["only"])
+
+    def test_two_seasoned_wallets_pass_every_rule(self):
+        self.assertEqual(self.kept((2, [40, 25]), (0, [])), ["only", "seas", "two"])
+
+    def test_proven_wallet_against_blocks_only_and_two(self):
+        self.assertEqual(self.kept((2, [40, 25]), (1, [8])), ["seas"])     # the wallet against is thin, so `seas` does not count it
+        self.assertEqual(self.kept((2, [40, 25]), (1, [30])), [])
+
+    def test_no_shown_size_gives_no_play_and_missing_sf_gives_none(self):
+        m = self.market((2, [40, 25]), (0, []))
+        m["sf"]["all"] = {"side": None, "units": 0}
+        self.assertEqual({p["reason"] for p in G.SHD.shadow_plays(m).values()}, {"no_shown_size"})
+        self.assertIsNone(G.SHD.shadow_plays({"sides": {}}))
+
+    def test_graded_beside_the_shown_size_and_flagged_in_sample(self):
+        for cut, flag in ((G.SHD.REGISTERED_T - 1, True), (G.SHD.REGISTERED_T, False)):
+            c = card(sf=self.SF)
+            c["cut"], c["gst"] = cut, cut + 900
+            sf = dict(self.SF, price_t=cut - 60)
+            c["markets"]["spread"] = dict(self.market((2, [40, 25]), (0, [])), sf={"all": sf}, lock_shadow={"all": {"side": None}})
+            rows = [r for r in G.grade(c, "k", None, FACT, {}, cut + 9000)[0] if r["kind"] == "result"]
+            by = {r["play"]: r for r in rows}
+            self.assertEqual(sorted(by), ["only", "seas", "sf", "solo", "two"])
+            self.assertEqual({by[k]["units_pl"] for k in ("sf", "only", "two", "seas")}, {-2.0})
+            self.assertEqual((by["two"]["in_sample"], by["two"]["proven_for"]), (flag, 2))
+            rec = G.record(rows, [c], 0)["sports"]["nba"]
+            self.assertEqual((rec["two"]["all"]["spread"]["all_cards"]["n"], rec["two"]["all"]["spread"]["forward"]["n"]), (1, 0 if flag else 1))
+
+    def test_shadows_are_never_open_plays(self):
+        c = card(sf=self.SF)
+        c["markets"]["spread"] = dict(self.market((2, [40, 25]), (0, [])), lock_shadow={"all": {"side": None}})
+        self.assertEqual([p["play"] for p in G.open_plays([("k", c, None)], {}, GST)], ["sf"])
+
+
 class Benchmark(unittest.TestCase):
     def test_american_odds_to_price(self):
         self.assertAlmostEqual(H.american_to_price(128), 100 / 228)
