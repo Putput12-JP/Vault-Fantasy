@@ -15,7 +15,7 @@ sharp-money/following.js (window.VaultFollowing); this only wires it into the tw
 import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 SM = os.path.join(HERE, '..', '..', 'sharp-money')
-V = '1'                                              # following.js cache key: bump it whenever that file changes
+V = '2'                                              # following.js cache key: bump it whenever that file changes
 TIP = 'Open bets from the proven wallets you follow. Context only'
 n_changes = 0
 

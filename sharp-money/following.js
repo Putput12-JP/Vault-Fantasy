@@ -8,12 +8,17 @@
    and no entry price is stored, so none is shown.
 
    Follows are kept in this browser (localStorage `vault-sharps-following`: {"sport|wallet": followed-at seconds}). "Since you
-   followed" counts a wallet's settled games dated after its follow time, from the 20 most recent the file carries. */
+   followed" counts a wallet's settled games dated after its follow time, from the 20 most recent the file carries.
+
+   A bet in the feed opens a detail panel: the position, how the wallet has done on bets like it, and who else holds the game (read
+   from the Sharps cards, live.json). The panel names the side of the card's suggested play but never shows a size. */
 (function(){
 'use strict';
 var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 var DEV = LOCAL && (location.search.match(/[?&]wallets=([^&]+)/) || [])[1];      /* localhost only: ?wallets=/path/to/wallets.json */
 var SRC = DEV ? decodeURIComponent(DEV) : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/wallets.json';
+var DEVC = LOCAL && (location.search.match(/[?&]cards=([^&]+)/) || [])[1];        /* localhost only: ?cards=/path/to/live.json */
+var CARDS_SRC = DEVC ? decodeURIComponent(DEVC) : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/live.json';
 var KEY = 'vault-sharps-following', SEASONED = 20, PRESS = 1.5, PAGE = 12;
 var GROUPS = {ml: 'Moneyline', spread: 'Spread', total: 'Total'};
 var SPORTS = [['all', 'All'], ['nfl', 'NFL'], ['cfb', 'CFB'], ['nba', 'NBA'], ['cbb', 'CBB']];
@@ -52,7 +57,7 @@ var CSS = [
 '.vfw .fw-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:28px 0 12px}',
 '.vfw .fw-h h2{margin:0;font-size:15px;font-weight:600;color:var(--c-ink)}.vfw .fw-h p{margin:0;font-size:12px;color:var(--c-mut)}.vfw .fw-h .sp{flex:1}',
 '.vfw .fw-card{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:var(--c-pad)}',
-'.vfw .fw-feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}',
+'.vfw .fw-feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start}',
 '.vfw .fw-g{padding:16px 18px;min-width:0}.vfw .fw-dir{min-width:0;overflow:hidden}',
 '.vfw .fw-gh{display:flex;align-items:center;gap:10px;margin-bottom:6px}.vfw .fw-gh b{font-size:14.5px;font-weight:600;white-space:nowrap}.vfw .fw-gh time{margin-left:auto;font-size:12px;color:var(--c-mut);white-space:nowrap}',
 '.vfw .fw-tag{font-family:var(--c-num);font-style:normal;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-mut);background:var(--c-box);border-radius:5px;padding:3px 6px}',
@@ -61,6 +66,18 @@ var CSS = [
 '.vfw .fw-side-h{display:flex;align-items:baseline;gap:8px;font-size:13px}.vfw .fw-side-h span{color:var(--c-mut);font-size:11.5px}.vfw .fw-side-h b{font-weight:600}',
 '.vfw .fw-bet{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:12.5px}',
 '.vfw .fw-bet .fw-nm{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vfw .fw-bet .fw-rec{color:var(--c-mut);font-size:11.5px;white-space:nowrap}.vfw .fw-bet .fw-usd{margin-left:auto;font-size:13px;white-space:nowrap}',
+'.vfw button.fw-bet{width:100%;border:0;background:none;color:inherit;text-align:left;cursor:pointer;border-radius:8px;--fw-ps:.99}',
+'.vfw button.fw-bet:hover,.vfw button.fw-bet[aria-expanded=true]{background:var(--c-sel);box-shadow:-6px 0 0 var(--c-sel),6px 0 0 var(--c-sel)}',
+'.vfw .fw-chev{flex:none;width:14px;color:var(--c-dim);font-size:11px;text-align:center;transition:transform 200ms var(--fw-rail)}.vfw button.fw-bet[aria-expanded=true] .fw-chev{transform:rotate(90deg)}',
+'.vfw .fw-det{margin:6px -6px 8px;padding:14px 14px 12px;background:var(--c-box);border-radius:12px;font-size:12.5px}',
+'.vfw .fw-det h5{margin:14px 0 6px;font-size:11px;font-weight:500;color:var(--c-mut);font-family:inherit;letter-spacing:normal;text-transform:none}.vfw .fw-det h5:first-child{margin-top:0}',
+'.vfw .fw-kv{display:grid;grid-template-columns:1fr auto;gap:5px 14px;margin:0}.vfw .fw-kv dt{color:var(--c-mut)}.vfw .fw-kv dd{margin:0;text-align:right}',
+'.vfw .fw-like{display:grid;grid-template-columns:1fr auto auto;gap:5px 14px;margin:0}.vfw .fw-like dd{margin:0;text-align:right}',
+'.vfw .fw-strip{display:flex;gap:3px;margin-top:9px;align-items:center;flex-wrap:wrap}.vfw .fw-strip i{width:9px;height:9px;border-radius:2px;background:var(--c-dim)}.vfw .fw-strip i.w{background:var(--c-good)}.vfw .fw-strip i.l{background:var(--c-bad)}.vfw .fw-strip span{margin-left:6px;font-size:11px;color:var(--c-mut)}',
+'.vfw .fw-who{border-top:1px solid var(--c-line2);padding:8px 0 4px}.vfw .fw-who:first-of-type{border-top:0;padding-top:0}',
+'.vfw .fw-who-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.vfw .fw-who-h b{font-weight:600}.vfw .fw-who-h span{color:var(--c-mut);font-size:11.5px}.vfw .fw-who-h em{font-style:normal;font-size:10.5px;color:var(--c-mut);border:1px solid var(--c-line2);border-radius:99px;padding:1px 7px}',
+'.vfw .fw-who-w{display:flex;gap:10px;align-items:center;padding:4px 0 0;color:var(--c-ink)}.vfw .fw-who-w .fw-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vfw .fw-who-w .fw-usd{margin-left:auto}.vfw .fw-who-w u{text-decoration:none;color:var(--c-gold)}',
+'.vfw .fw-det-n{margin:10px 0 0;font-size:11.5px;color:var(--c-mut)}.vfw .fw-det-l{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}.vfw .fw-det-l a{color:var(--c-ink);font-size:12px;text-underline-offset:3px}',
 '.vfw .fw-x{font-style:normal;font-size:11.5px;border-radius:5px;padding:2px 6px;background:var(--c-box);color:var(--c-mut);white-space:nowrap}.vfw .fw-x.fw-hot{background:var(--c-good-bg);color:var(--c-good)}',
 '.vfw .fw-empty{padding:26px var(--c-pad);font-size:13px;color:var(--c-mut);text-align:center}.vfw .fw-empty b{display:block;color:var(--c-ink);font-size:14px;margin-bottom:4px}',
 '.vfw .fw-since{display:flex;flex-wrap:wrap;gap:8px 26px;align-items:baseline;font-size:13px}.vfw .fw-since>b{font-size:22px;font-weight:600}.vfw .fw-since span{color:var(--c-mut)}',
@@ -105,7 +122,7 @@ var CSS = [
 '.vfw .fw-obr .px{grid-area:px;color:var(--c-mut);font-size:13px}.vfw .fw-obr .sn{grid-area:sn;text-align:left!important}',
 '.vfw .fw-obr .px::before{content:"now "}.vfw .fw-obr .sn::before{content:"held since "}',
 '}',
-'@media (prefers-reduced-motion:reduce){.vfw .fw-press,.vfw .fw-seg .fw-pill{transition:none}}'
+'@media (prefers-reduced-motion:reduce){.vfw .fw-press,.vfw .fw-seg .fw-pill,.vfw .fw-chev{transition:none}}'
 ].join('\n');
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -154,6 +171,62 @@ function save(){ try { localStorage.setItem(KEY, JSON.stringify(FOLLOWS)); } cat
 function seg(id, opts, cur){ return '<div class="fw-seg" data-seg="' + id + '"><i class="fw-pill"></i>' + opts.map(function(o){ return '<button type="button" class="' + (o[0] === cur ? 'on' : '') + '" data-v="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
 function xUsual(p){ return '<i class="fw-x fw-num' + (p.press >= PRESS ? ' fw-hot' : '') + '">' + (p.press != null ? p.press.toFixed(1) + 'x usual' : 'no usual') + '</i>'; }
 
+/* the Sharps cards (live.json), loaded the first time a bet is opened: who else holds this game. Stored values only. */
+var CARDS = {state: 'idle', by: {}};
+function loadCards(){
+  if (CARDS.state === 'busy') return; var first = CARDS.state === 'idle'; CARDS.state = first ? 'busy' : CARDS.state;
+  fetch(CARDS_SRC + '?t=' + Math.floor(Date.now() / 120000), {cache: 'no-store'}).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
+    .then(function(j){
+      if (j && j.games){ CARDS.by = {}; j.games.forEach(function(c){ CARDS.by[c.ev + '@' + c.gst] = c; }); CARDS.state = 'ok'; }
+      else if (first) CARDS.state = 'none';
+      STORE.hosts.forEach(function(h){ if (document.contains(h.el)) h.render(); });
+    });
+}
+function recRow(label, v){
+  return '<dt>' + label + '</dt>' + (v ? '<dd class="fw-num">' + v[0] + '-' + v[1] + '</dd><dd class="fw-num ' + cls(v[2]) + '">' + pct(v[2]) + '</dd>' : '<dd class="fw-none">no bets yet</dd><dd></dd>');
+}
+function whoSide(c, m, name, mine, sport){
+  var a = (m.sides[name] || {}).all; if (!a) return '';
+  var n = ((a.counts || {}).hc || 0) + ((a.counts || {}).sharp || 0);
+  return '<div class="fw-who"><div class="fw-who-h"><b>' + esc(name) + '</b>' + (mine ? '<em>this bet</em>' : '') +
+    '<span class="fw-num">' + usd(a.sharp_usd) + ' proven · ' + n + (n === 1 ? ' wallet' : ' wallets') + ' · ' + usd(a.loser_usd) + ' from losing wallets</span></div>' +
+    (a.list || []).map(function(x){ var b = BOOK[sport + '|' + x.w];
+      return '<div class="fw-who-w"><span class="fw-nm">' + (FOLLOWS[sport + '|' + x.w] ? '<u>★</u> ' : '') + esc(b ? b.name : shortName(x.w)) + '</span><span class="fw-rec fw-num">' + x.w_ + '-' + x.l_ + '</span>' +
+        '<span class="fw-usd fw-num">' + usd(x.usd) + '</span>' + xUsual(x) + '</div>'; }).join('') +
+    (n > (a.list || []).length ? '<p class="fw-det-n" style="margin-top:4px">The card lists the ' + (a.list || []).length + ' largest.</p>' : '') + '</div>';
+}
+function whoElse(g, p){
+  if (CARDS.state === 'idle' || CARDS.state === 'busy') return '<p class="fw-det-n">Loading the Sharps card…</p>';
+  var c = CARDS.by[g.id], m = c && c.markets && c.markets[p.g];
+  if (!m) return '<p class="fw-det-n">There is no Sharps card for this ' + GROUPS[p.g].toLowerCase() + ' right now.</p>';
+  var names = Object.keys(m.sides).sort(function(a, b){ return (b === p.side) - (a === p.side); });
+  var sf = (m.sf || {}).all, key = (c.vault || {}).key;
+  return names.map(function(n){ return whoSide(c, m, n, n === p.side, g.sport); }).join('') +
+    '<p class="fw-det-n">' + (sf && sf.side && sf.units > 0 ? 'The Sharps card has a suggested play on ' + esc(sf.side) + ' in this market. Its size comes from an untested rule.'
+      : 'The Sharps card has no suggested play in this market.') + '</p>' +
+    '<div class="fw-det-l"><a href="#sharps">Open the Sharps cards</a>' + (key ? '<a href="#game/' + encodeURIComponent(key) + '">Open this game</a>' : '') + '</div>';
+}
+/* one bet, opened from the feed: the position, how this wallet has done on bets like it, and who else holds the game */
+function detail(g, x){
+  var p = x.p, w = BOOK[x.k], band = p.press == null ? null : p.press < 0.75 ? ['small', 'Under its usual stake'] : p.press < PRESS ? ['usual', 'Around its usual stake'] : ['big', 'At 1.5x its usual stake or more'];
+  var fav = p.px == null ? null : p.px >= 0.5, legs = w.legs.slice(0, 20), lw = legs.filter(function(l){ return l[1] === 'win'; }).length, ll = legs.filter(function(l){ return l[1] === 'loss'; }).length;
+  return '<div class="fw-det"><h5>This bet</h5><dl class="fw-kv">' +
+      '<dt>Bet</dt><dd>' + GROUPS[p.g] + ' · ' + esc(p.side) + '<span class="fw-num">' + lineTxt(p.g, p.line) + '</span></dd>' +
+      '<dt>Price now</dt><dd class="fw-num">' + (cents(p.px) || 'n/a') + '</dd>' +
+      '<dt>Worth now</dt><dd class="fw-num">' + usd(p.usd) + (p.shares != null ? ' · ' + Math.round(p.shares).toLocaleString('en-US') + ' shares' : '') + '</dd>' +
+      '<dt>Size</dt><dd class="fw-num">' + (p.press != null ? p.press.toFixed(1) + 'x its usual ' + usd(w.usual) : 'no usual stake yet') + '</dd>' +
+      '<dt>Held since</dt><dd class="fw-num">' + (ct(p.since, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}) || 'n/a') + '</dd>' +
+      (p.two_way ? '<dt>Note</dt><dd class="fw-two">also holds the other side of this market</dd>' : '') + '</dl>' +
+    '<h5>How ' + esc(w.name) + ' has done on bets like this (' + w.sport.toUpperCase() + ')</h5><dl class="fw-like">' +
+      recRow(GROUPS[p.g] + ' bets', w.lane[p.g]) +
+      (fav == null ? '' : recRow(fav ? 'Favorites (this one is ' + cents(p.px) + ' now)' : 'Underdogs (this one is ' + cents(p.px) + ' now)', fav ? w.fav : w.dog)) +
+      (band ? recRow(band[1], w.size[band[0]]) : '') + recRow('All bets', [w.wl[0], w.wl[1], w.roi]) + '</dl>' +
+      (w.clv.n ? '<p class="fw-det-n">Bought below the closing price on ' + w.clv.beat + ' of ' + w.clv.n + ' bets.</p>' : '') +
+      (legs.length ? '<div class="fw-strip" role="img" aria-label="Last ' + legs.length + ' games: ' + lw + ' wins, ' + ll + ' losses">' +
+        legs.map(function(l){ return '<i class="' + (l[1] === 'win' ? 'w' : l[1] === 'loss' ? 'l' : '') + '"></i>'; }).join('') + '<span>last ' + legs.length + ' games, newest first: ' + lw + '-' + ll + '</span></div>' : '') +
+    '<h5>Who else is on this game</h5>' + whoElse(g, p) + '</div>';
+}
+function betId(g, x){ return g.id + '|' + x.k + '|' + x.p.cid; }
 function feed(S){
   var out = [], bets = 0, agree = 0;
   GAMES.forEach(function(g){ if (S.sport !== 'all' && g.sport !== S.sport) return;
@@ -168,9 +241,10 @@ function feed(S){
       ['ml', 'spread', 'total'].filter(function(k){ return by[k]; }).map(function(k){ return Object.keys(by[k]).map(function(side){
         return '<div class="fw-side"><div class="fw-side-h"><span>' + GROUPS[k] + '</span><b>' + esc(side) + '</b></div>' +
           by[k][side].sort(function(a, b){ return b.p.usd - a.p.usd; }).map(function(x){ var w = BOOK[x.k], p = x.p;
-            return '<div class="fw-bet"><span class="fw-nm">' + esc(w.name) + '</span><span class="fw-rec fw-num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
+            var id = betId(g, x), on = S.bet === id;
+            return '<button type="button" class="fw-bet fw-press" data-bet="' + esc(id) + '" aria-expanded="' + on + '"><span class="fw-chev" aria-hidden="true">›</span><span class="fw-nm">' + esc(w.name) + '</span><span class="fw-rec fw-num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
               (p.line != null ? '<span class="fw-rec fw-num">' + lineTxt(p.g, p.line).trim() + '</span>' : '') +
-              '<span class="fw-usd fw-num">' + usd(p.usd) + '</span>' + xUsual(p) + '</div>'; }).join('') + '</div>'; }).join(''); }).join('') + '</article>'); });
+              '<span class="fw-usd fw-num">' + usd(p.usd) + '</span>' + xUsual(p) + '</button>' + (on ? detail(g, x) : ''); }).join('') + '</div>'; }).join(''); }).join('') + '</article>'); });
   return {html: out.join(''), bets: bets, agree: agree};
 }
 /* results since each follow: settled games dated after the follow time, from the wallet's 20 most recent */
@@ -271,9 +345,10 @@ function mountPage(el, o){
   o = o || {}; css();
   el.className = 'vfw' + (o.skin === 'new' ? ' vfw-new' : '');
   if (!el._fw){
-    el._fw = {o: o, sport: 'all', sort: 'open', seasoned: false, open: null, shown: PAGE, geom: {}};
+    el._fw = {o: o, sport: 'all', sort: 'open', seasoned: false, open: null, bet: null, shown: PAGE, geom: {}};
     el.addEventListener('click', function(e){
       var S = el._fw, t = e.target, b;
+      if ((b = t.closest('[data-bet]'))){ S.bet = S.bet === b.dataset.bet ? null : b.dataset.bet; if (S.bet && CARDS.state === 'idle') loadCards(); draw(el); return; }
       if ((b = t.closest('[data-star]'))){ var k = b.dataset.star; if (FOLLOWS[k]) delete FOLLOWS[k]; else FOLLOWS[k] = Math.floor(Date.now() / 1000); save(); draw(el); return; }
       if ((b = t.closest('.fw-seg>button'))){ var id = b.parentNode.dataset.seg; S[id] = b.dataset.v; if (id !== 'sort') S.open = null; S.shown = PAGE; draw(el); return; }
       if (t.closest('[data-more]')){ S.shown += PAGE * 2; draw(el); return; }
@@ -285,7 +360,7 @@ function mountPage(el, o){
   el._fw.o = o;
   STORE.hosts = STORE.hosts.filter(function(h){ return h.el !== el && document.contains(h.el); });
   STORE.hosts.push({el: el, render: function(){ draw(el); }});
-  if (!STORE.timer) STORE.timer = setInterval(function(){ if (STORE.hosts.some(function(h){ return document.contains(h.el); })) load(); }, 120000);
+  if (!STORE.timer) STORE.timer = setInterval(function(){ if (STORE.hosts.some(function(h){ return document.contains(h.el); })){ load(); if (CARDS.state === 'ok') loadCards(); } }, 120000);
   if (STORE.state === 'loading') load();
   draw(el);
 }
