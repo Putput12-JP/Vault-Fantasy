@@ -160,3 +160,23 @@ Each card also carries:
 - `ledger_run_at`: when the ledger was last refreshed;
 - frozen cards also carry `test`: whether the card counts for the forward test, and why not (built late, a stale ledger, or a
   duplicate of an earlier card for a postponed game).
+
+## Wallets file (`wallets.json` on `pm-cards-live`)
+
+Built on the same run as the live cards (`--wallets-out`) and published beside `live.json`. It exists so a page can follow
+specific wallets. A card cannot do that: it keeps a wallet's largest rung per side and lists only the 4 largest proven wallets.
+
+`sports.<sport>.<wallet>` holds every proven wallet Vault does not exclude (variant `all`), whether or not it has anything open:
+
+- **Book:** `name`, `w_`, `l_`, `n`, `roi`, `l30_roi`, `pnl`, `usual`, `clv`, `dive`. The same values as a card's wallet line.
+- **`legs`:** its last 20 settled games, `[settled_at, result]`, newest first. A page can count results since a follow date.
+- **`positions`:** every open position at or above the $250 floor on a game not yet at its cut, every rung:
+  - `ev`, `gst`, `g` (ml, spread, total), `side`, `line`, `cid`;
+  - `usd` and `shares`: shares times the market price at the scan, not what the wallet paid;
+  - `px`, `px_t`: the market's price at the scan. **No entry price is stored or estimated;**
+  - `press`: `usd` over the wallet's usual stake;
+  - `since`: the first scan that saw the wallet holding it;
+  - `two_way`: the wallet holds more than one side of the market group. A card may collapse or drop such a wallet.
+
+It is a snapshot, rebuilt every run on a force-pushed branch, so it has no history to correct. Context only: never a pick, a size or
+an agree total.

@@ -1,7 +1,7 @@
 # Proven-sharps side cards (scripts/build_side_cards.py, docs/side-cards.md). Started by the holders scan (pm-holders.yml) right
 # after it pushes new T-15 keyframes, and every 10 minutes as a backstop:
 #   - frozen cards: one per new T-15 keyframe, committed once to pm_cards/ on `pm-holders-data` (never force-pushed)
-#   - live cards: every upcoming game, published as ONE parentless commit holding live.json on `pm-cards-live` (force-pushed,
+#   - live cards: every upcoming game, published as ONE parentless commit holding live.json and wallets.json on `pm-cards-live` (force-pushed,
 #     like nba-live), so a file rewritten every 10 minutes never grows any history
 # Sharp money is context only: the cards never feed Top Reads, SM_GATE or an agree total. lock_shadow is the pre-registered
 # forward test of docs/sharp-card-prereg.md.
@@ -55,7 +55,7 @@ jobs:
         run: |
           python3 scripts/build_side_cards.py --holders pmdata/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
             --frozen-out pmdata/pm_cards --live-out live/live.json --closes data/pm_closes.json --prev-live prev_live.json \
-            --sf-excluded sf_excluded.json
+            --sf-excluded sf_excluded.json --wallets-out live/wallets.json
       - name: Commit frozen cards (append-only)
         if: env.SKIP != '1'
         run: |
@@ -74,6 +74,7 @@ jobs:
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
           blob=$(git hash-object -w live/live.json)
-          tree=$(printf '100644 blob %s\tlive.json\n' "$blob" | git mktree)
+          wblob=$(git hash-object -w live/wallets.json)      # every proven wallet's book and open positions, for a follow page
+          tree=$(printf '100644 blob %s\tlive.json\n100644 blob %s\twallets.json\n' "$blob" "$wblob" | git mktree)
           c=$(git commit-tree "$tree" -m "pm cards live $(date -u +%FT%TZ)")
           git push -q --force origin "$c:refs/heads/pm-cards-live"
