@@ -14,7 +14,7 @@ Vault game model adds anything to the sharpest of them.
 - **Games:** the 2025-26 NBA season, regular season and playoffs, the game model's test season
   (`build_game_model.py` TEST, as `backtest_game_vs_kalshi.py` uses it).
 - **Polymarket:** each game's moneyline token for the home team, from Polymarket's own minute price history
-  (`clob.polymarket.com/prices-history`, free). Close = the last minute at or before tip, within 30 minutes of it.
+  (`data-api.polymarket.com/v2/prices-history`, free). Close = the last minute at or before tip, within 30 minutes of it.
   A sample of closes is cross-checked against the Pendulum Flow orderbook archive (archive.pendulumflow.com), whose
   2026 copies hold the order books but are too large to pull for a whole season.
 - **Kalshi:** the pre-tip price already in the Kalshi backfill (30-minute VWAP before tip, else the last trade).
