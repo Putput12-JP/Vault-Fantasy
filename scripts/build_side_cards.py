@@ -162,7 +162,10 @@ class Ledger:
         self._wide, self._mb, self._t5 = {}, {}, {}   # ledger-wide reads for sf_rungs (TOP3-PICK, GAP-LEAD, season tier 5)
 
     @classmethod
-    def load(cls, root, sport, holders=None, pm_closes=None):
+    def load(cls, root, sport, holders=None, pm_closes=None, follow=False):
+        """follow=True also loads the follow-only wallets (follow_only.json: CBB specialists the Following page lists). Their rows
+        and dates stay out of every card ledger, so the registered tests (docs/sharp-card-prereg*.md) read exactly the wallets they
+        were registered on. Only the wallets file uses a follow ledger."""
         rows = []
         for fn in sorted(glob.glob(os.path.join(root, "bets", sport, "*.jsonl"))):
             with open(fn) as f:
@@ -178,7 +181,12 @@ class Ledger:
             with open(fn) as f:
                 us += [json.loads(l) for l in f if l.strip()]
         markets = j(os.path.join(root, "markets", sport + ".json"), {})
-        return cls(rows, markets, j(os.path.join(root, "first_seen.json"), {}), us,
+        fs = j(os.path.join(root, "first_seen.json"), {})
+        if follow:
+            fs = {**j(os.path.join(root, "follow_only.json"), {}), **fs}
+        else:                                        # a follow-only wallet's rows never reach a card ledger
+            rows = [r for r in rows if r["w"] in fs]
+        return cls(rows, markets, fs, us,
                    (j(os.path.join(root, "summary.json"), {}) or {}).get("run_at"), load_closes(holders, sport, markets, pm_closes))
 
     def stats(self, w, asof):
@@ -682,6 +690,7 @@ NFL_ALIAS = {"WSH": "WAS", "LA": "LAR", "JAC": "JAX", "LVR": "LV", "OAK": "LV"} 
 # Sports with a registered side-card test: NBA, NFL, CFB (docs/sharp-card-prereg.md) and CBB (docs/sharp-card-prereg-cbb.md, approved
 # 2026-11-12). A frozen card of any other sport is built and graded but never counts ("sport not in a registered test").
 REGISTERED_SPORTS = ("nba", "nfl", "cfb", "cbb")
+FOLLOW_SPORTS = ("cbb",)             # sports whose wallets file also lists follow-only wallets (scripts/build_pm_ledger.py)
 # CBB counts only cards whose cut is at or after its registration: 2026-11-13 00:00 UTC (6:00 PM CT, Nov 12), set after the approval
 # commit. Earlier CBB cards stay `counts: false`.
 REGISTERED_FROM = {"cbb": 1794528000}
@@ -1072,6 +1081,10 @@ def main():
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
         ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
         ledger.sf_excluded = sf_ex
+        fl = ledger                                  # the ledger the wallets file reads: cards never see follow-only wallets
+        if a.wallets_out and sport in FOLLOW_SPORTS:
+            fl = Ledger.load(a.ledger, sport, a.holders, pm_closes, follow=True)
+            fl.sf_excluded = sf_ex
         # frozen: one card per keyframe that has none yet
         for kpath in sorted(glob.glob(os.path.join(a.holders, sport, "frozen", "*", "*.json"))):
             rel = os.path.relpath(kpath, os.path.join(a.holders, sport, "frozen"))
@@ -1104,16 +1117,16 @@ def main():
                 carry_flagged(c, prev.get((ev, gst)), now)
                 live["games"].append(c)
                 if a.wallets_out:
-                    pos, sts = wallet_positions(kf, ledger, sport, st)
+                    pos, sts = wallet_positions(kf, fl, sport, st)
                     names.update({w: n for w, n in (kf.get("names") or {}).items() if n})
                     for w, ps in pos.items():
                         e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w]), positions=[]))
                         e["positions"] += ps
         if a.wallets_out:                            # proven wallets with nothing open: the directory lists them too
-            for w in ledger.population("all", now):
+            for w in fl.population("all", now):
                 if w in wallets.get(sport, {}):
                     continue
-                s = ledger.stats(w, now)
+                s = fl.stats(w, now)
                 if s["all"]["proven"] and not s["excluded"]:
                     wallets.setdefault(sport, {})[w] = dict(wallet_book(s), positions=[])
             for w, e in wallets.get(sport, {}).items():
