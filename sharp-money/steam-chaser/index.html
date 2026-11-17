@@ -53,6 +53,8 @@ table.t td{text-align:right;padding:7px 6px;border-bottom:1px solid var(--line)}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tl{margin:0 0 10px;padding:0;list-style:none;font-size:13.5px}
 .tl li{padding:6px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+.dpx-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--line);margin:4px 0 6px}.dpx-bar u{display:block;height:100%}.dpx-bar .o{background:var(--mut)}.dpx-bar .n{background:var(--dim)}
+.dpx-v{margin:0;font-size:13.5px}.dpx-v b{color:var(--txt)}
 .empty{padding:22px 4px;color:var(--mut)}
 .empty b{display:block;color:var(--txt);font-size:16px;margin-bottom:4px}
 details.how{margin:12px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px}
@@ -169,6 +171,21 @@ function build(){
   return out.filter(r=>F.stat==='all'||r.P.s===F.stat).sort(ord[F.sort]);
 }
 
+const usdK=x=>Math.abs(x)>=1000?'$'+(Math.abs(x)/1000).toFixed(Math.abs(x)>=1e4?0:1)+'k':'$'+Math.abs(Math.round(x));
+// Exchange depth, shadow test (nba/docs/exchange-depth-prereg.md): Novig's resting orders at the alert's line, a market fact. Neutral colours, never ranks, never a call.
+function dpx(r){
+  const N=B.novig&&B.novig.props&&B.novig.props[r.key];if(!N||!N.lad)return '';
+  const L=r.lead.a.line,rung=N.lad.filter(x=>Array.isArray(x.dp)&&x.k===L)[0]||N.lad.filter(x=>Array.isArray(x.dp)).sort((a,b)=>Math.abs(a.k-L)-Math.abs(b.k-L))[0];
+  if(!rung)return '';
+  const i=String((rung.o||[])[0]).toLowerCase().startsWith('over')?0:1,ov=rung.dp[i]||0,un=rung.dp[1-i]||0,tot=ov+un;
+  if(tot<100)return '';
+  const big=ov>=500&&ov>=2*un?'o':un>=500&&un>=2*ov?'n':'';
+  return `<div class="sec"><span>Resting orders</span><span class="badge">untested</span></div>
+    <div class="dpx-bar" role="img" aria-label="Over ${usdK(ov)} against Under ${usdK(un)}"><u class="o" style="width:${(ov/tot*100).toFixed(1)}%"></u><u class="n" style="width:${(un/tot*100).toFixed(1)}%"></u></div>
+    <p class="dpx-v">${big==='o'?`Over <b>${usdK(ov)}</b>`:`Over ${usdK(ov)}`} · ${big==='n'?`Under <b>${usdK(un)}</b>`:`Under ${usdK(un)}`} <span class="mut">at ${rung.k}</span></p>
+    <p class="sub">Offers within 3¢ of each side's best bid on Novig, not trades, and not part of the venue count above. Untested as a signal: the test is registered and reads on or after Dec 7.</p>`;
+}
+
 function card(r,now){
   const nm=r.pl?r.pl[0]:'Player '+r.P.p,open=OPEN.has(r.key+r.side);
   const b=r.best,ev=r.rowEv;
@@ -184,6 +201,7 @@ function card(r,now){
    <div class="det">
     <div class="sec" style="margin-top:0"><span>Where it is</span></div>
     <div class="scroll"><table class="t"><tr><th>Book</th><th>Line</th><th>Over</th><th>Under</th><th>EV</th></tr>${r.tg.map(t=>`<tr><td>${esc(t.name)}${t.pick?' <small class="mut">pick\'em</small>':''}</td><td class="num">${t.line}</td><td class="num">${am(t.o)}</td><td class="num">${am(t.u)}</td><td class="num ${t.ev==null?'mut':t.ev>=0?'pos':'neg'}">${t.ev==null?(t.better?'better line':'-'):sg(t.ev)}</td></tr>`).join('')}</table></div>
+    ${dpx(r)}
     <div class="sec"><span>Reference moves</span></div>
     <ul class="tl">${r.ev.map(a=>{const m=moveOf(a);return `<li><span>${esc(REF[a.type])}: ${esc(m?m.text:'')}${a.lim?` · limit $${a.lim.toLocaleString()}`:''}</span><span class="mut">${clock(a.t)}</span></li>`}).join('')}</ul>
     <p class="sub">EV uses the reference's no-vig chance when it moved, at the same line. Pinnacle's price is a reference, never a place to bet.</p>
@@ -208,7 +226,10 @@ function record(){
   const rows=Object.entries(REF).map(([t,l])=>{
     const r=agg[t]||new Array(13).fill(0),n=r[0],g=r[1],m=g?r[2]/g:null,se=g>1?Math.sqrt(Math.max(r[3]/g-m*m,0)/g):null,dc=r[5]+r[6]+r[7];
     return `<tr><td>${l}</td><td class="num">${n}</td><td class="num">${g}</td><td class="num ${m==null?'mut':m>0?'pos':m<0?'neg':''}">${m==null?'-':(m>=0?'+':'')+(m*100).toFixed(2)}${se?` <small class="mut">± ${(se*100).toFixed(2)}</small>`:''}</td><td class="num">${dc?`${r[5]}-${r[6]}${r[7]?'-'+r[7]:''}`:'-'}</td></tr>`}).join('');
-  $('rec').innerHTML=`<div class="scroll"><table class="t"><tr><th>Reference</th><th>Fired</th><th>Graded</th><th>CLV pts</th><th>W-L</th></tr>${rows}</table></div>
+  const dr=agg.p_dep||new Array(13).fill(0),dn=dr[1],dm=dn?dr[2]/dn:null,dse=dn>1?Math.sqrt(Math.max(dr[3]/dn-dm*dm,0)/dn):null;
+  const dep=`<tr><td>Exchange depth <span class="badge">shadow</span></td><td class="num">${dr[0]}</td><td class="num">${dn}</td><td class="num ${dm==null?'mut':dm>0?'pos':dm<0?'neg':''}">${dm==null?'-':(dm>=0?'+':'')+(dm*100).toFixed(2)}${dse?` <small class="mut">± ${(dse*100).toFixed(2)}</small>`:''}</td><td class="num mut">-</td></tr>
+  <tr><td colspan="5" class="mut" style="text-align:left;font-size:12.5px">Exchange depth: the heavier side of a Novig prop book. ${dn} of 100 graded; first look not before Dec 7. No verdict until then.</td></tr>`;
+  $('rec').innerHTML=`<div class="scroll"><table class="t"><tr><th>Reference</th><th>Fired</th><th>Graded</th><th>CLV pts</th><th>W-L</th></tr>${rows}${dep}</table></div>
   <p class="sub" style="margin-top:10px">CLV is Pinnacle's closing no-vig chance at the same line minus the chance when the move fired. A move that Pinnacle left (different line at the close) has no CLV. Backtest, Oct 20 to 30: Pinnacle moves followed at DraftKings with 2%+ EV hit 47.3% on 203 plays against 54.5% expected. No edge shown, so this page does not call anything a bet.</p>`;
 }
 
