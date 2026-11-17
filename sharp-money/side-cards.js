@@ -782,14 +782,15 @@ function recSport(sp, D){
   ((STORE.d || {}).locked || []).filter(function(r){ return inSp(r.sport) && r.play === 'sf' && !graded[r.key]; }).forEach(function(r){
     addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
   (((D.cards || {}).open) || []).filter(function(r){ return inSp(r.sport) && r.play === 'sf' && r.gst > nowS - 7 * 86400; }).forEach(function(r){
-    addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
+    addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units});
+    if (r.postponed && og[r.ev]) og[r.ev].pp = true; });
   /* a live card past its lock time is locked, even before the live file drops it */
   Object.keys(og).forEach(function(e){ var x = og[e]; x.locked = !x.live || nowS >= (x.cut || x.gst - 900); });
   var oev = Object.keys(og).sort(function(a, b){ return (og[b].locked - og[a].locked) || (og[a].gst - og[b].gst); });
   if (oev.length){
-    openHtml = '<section class="vr-card"><div class="vr-fh"><h3>Open plays</h3><span class="num">' + oev.reduce(function(t, e){ return t + og[e].rows.length; }, 0) + ' pending</span>' + helpBtn() + '</div>' + defsHtml() +
+    openHtml = '<section class="vr-card"><div class="vr-fh"><h3>Open plays</h3><span class="num">' + oev.reduce(function(t, e){ return og[e].pp ? t : t + og[e].rows.length; }, 0) + ' pending' + (oev.some(function(e){ return og[e].pp; }) ? ' · ' + oev.reduce(function(t, e){ return og[e].pp ? t + og[e].rows.length : t; }, 0) + ' postponed' : '') + '</span>' + helpBtn() + '</div>' + defsHtml() +
       '<p class="vr-fn">They count in the record above once their games settle.</p><div class="vr-games">' + oev.map(function(ev){ var x = og[ev], gn = gameName(ev); if (ALL && x.sp) gn.d = x.sp.toUpperCase() + ' · ' + gn.d;
-      var chip = !x.locked ? '<span class="vr-st live">Locks ' + ct(x.cut || x.gst - 900) + '</span>' : nowS < x.gst ? '<span class="vr-st lock">' + ICON.lock + 'Locked · starts ' + ct(x.gst) + '</span>' : '<span class="vr-st wait">' + ICON.lock + 'Locked · awaiting result</span>';
+      var chip = x.pp ? '<span class="vr-st" title="ESPN lists this game as postponed. The play stays open and grades if it is played.">Postponed</span>' : !x.locked ? '<span class="vr-st live">Locks ' + ct(x.cut || x.gst - 900) + '</span>' : nowS < x.gst ? '<span class="vr-st lock">' + ICON.lock + 'Locked · starts ' + ct(x.gst) + '</span>' : '<span class="vr-st wait">' + ICON.lock + 'Locked · awaiting result</span>';
       return '<div class="vr-g"><div class="vr-gn"><b>' + gn.t + '</b><span>' + gn.d + '</span>' + chip + '</div><div class="vr-gp">' + x.rows.map(function(r){
         return '<div class="vr-pl">' + whoTag(r.who) + '<span class="vr-lbl">' + recLogo(r.sp || sp, ev, r.side, r.group) + '<b>' + esc(r.label) + '</b></span><span class="num vr-u">' + (r.units != null ? r.units + 'u' : '') + '</span>' + (x.locked ? '<span class="vr-res locked" title="Locked" aria-label="locked">' + ICON.lock + '</span>' : '<span class="vr-res open" aria-label="pending"></span>') + '</div>'; }).join('') + '</div></div>'; }).join('') + '</div></section>';
   }

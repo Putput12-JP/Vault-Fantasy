@@ -26,7 +26,7 @@ Sharp money is context only (CLAUDE.md): this is a record of a shadow test and o
 
 usage: grade_side_cards.py --cards DIR --holders DIR --closes data/pm_closes.json --out DIR [--now EPOCH] [--no-fetch]
 """
-import argparse, datetime as dt, glob, gzip, json, os, random, sys, time
+import argparse, datetime as dt, glob, gzip, json, os, random, sys, time, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import Client, Budget, gamma_facts, jload, jsave  # noqa: E402
@@ -211,6 +211,37 @@ def grade(card, rel, kf, facts, closes, now, conf=None):
     return rows, waiting
 
 
+ESPN_SB = {"nfl": "football/nfl", "cfb": "football/college-football", "nba": "basketball/nba", "cbb": "basketball/mens-college-basketball"}
+
+
+def espn_postponed(open_rows, now):
+    """Event keys whose game ESPN lists as postponed, canceled or suspended. Read only for open plays whose start has passed by 3+ hours.
+    The flag is recomputed every run, so a rescheduled game drops it. A failed read flags nothing."""
+    out, cache = set(), {}
+    for r in open_rows:
+        ev = r["ev"]
+        if r["gst"] > now - 3 * 3600 or ev in out or r["sport"] not in ESPN_SB:
+            continue
+        date = ev[-10:].replace("-", "")
+        k = (r["sport"], date)
+        if k not in cache:
+            try:
+                url = f"https://site.api.espn.com/apis/site/v2/sports/{ESPN_SB[r['sport']]}/scoreboard?dates={date}&limit=500" + ("&groups=50" if r["sport"] == "cbb" else "")
+                with urllib.request.urlopen(url, timeout=20) as f:
+                    cache[k] = json.load(f).get("events", [])
+            except Exception as e:  # noqa: BLE001
+                print(f"::warning::ESPN status read failed for {k} ({e}); nothing flagged postponed")
+                cache[k] = []
+        names = {o.lower() for o in (r.get("outs") or [])}
+        for e in cache[k]:
+            comp = (e.get("competitions") or [{}])[0]
+            teams = {((c.get("team") or {}).get("displayName") or "").lower() for c in comp.get("competitors", [])}
+            if names and names <= teams | {"over", "under"} and names & teams and (e.get("status") or {}).get("type", {}).get("name") in (
+                    "STATUS_POSTPONED", "STATUS_CANCELED", "STATUS_SUSPENDED"):
+                out.add(ev)
+    return out
+
+
 def open_plays(todo, graded, now, days=7):
     """Locked plays still waiting for a result, for the Record page: Vault's shown size (variant all) on every frozen card, and the
     pre-registered lock on counted cards. Newest game first. Stored values only."""
@@ -222,8 +253,12 @@ def open_plays(todo, graded, now, days=7):
                 continue
             if key in graded or c["gst"] < now - days * 86400 or p["variant"] != "all" or (p["play"] == "lock" and not (c.get("test") or {}).get("counts")):
                 continue
-            out.append({"sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": p["group"], "play": p["play"], "side": p["side"],
+            out.append({"key": key, "sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": p["group"], "play": p["play"], "side": p["side"],
                         "line": p["line"], "outs": p["outs"], "units": p["units"], "price": p["price"]})
+    pp = espn_postponed(out, now)
+    for r in out:
+        if r["ev"] in pp:
+            r["postponed"] = True
     return sorted(out, key=lambda r: (-r["gst"], r["ev"], r["group"], r["play"]))
 
 
@@ -450,6 +485,15 @@ def main():
         rewrite_rows(a.out, fixed)
         have.update(fixed)
         print(f"corrected {len(fixed)} rows that were unpriced only because a steady price was not re-logged")
+    # a play on a game ESPN lists as postponed or canceled is voided: no result, no units, out of every record. Written once, so a game
+    # replayed later does not regrade (decided 2026-11-17).
+    seen = {r["key"] for r in new} | set(have)
+    voids = [{"key": r["key"], "kind": "result", "v": VERSION, "sport": r["sport"], "ev": r["ev"], "gst": r["gst"], "res": None,
+              "status": "void", "why": "game postponed or canceled (ESPN)", "graded_at": now}
+             for r in open_plays(todo, seen, now) if r.get("postponed")]
+    if voids:
+        print(f"voided {len(voids)} plays on postponed games: {sorted({r['ev'] for r in voids})}")
+    new += voids
     append_rows(a.out, new)
     jsave(cache_p, facts)
     allrows = list(have.values()) + new
