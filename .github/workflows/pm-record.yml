@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '50 */2 * * *'
+    # every 30 min from 5 pm to midnight Central (UTC-6 until March 14, 2027; then 5 pm CDT is 22:00 UTC, so shift this window one hour earlier)
+    - cron: '0,30 23,0-5 * * *'
+    - cron: '0 6 * * *'
 
 concurrency:
   group: pm-record

@@ -770,7 +770,7 @@ function recSport(sp, D){
         : '<span class="vr-none">—</span><span class="vr-none">—</span><span class="vr-none">—</span>'); }).join('') + '</div></section>' + sigHtml;
   var openHtml = '', recentHtml = '';
   /* open plays: Vault's suggested sizes on cards still live (they lock at T-15), and every locked play from either side still waiting for
-     its result. Each one lands in the record above once its market settles (the record job runs every 2 hours). */
+     its result. Each one lands in the record above once its market settles (the record job runs every 2 hours, and every 30 minutes from 5 pm to midnight Central). */
   var og = {}, nowS = Date.now() / 1000;
   var addO = function(ev, gst, row){ (og[ev] = og[ev] || {gst: gst, rows: [], live: false, sp: row.sp}).rows.push(row); };
   ((STORE.d || {}).games || []).filter(function(g){ return inSp(g.sport) && !g.frozen; }).forEach(function(g){
