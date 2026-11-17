@@ -1202,6 +1202,7 @@ function route(){
  if(window.VaultSideCards){const so={skin:'new',logo:(c,n)=>{const g=GM[c.vault&&c.vault.key];if(!g)return null;const t=[g.away,g.home].find(x=>x&&(x.name===n||x.abbr===n||String(x.name||'').endsWith(' '+n)));return t?teamUrl(g.sport,t):null}};const sp=sc.querySelector('[data-side-cards]');if(sp)VaultSideCards.mountPage(sp,so);const sg=sc.querySelector('[data-side-card]');if(sg)VaultSideCards.mountGame(sg,sg.dataset.sideCard,so)}
  if(window.VaultEdgeBoard){const eh=sc.querySelector('[data-edge-host]');if(eh)VaultEdgeBoard.mount(eh,{games:G,logo:(g,side)=>teamUrl(g.sport,g[side])})}
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+ const cn=sc.querySelector('.chip.on[data-v2nav]');if(cn&&cn.parentElement){const pr=cn.parentElement,a=cn.getBoundingClientRect(),b=pr.getBoundingClientRect();pr.scrollLeft+=a.left-b.left-(b.width-a.width)/2}  /* keep the open Plays/Sharps/Following chip in view on a phone */
 }
 function rerender(){const y=scrollY;route();window.scrollTo(0,y)}
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-go],[data-back],[data-sit],[data-fs]')){e.preventDefault();e.target.click()}});
