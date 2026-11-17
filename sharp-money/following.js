@@ -87,9 +87,10 @@ var CSS = [
 '.vfw .fw-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
 '.vfw .fw-chk{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--c-mut);cursor:pointer;min-height:36px}.vfw .fw-chk input{accent-color:var(--c-ink)}',
 '.vfw .fw-dir{padding:4px 0}',
-'.vfw .fw-cols,.vfw .fw-row{display:grid;grid-template-columns:40px minmax(150px,1.6fr) 54px 84px 76px 60px 96px 96px 70px;align-items:center;gap:8px;padding:0 var(--c-pad)}',
+'.vfw .fw-cols,.vfw .fw-row{display:grid;grid-template-columns:40px minmax(150px,1.6fr) 104px 54px 84px 76px 60px 96px 96px 70px;align-items:center;gap:8px;padding:0 var(--c-pad)}',
 '.vfw .fw-cols{font-size:11px;color:var(--c-dim);padding-top:12px;padding-bottom:8px}',
-'.vfw .fw-cols span:nth-child(n+4),.vfw .fw-row>span:nth-child(n+4){text-align:right}',
+'.vfw .fw-cols span:nth-child(n+5),.vfw .fw-row>span:nth-child(n+5){text-align:right}',
+'.vfw .fw-dots{display:flex;gap:4px;align-items:center}.vfw .fw-dots i{width:8px;height:8px;border-radius:50%;background:var(--c-dim);flex:none}.vfw .fw-dots i.w{background:var(--c-good)}.vfw .fw-dots i.l{background:var(--c-bad)}',
 '.vfw .fw-row{--fw-ps:.99;min-height:50px;border-top:1px solid var(--c-line);font-size:13px;cursor:pointer;color:inherit}.vfw .fw-row:hover{background:var(--c-sel)}',
 '.vfw .fw-row .fw-nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vfw .fw-row .fw-thin{font-style:normal;font-size:10.5px;color:var(--c-warn);margin-left:7px;font-weight:500}',
 '.vfw .fw-star{--fw-ps:.88;width:34px;height:34px;border-radius:50%;border:0;background:transparent;color:var(--c-dim);font-size:17px;cursor:pointer;line-height:1}.vfw .fw-star.on{color:var(--c-gold)}',
@@ -112,9 +113,9 @@ var CSS = [
 '.vfw .fw-feed{grid-template-columns:minmax(0,1fr);gap:10px}.vfw .fw-h{margin-top:24px}.vfw .fw-h p{flex-basis:100%;order:3}',
 '.vfw .fw-seg>button{min-height:36px}',
 '.vfw .fw-cols{display:none}',
-'.vfw .fw-row{grid-template-columns:40px 1fr auto auto;grid-template-areas:"s n roi o" "s m roi o";row-gap:2px;padding:9px 12px;min-height:58px}',
+'.vfw .fw-row{grid-template-columns:40px 1fr auto auto;grid-template-areas:"s n roi o" "s m roi o" "s d roi o";row-gap:2px;padding:9px 12px;min-height:58px}',
 '.vfw .fw-row>span{display:none}.vfw .fw-row>.c-star{display:block;grid-area:s}.vfw .fw-row>.c-name{display:block;grid-area:n}',
-'.vfw .fw-row>.c-roi{display:block;grid-area:roi;font-size:17px}.vfw .fw-row>.c-open{display:block;grid-area:o}',
+'.vfw .fw-row>.c-roi{display:block;grid-area:roi;font-size:17px}.vfw .fw-row>.c-open{display:block;grid-area:o}.vfw .fw-row>.c-dots{display:block;grid-area:d;text-align:left}.vfw .fw-row>.c-dots:empty{display:none}',
 '.vfw .fw-row>.c-meta{display:block;grid-area:m;font-size:11.5px;color:var(--c-mut);text-align:left}',
 '.vfw .fw-prof{grid-template-columns:1fr;padding:14px 16px 18px}.vfw .fw-bet .fw-usd{font-size:16px}',
 '.vfw .fw-obh{display:none}',
@@ -311,14 +312,20 @@ function profile(w){
     '<p class="fw-pn">Record and dollar ROI in ' + w.sport.toUpperCase() + ' as of the last ledger run. Lifetime profit ' + usd(Math.abs(w.pnl)).replace('$', w.pnl < 0 ? '-$' : '$') + '.' +
     (w.n < SEASONED ? ' <b class="fw-dn">Only ' + w.n + ' graded bets: treat this record as thin.</b>' : '') + '</p></div>';
 }
+/* the wallet's 10 newest settled results (legs are newest first): green won, red lost */
+function dots(w){
+  var l = w.legs.slice(0, 10).filter(function(x){ return x[1] === 'win' || x[1] === 'loss'; }); if (!l.length) return '';
+  var wn = l.filter(function(x){ return x[1] === 'win'; }).length;
+  return '<span class="fw-dots" role="img" aria-label="Last ' + l.length + ' settled: ' + wn + ' won, ' + (l.length - wn) + ' lost, newest first">' + l.map(function(x){ return '<i class="' + (x[1] === 'win' ? 'w' : 'l') + '"></i>'; }).join('') + '</span>';
+}
 function dir(S){
   var all = rows(S), ws = all.slice(0, S.shown);
-  var head = '<div class="fw-cols"><span></span><span>Wallet</span><span>Sport</span><span>Record</span><span>ROI</span><span>Bets</span><span>Usual stake</span><span>Beat the close</span><span>Open now</span></div>';
+  var head = '<div class="fw-cols"><span></span><span>Wallet</span><span>Last 10</span><span>Sport</span><span>Record</span><span>ROI</span><span>Bets</span><span>Usual stake</span><span>Beat the close</span><span>Open now</span></div>';
   var body = ws.map(function(w){ var on = !!FOLLOWS[w.k], n = OPEN[w.k] || 0, beat = w.clv.n ? Math.round(w.clv.beat / w.clv.n * 100) + '%' : '';
     return '<div class="fw-row fw-press" role="button" tabindex="0" data-k="' + w.k + '" aria-expanded="' + (S.open === w.k) + '">' +
       '<span class="c-star"><button type="button" class="fw-star fw-press' + (on ? ' on' : '') + '" data-star="' + w.k + '" aria-pressed="' + on + '" aria-label="' + (on ? 'Unfollow ' : 'Follow ') + esc(w.name) + '">' + (on ? '★' : '☆') + '</button></span>' +
       '<span class="c-name fw-nm">' + esc(w.name) + (w.n < SEASONED ? '<i class="fw-thin">thin</i>' : '') + '</span>' +
-      '<span><i class="fw-tag">' + w.sport + '</i></span><span class="fw-num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
+      '<span class="c-dots">' + dots(w) + '</span><span><i class="fw-tag">' + w.sport + '</i></span><span class="fw-num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
       '<span class="c-roi fw-num ' + cls(w.roi) + '">' + pct(w.roi) + '</span><span class="fw-num">' + w.n + '</span><span class="fw-num">' + usd(w.usual) + '</span><span class="fw-num">' + beat + '</span>' +
       '<span class="c-open"><i class="fw-open fw-num' + (n ? ' fw-has' : '') + '">' + n + '</i></span>' +
       '<span class="c-meta fw-num">' + w.sport.toUpperCase() + ' · ' + w.wl[0] + '-' + w.wl[1] + ' · ' + w.n + ' bets · ' + usd(w.usual) + ' usual</span></div>' +
