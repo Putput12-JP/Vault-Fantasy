@@ -61,15 +61,15 @@ _Does fresh role news beat what the market already priced? Pre-game info only: a
 
 ```
 trigger                   OPEN: over hit vs market said     CLOSE: over hit vs market said
-mixed                     n= 253  45.5% vs  49.2%           n= 296  44.9% vs  49.1%
-no news                   n=2201  49.1% vs  49.4%           n=2421  49.3% vs  49.4%
-usage down                n= 748  49.3% vs  49.3%           n= 851  49.4% vs  49.0%
-usage up / teammate out   n=3175  49.2% vs  49.6%           n=3404  48.7% vs  49.5%
+mixed                     n= 268  45.5% vs  49.2%           n= 312  44.9% vs  49.2%
+no news                   n=2265  49.4% vs  49.4%           n=2487  49.5% vs  49.4%
+usage down                n= 733  49.4% vs  49.3%           n= 835  49.5% vs  49.0%
+usage up / teammate out   n=3111  49.0% vs  49.6%           n=3338  48.6% vs  49.5%
 
 Vault vs market disagreements of 8+ pts (close):
-  against the news         n= 947  Vault's side won 472-475  skill -0.067 z -4.4
-  agrees with the news     n= 539  Vault's side won 290-249  skill -0.003 z -0.1
-  no news                  n= 827  Vault's side won 425-402  skill -0.038 z -2.3
+  against the news         n= 929  Vault's side won 465-464  skill -0.064 z -4.2
+  agrees with the news     n= 532  Vault's side won 289-243  skill +0.001 z +0.1
+  no news                  n= 850  Vault's side won 433-417  skill -0.043 z -2.7
 ```
 
 ## Sharp-book lead: does Pinnacle move first?
