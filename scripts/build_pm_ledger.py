@@ -20,6 +20,7 @@ Look-ahead rules (the traps the plan review found)
 Files under --out (a checkout of the never-force-pushed `sharp-history` branch, folder pm_ledger/):
   universe/<date>.json        the wallets polled that day and why (leaderboard rank and pnl, or a Vault wallet file)
   first_seen.json             {wallet: first universe date}; dates are only ever added
+  follow_only.json            same, for follow-only wallets (CBB specialists the Following page lists). Card tests never read it.
   user_stats/<date>.jsonl     one /v2/user-stats row per wallet polled that day
   markets/<sport>.json        Gamma facts per condition (type, line, outcomes, game start, closed time, resolved prices)
   bets/<sport>/<YYYY-MM>.jsonl the graded rows, by month of game start; append-only, keyed wallet|condition|outcome_index
@@ -51,6 +52,11 @@ LEGACY_SPORTS = ("nba", "nfl", "cfb")
 # College basketball is graded for wallets already tracked but adds none: the side-card test (docs/sharp-card-prereg.md) was
 # registered on the universe these sources built. docs/sharp-card-prereg-cbb.md (approved 2026-11-12, decision A) keeps it that way.
 UNIVERSE_SPORTS = ("nba", "nfl", "cfb")
+# Sports whose games add FOLLOW-ONLY wallets (2026-11-17): CBB specialists the Following page lists, kept OUT of first_seen.json and
+# the universe the registered card tests read (follow_only.json instead), so docs/sharp-card-prereg*.md are read exactly as written.
+# A follow-only wallet's ledger reads cover these sports only. A wallet that later enters the registered universe by its own rule
+# gets a first_seen date that day and the other sports' history is filled like any wallet added late.
+FOLLOW_SPORTS = ("cbb",)
 FULL_GAME = ("moneyline", "spreads", "totals")
 CUTOFF_SEC = 15 * 60                      # The benchmark T-15 freeze (index.js `_=900*1e3`)
 MIN_MONTHLY_PNL = 20000                   # The benchmark seedSportsSharps MIN_MONTHLY_PNL ("monthly hot")
@@ -521,8 +527,9 @@ def order_wallets(uni, fs, hot, pend, wallets=0, priority_only=False):
 
 def discover(cli, a, known, now):
     """Wallets with a fat ticket on an upcoming full-game NBA / NFL / CFB market, kept when their all-time AND this-month sports
-    PnL are both positive (the benchmark's discovery gate). Returns {wallet: universe entry} for wallets not already known."""
-    events, uni_events = [], []
+    PnL are both positive (the benchmark's discovery gate). Returns ({wallet: universe entry} for wallets not already known, hot,
+    summary, {wallet: entry} for follow-only wallets found on FOLLOW_SPORTS games)."""
+    events, uni_events, follow_events = [], [], []
     iso = lambda t: dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for s in a.sports:
         cursor = None
@@ -538,6 +545,8 @@ def discover(cli, a, known, now):
             events += j.get("events") or []
             if s in UNIVERSE_SPORTS:
                 uni_events += j.get("events") or []
+            if s in FOLLOW_SPORTS:
+                follow_events += j.get("events") or []
             cursor = j.get("next_cursor")
             if not cursor or not j.get("events"):
                 break
@@ -550,20 +559,38 @@ def discover(cli, a, known, now):
             holder_pages.append(rows)
     fat = fat_tickets(uni_events, holder_pages, now)            # only these games may add a wallet (UNIVERSE_SPORTS)
     hot = fat_tickets(events, holder_pages, now, HOT_USD)      # read order only: hot wallets must already be tracked
-    out = {}
+    gate = {}
+
+    def lb_gate(w):
+        """The benchmark's discovery gate: all-time AND this-month sports PnL both positive. Returns the pnl pair or None."""
+        if w not in gate:
+            lb = {}
+            for period in ("all", "month"):
+                j = cli.get(f"{PM_DATA}/leaderboard?category=sports&time_period={period}&user={w}")
+                d = (j or {}).get("data") if isinstance(j, dict) else None
+                lb[period] = (d or {}).get("pnl")
+            gate[w] = lb if (lb["all"] or 0) > 0 and (lb["month"] or 0) > 0 else None
+        return gate[w]
+
+    out, follow = {}, {}
     for w, t in sorted(fat.items(), key=lambda kv: -kv[1]["usd"]):
         if w in known:
             continue
-        lb = {}
-        for period in ("all", "month"):
-            j = cli.get(f"{PM_DATA}/leaderboard?category=sports&time_period={period}&user={w}")
-            d = (j or {}).get("data") if isinstance(j, dict) else None
-            lb[period] = (d or {}).get("pnl")
-        if (lb["all"] or 0) > 0 and (lb["month"] or 0) > 0:
+        lb = lb_gate(w)
+        if lb:
             out[w] = {"name": None, "why": [{"fat_ticket": t["usd"], "cid": t["cid"], "both_sides": t["both"],
                                               "all_pnl": round(lb["all"]), "month_pnl": round(lb["month"])}]}
+    # follow-only: CBB markets are thin (median game moneyline volume about $1.7K), so the $2,000 fat ticket finds almost no one.
+    # The board floor ($250) finds the wallets that actually trade them; the same PnL gate keeps out the unprofitable.
+    for w, t in sorted(fat_tickets(follow_events, holder_pages, now, HOT_USD).items(), key=lambda kv: -kv[1]["usd"]):
+        if w in known or w in out:
+            continue
+        lb = lb_gate(w)
+        if lb:
+            follow[w] = {"name": None, "why": [{"follow_only": True, "ticket": t["usd"], "cid": t["cid"], "both_sides": t["both"],
+                                                 "all_pnl": round(lb["all"]), "month_pnl": round(lb["month"])}]}
     return out, hot, {"markets": len(cids), "fat_tickets": len(fat), "new_candidates": sum(1 for w in fat if w not in known),
-                      "added": len(out), "hot_holders": len(hot)}
+                      "added": len(out), "hot_holders": len(hot), "follow_added": len(follow)}, follow
 
 
 OVERLAP = 3 * 86400        # incremental position reads go back 3 days before the high-water mark, so a late fill or redeem is not missed
@@ -799,6 +826,7 @@ def main():
     state = jload(os.path.join(root, "state.json"), {})
     pend = jload(os.path.join(root, "pending.json"), {})
     first_seen = jload(os.path.join(root, "first_seen.json"), {})     # {wallet: epoch seconds the wallet was first selected}
+    follow_fs = jload(os.path.join(root, "follow_only.json"), {})     # same, for follow-only wallets (never read by the card tests)
     markets = {}
     for s in a.sports:
         markets.update(jload(os.path.join(root, "markets", s + ".json"), {}))
@@ -823,18 +851,22 @@ def main():
             uni.update(found)
         except (PMDataError, Budget) as e:
             summary["benchmark"] = {"error": repr(e)}  # an outside source is additive; the ledger still runs without it
-    hot = {}
+    hot, follow = {}, {}
     try:
-        found, hot, summary["discover"] = discover(cli, a, set(uni) | set(first_seen), now)
+        found, hot, summary["discover"], follow = discover(cli, a, set(uni) | set(first_seen) | set(follow_fs), now)
         uni.update(found)
     except (PMDataError, Budget) as e:
         summary["discover"] = {"error": repr(e)}       # discovery is additive; the ledger still runs without it
     selected_at = int(time.time())                                    # the moment today's selection was known
     new_fs = {w: selected_at for w in uni if w not in first_seen}
-    fs = {**first_seen, **new_fs}
+    # a follow-only wallet that today's registered universe selected is registered from today; the rest stay follow-only
+    follow = {w: e for w, e in follow.items() if w not in uni and w not in first_seen}
+    new_follow = {w: selected_at for w in follow if w not in follow_fs}
+    fs = {**follow_fs, **new_follow, **first_seen, **new_fs}           # registered date wins; only first_seen.json feeds the card tests
+    follow_set = (set(follow_fs) | set(new_follow)) - set(first_seen) - set(new_fs)
     order, former = [], []
     if not a.discover_only:
-        order, former = order_wallets(uni, fs, hot, pend, a.wallets, a.priority_only)
+        order, former = order_wallets({**uni, **follow}, fs, hot, pend, a.wallets, a.priority_only)
     summary["mode"] = "discover" if a.discover_only else "priority" if a.priority_only else "full"
     summary["hot_first"] = sum(1 for w in order if w in hot)
 
@@ -842,6 +874,7 @@ def main():
         summary["rate_probe"] = rate_probe(cli, a.rate_probe, order)
         cli.status = {}
 
+    follow_args = argparse.Namespace(**{**vars(a), "sports": [x for x in a.sports if x in FOLLOW_SPORTS]})
     stats_rows, graded, notes, failed, reached = [], {}, {}, [], set()
     lock = threading.Lock()
 
@@ -855,7 +888,8 @@ def main():
             return
         try:
             j = cli.get(f"{PM_DATA}/user-stats?user={w}")
-            rows = sync_wallet(cli, w, a, state, markets, pend, have, fs.get(w), now, note, positions)
+            wa = follow_args if w in follow_set else a              # follow-only wallets are read for FOLLOW_SPORTS only
+            rows = sync_wallet(cli, w, wa, state, markets, pend, have, fs.get(w), now, note, positions)
             with lock:
                 reached.add(w)
                 if isinstance(j, dict) and j.get("data"):
@@ -896,7 +930,7 @@ def main():
         b["wallets"] = len(b["wallets"])
         b["stake"], b["pnl"] = round(b["stake"]), round(b["pnl"])
     summary.update({
-        "universe": len(uni), "polled": len(order), "former_polled": len(former), "reached": len(reached),
+        "universe": len(uni), "follow_only": len(follow_set), "new_follow_only": len(new_follow), "polled": len(order), "former_polled": len(former), "reached": len(reached),
         "not_reached": len(order) + len(former) - len(reached), "new_first_seen": len(new_fs), "user_stats": len(stats_rows),
         "added_rows": len(added), "n_conflicts": len(conflicts), "conflicts": conflicts[:20], "by_sport": by_sport,
         "conditions": notes, "pending_wallets": sum(1 for v in pend.values() if v),
@@ -918,6 +952,9 @@ def main():
                 f.write(json.dumps({"at": now, "key": k, "ledger": existing[k], "new": graded[k]}, sort_keys=True) + "\n")
     first_seen.update(new_fs)
     jsave(os.path.join(root, "first_seen.json"), first_seen)
+    if new_follow:
+        follow_fs.update(new_follow)
+        jsave(os.path.join(root, "follow_only.json"), follow_fs)
     upath = os.path.join(root, "universe", today + ".json")
     prev = jload(upath, None)
     jsave(upath, {"date": today, "selected_at": selected_at, "lb_all": a.lb_all, "lb_month": a.lb_month,

@@ -554,5 +554,24 @@ class WalletPositions(unittest.TestCase):
         self.assertTrue(f["context_only"] and f["floor_usd"] == 250)
 
 
+class FollowOnly(unittest.TestCase):
+    """Follow-only wallets (CBB specialists on the Following page) never reach a card ledger; only the wallets file's ledger has them."""
+    def test_load_keeps_follow_wallets_out_of_cards(self):
+        import json, tempfile
+        root = tempfile.mkdtemp()
+        os.makedirs(os.path.join(root, "bets", "cbb"))
+        row = lambda w: {"w": w, "cid": "c" + w, "settled_at": 100, "sport": "cbb", "src": "forward"}
+        with open(os.path.join(root, "bets", "cbb", "2026-11.jsonl"), "w") as f:
+            f.write("".join(json.dumps(row(w)) + "\n" for w in ("0xreg", "0xfollow")))
+        json.dump({"0xreg": 10}, open(os.path.join(root, "first_seen.json"), "w"))
+        json.dump({"0xfollow": 20}, open(os.path.join(root, "follow_only.json"), "w"))
+        cards, follow = C.Ledger.load(root, "cbb"), C.Ledger.load(root, "cbb", follow=True)
+        self.assertEqual(sorted(cards.by_w), ["0xreg"])
+        self.assertEqual(sorted(cards.first_seen), ["0xreg"])
+        self.assertEqual(sorted(follow.by_w), ["0xfollow", "0xreg"])
+        self.assertEqual(sorted(follow.population("all", 1000)), ["0xfollow", "0xreg"])
+        self.assertEqual(cards.population("all", 1000), ["0xreg"])
+
+
 if __name__ == "__main__":
     unittest.main()

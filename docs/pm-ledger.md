@@ -102,3 +102,17 @@ Retry-After; a live test at the new pace ran 1,500 requests at 5.7 a second, aga
 ## Dry run (2026-11-11)
 
 See the PR description for the measured request counts, rate-limit probe, sizes and backfill estimate.
+
+## Follow-only wallets (2026-11-17)
+
+CBB markets are thin, so the $2,000 fat-ticket rule found almost no CBB specialists, and the Following page showed one open CBB bet
+across 59 proven wallets (55 wallets held $250 or more on CBB games in the next 36 hours and 1 was tracked). Discovery now also reads
+CBB games at the $250 board floor, with the same gate (all-time and this-month sports PnL both positive). Those wallets go to
+`follow_only.json`, not `first_seen.json`:
+
+- the registered tests (`docs/sharp-card-prereg.md`, `docs/sharp-card-prereg-cbb.md`) read only `first_seen.json`, so their wallet
+  population, the cards and the locks are unchanged (decision A, option 1, stands);
+- a follow-only wallet's ledger reads cover CBB only;
+- only the wallets file (the Following page) loads them, through `Ledger.load(..., follow=True)`, and each still has to pass the same
+  proven rule (n >= 6, win rate >= 55%, dollar ROI > 3%, not excluded) on its own CBB book;
+- a wallet that later enters the registered universe by its own rule gets a `first_seen` date that day.

@@ -379,5 +379,43 @@ class SportFill(unittest.TestCase):
         self.assertNotIn("fill", fresh["b_CLOSED"])
 
 
+class FollowOnlyDiscovery(unittest.TestCase):
+    """CBB games add follow-only wallets at the $250 floor; the registered universe still takes only NBA / NFL / CFB fat tickets."""
+    def run_discover(self, known=()):
+        import time, types, json as _json
+        now = int(time.time())
+        gst = time.strftime("%Y-%m-%d %H:%M:%S+00", time.gmtime(now + 3600))
+        mk = lambda c, t: {"conditionId": c, "sportsMarketType": "moneyline", "gameStartTime": gst, "outcomes": '["A","B"]',
+                           "outcomePrices": '["0.5","0.5"]', "clobTokenIds": _json.dumps([t + "0", t + "1"])}
+        events = {L.SERIES["nba"]: [{"markets": [mk("cn", "n")]}], L.SERIES["cbb"]: [{"markets": [mk("cc", "c")]}]}
+        holders = {"n0": [("0xnba", 8000), ("0xloser", 8000)], "c0": [("0xcbb", 800), ("0xcbbloser", 800), ("0xsmall", 100)]}
+        pnl = {"0xnba": 5, "0xcbb": 5, "0xloser": -5, "0xcbbloser": -5, "0xsmall": 5}
+
+        class Cli:
+            def get(self, url):
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+                if "/events/keyset" in url:
+                    sid = int(q["series_id"][0])
+                    return {"events": events.get(sid, []), "next_cursor": None}
+                if "/holders" in url:
+                    return {"data": [{"token_id": t, "holders": [{"proxy_wallet": w, "amount": n, "token_id": t} for w, n in hs]}
+                                     for t, hs in holders.items()], "pagination": {}}
+                if "/leaderboard" in url:
+                    return {"data": {"pnl": pnl[q["user"][0]]}}
+        a = types.SimpleNamespace(sports=["nba", "nfl", "cfb", "cbb"])
+        return L.discover(Cli(), a, set(known), now)
+
+    def test_cbb_wallets_are_follow_only(self):
+        out, hot, summary, follow = self.run_discover()
+        self.assertEqual(sorted(out), ["0xnba"])                  # the registered universe is unchanged: NBA fat tickets only
+        self.assertEqual(sorted(follow), ["0xcbb"])               # $400 on CBB clears the $250 floor; $50 and a losing PnL do not
+        self.assertTrue(follow["0xcbb"]["why"][0]["follow_only"])
+        self.assertEqual(summary["follow_added"], 1)
+
+    def test_known_wallets_are_not_found_again(self):
+        _, _, _, follow = self.run_discover(known=["0xcbb"])
+        self.assertEqual(follow, {})
+
+
 if __name__ == "__main__":
     unittest.main()
