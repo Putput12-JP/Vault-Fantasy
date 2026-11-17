@@ -843,12 +843,43 @@ def wallet_book(s, name=None):
             "dive": wallet_dive(b), "legs": [[t, r] for t, r in b["legs"]]}
 
 
-def wallet_positions(kf, ledger, sport):
+HIST_MAX = 24                              # size changes kept per position in the wallets file: the first one and the latest 23
+
+
+def position_history(st, cid, oi, w, fs, cut):
+    """How one position has changed, from the holders scan's own logs (stored reads only, nothing estimated):
+      px_first   the market's logged price for this outcome at the first read that saw the wallet holding it (the last price logged
+                 at or before `fs`). It is NOT what the wallet paid: the entry happened at some point before that read. None when no
+                 price was logged by then.
+      hist       [[read time, shares], ...]: every change in the wallet's share count up to the cut, oldest first (0 = it had left).
+                 A repeated, unchanged count is dropped.
+                 Capped at HIST_MAX, keeping the first.
+    Empty when no scan state is given (tests, or a caller with only a keyframe)."""
+    if st is None:
+        return {}
+    pxs = [(t, px) for t, px in (st.m.get(cid) or {}).get("px_hist") or [] if fs is not None and t <= fs and px and oi < len(px)]
+    ch = []
+    for rt, a in st.hist.get((cid, oi, w), []):       # the log repeats an unchanged count when a read re-confirms it: keep real changes
+        if rt <= cut and (not ch or round(a, 2) != round(ch[-1][1], 2)):
+            ch.append([rt, a])
+    if len(ch) > HIST_MAX:
+        ch = ch[:1] + ch[-(HIST_MAX - 1):]
+    out = {"hist": [[rt, round(a, 2)] for rt, a in ch]}
+    if pxs:
+        out["px_first"], out["px_first_t"] = pxs[-1][1][oi], pxs[-1][0]
+    else:
+        out["px_first"], out["px_first_t"] = None, None
+    return out
+
+
+def wallet_positions(kf, ledger, sport, st=None):
     """{wallet: [position]}: every open position of every proven wallet on one game, for the wallets file. Unlike a card, which keeps a
     wallet's largest rung per side and lists the 4 largest wallets, this keeps every rung at or above the $250 floor for every proven
     wallet that Vault does not exclude (variant `all`, as of the keyframe's cut). Stored values only: the line and price are the
     market's at the scan, `since` is the first scan that saw the wallet holding it, and no entry price is known or estimated.
-    `two_way` marks a wallet holding more than one side of the market group above the floor (a card may collapse or drop it)."""
+    `two_way` marks a wallet holding more than one side of the market group above the floor (a card may collapse or drop it).
+    `cens` marks a wallet already holding at the scan's first read of the market, so it got in before `since`. With the scan state
+    `st`, each position also carries `px_first` and `hist` (position_history)."""
     cut, ix = kf["cut"], {c: i for i, c in enumerate(kf["cols"])}
     rows, sides = [], {}
     for h in kf["h"]:
@@ -870,7 +901,8 @@ def wallet_positions(kf, ledger, sport):
             "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "g": g, "side": mk["outs"][oi], "line": mk.get("line"), "cid": cid,
             "usd": round(usd), "shares": round(h[ix["shares"]], 2) if h[ix["shares"]] is not None else None,
             "px": px, "px_t": mk.get("px_t"), "press": round(usd / usual, 2) if usual else None,
-            "since": h[ix["fs"]] if "fs" in ix else None, "two_way": len(sides[(w, g)]) > 1})
+            "since": h[ix["fs"]] if "fs" in ix else None, "cens": bool(h[ix["cens"]]) if "cens" in ix else None,
+            "two_way": len(sides[(w, g)]) > 1, **position_history(st, cid, oi, w, h[ix["fs"]] if "fs" in ix else None, cut)})
     for ps in out.values():
         ps.sort(key=lambda p: -p["usd"])
     return out, stats
@@ -1072,7 +1104,7 @@ def main():
                 carry_flagged(c, prev.get((ev, gst)), now)
                 live["games"].append(c)
                 if a.wallets_out:
-                    pos, sts = wallet_positions(kf, ledger, sport)
+                    pos, sts = wallet_positions(kf, ledger, sport, st)
                     names.update({w: n for w, n in (kf.get("names") or {}).items() if n})
                     for w, ps in pos.items():
                         e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w]), positions=[]))

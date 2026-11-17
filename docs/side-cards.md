@@ -176,6 +176,11 @@ specific wallets. A card cannot do that: it keeps a wallet's largest rung per si
   - `px`, `px_t`: the market's price at the scan. **No entry price is stored or estimated;**
   - `press`: `usd` over the wallet's usual stake;
   - `since`: the first scan that saw the wallet holding it;
+  - `cens`: the wallet already held it at the scan's first read of the market, so it got in before `since`;
+  - `px_first`, `px_first_t`: the market's logged price for that outcome at the `since` read (the last price logged at or before
+    it). It is the price when Vault first saw the position, **not what the wallet paid**. Null when no price was logged by then;
+  - `hist`: `[[read time, shares], ...]`, every change in the wallet's share count, oldest first, repeats dropped, capped at 24
+    (the first change and the latest 23). The scan replays 8 days of logs, so older changes are not there;
   - `two_way`: the wallet holds more than one side of the market group. A card may collapse or drop such a wallet.
 
 It is a snapshot, rebuilt every run on a force-pushed branch, so it has no history to correct. Context only: never a pick, a size or

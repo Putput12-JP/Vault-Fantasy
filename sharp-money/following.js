@@ -74,6 +74,7 @@ var CSS = [
 '.vfw .fw-kv{display:grid;grid-template-columns:1fr auto;gap:5px 14px;margin:0}.vfw .fw-kv dt{color:var(--c-mut)}.vfw .fw-kv dd{margin:0;text-align:right}',
 '.vfw .fw-like{display:grid;grid-template-columns:1fr auto auto;gap:5px 14px;margin:0}.vfw .fw-like dd{margin:0;text-align:right}',
 '.vfw .fw-strip{display:flex;gap:3px;margin-top:9px;align-items:center;flex-wrap:wrap}.vfw .fw-strip i{width:9px;height:9px;border-radius:2px;background:var(--c-dim)}.vfw .fw-strip i.w{background:var(--c-good)}.vfw .fw-strip i.l{background:var(--c-bad)}.vfw .fw-strip span{margin-left:6px;font-size:11px;color:var(--c-mut)}',
+'.vfw .fw-sot{display:flex;align-items:flex-end;gap:3px;height:38px;margin-top:2px}.vfw .fw-sot i{flex:1 1 0;max-width:14px;min-width:3px;background:var(--c-mut);border-radius:2px 2px 0 0}.vfw .fw-sot i:last-child{background:var(--c-ink)}',
 '.vfw .fw-who{border-top:1px solid var(--c-line2);padding:8px 0 4px}.vfw .fw-who:first-of-type{border-top:0;padding-top:0}',
 '.vfw .fw-who-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.vfw .fw-who-h b{font-weight:600}.vfw .fw-who-h span{color:var(--c-mut);font-size:11.5px}.vfw .fw-who-h em{font-style:normal;font-size:10.5px;color:var(--c-mut);border:1px solid var(--c-line2);border-radius:99px;padding:1px 7px}',
 '.vfw .fw-who-w{display:flex;gap:10px;align-items:center;padding:4px 0 0;color:var(--c-ink)}.vfw .fw-who-w .fw-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vfw .fw-who-w .fw-usd{margin-left:auto}.vfw .fw-who-w u{text-decoration:none;color:var(--c-gold)}',
@@ -216,7 +217,8 @@ function detail(g, x){
       '<dt>Worth now</dt><dd class="fw-num">' + usd(p.usd) + (p.shares != null ? ' · ' + Math.round(p.shares).toLocaleString('en-US') + ' shares' : '') + '</dd>' +
       '<dt>Size</dt><dd class="fw-num">' + (p.press != null ? p.press.toFixed(1) + 'x its usual ' + usd(w.usual) : 'no usual stake yet') + '</dd>' +
       '<dt>Held since</dt><dd class="fw-num">' + (ct(p.since, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}) || 'n/a') + '</dd>' +
-      (p.two_way ? '<dt>Note</dt><dd class="fw-two">also holds the other side of this market</dd>' : '') + '</dl>' +
+      firstSeen(p) +
+      (p.two_way ? '<dt>Note</dt><dd class="fw-two">also holds the other side of this market</dd>' : '') + '</dl>' + sizeOverTime(p) +
     '<h5>How ' + esc(w.name) + ' has done on bets like this (' + w.sport.toUpperCase() + ')</h5><dl class="fw-like">' +
       recRow(GROUPS[p.g] + ' bets', w.lane[p.g]) +
       (fav == null ? '' : recRow(fav ? 'Favorites (this one is ' + cents(p.px) + ' now)' : 'Underdogs (this one is ' + cents(p.px) + ' now)', fav ? w.fav : w.dog)) +
@@ -225,6 +227,26 @@ function detail(g, x){
       (legs.length ? '<div class="fw-strip" role="img" aria-label="Last ' + legs.length + ' games: ' + lw + ' wins, ' + ll + ' losses">' +
         legs.map(function(l){ return '<i class="' + (l[1] === 'win' ? 'w' : l[1] === 'loss' ? 'l' : '') + '"></i>'; }).join('') + '<span>last ' + legs.length + ' games, newest first: ' + lw + '-' + ll + '</span></div>' : '') +
     '<h5>Who else is on this game</h5>' + whoElse(g, p) + '</div>';
+}
+/* price when first seen and size over time (wallets.json px_first / hist, from the holders scan's own reads). Never an entry price. */
+function firstSeen(p){
+  if (p.px_first == null) return '';
+  var mv = p.px != null ? Math.round((p.px - p.px_first) * 100) : null;
+  return '<dt>Price when first seen</dt><dd class="fw-num">' + cents(p.px_first) + '</dd>' +
+    (mv == null ? '' : '<dt>Market move since</dt><dd class="fw-num ' + cls(mv) + '">' + (mv === 0 ? 'none' : (mv > 0 ? '+' : '') + mv + '¢ ' + (mv > 0 ? 'toward this side' : 'against this side')) + '</dd>');
+}
+function sizeOverTime(p){
+  var h = (p.hist || []).filter(function(x){ return x[1] > 0; }); if (!h.length) return '';
+  var n = function(v){ return Math.round(v).toLocaleString('en-US'); }, max = Math.max.apply(null, h.map(function(x){ return x[1]; }));
+  var up = 0, dn = 0; (p.hist || []).forEach(function(x, i, a){ if (i){ if (x[1] > a[i - 1][1]) up++; else if (x[1] < a[i - 1][1]) dn++; } });
+  var first = h[0][1], last = h[h.length - 1][1], when = function(t){ return ct(t, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}); };
+  var txt = h.length === 1 ? 'No change since it was first seen with ' + n(first) + ' shares.'
+    : 'First seen with ' + n(first) + ' shares, now ' + n(last) + '. Added ' + up + (up === 1 ? ' time' : ' times') + (dn ? ', trimmed ' + dn + (dn === 1 ? ' time' : ' times') : ', never trimmed') + '.';
+  return '<h5>Size over time</h5>' +
+    (h.length > 1 ? '<div class="fw-sot" role="img" aria-label="Share count at each change, oldest first">' + h.map(function(x){
+      return '<i style="height:' + Math.max(8, Math.round(x[1] / max * 100)) + '%" title="' + esc(when(x[0]) + ': ' + n(x[1]) + ' shares') + '"></i>'; }).join('') + '</div>' : '') +
+    '<p class="fw-det-n" style="margin-top:6px">' + txt + ((p.hist || []).length >= 24 ? ' Showing the first change and the latest 23.' : '') +
+    (p.cens ? ' It already held this when tracking of the market began, so it got in earlier than "held since".' : '') + '</p>';
 }
 function betId(g, x){ return g.id + '|' + x.k + '|' + x.p.cid; }
 function feed(S){
@@ -337,7 +359,7 @@ function draw(el){
     '<div class="fw-card fw-dir" style="padding-left:0;padding-right:0">' + D.html + '</div>' +
     '<p class="fw-note"><b>How to read this.</b> Proven means 6 or more graded bets, a 55% or better win rate and a dollar ROI above 3% in that sport. "Thin" marks a record under 20 bets. ' +
       'Stake is what the position is worth at the last scan, and "x usual" compares it with the wallet\'s usual stake. Price is the market\'s price now, not what the wallet paid: no entry price is stored. ' +
-      '"Held since" is the first scan that saw the position. Follows are saved in this browser only. This page shows who holds what and never suggests a size.</p>';
+      '"Held since" is the first scan that saw the position, and "price when first seen" is the market\'s price at that scan. Follows are saved in this browser only. This page shows who holds what and never suggests a size.</p>';
   rails(el, S); window.scrollTo(0, y);
 }
 function css(){ if (document.getElementById('vfw-css')) return; var s = document.createElement('style'); s.id = 'vfw-css'; s.textContent = CSS; document.head.appendChild(s); }

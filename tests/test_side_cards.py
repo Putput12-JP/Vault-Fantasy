@@ -517,6 +517,34 @@ class WalletPositions(unittest.TestCase):
         self.assertEqual(sorted(pos), ["0xp"])
         self.assertEqual([p["two_way"] for p in pos["0xp"]], [True, True])
 
+    def test_first_seen_price_and_size_history_come_from_the_scan_logs(self):
+        class St:                                                      # the scan state's two reads: price history and share changes
+            m = {"m1": {"px_hist": [(CUT - 9000, [0.50, 0.50]), (CUT - 5000, [0.55, 0.45]), (CUT - 100, [0.60, 0.40])]}}
+            hist = {("m1", 0, "0xp"): [(CUT - 6000, 500.0), (CUT - 4000, 500.0), (CUT - 3000, 1500.0), (CUT - 200, 1200.0), (CUT + 50, 9999.0)]}
+        k = kf([("m1", 0, "0xp", 900)])
+        k["h"][0][5] = CUT - 6000                                      # fs: the first read that saw the wallet
+        p = C.wallet_positions(k, self.led, "nba", St)[0]["0xp"][0]
+        self.assertEqual((p["px_first"], p["px_first_t"]), (0.50, CUT - 9000))      # the last price logged at or before fs
+        self.assertEqual(p["hist"], [[CUT - 6000, 500.0], [CUT - 3000, 1500.0], [CUT - 200, 1200.0]])   # no repeats, nothing after the cut
+        self.assertFalse(p["cens"])
+
+    def test_no_price_logged_by_first_seen_is_none_and_no_scan_state_adds_nothing(self):
+        class St:
+            m = {"m1": {"px_hist": [(CUT - 100, [0.60, 0.40])]}}
+            hist = {}
+        k = kf([("m1", 0, "0xp", 900)])
+        k["h"][0][5] = CUT - 6000
+        p = C.wallet_positions(k, self.led, "nba", St)[0]["0xp"][0]
+        self.assertEqual((p["px_first"], p["hist"]), (None, []))
+        self.assertNotIn("hist", C.wallet_positions(k, self.led, "nba")[0]["0xp"][0])
+
+    def test_history_is_capped_keeping_the_first_change(self):
+        class St:
+            m = {}
+            hist = {("m1", 0, "0xp"): [(CUT - 9000 + i, 100.0 + i) for i in range(60)]}
+        h = C.position_history(St, "m1", 0, "0xp", CUT - 9000, CUT)["hist"]
+        self.assertEqual((len(h), h[0], h[-1]), (C.HIST_MAX, [CUT - 9000, 100.0], [CUT - 9000 + 59, 159.0]))
+
     def test_book_has_no_position_fields_and_keeps_recent_legs(self):
         b = C.wallet_book(self.led.stats("0xp", CUT), "Name")
         self.assertEqual((b["name"], b["w_"], b["l_"], b["n"], b["usual"]), ("Name", 6, 0, 6, 100))
