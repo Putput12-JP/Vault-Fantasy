@@ -67,6 +67,7 @@ import sf_publish as PUB  # noqa: E402
 
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
 FLOOR_USD = 250
+FOLLOW_FLOOR = {"cbb": 100}          # the wallets file (Following page) lists smaller CBB positions: thin markets, small bettors. Cards keep FLOOR_USD.
 PRESS = 1.5
 L30_DAYS, L30_MIN_N = 30, 2
 HEDGER_SHARE, HEDGER_MIN_MARKETS = 0.25, 8
@@ -883,18 +884,19 @@ def position_history(st, cid, oi, w, fs, cut):
 
 def wallet_positions(kf, ledger, sport, st=None):
     """{wallet: [position]}: every open position of every proven wallet on one game, for the wallets file. Unlike a card, which keeps a
-    wallet's largest rung per side and lists the 4 largest wallets, this keeps every rung at or above the $250 floor for every proven
+    wallet's largest rung per side and lists the 4 largest wallets, this keeps every rung at or above the floor ($250; FOLLOW_FLOOR lowers it for CBB) for every proven
     wallet that Vault does not exclude (variant `all`, as of the keyframe's cut). Stored values only: the line and price are the
     market's at the scan, `since` is the first scan that saw the wallet holding it, and no entry price is known or estimated.
     `two_way` marks a wallet holding more than one side of the market group above the floor (a card may collapse or drop it).
     `cens` marks a wallet already holding at the scan's first read of the market, so it got in before `since`. With the scan state
     `st`, each position also carries `px_first` and `hist` (position_history)."""
     cut, ix = kf["cut"], {c: i for i, c in enumerate(kf["cols"])}
+    floor = FOLLOW_FLOOR.get(sport, FLOOR_USD)
     rows, sides = [], {}
     for h in kf["h"]:
         cid, oi, w, usd = h[ix["cid"]], h[ix["oi"]], h[ix["wallet"]], h[ix["usd_at_mark"]]
         mk = kf["mk"].get(cid)
-        if not mk or usd is None or usd < FLOOR_USD or mk["mt"] not in GROUP or oi >= len(mk.get("outs") or []):
+        if not mk or usd is None or usd < floor or mk["mt"] not in GROUP or oi >= len(mk.get("outs") or []):
             continue
         rows.append((w, GROUP[mk["mt"]], mk, cid, oi, usd, h))
         sides.setdefault((w, GROUP[mk["mt"]]), set()).add(mk["outs"][oi])
@@ -919,7 +921,7 @@ def wallet_positions(kf, ledger, sport, st=None):
 
 def wallets_file(per_sport, now):
     """The wallets file: per sport, every proven wallet (variant `all`, not excluded) with its book and its open positions."""
-    return {"built": now, "v": VERSION, "context_only": True, "floor_usd": FLOOR_USD,
+    return {"built": now, "v": VERSION, "context_only": True, "floor_usd": FLOOR_USD, "floor_usd_by_sport": FOLLOW_FLOOR,
             "proven_rule": "sport book n >= %d, win rate >= %d%%, dollar ROI > %d%%, not excluded (hedger, churn)" % (PROVEN_N, PROVEN_WR * 100, PROVEN_ROI * 100),
             "note": "Who holds what, as of the last holders scan. Money is shares x market price, not what the wallet paid. No entry price "
                     "is stored. Context only: never a pick, a size or an agree total.",
