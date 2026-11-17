@@ -348,7 +348,9 @@ function draw(el){
   var S = el._fw, o = S.o;
   if (STORE.state === 'loading'){ el.innerHTML = '<div class="fw-card fw-empty">Loading the wallets…</div>'; return; }
   if (STORE.state === 'none'){ el.innerHTML = '<div class="fw-card fw-empty"><b>The wallet file is not published yet</b>It appears after the next card build. Nothing is wrong with your follows.</div>'; return; }
+  var was = S.sport;
   if (o.sport != null) S.sport = !o.sport || /^all$/i.test(o.sport) ? 'all' : String(o.sport).toLowerCase();
+  if (S.sport !== was && S.sport === 'cbb'){ S.sort = 'roi'; S.seasoned = true; }   /* CBB markets are thin: open on ROI over 20+ bets; the bettor can undo either */
   var F = feed(S), D = dir(S), nf = Object.keys(FOLLOWS).filter(function(k){ return BOOK[k] && (S.sport === 'all' || k.split('|')[0] === S.sport); }).length;
   var y = window.scrollY;
   el.innerHTML =

@@ -23,7 +23,7 @@ import argparse, datetime as dt, gzip, json, os, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-SERIES = {'nfl': 12185, 'cfb': 12756, 'nba': 10345}
+SERIES = {'nfl': 12185, 'cfb': 12756, 'nba': 10345, 'cbb': 10470}
 V3_START = dt.datetime(2026, 8, 18, 6, tzinfo=dt.timezone.utc)
 # v3 (one Parquet per hour) stopped at 2026-10-30T18. Later hours are v3.1 only: several files per hour, split by
 # market category and listed by the hour's manifest. v3.1 starts at 2026-10-27T00, so the overlap stays on v3.
@@ -238,12 +238,14 @@ def cmd_closes(a):
     now = time.time()
     data = json.load(open(CLOSES)) if os.path.exists(CLOSES) else {'games': {}}
     G = data.setdefault('games', {})
-    c, n = con(), 0
+    c, n, t0 = con(), 0, time.time()
     for sport in a.sports.split(','):
         for g in games(sport, max(V3_START.timestamp(), now - a.days * 86400), now - LAG_H * 3600):
             k = f"{sport}|{g['slug']}"
             if k in G and not a.force:
                 continue
+            if a.max_secs and time.time() - t0 > a.max_secs:      # stop cleanly; the next run takes the rest
+                break
             try:
                 r = close_of(g, c)
             except RuntimeError as e:
@@ -299,7 +301,7 @@ def cmd_tape(a):
 def main():
     p = argparse.ArgumentParser()
     s = p.add_subparsers(dest='cmd', required=True)
-    c = s.add_parser('closes'); c.add_argument('--sports', default='nfl,cfb,nba'); c.add_argument('--days', type=float, default=4); c.add_argument('--force', action='store_true')
+    c = s.add_parser('closes'); c.add_argument('--sports', default='nfl,cfb,nba'); c.add_argument('--days', type=float, default=4); c.add_argument('--force', action='store_true'); c.add_argument('--max-secs', type=float, default=0)
     t = s.add_parser('tape'); t.add_argument('--sport', default='nfl'); t.add_argument('--since', required=True); t.add_argument('--until', required=True)
     t.add_argument('--cache', default=os.path.join(ROOT, '.cache', 'pm_archive')); t.add_argument('--lookback', type=float, default=7)
     a = p.parse_args()

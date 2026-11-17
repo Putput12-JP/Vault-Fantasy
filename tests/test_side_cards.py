@@ -509,6 +509,11 @@ class WalletPositions(unittest.TestCase):
         self.assertEqual(pos["0xp"][0]["press"], 9.0)                             # usual stake 100
         self.assertFalse(any(p["two_way"] for p in pos["0xp"]))
 
+    def test_cbb_lists_smaller_positions_than_the_card_floor(self):
+        k = kf([("m1", 0, "0xp", 900), ("m1", 1, "0xq", 120), ("m1", 1, "0xu", 40)])
+        self.assertEqual(sorted(C.wallet_positions(k, self.led, "cbb")[0]), ["0xp", "0xq"])   # $120 clears CBB's $100, $40 does not
+        self.assertEqual(sorted(C.wallet_positions(k, self.led, "nba")[0]), ["0xp"])          # other sports keep $250
+
     def test_two_way_is_flagged_and_excluded_wallets_are_left_out(self):
         k = kf([("m1", 0, "0xp", 900), ("m1", 1, "0xp", 300), ("m1", 0, "0xh", 900)])
         hedger = [row("0xh", i, "win", hedged=True, cid=f"h{i}") for i in range(8)] + [row("0xh", 20 + i, "win") for i in range(8)]

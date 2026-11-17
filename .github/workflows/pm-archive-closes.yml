@@ -20,7 +20,7 @@ permissions:
 jobs:
   closes:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
         with:
@@ -38,6 +38,11 @@ jobs:
         run: pip install --quiet duckdb pytz
       - name: Pull closes from the archive
         run: python scripts/pm_archive.py closes --sports nfl,nba --days 10
+      - name: Pull CBB closes (forward only, own time cap)
+        # CBB has about 130 games a day, so it gets a short lookback and a cap: NFL and NBA never wait on it. The prereg for the CBB
+        # card test stays ROI-only (grade_side_cards NO_CLOSES); these closes feed the wallets' beat-the-close read on the Following page.
+        continue-on-error: true
+        run: python scripts/pm_archive.py closes --sports cbb --days 2 --max-secs 1500
       - name: Commit if changed
         run: |
           git config user.name  "vault-bot"
