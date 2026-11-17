@@ -661,6 +661,7 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
             alerts += prop_signals(by_id, pkeys, pin_props, polls, _tape_rows(day_dirs(root, now, 1)), W, day, now, kal_vol or {})
             alerts += prop_behind(board, by_id, pin_props, now)
             alerts += nov_prop_signals(dirs, by_id, polls, tips)
+            alerts += dep_prop_signals(dirs, by_id, polls, tips)
         except Exception:
             traceback.print_exc(limit=3)
             prop_err = traceback.format_exc(limit=3)[-700:]
@@ -685,8 +686,9 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
         if any(x['type'] == 'p_nov' for x in xs):
             nov[k] = [x for x in xs if x['type'] == 'p_nov']
             xs[:] = [x for x in xs if x['type'] != 'p_nov']
-            if not xs:
-                del per_prop[k]
+        xs[:] = [x for x in xs if x['type'] != 'p_dep']   # p_dep is saved and graded (track.json signals) but is not on any page yet
+        if not xs:
+            per_prop.pop(k, None)
     return {'games': out, 'alerts': shown, 'props': dict(per_prop), 'nov': nov, 'prop_err': prop_err,
             'accounts': {'sharp': len(W['sharp']), 'nba_sharp': sum(1 for s in W['sharp'].values() if s == 'nba'), 'dull': len(W['dull']),
                          'scored': W['n'], 'generated': W['generated']}}
@@ -996,6 +998,48 @@ def nov_prop_signals(dirs, by_id, polls, tips):
             out.append({'g': gid, 'pid': pid, 'stat': stat, 'type': 'p_nov', 't': t, 'side': side, 'line': strike,
                         'from': [strike, r3(ref[1])], 'to': [strike, r3(mid)], 'lim': None,
                         'fair': r3(mid if side == 'over' else 1 - mid), 'id': f"{gid}:p_nov:{pid}:{stat}:{strike}:{side}:{t}"})
+    return out
+
+
+DEP_MIN, DEP_RATIO = 500, 2.0                            # frozen 2026-11-16 by hand, not fitted (docs/exchange-depth-prereg.md)
+
+
+def dep_prop_signals(dirs, by_id, polls, tips):
+    """Exchange depth (p_dep): from the day files (source novigdepth, written by novig.prop_quotes' sibling depth_quotes), a Novig
+    prop strike whose tight two-sided quote has DEP_MIN dollars or more resting at the top of ONE side's book and at least DEP_RATIO
+    times the other side's. The alert is that side (the one more money is bidding for). `fair` is that side's Novig mid when the
+    condition first held, so `clv` (Pinnacle's close at the same line minus fair) says whether the heavier side was the side the
+    sharper close moved toward. One alert per (game, player, stat, strike, side): the first sighting wins, so the id has no time.
+    Context only; it feeds no gate, no Top Reads and no agree total. Frozen in docs/exchange-depth-prereg.md."""
+    out, seen = [], set()
+    rows = []
+    for d in dirs:
+        lp = os.path.join(d, 'novigdepth.jsonl')
+        if not os.path.exists(lp):
+            continue
+        for line in open(lp):
+            try:
+                r = json.loads(line)
+                rows.append((r['t'], r['k'], r['v']))
+            except (ValueError, KeyError):
+                continue
+    for t, k, v in sorted(rows, key=lambda x: x[0]):
+        gid, pid, stat, strike = k.split('|')
+        if gid not in by_id or t >= tips.get(gid, 1e12) or not v or len(v) < 4:
+            continue
+        bid, ask, d_over, d_under = v
+        if bid is None or ask is None or not (0 < bid <= ask < 1) or ask - bid > NOV_TIGHT or not any(t - GAP_MAX <= q < t for q in polls):
+            continue
+        side = 'over' if d_over >= DEP_MIN and d_over >= DEP_RATIO * d_under else 'under' if d_under >= DEP_MIN and d_under >= DEP_RATIO * d_over else None
+        if side is None:
+            continue
+        aid = f"{gid}:p_dep:{pid}:{stat}:{strike}:{side}"
+        if aid in seen:
+            continue
+        seen.add(aid)
+        mid = (bid + ask) / 2
+        out.append({'g': gid, 'pid': int(pid), 'stat': stat, 'type': 'p_dep', 't': t, 'side': side, 'line': float(strike),
+                    'dep': [d_over, d_under], 'lim': None, 'fair': r3(mid if side == 'over' else 1 - mid), 'id': aid})
     return out
 
 

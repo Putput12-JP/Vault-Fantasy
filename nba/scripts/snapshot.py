@@ -20,6 +20,8 @@ appends ONLY what changed since the last poll:
   sleeper     Sleeper Picks NBA lines: line plus each side's payout multiplier (decimal price)
   novigprops  Novig player-prop ladders (pts, reb, ast, 3pm, pra, pr, pa, ra, stl, blk): the OVER side's [bid, ask, depth to $250] per
               game|player|stat|strike. Props rotate across polls; unread keys are carried forward, so a quiet key is 'unchanged since read'.
+  novigdepth  Novig prop depth (from 2026-11-16): the OVER side's [bid, ask, over depth $, under depth $] per game|player|stat|strike,
+              depth = dollars within 3 cents of that side's best bid, rounded to $100. Same carry-forward as novigprops.
   lineups     NBA.com daily lineups: each listed player's starting slot, Expected / Confirmed, active / inactive,
               so the log shows when each team's five went from Expected to Confirmed
 
@@ -776,6 +778,9 @@ def poll(root):
             live = {str(g['id']) for g in pre}
             prows = {**{k: v for k, v in (day.last.get('novigprops') or {}).items() if k.split('|')[0] in live and k not in prows}, **prows}
             rec['pchg'] = day.record('novigprops', slate.now, prows, pmeta)
+            drows, dmeta = novig.depth_quotes(nb, pre)      # per-side depth (exchange-depth shadow test); same carry-forward as novigprops
+            drows = {**{k: v for k, v in (day.last.get('novigdepth') or {}).items() if k.split('|')[0] in live and k not in drows}, **drows}
+            rec['dchg'] = day.record('novigdepth', slate.now, drows, dmeta)
             rec['used'], rec['budget'] = nb['used'], nb['budget']
             if pre and not nb['games']:
                 rec['warn'] = 'no game matched a Novig event'
