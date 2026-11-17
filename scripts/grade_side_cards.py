@@ -253,7 +253,7 @@ def open_plays(todo, graded, now, days=7):
                 continue
             if key in graded or c["gst"] < now - days * 86400 or p["variant"] != "all" or (p["play"] == "lock" and not (c.get("test") or {}).get("counts")):
                 continue
-            out.append({"key": key, "sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": p["group"], "play": p["play"], "side": p["side"],
+            out.append({"key": key, "counts": bool((c.get("test") or {}).get("counts")), "sport": c["sport"], "ev": c["ev"], "gst": c["gst"], "group": p["group"], "play": p["play"], "side": p["side"],
                         "line": p["line"], "outs": p["outs"], "units": p["units"], "price": p["price"]})
     pp = espn_postponed(out, now)
     for r in out:
@@ -489,7 +489,8 @@ def main():
     # replayed later does not regrade (decided 2026-11-17).
     seen = {r["key"] for r in new} | set(have)
     voids = [{"key": r["key"], "kind": "result", "v": VERSION, "sport": r["sport"], "ev": r["ev"], "gst": r["gst"], "res": None,
-              "status": "void", "why": "game postponed or canceled (ESPN)", "graded_at": now}
+              "play": r["play"], "variant": "all", "group": r["group"], "side": r["side"], "line": r["line"], "outs": r["outs"],
+              "units": r["units"], "price": r["price"], "counts": r["counts"], "why_not": [], "status": "void", "why": "game postponed or canceled (ESPN)", "graded_at": now}
              for r in open_plays(todo, seen, now) if r.get("postponed")]
     if voids:
         print(f"voided {len(voids)} plays on postponed games: {sorted({r['ev'] for r in voids})}")
