@@ -5480,7 +5480,7 @@ function renderTrackTop(d, all){
   }
   // answer 1: how are we doing
   const a1 = tot.settled
-    ? `<b class="tbig">${rec(tot)}<small>${tUnits(tot.units)}u</small></b><span class="tsm">${tRoi(tot.roi)} profit per unit across <b>${tot.settled.toLocaleString()}</b> settled bets${tot.open ? `, ${tot.open.toLocaleString()} still open` : ''}. One pick at several books counts once per book.</span>`
+    ? `<b class="tbig">${rec(tot)}<small>${tUnits(tot.units)}u</small></b><span class="tsm">${tRoi(tot.roi)} profit per unit across <b>${tot.settled.toLocaleString()}</b> settled bets${tot.open ? `, ${tot.open.toLocaleString()} still open` : ''}${tot.void ? `, ${tot.void.toLocaleString()} void (player did not play, stake returned)` : ''}. One pick at several books counts once per book.</span>`
     : `<b class="tbig wait">Waiting for results</b><span class="tsm"><b>${tot.bets.toLocaleString()} bets</b>, all still open, on <b>${nPicks}${partial ? '+' : ''} distinct picks</b> and ${players} players.<span class="tsm-x"> ${partial ? `Counted from the latest ${bets.length.toLocaleString()} bets, ` + (bets.length - nPicks).toLocaleString() + ' of them are' : (bets.length - nPicks).toLocaleString() + ' bets are'} the same pick at another book, app or Kalshi line.</span></span>`;
   // answer 2: is it real
   const have = gated.settled, bt = SG.filter(x => x.g === 'go' && x.bt && x.bt.roi != null).slice(0, 2);
