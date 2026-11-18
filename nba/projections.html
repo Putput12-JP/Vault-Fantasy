@@ -2799,6 +2799,18 @@ rd-x.go>rd-n{opacity:1;transform:none}
   .bar{min-height:56px;padding:8px 20px}
   .gp2-main{padding:22px 26px 20px;gap:10px}
 }
+.wr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));gap:12px}
+.wr-g{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface2,var(--raised))}
+.wr-gh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}.wr-gh small{color:var(--fg3);font-size:12px}
+.wr-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+#wkpis{grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:820px){#wkpis{grid-template-columns:none}}
+.wr-th{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12.5px}
+.wr-p{display:flex;align-items:center;gap:7px;min-height:30px;font-size:13px}.wr-p>span:not(.pp-av){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wr-none{color:var(--fg3);font-size:12.5px;padding:4px 0}
+.wr-s{flex:none;font-style:normal;display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:600;background:var(--raised);color:var(--fg2);white-space:nowrap}
+.wr-s.out{color:var(--down);background:rgba(248,113,113,.14)}.wr-s.dbt{color:var(--warn);background:rgba(251,191,36,.14)}.wr-s.qst{color:var(--fg);background:color-mix(in srgb,var(--fg) 10%,transparent)}
+.wr-ar{color:var(--fg3);font-size:12px;margin:0 2px}.wr-sm{display:block;color:var(--fg3);font-size:11.5px;margin-top:3px}
+@media(max-width:520px){.wr-cols{grid-template-columns:1fr}}
 </style>
 
 <div class="app" id="app">
@@ -3153,20 +3165,23 @@ rd-x.go>rd-n{opacity:1;transform:none}
     <footer id="tfoot" hidden></footer>
 
     <main id="v-wire" hidden>
-      <div class="banner" id="wbanner" hidden></div>
       <div class="kpis" id="wkpis"></div>
       <section class="card">
-        <div class="card-h"><div><h2>Who reprices, and how fast</h2><p>Every venue's player props on the affected team, from the moment the recorder saw each change today.</p></div></div>
+        <div class="card-h"><div><h2>Tonight's injury report</h2><p id="wrsub"></p></div></div>
+        <div class="card-b" id="wreport"></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><div><h2>What changed today</h2><p id="wsub">Newest first.</p></div>
+          <div class="filters"><div class="seg" id="wkind" role="group" aria-label="Kind"></div><select class="sel" id="wteam" aria-label="Team"></select></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt wt" id="wevents"></table></div></div>
+      </section>
+      <section class="card" id="wvcard">
+        <div class="card-h"><div><h2>Who reprices fastest today</h2><p>How quickly each venue moved its props after the news.</p></div></div>
         <div class="card-b"><div class="nt-tw"><table class="nt" id="wvenues"></table></div></div>
       </section>
       <section class="card">
-        <div class="card-h"><div><h2>This season</h2><p id="wseasub">Every saved game day: which venues reprice news, and how fast, before tip.</p></div></div>
+        <div class="card-h"><div><h2>Who reprices fastest this season</h2><p id="wseasub"></p></div></div>
         <div class="card-b"><div class="nt-tw"><table class="nt" id="wseason"></table></div></div>
-      </section>
-      <section class="card">
-        <div class="card-h"><div><h2>Today's changes</h2><p id="wsub">Injury report and NBA.com lineup changes, newest first.</p></div>
-          <div class="filters"><div class="seg" id="wkind" role="group" aria-label="Kind"></div><select class="sel" id="wteam" aria-label="Team"></select></div></div>
-        <div class="card-b"><div class="nt-tw"><table class="nt wt" id="wevents"></table></div></div>
       </section>
     </main>
     <footer id="wfoot" hidden></footer>
@@ -9098,9 +9113,6 @@ function renderWire(){
   const B = PS.board, ev = (B.wire || []).filter(e => e[7]);
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No live board');
-  $('wbanner').hidden = !!ev.length;
-  $('wbanner').innerHTML = pick.mode === 'example' || !B.wire ? `<b>The wire fills on game days.</b><span>It needs the recorder's live day: every injury report and lineup change after the first poll of the morning, and every price change since. The example game has neither.</span>`
-    : `<b>No changes yet today.</b><span>The injury report posts every 15 minutes on game days and NBA.com confirms lineups about 30 minutes before tip.</span>`;
   const now = B.t || Date.now() / 1000;
   // venue scoreboard over today's events
   const V = {};
@@ -9112,19 +9124,29 @@ function renderWire(){
   const rows = Object.entries(V).map(([v, x]) => { const l = [...x.lags].sort((a, b) => a - b);
     return {v, ...x, med: l.length ? l[Math.floor(l.length / 2)] : null, w5: x.lags.filter(s => s <= 300).length, w15: x.lags.filter(s => s <= 900).length}; })
     .sort((a, b) => (a.med ?? 1e9) - (b.med ?? 1e9));
-  $('wvenues').innerHTML = `<thead><tr><th class="l">Venue</th><th>Changes covered</th><th>Quotes affected</th><th title="Changes after which this venue moved at least one quote within 5 minutes">Moved within 5 min</th><th>Within 15 min</th><th title="Median time to this venue's first move after the news">Median first move</th><th title="Changes at least 30 minutes old where this venue has not moved any affected quote">Still not moved (30+ min)</th></tr></thead><tbody>
-    ${rows.length ? rows.map(x => `<tr><td class="l"><b>${esc(x.v)}</b></td><td>${x.ev}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.w5 / Math.max(1, x.ev))}</td><td>${pc(x.w15 / Math.max(1, x.ev))}</td><td>${x.med != null ? lagTxt(x.med) : '<span class="muted">none</span>'}</td><td>${x.old ? `<span class="${x.old - x.oldMoved ? 'warnt' : ''}">${x.old - x.oldMoved} of ${x.old}</span>` : ''}</td></tr>`).join('')
-      : `<tr><td class="l" colspan="7"><p class="empty">No changes with affected props yet.</p></td></tr>`}</tbody>`;
+  $('wvenues').innerHTML = `<thead><tr><th class="l">Venue</th><th title="Share of changes after which this venue moved a prop within 5 minutes">Reacts in 5 min</th><th>Reacts in 15 min</th><th title="Median time to this venue's first move after the news">Typical delay</th><th title="Changes at least 30 minutes old where this venue has not moved any affected quote">Still not moved (30+ min)</th></tr></thead><tbody>
+    ${rows.length ? rows.map(x => `<tr><td class="l"><b>${esc(x.v)}</b></td><td>${pc(x.w5 / Math.max(1, x.ev))}</td><td>${pc(x.w15 / Math.max(1, x.ev))}</td><td>${x.med != null ? lagTxt(x.med) : '<span class="muted">none</span>'}</td><td>${x.old ? `<span class="${x.old - x.oldMoved ? 'warnt' : ''}">${x.old - x.oldMoved} of ${x.old}</span>` : ''}</td></tr>`).join('')
+      : `<tr><td class="l" colspan="5"><p class="empty">No changes with affected props yet.</p></td></tr>`}</tbody>`;
   renderWireSeason();
+  // tonight's report: everyone listed Out, Inactive, Doubtful or Questionable, by game
+  const stat = statusFromBoard(B), SEV = {Out: 0, Inactive: 0, Doubtful: 1, Questionable: 2}, meta = pid => (B.players || {})[pid] || [];
+  const tmOf = pid => meta(pid)[1] || ((B.outs || []).find(o => +o[0] === +pid) || [])[1];
+  const nmOf = pid => meta(pid)[0] || ((B.news || []).find(n => +n[1] === +pid) || [])[2] || '';
+  const listed = {}; for (const [pid, st] of Object.entries(stat)) if (st in SEV && tmOf(pid) && nmOf(pid)) (listed[tmOf(pid)] = listed[tmOf(pid)] || []).push({pid, st, name: nmOf(pid)});
+  const tNow = B.t || Date.now() / 1000, gs = (B.games || []).filter(g => g.tip >= tNow - 3 * 3600 && g.tip < tNow + 20 * 3600).sort((a, b) => a.tip - b.tip);
+  const tcol = t => { const L = (listed[t] || []).sort((a, b) => SEV[a.st] - SEV[b.st] || a.name.localeCompare(b.name));
+    return `<div class="wr-t"><div class="wr-th">${lgImg(t, 18)}<b>${esc(t)}</b></div>${L.length ? L.map(x => `<div class="wr-p">${avSm(x.pid, x.name)}<span>${esc(x.name)}</span><em class="wr-s ${SEV[x.st] === 0 ? 'out' : SEV[x.st] === 1 ? 'dbt' : 'qst'}">${x.st}</em></div>`).join('') : '<div class="wr-none">Nobody listed</div>'}</div>`; };
+  const nListed = Object.values(listed).reduce((a, l) => a + l.length, 0);
+  $('wrsub').textContent = gs.length ? `${nListed} ${nListed === 1 ? 'player' : 'players'} listed across ${gs.length} ${gs.length === 1 ? 'game' : 'games'}. Out is ruled out; Doubtful and Questionable may play.` : '';
+  $('wreport').innerHTML = gs.length ? `<div class="wr-grid">${gs.map(g => `<div class="wr-g"><div class="wr-gh"><b>${esc(g.away)} @ ${esc(g.home)}</b><small>${clock(g.tip)} ${TZL}</small></div><div class="wr-cols">${tcol(g.away)}${tcol(g.home)}</div></div>`).join('')}</div>` : '<p class="empty">No games on the board yet.</p>';
   // KPIs
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   const inj = ev.filter(e => e[1] === 'inj'), outs = inj.filter(e => /^out/i.test(e[6] || ''));
   const fastest = rows.find(x => x.med != null), slowest = [...rows].filter(x => x.old).sort((a, b) => (b.old - b.oldMoved) / b.old - (a.old - a.oldMoved) / a.old)[0];
   const plays = ev.length ? edgePlays(B) : [], newsEdges = plays.filter(p => p.types.includes('news'));
   $('wkpis').innerHTML =
-    kpi('Changes today', ICON.clock, `${ev.length}`, `${inj.length} injury report · ${ev.filter(e => e[1] === 'five').length} lineups confirmed · ${ev.filter(e => e[1] === 'inactive').length} inactive`) +
+    kpi('Changes today', ICON.clock, `${ev.length}`, `${inj.length} injury report · ${ev.filter(e => e[1] === 'five').length} lineups · ${ev.filter(e => e[1] === 'inactive').length} inactive`) +
     kpi('Ruled out today', ICON.star, `${outs.length}`, outs.length ? outs.slice(0, 3).map(e => esc(e[4])).join(', ') : 'Nobody newly out') +
-    kpi('Fastest to reprice', ICON.pts, fastest ? esc(fastest.v) : 'n/a', fastest ? `median first move ${lagTxt(fastest.med)}${slowest && slowest.old - slowest.oldMoved ? ` · slowest: ${esc(slowest.v)}` : ''}` : 'Needs a change and a price move') +
     kpi('News edges open', ICON.edit, `${newsEdges.length}`, newsEdges.length ? 'Edges whose price is older than the news (Edges, News lag)' : 'No price is lagging the news by 3%+');
   // timeline
   const teams = [...new Set(ev.map(e => e[2]))].sort();
@@ -9132,13 +9154,16 @@ function renderWire(){
   if (wf.team !== 'all' && !teams.includes(wf.team)) wf.team = 'all';
   $('wteam').innerHTML = `<option value="all">All teams</option>${teams.map(t => `<option value="${t}"${wf.team === t ? ' selected' : ''}>${t}</option>`).join('')}`;
   const E = ev.filter(e => (wf.kind === 'all' || e[1] === wf.kind) && (wf.team === 'all' || e[2] === wf.team));
-  $('wsub').textContent = `${E.length} ${E.length === 1 ? 'change' : 'changes'}, newest first. A venue chip shows its first move after the news; red means it has not moved yet.`;
+  $('wsub').textContent = E.length ? `${E.length} ${E.length === 1 ? 'change' : 'changes'}, newest first. Green: prices moved fast. Red: has not moved yet.` : 'Nothing has changed yet today. The injury report updates every 15 minutes on game days.';
   const chips = r => Object.entries(r).sort((a, b) => (a[1][3] ?? 1e9) - (b[1][3] ?? 1e9)).map(([v, [n, m, med, first]]) =>
     `<span class="${first == null ? 'none' : first <= 300 ? 'fast' : first > 900 ? 'slow' : ''}" title="${m} of ${n} quotes moved${med != null ? `, median ${lagTxt(med)}` : ''}">${esc(v)} ${first == null ? 'not yet' : lagTxt(first)}</span>`).join('');
-  $('wevents').innerHTML = `<thead><tr><th class="l">Seen (CT)</th><th class="l">Team</th><th class="l">Change</th><th class="l">How fast each venue moved</th><th title="Edges on this team the Edges page tags News lag">News edges</th></tr></thead><tbody>
+  $('wvcard').hidden = !ev.length;
+  $('wevents').innerHTML = `<thead><tr><th class="l">Time (CT)</th><th class="l">Who</th><th class="l">What changed</th><th class="l">Did prices follow?</th><th title="Edges on this team the Edges page tags News lag">News edges</th></tr></thead><tbody>
     ${E.length ? E.map(e => { const ne = newsEdges.filter(p => p.r.tm === e[2]).length;
-      return `<tr><td class="l num">${clock(e[0])}</td><td class="l"><span class="tm">${lgImg(e[2], 20)}<b>${esc(e[2])}</b></span></td>
-        <td class="l"><div class="pl">${e[1] === 'five' ? lgImg(e[2], 32) : avSm(e[3], e[4])}<div><b>${e[1] === 'five' ? 'Starting five confirmed' : esc(e[4])}</b><small>${e[1] === 'five' ? esc(e[4]) : `${WKIND[e[1]]}: ${esc(e[5] || 'not listed')} to <span class="${/out|inactive/i.test(e[6] || '') ? 'neg' : ''}">${esc(e[6])}</span>`}</small></div></div></td>
+      const sp = t => `<span class="wr-s ${/^(out|inactive)/i.test(t || '') ? 'out' : /^doubt/i.test(t || '') ? 'dbt' : /^quest/i.test(t || '') ? 'qst' : ''}">${esc(t || 'Not listed')}</span>`;
+      return `<tr><td class="l num">${clock(e[0])}</td>
+        <td class="l"><div class="pl">${e[1] === 'five' ? lgImg(e[2], 32) : avSm(e[3], e[4])}<div><b>${e[1] === 'five' ? esc(e[2]) + ' lineup' : esc(e[4])}</b><small>${e[1] === 'five' ? '' : esc(e[2])}</small></div></div></td>
+        <td class="l">${e[1] === 'five' ? `Starting five confirmed<small class="wr-sm">${esc(e[4])}</small>` : `${sp(e[5])} <span class="wr-ar">to</span> ${sp(e[6])}${e[1] === 'inactive' ? '<small class="wr-sm">Inactive on NBA.com</small>' : ''}`}</td>
         <td class="l"><div class="rx">${chips(e[7]) || '<span>No props listed for this team</span>'}</div></td>
         <td>${ne ? `<a href="#edges" class="linkbtn" data-wedges="1">${ne}</a>` : ''}</td></tr>`; }).join('')
       : `<tr><td class="l" colspan="5"><p class="empty">${ev.length ? 'No changes match these filters.' : 'No changes recorded yet today.'}</p></td></tr>`}</tbody>`;
@@ -9160,9 +9185,9 @@ function renderWireSeason(){
     .sort((a, b) => (a.med ?? 1e9) - (b.med ?? 1e9));
   $('wseasub').textContent = days.length ? `${days.length} game ${days.length === 1 ? 'day' : 'days'} saved (${new Date(days[0] + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} to ${new Date(days[days.length - 1] + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}). First move per change, before the team's tip.`
     : 'Every saved game day: which venues reprice news, and how fast, before tip.';
-  $('wseason').innerHTML = `<thead><tr><th class="l">Venue</th><th>Changes</th><th>Quotes affected</th><th>Moved within 5 min</th><th>Within 15 min</th><th>Median first move</th><th title="Changes this venue never reacted to before the team tipped: the window to bet into, if the news mattered">Never moved before tip</th></tr></thead><tbody>
-    ${rows.length ? rows.map(x => `<tr><td class="l"><b>${esc(x.v)}</b><small>${x.days.size} ${x.days.size === 1 ? 'day' : 'days'}</small></td><td>${x.ev.toLocaleString()}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.w5 / Math.max(1, x.ev))}</td><td>${pc(x.w15 / Math.max(1, x.ev))}</td><td>${x.med != null ? lagTxt(x.med) : '<span class="muted">none</span>'}</td><td><span class="${x.never / Math.max(1, x.ev) >= .25 ? 'warnt' : ''}">${pc(x.never / Math.max(1, x.ev))}</span></td></tr>`).join('')
-      : `<tr><td class="l" colspan="7"><p class="empty">Nothing saved yet. The recorder saves each game day's changes and reactions as it goes; the season table starts after the first settled day.</p></td></tr>`}</tbody>`;
+  $('wseason').innerHTML = `<thead><tr><th class="l">Venue</th><th>Reacts in 5 min</th><th>Reacts in 15 min</th><th>Typical delay</th><th title="Changes this venue never reacted to before the team tipped: the window to bet into, if the news mattered">Never reacted before tip</th></tr></thead><tbody>
+    ${rows.length ? rows.map(x => `<tr><td class="l"><b>${esc(x.v)}</b><small>${x.days.size} ${x.days.size === 1 ? 'day' : 'days'}</small></td><td>${pc(x.w5 / Math.max(1, x.ev))}</td><td>${pc(x.w15 / Math.max(1, x.ev))}</td><td>${x.med != null ? lagTxt(x.med) : '<span class="muted">none</span>'}</td><td><span class="${x.never / Math.max(1, x.ev) >= .25 ? 'warnt' : ''}">${pc(x.never / Math.max(1, x.ev))}</span></td></tr>`).join('')
+      : `<tr><td class="l" colspan="5"><p class="empty">Nothing saved yet. The recorder saves each game day's changes and reactions as it goes; the season table starts after the first settled day.</p></td></tr>`}</tbody>`;
 }
 $('wkind').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ wf.kind = b.dataset.v; renderWire(); } });
 $('wteam').addEventListener('change', e => { wf.team = e.target.value; renderWire(); });
