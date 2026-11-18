@@ -1941,8 +1941,13 @@ th{font-weight:500}
 }
 :root[data-theme="light"] body::after{display:none}
 :root[data-theme="light"] .ev-chip.model{color:var(--fg)}
+/* Palettes (src/vault-appearance.js sets data-palette): a page + card family in dark and light. Specificity beats the base blocks; Charcoal and High contrast sit after. */
+:root[data-palette="teal"][data-theme="dark"]{--bg:#080e0f;--surface:#101a1c;--surface2:#142022;--raised:#182529;--border:#223639;--border2:#384a4d;--fg:#eff7f7;--fg2:#9fb6b8;--fg3:#7c9396;--primary:#ff8f56;--on-primary:#220c01;--up:#6ee09a;--down:#ff6478;--btn:#182529;--btn-h:#263236;--chip:#142022;--chip-h:#182529;--seg-on:#142022;--ctl:#101a1c;--pop:#142022;--pop-b:#384a4d;--nav-on:#182529;--track:rgba(24,37,41,0.5)}
+:root[data-palette="teal"][data-theme="light"]{--bg:#eef5f5;--surface:#ffffff;--surface2:#e7f0f0;--raised:#e0ecec;--border:#dfeaeb;--border2:#d0e0e1;--fg:#0e1b1c;--fg2:#41585a;--fg3:#62797c;--primary:#bf4f10;--on-primary:#ffffff;--up:#12805a;--down:#c8283c;--btn:#e0ecec;--btn-h:#d7e3e3;--chip:#e7f0f0;--chip-h:#e0ecec;--seg-on:#ffffff;--ctl:#ffffff;--pop:#ffffff;--pop-b:#d0e0e1;--nav-on:#e0ecec}
+:root[data-palette="warm"][data-theme="dark"]{--bg:#0d0c0a;--surface:#171512;--surface2:#1c1a16;--raised:#221f1a;--border:#2e2a23;--border2:#433f39;--fg:#f6f3ee;--fg2:#b0a99c;--fg3:#8d8678;--primary:#8fb8ec;--on-primary:#0b1420;--up:#5fe09a;--down:#ff6478;--btn:#221f1a;--btn-h:#2f2c28;--chip:#1c1a16;--chip-h:#221f1a;--seg-on:#1c1a16;--ctl:#171512;--pop:#1c1a16;--pop-b:#433f39;--nav-on:#221f1a;--track:rgba(34,31,26,0.5)}
+:root[data-palette="warm"][data-theme="light"]{--bg:#f6f3ee;--surface:#ffffff;--surface2:#f1ede6;--raised:#ece7de;--border:#ebe6dd;--border2:#e0d9cc;--fg:#1c1812;--fg2:#58503f;--fg3:#7a7260;--primary:#2a62b5;--on-primary:#ffffff;--up:#12805a;--down:#c8283c;--btn:#ece7de;--btn-h:#e3ded5;--chip:#f1ede6;--chip-h:#ece7de;--seg-on:#ffffff;--ctl:#ffffff;--pop:#ffffff;--pop-b:#e0d9cc;--nav-on:#ece7de}
 /* ── Appearance panel (src/vault-appearance.js): High contrast is a dark variant with stronger edges and text; Compact tightens rows and gaps. ── */
-:root[data-contrast="high"]{--fg:#ffffff;--fg2:#e6e8ed;--fg3:#c7cbd3;--border:#8b909b;--border2:#c7cbd3;--up:#6ff0a0;--down:#ff9a9a;--warn:#ffd36b}
+:root[data-contrast="high"][data-theme]{--fg:#ffffff;--fg2:#e6e8ed;--fg3:#c7cbd3;--border:#8b909b;--border2:#c7cbd3;--up:#6ff0a0;--down:#ff9a9a;--warn:#ffd36b}
 :root[data-contrast="high"] :focus-visible{outline-width:3px}
 /* Charcoal: Dark on a deeper #131313 base. Cards and controls keep the dark ladder so the kit-built views still match. */
 :root[data-shade="charcoal"]{--bg:#131313}
