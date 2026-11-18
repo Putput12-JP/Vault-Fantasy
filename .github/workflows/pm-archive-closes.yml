@@ -9,7 +9,7 @@ name: Polymarket closes
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '41 9,16 * * *'
+    - cron: '41 0,3,9,13,16,20 * * *'   # CBB plays all evening, so it needs more than two runs (NFL and NBA add nothing on the extra ones)
 
 concurrency:
   group: pm-closes

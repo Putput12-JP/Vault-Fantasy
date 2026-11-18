@@ -178,9 +178,44 @@ def query(c, t, event, cols, cids, before=None, mirror=False):
 
 
 # ── closes ─────────────────────────────────────────────────────────────────────────────────────
+# Batching: a game's close needs two hours (kickoff hour, hour before) x two event types, each a scan of a whole hourly file. CBB has about
+# 30 games kicking off in one evening hour, so reading per game repeated the same scan 30 times (about 35 s a game). `plan` registers the
+# games still to do; the first game to need an hour reads it ONCE for every planned game in that hour, and each game then takes its own
+# rows (its tokens, quotes before ITS kickoff). A game that was not planned, or an hour not batched, reads on its own as before.
+PLAN, BATCH, CHUNK = {}, {}, 25
+
+
+def plan(games):
+    PLAN.clear(); BATCH.clear()
+    for g in games:
+        h = (g['kickoff'] // 3600) * 3600
+        for t in (h, h - 3600):
+            PLAN.setdefault(t, []).append(g)
+
+
+def rows_for(c, t, event, cols, g, mirror=False):
+    """Rows (asset, ms, ...) of one event type in the hour starting at t for game g, before g's kickoff; None if the hour is unpublished."""
+    key = (t, event)
+    if key not in BATCH and PLAN.get(t):
+        rows, games = [], PLAN[t]
+        for i in range(0, len(games), CHUNK):
+            part = games[i:i + CHUNK]
+            got = query(c, t, event, cols, [m['cid'] for x in part for m in x['markets']],
+                        before=max(x['kickoff'] for x in part), mirror=mirror)
+            if got is None:
+                rows = None
+                break
+            rows += got
+        BATCH[key] = rows
+    if key not in BATCH:
+        return query(c, t, event, cols, [m['cid'] for m in g['markets']], before=g['kickoff'], mirror=mirror)
+    if BATCH[key] is None:
+        return None
+    toks = {tk for m in g['markets'] for tk in m['tokens']}
+    return [r for r in BATCH[key] if r[0] in toks and r[1] < g['kickoff'] * 1000]
+
 def close_of(g, c):
     """Last quote before kickoff for every outcome token of the game's markets (kickoff hour, then the hour before)."""
-    cids = [m['cid'] for m in g['markets']]
     other = {}
     for m in g['markets']:
         if len(m['tokens']) == 2:
@@ -191,8 +226,7 @@ def close_of(g, c):
         if a not in last or tm > last[a][0]:
             last[a] = (tm, b, k)
     for t in ((ko // 3600) * 3600, (ko // 3600) * 3600 - 3600):
-        rows = query(c, t, 'best_bid_ask', "lower(hex(asset_id)), epoch_ms(timestamp), best_bid, best_ask", cids,
-                     before=ko, mirror=True)
+        rows = rows_for(c, t, 'best_bid_ask', "lower(hex(asset_id)), epoch_ms(timestamp), best_bid, best_ask", g, mirror=True)
         if rows is None:
             return None
         for a, tm, b, k, twin in rows:
@@ -203,7 +237,7 @@ def close_of(g, c):
             # same time (the archive's quickstart.py expand_twins). Rebuild it so that token's last quote is current.
             if twin and a in other:
                 put(other[a], tm, round(1 - k, 4) if k is not None else None, round(1 - b, 4) if b is not None else None)
-        trades = query(c, t, 'last_trade_price', "lower(hex(asset_id)), epoch_ms(timestamp), price", cids, before=ko) or []
+        trades = rows_for(c, t, 'last_trade_price', "lower(hex(asset_id)), epoch_ms(timestamp), price", g) or []
         for a, tm, p in trades:
             key = 'trade:' + a
             if key not in last or tm > last[key][0]:
@@ -240,10 +274,11 @@ def cmd_closes(a):
     G = data.setdefault('games', {})
     c, n, t0 = con(), 0, time.time()
     for sport in a.sports.split(','):
-        for g in games(sport, max(V3_START.timestamp(), now - a.days * 86400), now - LAG_H * 3600):
+        todo = [g for g in games(sport, max(V3_START.timestamp(), now - a.days * 86400), now - LAG_H * 3600)
+                if a.force or f"{sport}|{g['slug']}" not in G]
+        plan(todo)
+        for g in todo:
             k = f"{sport}|{g['slug']}"
-            if k in G and not a.force:
-                continue
             if a.max_secs and time.time() - t0 > a.max_secs:      # stop cleanly; the next run takes the rest
                 break
             try:
