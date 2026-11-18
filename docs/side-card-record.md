@@ -135,3 +135,18 @@ price time (`price_t_src: "confirmed by a later unchanged read"`). Rows already 
 `corrected` note (when, what it was, why). From 2026-11-13 the scan also re-logs every price at the freeze read, so new cards carry a
 fresh price time directly. The 30-minute rule of the registration is unchanged; this fixes the recorded price time it reads.
 
+
+## Change on 2026-11-18: flat 1u, no college size, "hot" wallets
+
+After `docs/sharps-audit-2026-11-18.md` the page (`sharp-money/side-cards.js`, `?v=40`) shows a flat 1u on NBA and NFL plays and no size on
+CFB and CBB, and calls the old "proven" wallets "hot". Nothing stored changes: the builder still writes `sf.units` (the old ladder), and the
+grader still writes the same rows. The page keeps the ladder as `units_ladder` and reads the record from the stored flat result.
+
+| Record line | Reads |
+|---|---|
+| Record (headline) | NBA and NFL `sf` plays, stored flat ROI times plays, every history row |
+| Old size ladder (shadow) | all sports at the stored ladder units (the headline before Nov 18: 60-59, -9.05u, 119 plays) |
+| College at 1u (shadow) | CFB and CBB plays at 1u (32-40, -12.53u, 72 plays) |
+
+The headline moved from -9.05u to +1.95u (28-19, 47 plays) **only because the rule moved the college plays and the ladder out of it**. The rule was
+chosen after seeing the results, so it is in-sample and flagged for close monitoring at n = 47. It is not evidence of an edge.
