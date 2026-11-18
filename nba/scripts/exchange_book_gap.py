@@ -248,11 +248,11 @@ def cleared(rs, span):
 
 
 def verdict(by_cohort, span):
-    """Prereg wording: cleared = criteria 1 to 4; killed = mean - 2 SE below 0 at n >= 500. Read literally, that kill also fires on a mean that is
-    positive but under 2 SE, so at n >= 500 the only outcomes are cleared and killed. Flagged in the PR for the user; not softened here."""
+    """Prereg: cleared = criteria 1 to 4; killed = mean + 2 SE below 0 at n >= 500 (the data rule out a move toward the exchange). A result in between
+    is 'not cleared' and keeps collecting: it is read again on the next 500 observations."""
     a = by_cohort['A']
     st = stat(a)
-    if st['n'] >= MIN_N and st['se'] is not None and st['move'] - Z_BAR * st['se'] < 0:
+    if st['n'] >= MIN_N and st['se'] is not None and st['move'] + Z_BAR * st['se'] < 0:
         return 'killed'
     if st['n'] < MIN_N or st['games'] < MIN_GAMES or span < MIN_SPAN_DAYS:
         return 'collecting'

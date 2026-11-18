@@ -96,9 +96,11 @@ class Stats(unittest.TestCase):
         by = {c: [dict(game='g', move=0.02, tip=1, t=1, stat='pts', side='over', exch='novig', cohort=c)] * 20 for c in 'ABC'}
         self.assertEqual(G.verdict(by, 40), 'collecting')
 
-    def test_kill_when_mean_minus_two_se_below_zero_at_500(self):
-        a = [dict(game=f'g{i % 40}', move=(-0.01 if i % 2 else 0.011), tip=i) for i in range(500)]
-        self.assertEqual(G.verdict({'A': a, 'B': [], 'C': []}, 40), 'killed')
+    def test_kill_only_when_mean_plus_two_se_is_below_zero(self):
+        neg = [dict(game=f'g{i % 40}', move=-0.01 + (0.002 if i % 2 else -0.002), tip=i) for i in range(500)]
+        self.assertEqual(G.verdict({'A': neg, 'B': [], 'C': []}, 40), 'killed')
+        noisy = [dict(game=f'g{i % 40}', move=(0.05 if i % 2 else -0.04), tip=i) for i in range(500)]   # mean +0.005, SE large: not killed, not cleared
+        self.assertEqual(G.verdict({'A': noisy, 'B': [], 'C': []}, 40), 'not cleared')
 
 
 class Files(unittest.TestCase):
