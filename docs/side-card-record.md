@@ -13,7 +13,7 @@ variant (`all`, `fwd`), two plays are graded when the card has them:
 | `lock` | the pre-registered lock (`lock_shadow`, `docs/sharp-card-prereg.md`) | the clean-ladder units, a second line only |
 | `sf` | the size the card shows (SharpFlow's staking rules, labelled "untested rule") | the shown units |
 
-Shadows of the shown size are graded beside it with the same rules, and never appear on a card or as an open play:
+Shadows of the shown size are graded beside it with the same rules, and never appear on a card or in the main Open plays list. Clicking a rule in the Record's "Same plays under other rules" table filters Open plays and Completed plays to that rule; its open plays come from `open_shadow` in cards_record.json (locked, not yet graded; `grade_side_cards.py open_plays(shadows=True)`), labelled Shadow:
 
 | Play | What it is | Source |
 |---|---|---|
