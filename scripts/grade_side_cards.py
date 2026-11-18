@@ -250,14 +250,14 @@ def espn_postponed(open_rows, now):
     return out
 
 
-def open_plays(todo, graded, now, days=7):
+def open_plays(todo, graded, now, days=7, shadows=False):
     """Locked plays still waiting for a result, for the Record page: Vault's shown size (variant all) on every frozen card, and the
-    pre-registered lock on counted cards. Newest game first. Stored values only."""
+    pre-registered lock on counted cards. Newest game first. Stored values only. shadows=True lists the shadows instead (open_shadow)."""
     out = []
     for rel, c, kf in todo:
         for p in plays(c, kf):
             key = f"{rel}|{p['group']}|{p['variant']}|{p['play']}"
-            if p["play"] in SHADOWS:                        # shadows of the shown size are graded, never listed as open plays
+            if (p["play"] in SHADOWS) != shadows:           # shadows=False: the shown size only. shadows=True: only the shadows, for the Record's per-rule view (open_shadow); never on a card
                 continue
             if key in graded or c["gst"] < now - days * 86400 or p["variant"] != "all" or (p["play"] == "lock" and not (c.get("test") or {}).get("counts")):
                 continue
@@ -513,6 +513,7 @@ def main():
     rec = record(allrows, cards, now, derive_signals(todo, BSC.BookTape(a.book_tape)))
     rec["waiting"] = {"plays": len(waiting), "why": {w: sum(1 for _, x in waiting if x == w) for _, w in waiting}}
     rec["open"] = open_plays(todo, {r["key"] for r in allrows}, now)
+    rec["open_shadow"] = open_plays(todo, {r["key"] for r in allrows}, now, shadows=True)
     save_record(os.path.join(a.out, "cards_record.json"), rec)
     print(json.dumps({"new_rows": len(new), "waiting": rec["waiting"], "cards": len(cards)}))
     return 0

@@ -217,6 +217,14 @@ class ShadowRules(unittest.TestCase):
         c["markets"]["spread"] = dict(self.market((2, [40, 25]), (0, [])), lock_shadow={"all": {"side": None}})
         self.assertEqual([p["play"] for p in G.open_plays([("k", c, None)], {}, GST)], ["sf"])
 
+    def test_open_shadow_lists_only_shadows(self):
+        c = card(sf=self.SF)
+        c["markets"]["spread"] = dict(self.market((2, [40, 25]), (0, [])), lock_shadow={"all": {"side": None}})
+        got = G.open_plays([("k", c, None)], {}, GST, shadows=True)
+        self.assertTrue(all(p["play"] in G.SHADOWS for p in got))     # never the shown size
+        self.assertNotIn("sf", [p["play"] for p in got])
+        self.assertEqual(G.open_plays([("k", c, None)], {"k|spread|all|sf"}, GST), [])   # the shown-size list is unchanged
+
 
 class Benchmark(unittest.TestCase):
     def test_american_odds_to_price(self):
