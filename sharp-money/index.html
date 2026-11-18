@@ -14,12 +14,18 @@
    origin) share the choice. A page registers an adapter that knows how to paint ITS colours:
      VaultAppearance.init({ legacy(), apply(state, ctx), density:true|false, charcoal:true|false })
    Charcoal is a dark variant on a #131313 base: the module sets data-shade="charcoal" and the page paints it.
-   ctx = { resolved:'light'|'dark', contrast:bool, shade:'charcoal'|null, accent:'#rrggbb'|null, tint:0..1, hue:number|null, mix(color,amt) }.
+   ctx = { resolved:'light'|'dark', contrast:bool, shade:'charcoal'|null, palette:'teal'|'warm'|null, accent:'#rrggbb'|null, tint:0..1, hue:number|null, mix(color,amt) }.
    The module owns state, persistence, system-theme tracking and the panel; the adapter owns the page's own palette. */
 (function(){
 'use strict';
-var KEY = 'vault-appearance', DEF = { theme:'system', hue:null, tint:0, density:'comfortable' };
+var KEY = 'vault-appearance', DEF = { theme:'system', hue:null, tint:0, density:'comfortable', palette:'default' };
 var HUES = [['Blue',250],['Violet',275],['Pink',330],['Red',10],['Orange',30],['Gold',48],['Green',145],['Teal',175]];
+/* Palettes: a page + card family (the page paints the surfaces; this table holds the accent and the thumbnail colours).
+   pv = [sidebar, page, bubble, lines, input]. Deep Teal pairs a teal-black with an ember accent, Warm Charcoal a brown-black with steel blue. */
+var PALS = {
+  teal: { name:'Deep Teal', hue:185, dark:{ ac:'#ff8f56', pv:['#101a1c','#080e0f','#182529','#223639','#101a1c'] }, light:{ ac:'#bf4f10', pv:['#e0ecec','#eef5f5','#e0ecec','#d0e0e1','#ffffff'] } },
+  warm: { name:'Warm Charcoal', hue:35, dark:{ ac:'#8fb8ec', pv:['#171512','#0d0c0a','#221f1a','#2e2a23','#171512'] }, light:{ ac:'#2a62b5', pv:['#ece7de','#f6f3ee','#ece7de','#e0d9cc','#ffffff'] } }
+};
 var NAMES = [[15,'Red'],[40,'Orange'],[65,'Gold'],[100,'Lime'],[160,'Green'],[195,'Teal'],[225,'Cyan'],[262,'Blue'],[295,'Violet'],[335,'Pink'],[361,'Red']];
 var A = null, S = null, el = null, mq = null, lastFocus = null;
 
@@ -43,10 +49,12 @@ function lum(rgb){ var v = rgb.map(function(x){ x /= 255; return x <= .03928 ? x
 function resolved(){ return S.theme === 'light' ? 'light' : S.theme === 'system' ? (mq && mq.matches ? 'dark' : 'light') : 'dark'; }
 function context(){
   var res = resolved(), h = S.hue, accent = null, tintRgb = null;
+  var pal = PALS[S.palette] && S.theme !== 'charcoal' ? S.palette : null;   /* Charcoal has its own base, so it ignores a palette */
   if (h != null){ accent = hex(hsl2rgb(h, res === 'dark' ? .78 : .62, res === 'dark' ? .68 : .42)); }
+  else if (pal){ accent = PALS[pal][res].ac; }   /* a picked accent still wins over the palette's */
   var tint = S.tint / 100;
-  tintRgb = hsl2rgb(h == null ? 250 : h, .55, .5);
-  return { resolved: res, contrast: S.theme === 'contrast', shade: S.theme === 'charcoal' ? 'charcoal' : null, accent: accent, hue: h, tint: tint, density: S.density,
+  tintRgb = hsl2rgb(h == null ? (pal ? PALS[pal].hue : 250) : h, .55, .5);
+  return { resolved: res, contrast: S.theme === 'contrast', shade: S.theme === 'charcoal' ? 'charcoal' : null, palette: pal, accent: accent, hue: h, tint: tint, density: S.density,
     ink: accent ? (lum(parse(accent)) > .4 ? '#0b0c0e' : '#ffffff') : null,
     /* mix a page colour toward the accent hue by tint (max ~12% at 100) */
     mix: function(c, amt){ var p = parse(c); if (!p) return c; var t = (amt == null ? tint : amt) * .12; return hex(p.map(function(v, i){ return v + (tintRgb[i] - v) * t; })); } };
@@ -56,6 +64,7 @@ function apply(){
   var ctx = context(), root = document.documentElement;
   if (ctx.contrast) root.dataset.contrast = 'high'; else delete root.dataset.contrast;
   if (ctx.shade) root.dataset.shade = ctx.shade; else delete root.dataset.shade;
+  if (ctx.palette) root.dataset.palette = ctx.palette; else delete root.dataset.palette;
   root.dataset.density = S.density;
   if (A && A.apply) A.apply(S, ctx);
   try{ window.dispatchEvent(new CustomEvent('vault-appearance', { detail: { state: S, ctx: ctx } })); }catch(e){}
@@ -92,8 +101,8 @@ var CSS = '#va-root{position:fixed;inset:0;z-index:2147483000;display:none;align
 + '.va-seg button:focus-visible{outline:2px solid var(--t);outline-offset:1px}';
 
 /* tiny theme thumbnails: sidebar strip, message bubble, input bar */
-function thumb(m, extra){
-  var P = { light:['#f1f1f3','#fafafc','#dfe6f5','#d9d9de','#e8e8ec'], dark:['#16171a','#0d0e10','#1d2531','#33353c','#1b1c20'], charcoal:['#1c1c1c','#131313','#2a2a2a','#3a3a3a','#202020'], contrast:['#141414','#000','#000','#9a9a9a','#000'] }[m];
+function thumb(m, extra, pv, dot){
+  var P = pv || { light:['#f1f1f3','#fafafc','#dfe6f5','#d9d9de','#e8e8ec'], dark:['#16171a','#0d0e10','#1d2531','#33353c','#1b1c20'], charcoal:['#1c1c1c','#131313','#2a2a2a','#3a3a3a','#202020'], contrast:['#141414','#000','#000','#9a9a9a','#000'] }[m];
   var line = m === 'contrast' ? '1.5px solid #fff' : '0';
   var body = '<span class="pv" style="background:' + P[1] + (extra || '') + '">'
     + '<i style="left:0;top:0;bottom:0;width:22%;background:' + P[0] + '"></i>'
@@ -101,7 +110,7 @@ function thumb(m, extra){
     + '<i style="right:8%;top:16%;width:42%;height:15%;border-radius:8px;background:' + P[2] + ';border:' + line + '"></i>'
     + '<i style="left:30%;top:46%;width:44%;height:5%;background:' + P[3] + '"></i><i style="left:30%;top:58%;width:34%;height:5%;background:' + P[3] + '"></i>'
     + '<i style="left:28%;right:6%;bottom:9%;height:17%;border-radius:8px;background:' + P[4] + ';border:' + (m === 'contrast' ? '1.5px solid #fff' : '1px solid ' + P[3]) + '"></i>'
-    + '<i style="right:10%;bottom:14%;width:7%;height:7%;border-radius:50%;background:#6aa8ff"></i></span>';
+    + '<i style="right:10%;bottom:14%;width:7%;height:7%;border-radius:50%;background:' + (dot || '#6aa8ff') + '"></i></span>';
   return body;
 }
 function systemThumb(){
@@ -118,7 +127,9 @@ function html(){
   return '<div class="va-card" role="dialog" aria-modal="true" aria-labelledby="va-h">'
     + '<div class="va-top"><div><h2 id="va-h">Appearance</h2><p>How Vault looks on this device.</p></div><button type="button" class="va-x" data-close aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'
     + '<div class="va-sec" style="margin-top:20px"><h3>Theme</h3><p class="d">System follows your device.' + (A && A.charcoal ? ' Charcoal is a deeper dark.' : '') + ' High contrast uses stronger edges and text.</p><div class="va-grid" role="group" aria-label="Theme" style="--n:' + opts.length + '">' + th + '</div></div>'
-    + '<div class="va-lab">Color</div><div class="va-sec"><h3>Accent</h3><p class="d">Buttons, links and highlights.</p>'
+    + '<div class="va-lab">Color</div><div class="va-sec" style="margin-bottom:12px"><h3>Palette</h3><p class="d" id="va-pd">Background and card colors, with an accent that goes with them.</p><div class="va-grid" role="group" aria-label="Palette" style="--n:3">'
+    + [['default', 'Default'], ['teal', 'Deep Teal'], ['warm', 'Warm Charcoal']].map(function(o){ return '<button type="button" class="va-opt" data-pal="' + o[0] + '" aria-pressed="false"><span data-pv></span><span class="nm">' + o[1] + '</span></button>'; }).join('')
+    + '</div></div><div class="va-sec"><h3>Accent</h3><p class="d">Buttons, links and highlights.</p>'
     + '<div class="va-hv" id="va-hn"></div><input class="va-hue" id="va-hue" type="range" min="0" max="360" step="1" aria-label="Accent hue"><div class="va-sws" role="group" aria-label="Accent swatches">' + sw + '</div>'
     + '<div class="va-hr"></div><div class="va-row"><div><h3>Background tint</h3><p class="d">How much of the accent shows in backgrounds.</p></div><input class="va-rng" id="va-tint" type="range" min="0" max="100" step="1" aria-label="Background tint"><span id="va-tv" style="width:38px;text-align:right;color:var(--t2);font-size:13px"></span></div></div>'
     + (A && A.density !== false ? '<div class="va-lab">Layout</div><div class="va-sec"><div class="va-row"><div><h3>Density</h3><p class="d">Space between rows and inside cards.</p></div><div class="va-seg" role="group" aria-label="Density"><button type="button" data-dens="comfortable" aria-pressed="false">Comfortable</button><button type="button" data-dens="compact" aria-pressed="false">Compact</button></div></div></div>' : '')
@@ -129,6 +140,13 @@ function sync(){
   if (!el) return;
   el.dataset.m = resolved();
   [].forEach.call(el.querySelectorAll('[data-theme-opt]'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.themeOpt === S.theme)); });
+  var rm = resolved(), cs = S.theme === 'charcoal';
+  [].forEach.call(el.querySelectorAll('[data-pal]'), function(b){
+    var k = b.dataset.pal, pv = k === 'default' ? null : PALS[k][rm];
+    b.querySelector('[data-pv]').outerHTML = '<span data-pv>' + thumb(rm, '', pv && pv.pv, pv && pv.ac) + '</span>';
+    b.setAttribute('aria-pressed', String(k === (PALS[S.palette] ? S.palette : 'default')));
+  });
+  el.querySelector('#va-pd').textContent = cs ? 'Charcoal has its own base. Pick Dark to use a palette.' : 'Background and card colors, with an accent that goes with them.';
   var h = S.hue, hr = el.querySelector('#va-hue');
   hr.value = h == null ? 250 : h;
   el.querySelector('#va-hn').textContent = h == null ? 'Default' : hueName(h) + ' ' + Math.round(h) + '°';
@@ -144,7 +162,8 @@ function build(){
   el.addEventListener('click', function(e){
     var b = e.target.closest && e.target.closest('button'); if (!b) return;
     if (b.hasAttribute('data-close')) return close();
-    if (b.hasAttribute('data-reset')) return set({ theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density });
+    if (b.hasAttribute('data-reset')) return set({ theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density, palette: DEF.palette });
+    if (b.dataset.pal) return set({ palette: b.dataset.pal });
     if (b.dataset.themeOpt) return set({ theme: b.dataset.themeOpt });
     if (b.classList.contains('va-sw')) return set({ hue: b.dataset.hue === '' ? null : +b.dataset.hue });
     if (b.dataset.dens) return set({ density: b.dataset.dens });
@@ -165,13 +184,14 @@ function close(){ if (!el) return; el.classList.remove('on'); if (lastFocus && l
 function init(adapter){
   A = adapter || {};
   var saved = load();
-  S = { theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density };
+  S = { theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density, palette: DEF.palette };
   if (saved){ for (var k in DEF) if (saved[k] !== undefined) S[k] = saved[k]; }
   else { var lg = A.legacy && A.legacy(); if (lg === 'light' || lg === 'dark') S.theme = lg; }   /* keep the theme people already chose */
   S.tint = clamp(+S.tint || 0, 0, 100); if (S.hue != null) S.hue = clamp(+S.hue, 0, 360);
   if (S.theme === 'charcoal' && !A.charcoal) S.theme = 'dark';   /* shared key: a page that does not paint Charcoal shows plain Dark */
   if (['system', 'light', 'dark', 'charcoal', 'contrast'].indexOf(S.theme) < 0) S.theme = 'system';
   if (S.density !== 'compact') S.density = 'comfortable';
+  if (!PALS[S.palette]) S.palette = 'default';
   try{ mq = matchMedia('(prefers-color-scheme: dark)'); (mq.addEventListener ? mq.addEventListener('change', function(){ if (S.theme === 'system'){ apply(); sync(); } }) : mq.addListener(function(){ if (S.theme === 'system'){ apply(); sync(); } })); }catch(e){}
   apply();
 }
@@ -1765,6 +1785,6 @@ function SmIco({d,size=18}){return U.createElement("svg",{width:size,height:size
 var SmNav=[["Markets",[["Plays","Prices that clear every gate",U.createElement(U.Fragment,null,U.createElement("path",{d:"M22 11.08V12a10 10 0 1 1-5.93-9.14"}),U.createElement("polyline",{points:"22 4 12 14.01 9 11.01"}))],["Board","Where the sharp side is",U.createElement(U.Fragment,null,U.createElement("rect",{x:3,y:3,width:7,height:9,rx:1}),U.createElement("rect",{x:14,y:3,width:7,height:5,rx:1}),U.createElement("rect",{x:14,y:12,width:7,height:9,rx:1}),U.createElement("rect",{x:3,y:16,width:7,height:5,rx:1}))],["Game","One game, every signal",U.createElement(U.Fragment,null,U.createElement("circle",{cx:12,cy:12,r:10}),U.createElement("circle",{cx:12,cy:12,r:6}),U.createElement("circle",{cx:12,cy:12,r:2}))],["Props","Player prop money",U.createElement(U.Fragment,null,U.createElement("path",{d:"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"}),U.createElement("circle",{cx:12,cy:7,r:4}))],["Accounts","Sharp accounts and their bets",U.createElement(U.Fragment,null,U.createElement("path",{d:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}),U.createElement("circle",{cx:9,cy:7,r:4}),U.createElement("path",{d:"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"}))]]],["Reads",[["Top Reads","Rules on trial, graded at real prices",U.createElement("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"})],["Signals","What each signal has actually done",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 3v18h18"}),U.createElement("path",{d:"M7 14l4-4 3 3 5-6"}))],["Record","Every rule and every play, graded",U.createElement(U.Fragment,null,U.createElement("rect",{x:5,y:3,width:14,height:18,rx:2}),U.createElement("path",{d:"M9 8h6M9 12h6M9 16h4"}))],["Sharps","Who holds each side, and the proven wallets among them",U.createElement(U.Fragment,null,U.createElement("path",{d:"M4 20V10M10 20V4M16 20v-7M22 20H2"}))],["Following","The proven wallets you follow, and every bet they have open",U.createElement(U.Fragment,null,U.createElement("path",{d:"M6.5 3.5h11v17l-5.5-4-5.5 4z"}))],["NFL Model","The Vault line against the sharp money",U.createElement(U.Fragment,null,U.createElement("path",{d:"M4.5 19.5C2.5 11 8 4.5 19.5 4.5c2 8.5-3.5 15-15 15z"}),U.createElement("path",{d:"M9.5 14.5l5-5M11 9.5l1.5 1.5M13 11.5l1.5 1.5M8.5 12.5l1.5 1.5"}))],["CFB Model","Our model against the sharp money",U.createElement(U.Fragment,null,U.createElement("path",{d:"M22 9L12 4 2 9l10 5 10-5z"}),U.createElement("path",{d:"M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6"}))],["CFB Scoreboard","Our model against JP+",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 3v18h18"}),U.createElement("path",{d:"M7 15v3M12 9v9M17 5v13"}))],["Edge Board","Novig against Pinnacle, biggest +EV",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 17l6-6 4 4 8-8"}),U.createElement("path",{d:"M15 7h6v6"}))]]]];
 window.__smKit=function(){return{U:U,V:V,z:z,T:T,M:M,K:K,oe:oe,se:se,ve:ve,at:at,je:je,co:co,Lp:Lp,_a:_a}};
 function SmSide({pg,go,collapsed,toggle,hidden}){let chev=(0,a.jsx)(SmIco,{size:16,d:(0,a.jsx)("path",{d:"m11 17-5-5 5-5M18 17l-5-5 5-5"})});return(0,a.jsxs)("aside",{className:"sm-side",id:"sm-side","aria-label":"Pages",inert:hidden?"":void 0,children:[(0,a.jsxs)("div",{className:"sm-head",children:[(0,a.jsx)("span",{className:"sm-mark","aria-hidden":"true",children:"SM"}),(0,a.jsxs)("div",{className:"sm-brandtxt",children:["Vault ",(0,a.jsx)("b",{children:"Sharp Money"})]}),(0,a.jsx)("button",{type:"button",className:"sm-tog",onClick:toggle,"aria-label":collapsed?"Expand the sidebar":"Collapse the sidebar","aria-expanded":!collapsed,"data-tip":collapsed?"Expand":"Collapse",title:collapsed?void 0:"Collapse ( [ )",children:chev})]}),(0,a.jsx)("nav",{"aria-label":"Pages",children:SmNav.map(([sec,items])=>(0,a.jsxs)("div",{className:"sm-sec",children:[(0,a.jsx)("div",{className:"sm-secl",children:sec}),items.map(([name,what,ico])=>{let on=name===pg;return(0,a.jsxs)("button",{type:"button",className:"sm-a","aria-current":on?"page":void 0,"aria-label":collapsed?name:void 0,"data-tip":name,title:collapsed?void 0:what,onClick:()=>go(name),children:[(0,a.jsx)(SmIco,{d:ico}),(0,a.jsx)("span",{className:"sm-l",children:name})]},name)})]},sec))})]})}
-function Gf({theme:e,setTheme:t}){let n=V(),o=e==="dark",i=o?(0,a.jsxs)("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",children:[(0,a.jsx)("circle",{cx:"12",cy:"12",r:"4"}),(0,a.jsx)("path",{d:"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"})]}):(0,a.jsx)("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",children:(0,a.jsx)("path",{d:"M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"})});return(0,a.jsx)("button",{type:"button","aria-label":"Appearance",title:"Appearance",onClick:()=>window.VaultAppearance?VaultAppearance.open():t(o?"light":"dark"),style:{all:"unset",boxSizing:"border-box",cursor:"pointer",width:34,height:34,borderRadius:z.radius.pill,display:"inline-flex",alignItems:"center",justifyContent:"center",color:n.textSecondary,background:n.bgMuted,transition:`background ${B.fast} ${B.easeOut}, color ${B.fast} ${B.easeOut}`},children:i})}function smPaint(c){var b=window.__smBase||(window.__smBase={dark:{...z.dark},light:{...z.light}}),T=["bg","bgElevated","bgSubtle","bgMuted","bgHover","bgInput","border","borderSubtle"];for(var th of["dark","light"]){Object.assign(z[th],b[th]);if(c.tint>0)for(var k of T)z[th][k]=c.mix(b[th][k]);}if(c.contrast)Object.assign(z.dark,{text:"#ffffff",textSecondary:"#e6e6e6",textTertiary:"#c8c8c8",textMuted:"#a0a0a0",border:"#9a9a9a",borderSubtle:"#6a6a6a",borderInput:"rgba(255,255,255,0.45)"});}
+function Gf({theme:e,setTheme:t}){let n=V(),o=e==="dark",i=o?(0,a.jsxs)("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",children:[(0,a.jsx)("circle",{cx:"12",cy:"12",r:"4"}),(0,a.jsx)("path",{d:"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"})]}):(0,a.jsx)("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",children:(0,a.jsx)("path",{d:"M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"})});return(0,a.jsx)("button",{type:"button","aria-label":"Appearance",title:"Appearance",onClick:()=>window.VaultAppearance?VaultAppearance.open():t(o?"light":"dark"),style:{all:"unset",boxSizing:"border-box",cursor:"pointer",width:34,height:34,borderRadius:z.radius.pill,display:"inline-flex",alignItems:"center",justifyContent:"center",color:n.textSecondary,background:n.bgMuted,transition:`background ${B.fast} ${B.easeOut}, color ${B.fast} ${B.easeOut}`},children:i})}var SM_PAL={"teal":{"dark":{"bg":"#080e0f","bgElevated":"#101a1c","bgSubtle":"#0c1416","bgMuted":"#182529","bgHover":"#283438","bgInput":"#101a1c","border":"#223639","borderSubtle":"#19282a","borderFocus":"#ff8f56","text":"#eff7f7","textSecondary":"#9fb6b8","textTertiary":"#7c9396","textMuted":"#485759","success":"#6ee09a","danger":"#ff6478","successBg":"rgba(110,224,154,0.12)","dangerBg":"rgba(255,100,120,0.12)"},"light":{"bg":"#eef5f5","bgElevated":"#ffffff","bgSubtle":"#e7f0f0","bgMuted":"#e0ecec","bgHover":"#d5e0e0","bgInput":"#e7f0f0","border":"#d0e0e1","borderSubtle":"#dfeaeb","borderFocus":"#bf4f10","text":"#0e1b1c","textSecondary":"#41585a","textTertiary":"#62797c","textMuted":"#a1b1b2","success":"#12805a","danger":"#c8283c","successBg":"rgba(18,128,90,0.1)","dangerBg":"rgba(200,40,60,0.1)"}},"warm":{"dark":{"bg":"#0d0c0a","bgElevated":"#171512","bgSubtle":"#12100e","bgMuted":"#221f1a","bgHover":"#312f2a","bgInput":"#171512","border":"#2e2a23","borderSubtle":"#22201a","borderFocus":"#8fb8ec","text":"#f6f3ee","textSecondary":"#b0a99c","textTertiary":"#8d8678","textMuted":"#534f46","success":"#5fe09a","danger":"#ff6478","successBg":"rgba(95,224,154,0.12)","dangerBg":"rgba(255,100,120,0.12)"},"light":{"bg":"#f6f3ee","bgElevated":"#ffffff","bgSubtle":"#f1ede6","bgMuted":"#ece7de","bgHover":"#e0dbd3","bgInput":"#f1ede6","border":"#e0d9cc","borderSubtle":"#ebe6dd","borderFocus":"#2a62b5","text":"#1c1812","textSecondary":"#58503f","textTertiary":"#7a7260","textMuted":"#b2aca0","success":"#12805a","danger":"#c8283c","successBg":"rgba(18,128,90,0.1)","dangerBg":"rgba(200,40,60,0.1)"}}};function smPaint(c){var b=window.__smBase||(window.__smBase={dark:{...z.dark},light:{...z.light}}),T=["bg","bgElevated","bgSubtle","bgMuted","bgHover","bgInput","border","borderSubtle"];for(var th of["dark","light"]){Object.assign(z[th],b[th]);if(c.palette&&SM_PAL[c.palette])Object.assign(z[th],SM_PAL[c.palette][th]);if(c.tint>0)for(var k of T)z[th][k]=c.mix(z[th][k]);}if(c.contrast)Object.assign(z.dark,{text:"#ffffff",textSecondary:"#e6e6e6",textTertiary:"#c8c8c8",textMuted:"#a0a0a0",border:"#9a9a9a",borderSubtle:"#6a6a6a",borderInput:"rgba(255,255,255,0.45)"});}
 function Xf(){let[e,t]=(0,U.useState)(()=>window.__DATA&&/^(light|dark)$/.test(document.documentElement.dataset.theme||"")&&document.documentElement.dataset.theme||_e.get("theme",null)||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark")),n=o=>{_e.set("theme",o),t(o)},[k,K]=(0,U.useState)(0),[ac,setAc]=(0,U.useState)(null);return(0,U.useEffect)(()=>{window.__smApply=c=>{smPaint(c),t(c.resolved),setAc(c.accent),K(x=>x+1)};window.VaultAppearance&&VaultAppearance.reapply();return()=>{window.__smApply=null}},[]),(0,U.useEffect)(()=>{let o=z[e].bg,i=document.documentElement;i.style.background=o,document.body.style.background=o,i.style.colorScheme=e,i.dataset.theme=e},[e,k]),(0,a.jsx)(fp,{theme:e,children:(0,a.jsx)(gl.Provider,{value:ac||Yg[e],children:(0,a.jsx)(Kf,{theme:e,setTheme:n})})})}(0,Wp.createRoot)(document.getElementById("root")).render((0,a.jsx)(Xf,{}))});Yf();})();
 </script>

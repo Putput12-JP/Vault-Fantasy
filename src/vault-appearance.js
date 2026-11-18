@@ -4,12 +4,18 @@
    origin) share the choice. A page registers an adapter that knows how to paint ITS colours:
      VaultAppearance.init({ legacy(), apply(state, ctx), density:true|false, charcoal:true|false })
    Charcoal is a dark variant on a #131313 base: the module sets data-shade="charcoal" and the page paints it.
-   ctx = { resolved:'light'|'dark', contrast:bool, shade:'charcoal'|null, accent:'#rrggbb'|null, tint:0..1, hue:number|null, mix(color,amt) }.
+   ctx = { resolved:'light'|'dark', contrast:bool, shade:'charcoal'|null, palette:'teal'|'warm'|null, accent:'#rrggbb'|null, tint:0..1, hue:number|null, mix(color,amt) }.
    The module owns state, persistence, system-theme tracking and the panel; the adapter owns the page's own palette. */
 (function(){
 'use strict';
-var KEY = 'vault-appearance', DEF = { theme:'system', hue:null, tint:0, density:'comfortable' };
+var KEY = 'vault-appearance', DEF = { theme:'system', hue:null, tint:0, density:'comfortable', palette:'default' };
 var HUES = [['Blue',250],['Violet',275],['Pink',330],['Red',10],['Orange',30],['Gold',48],['Green',145],['Teal',175]];
+/* Palettes: a page + card family (the page paints the surfaces; this table holds the accent and the thumbnail colours).
+   pv = [sidebar, page, bubble, lines, input]. Deep Teal pairs a teal-black with an ember accent, Warm Charcoal a brown-black with steel blue. */
+var PALS = {
+  teal: { name:'Deep Teal', hue:185, dark:{ ac:'#ff8f56', pv:['#101a1c','#080e0f','#182529','#223639','#101a1c'] }, light:{ ac:'#bf4f10', pv:['#e0ecec','#eef5f5','#e0ecec','#d0e0e1','#ffffff'] } },
+  warm: { name:'Warm Charcoal', hue:35, dark:{ ac:'#8fb8ec', pv:['#171512','#0d0c0a','#221f1a','#2e2a23','#171512'] }, light:{ ac:'#2a62b5', pv:['#ece7de','#f6f3ee','#ece7de','#e0d9cc','#ffffff'] } }
+};
 var NAMES = [[15,'Red'],[40,'Orange'],[65,'Gold'],[100,'Lime'],[160,'Green'],[195,'Teal'],[225,'Cyan'],[262,'Blue'],[295,'Violet'],[335,'Pink'],[361,'Red']];
 var A = null, S = null, el = null, mq = null, lastFocus = null;
 
@@ -33,10 +39,12 @@ function lum(rgb){ var v = rgb.map(function(x){ x /= 255; return x <= .03928 ? x
 function resolved(){ return S.theme === 'light' ? 'light' : S.theme === 'system' ? (mq && mq.matches ? 'dark' : 'light') : 'dark'; }
 function context(){
   var res = resolved(), h = S.hue, accent = null, tintRgb = null;
+  var pal = PALS[S.palette] && S.theme !== 'charcoal' ? S.palette : null;   /* Charcoal has its own base, so it ignores a palette */
   if (h != null){ accent = hex(hsl2rgb(h, res === 'dark' ? .78 : .62, res === 'dark' ? .68 : .42)); }
+  else if (pal){ accent = PALS[pal][res].ac; }   /* a picked accent still wins over the palette's */
   var tint = S.tint / 100;
-  tintRgb = hsl2rgb(h == null ? 250 : h, .55, .5);
-  return { resolved: res, contrast: S.theme === 'contrast', shade: S.theme === 'charcoal' ? 'charcoal' : null, accent: accent, hue: h, tint: tint, density: S.density,
+  tintRgb = hsl2rgb(h == null ? (pal ? PALS[pal].hue : 250) : h, .55, .5);
+  return { resolved: res, contrast: S.theme === 'contrast', shade: S.theme === 'charcoal' ? 'charcoal' : null, palette: pal, accent: accent, hue: h, tint: tint, density: S.density,
     ink: accent ? (lum(parse(accent)) > .4 ? '#0b0c0e' : '#ffffff') : null,
     /* mix a page colour toward the accent hue by tint (max ~12% at 100) */
     mix: function(c, amt){ var p = parse(c); if (!p) return c; var t = (amt == null ? tint : amt) * .12; return hex(p.map(function(v, i){ return v + (tintRgb[i] - v) * t; })); } };
@@ -46,6 +54,7 @@ function apply(){
   var ctx = context(), root = document.documentElement;
   if (ctx.contrast) root.dataset.contrast = 'high'; else delete root.dataset.contrast;
   if (ctx.shade) root.dataset.shade = ctx.shade; else delete root.dataset.shade;
+  if (ctx.palette) root.dataset.palette = ctx.palette; else delete root.dataset.palette;
   root.dataset.density = S.density;
   if (A && A.apply) A.apply(S, ctx);
   try{ window.dispatchEvent(new CustomEvent('vault-appearance', { detail: { state: S, ctx: ctx } })); }catch(e){}
@@ -82,8 +91,8 @@ var CSS = '#va-root{position:fixed;inset:0;z-index:2147483000;display:none;align
 + '.va-seg button:focus-visible{outline:2px solid var(--t);outline-offset:1px}';
 
 /* tiny theme thumbnails: sidebar strip, message bubble, input bar */
-function thumb(m, extra){
-  var P = { light:['#f1f1f3','#fafafc','#dfe6f5','#d9d9de','#e8e8ec'], dark:['#16171a','#0d0e10','#1d2531','#33353c','#1b1c20'], charcoal:['#1c1c1c','#131313','#2a2a2a','#3a3a3a','#202020'], contrast:['#141414','#000','#000','#9a9a9a','#000'] }[m];
+function thumb(m, extra, pv, dot){
+  var P = pv || { light:['#f1f1f3','#fafafc','#dfe6f5','#d9d9de','#e8e8ec'], dark:['#16171a','#0d0e10','#1d2531','#33353c','#1b1c20'], charcoal:['#1c1c1c','#131313','#2a2a2a','#3a3a3a','#202020'], contrast:['#141414','#000','#000','#9a9a9a','#000'] }[m];
   var line = m === 'contrast' ? '1.5px solid #fff' : '0';
   var body = '<span class="pv" style="background:' + P[1] + (extra || '') + '">'
     + '<i style="left:0;top:0;bottom:0;width:22%;background:' + P[0] + '"></i>'
@@ -91,7 +100,7 @@ function thumb(m, extra){
     + '<i style="right:8%;top:16%;width:42%;height:15%;border-radius:8px;background:' + P[2] + ';border:' + line + '"></i>'
     + '<i style="left:30%;top:46%;width:44%;height:5%;background:' + P[3] + '"></i><i style="left:30%;top:58%;width:34%;height:5%;background:' + P[3] + '"></i>'
     + '<i style="left:28%;right:6%;bottom:9%;height:17%;border-radius:8px;background:' + P[4] + ';border:' + (m === 'contrast' ? '1.5px solid #fff' : '1px solid ' + P[3]) + '"></i>'
-    + '<i style="right:10%;bottom:14%;width:7%;height:7%;border-radius:50%;background:#6aa8ff"></i></span>';
+    + '<i style="right:10%;bottom:14%;width:7%;height:7%;border-radius:50%;background:' + (dot || '#6aa8ff') + '"></i></span>';
   return body;
 }
 function systemThumb(){
@@ -108,7 +117,9 @@ function html(){
   return '<div class="va-card" role="dialog" aria-modal="true" aria-labelledby="va-h">'
     + '<div class="va-top"><div><h2 id="va-h">Appearance</h2><p>How Vault looks on this device.</p></div><button type="button" class="va-x" data-close aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'
     + '<div class="va-sec" style="margin-top:20px"><h3>Theme</h3><p class="d">System follows your device.' + (A && A.charcoal ? ' Charcoal is a deeper dark.' : '') + ' High contrast uses stronger edges and text.</p><div class="va-grid" role="group" aria-label="Theme" style="--n:' + opts.length + '">' + th + '</div></div>'
-    + '<div class="va-lab">Color</div><div class="va-sec"><h3>Accent</h3><p class="d">Buttons, links and highlights.</p>'
+    + '<div class="va-lab">Color</div><div class="va-sec" style="margin-bottom:12px"><h3>Palette</h3><p class="d" id="va-pd">Background and card colors, with an accent that goes with them.</p><div class="va-grid" role="group" aria-label="Palette" style="--n:3">'
+    + [['default', 'Default'], ['teal', 'Deep Teal'], ['warm', 'Warm Charcoal']].map(function(o){ return '<button type="button" class="va-opt" data-pal="' + o[0] + '" aria-pressed="false"><span data-pv></span><span class="nm">' + o[1] + '</span></button>'; }).join('')
+    + '</div></div><div class="va-sec"><h3>Accent</h3><p class="d">Buttons, links and highlights.</p>'
     + '<div class="va-hv" id="va-hn"></div><input class="va-hue" id="va-hue" type="range" min="0" max="360" step="1" aria-label="Accent hue"><div class="va-sws" role="group" aria-label="Accent swatches">' + sw + '</div>'
     + '<div class="va-hr"></div><div class="va-row"><div><h3>Background tint</h3><p class="d">How much of the accent shows in backgrounds.</p></div><input class="va-rng" id="va-tint" type="range" min="0" max="100" step="1" aria-label="Background tint"><span id="va-tv" style="width:38px;text-align:right;color:var(--t2);font-size:13px"></span></div></div>'
     + (A && A.density !== false ? '<div class="va-lab">Layout</div><div class="va-sec"><div class="va-row"><div><h3>Density</h3><p class="d">Space between rows and inside cards.</p></div><div class="va-seg" role="group" aria-label="Density"><button type="button" data-dens="comfortable" aria-pressed="false">Comfortable</button><button type="button" data-dens="compact" aria-pressed="false">Compact</button></div></div></div>' : '')
@@ -119,6 +130,13 @@ function sync(){
   if (!el) return;
   el.dataset.m = resolved();
   [].forEach.call(el.querySelectorAll('[data-theme-opt]'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.themeOpt === S.theme)); });
+  var rm = resolved(), cs = S.theme === 'charcoal';
+  [].forEach.call(el.querySelectorAll('[data-pal]'), function(b){
+    var k = b.dataset.pal, pv = k === 'default' ? null : PALS[k][rm];
+    b.querySelector('[data-pv]').outerHTML = '<span data-pv>' + thumb(rm, '', pv && pv.pv, pv && pv.ac) + '</span>';
+    b.setAttribute('aria-pressed', String(k === (PALS[S.palette] ? S.palette : 'default')));
+  });
+  el.querySelector('#va-pd').textContent = cs ? 'Charcoal has its own base. Pick Dark to use a palette.' : 'Background and card colors, with an accent that goes with them.';
   var h = S.hue, hr = el.querySelector('#va-hue');
   hr.value = h == null ? 250 : h;
   el.querySelector('#va-hn').textContent = h == null ? 'Default' : hueName(h) + ' ' + Math.round(h) + '°';
@@ -134,7 +152,8 @@ function build(){
   el.addEventListener('click', function(e){
     var b = e.target.closest && e.target.closest('button'); if (!b) return;
     if (b.hasAttribute('data-close')) return close();
-    if (b.hasAttribute('data-reset')) return set({ theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density });
+    if (b.hasAttribute('data-reset')) return set({ theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density, palette: DEF.palette });
+    if (b.dataset.pal) return set({ palette: b.dataset.pal });
     if (b.dataset.themeOpt) return set({ theme: b.dataset.themeOpt });
     if (b.classList.contains('va-sw')) return set({ hue: b.dataset.hue === '' ? null : +b.dataset.hue });
     if (b.dataset.dens) return set({ density: b.dataset.dens });
@@ -155,13 +174,14 @@ function close(){ if (!el) return; el.classList.remove('on'); if (lastFocus && l
 function init(adapter){
   A = adapter || {};
   var saved = load();
-  S = { theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density };
+  S = { theme: DEF.theme, hue: DEF.hue, tint: DEF.tint, density: DEF.density, palette: DEF.palette };
   if (saved){ for (var k in DEF) if (saved[k] !== undefined) S[k] = saved[k]; }
   else { var lg = A.legacy && A.legacy(); if (lg === 'light' || lg === 'dark') S.theme = lg; }   /* keep the theme people already chose */
   S.tint = clamp(+S.tint || 0, 0, 100); if (S.hue != null) S.hue = clamp(+S.hue, 0, 360);
   if (S.theme === 'charcoal' && !A.charcoal) S.theme = 'dark';   /* shared key: a page that does not paint Charcoal shows plain Dark */
   if (['system', 'light', 'dark', 'charcoal', 'contrast'].indexOf(S.theme) < 0) S.theme = 'system';
   if (S.density !== 'compact') S.density = 'comfortable';
+  if (!PALS[S.palette]) S.palette = 'default';
   try{ mq = matchMedia('(prefers-color-scheme: dark)'); (mq.addEventListener ? mq.addEventListener('change', function(){ if (S.theme === 'system'){ apply(); sync(); } }) : mq.addListener(function(){ if (S.theme === 'system'){ apply(); sync(); } })); }catch(e){}
   apply();
 }
