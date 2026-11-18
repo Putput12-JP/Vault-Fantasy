@@ -195,6 +195,34 @@ function init(adapter){
 window.VaultAppearance = { init: init, open: open, close: close, reapply: function(){ if (S) apply(); }, state: function(){ return S; }, context: function(){ return S && context(); } };
 })();
 </script>
+<!-- USAGE: the same Firebase Analytics (GA4) property as the main Vault app. Page and action names only: never a player, a bet, a price or an account.
+     Sends nothing on localhost (events go to window.__vfEvents for testing), or when the browser says Do Not Track / Global Privacy Control. -->
+<script>
+  window.__vfQ = []; window.__vfEvents = [];
+  window.vfTrack = (n, p) => { window.__vfQ.push([n, p || {}]); };
+</script>
+<script type="module">
+  const q = window.__vfQ;
+  const local = !/^(www\.)?vaultfantasy\.com$/.test(location.hostname);
+  const optOut = navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true;
+  if (local || optOut){
+    window.vfTrack = (n, p) => { if (local) window.__vfEvents.push([n, p || {}]); };
+    if (local) q.forEach(([n, p]) => window.__vfEvents.push([n, p]));
+    q.length = 0;
+  } else {
+    try {
+      const { initializeApp, getApps, getApp } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
+      const { getAnalytics, isSupported, logEvent } = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics.js");
+      const app = getApps().length ? getApp() : initializeApp({ apiKey: "AIzaSyCzpvgL1Ez6-6T6mEewZWHMfseWizD4HWU", authDomain: "vault-fantasy.firebaseapp.com", projectId: "vault-fantasy", storageBucket: "vault-fantasy.firebasestorage.app", messagingSenderId: "196250681645", appId: "1:196250681645:web:674b28b1df98dab70913a4", measurementId: "G-E2XHWWQDEQ" });
+      if (await isSupported()){
+        const an = getAnalytics(app);
+        window.vfTrack = (n, p) => { try { logEvent(an, n, p || {}); } catch (e) {} };
+        q.forEach(([n, p]) => window.vfTrack(n, p));
+      } else window.vfTrack = () => {};
+    } catch (e) { window.vfTrack = () => {}; }
+    q.length = 0;
+  }
+</script>
 <script>
 /* Appearance adapter: the shared panel (src/vault-appearance.js) decides; this paints Vault NBA's own tokens. */
 VaultAppearance.init({
@@ -4818,6 +4846,7 @@ const VIEWS = ['summary', 'combo', 'bankroll', 'player', 'health', 'props', 'myb
 const isTrack = v => v === 'track' || v === 'checks' || v === 'pickrec';
 const viewOf = h => h === 'WORKS' ? 'backtests' : h === 'COMBO' ? 'bankroll' : /^PLAYER\/\d+$/.test(h) ? 'player' : /^PROPBOARD\/\d+\/[A-Z0-9]+\/[OU]$/.test(h) ? 'propboard' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || (hashT ? 'lab' : 'summary');   // no hash: the Summary is home; a team hash (#okc) is that team's Lab
+try { window.vfTrack('nba_view', {page: view}); } catch (e) {}
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -5346,6 +5375,7 @@ $('foot').innerHTML = `
 
 // ── views ─────────────────────────────────────────────────────────────────
 function show(v){
+  if (v !== view) try { window.vfTrack('nba_view', {page: v}); } catch (e) {}
   view = v;
   paintTabs();
   const lab = v === 'lab';
@@ -11626,8 +11656,9 @@ const PV_WT = [['edge', 'its edge reaches 3% or goes away'], ['line', 'a line mo
 let pvW = store.get('nba-watch') || {};
 let pvA = store.get('nba-alerts') || [];
 let pvBets = store.get('nba-bets') || [];
+let pvNLogged = pvBets.length;   // usage tracking counts a bet only when the list grows through pvSave
 let pvCfg = {anyBet: false, ...(store.get('nba-alertcfg') || {})};
-const pvSave = () => { store.set('nba-watch', pvW); store.set('nba-alerts', pvA.slice(0, 150)); store.set('nba-bets', pvBets); store.set('nba-alertcfg', pvCfg); };
+const pvSave = () => { if (pvBets.length > pvNLogged) try { window.vfTrack('nba_bet_logged'); } catch (e) {} pvNLogged = pvBets.length; store.set('nba-watch', pvW); store.set('nba-alerts', pvA.slice(0, 150)); store.set('nba-bets', pvBets); store.set('nba-alertcfg', pvCfg); };
 const pvKey = r => `${r.e.p}|${r.e.s}|${r.e.g}`;
 const pvSg = (x, d = 1) => x == null ? '' : (x >= 0 ? '+' : '-') + pc(Math.abs(x), d);
 const pvMoney = x => (x < 0 ? '-$' : '+$') + Math.abs(x).toFixed(2);
@@ -12905,7 +12936,7 @@ $('pv-bets').addEventListener('click', async e => {
     const bets = Array.isArray(x) ? x : x && x.bets;
     if (!Array.isArray(bets) || bets.some(b => !b || !b.id || !b.k || !(b.cost > 0 && b.cost < 1))){ pvToast('That is not a backup. Paste the whole text you copied.'); return; }
     const have = new Set(pvBets.map(b => b.id)), add = bets.filter(b => !have.has(b.id));
-    pvBets = [...pvBets, ...add]; if (x.watch && typeof x.watch === 'object') pvW = {...x.watch, ...pvW};
+    pvBets = [...pvBets, ...add]; pvNLogged = pvBets.length; if (x.watch && typeof x.watch === 'object') pvW = {...x.watch, ...pvW};
     pvSave(); pvShow(); pvSettle(); pvToast(`Restored ${add.length} bet${add.length === 1 ? '' : 's'}${bets.length - add.length ? `; ${bets.length - add.length} were already here` : ''}.`);
   }
 });
