@@ -9192,10 +9192,10 @@ function renderLab(){
   if (G){
     const ths = Object.keys(G.ats_close);
     $('btgame').innerHTML = `${btBars([['Model, no injuries', G.mae.none.margin], ['Model, report 30 min pre-tip', G.mae.tip.margin], ['Model, hindsight lineups', G.mae.oracle.margin], ['Opening line', G.mae.market_open.margin], ['Closing line', G.mae.market_close.margin]], {})}
-      <p class="bt-cap">Average miss on the final margin, points, ${G.games.toLocaleString()} games of 2024-25 and 2025-26. The close is the bar; the model never reaches it.</p>
+      <p class="bt-cap">Average miss on the final margin, ${G.games.toLocaleString()} games. The close is the bar; the model never reaches it.</p>
       ${btLine([{v: ths.map(k => G.ats_close[k].win), c: 'var(--fg)'}, {v: ths.map(k => (G.ats_open[k] || {}).win ?? null), c: 'var(--fg3)', dash: 1}],
         {xs: ths.map(k => k + '+ pts'), yMin: .42, yMax: .62, yFmt: v => Math.round(v * 100) + '%', ref: {v: .5238, label: 'break-even at -110'}})}
-      <p class="bt-cap"><span class="bt-key"><i></i>vs the close, report at tip</span><span class="bt-key d"><i></i>vs the untimed open, report at 1pm</span> Win rate betting the model's side when it disagrees by at least the gap. Against the close it never clears break-even (t = ${G.info.info_spread_close.t}).</p>
+      <p class="bt-cap"><span class="bt-key"><i></i>vs the close, report at tip</span><span class="bt-key d"><i></i>vs the untimed open, report at 1pm</span> Win rate on the model's side at each gap. Never clears break-even against the close (t = ${G.info.info_spread_close.t}).</p>
       <div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Kalshi moneyline at 1pm, model edge</th>${G.kalshi.ml.map(r => `<th>${r[0]}</th>`).join('')}</tr></thead><tbody>
         <tr><td class="l">Bets</td>${G.kalshi.ml.map(r => `<td>${r[1].toLocaleString()}</td>`).join('')}</tr>
         <tr><td class="l">ROI after fees</td>${G.kalshi.ml.map(r => `<td class="${r[2] >= 0 ? 'pos' : 'neg'}">${(r[2] >= 0 ? '+' : '') + (r[2] * 100).toFixed(1)}%</td>`).join('')}</tr></tbody></table></div>
@@ -9203,8 +9203,8 @@ function renderLab(){
   }
   // minutes
   const M = BT.minutes;
-  if (M) $('btmin').innerHTML = `${btBars(M.v1.rows.map(r => [r[0], r[1]]), {})}<p class="bt-cap">Average miss, minutes, ${M.v1.n.toLocaleString()} player-games of ${M.v1.seasons} who played. Injury report as of 30 minutes before tip.</p>
-    ${M.v3 ? btBars(M.v3.rows.map(r => [r[0], r[1], `${pc(r[2], 1)} miss by 8+`]), {fmtv: v => fmt(v, 3)}) + `<p class="bt-cap">A second test on ${M.v3.n.toLocaleString()} player-games of ${M.v3.seasons}, so compare within each chart, not across. "Knowing who started" is what a perfect lineups feed adds.</p>` : ''}`;
+  if (M) $('btmin').innerHTML = `${btBars(M.v1.rows.map(r => [r[0], r[1]]), {})}<p class="bt-cap">Average miss, minutes, ${M.v1.n.toLocaleString()} player-games. Injury report as of 30 minutes before tip.</p>
+    ${M.v3 ? btBars(M.v3.rows.map(r => [r[0], r[1], `${pc(r[2], 1)} miss by 8+`]), {fmtv: v => fmt(v, 3)}) + `<p class="bt-cap">${M.v3.n.toLocaleString()} player-games. Compare within a chart, not across.</p>` : ''}`;
   // prop model
   const P = BT.props;
   if (P){
@@ -9213,19 +9213,19 @@ function renderLab(){
     $('btprop').innerHTML = `<div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Kalshi log loss</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}<th title="t of the model's weight when blended with the price">Blend t</th></tr></thead><tbody>
       ${ks.map(m => { const r = P.kalshi[m], best = Math.min(...cols.map(c => r[c[0]]).filter(v => v != null));
         return `<tr><td class="l"><b>${m.toUpperCase()}</b><small>${r.n.toLocaleString()} strikes</small></td>${cols.map(c => `<td class="${r[c[0]] === best ? 'bt-best' : ''}">${r[c[0]] != null ? r[c[0]].toFixed(4) : ''}</td>`).join('')}<td>${r.t}</td></tr>`; }).join('')}</tbody></table></div>
-      <p class="bt-cap">Lower is better. Alone, no model beats the Kalshi price on points, rebounds or assists; blended with the price it adds real information (t 4 to 7). That blend is what the GO signals bet.</p>
+      <p class="bt-cap">Lower is better. No model beats the Kalshi price alone; blended with it, it adds real information (t 4 to 7). That blend is what GO bets.</p>
       <div class="bt-two"><div><div class="seg" id="btcal" role="group" aria-label="Stat">${Object.keys(P.cal).map(m => `<button type="button" data-v="${m}" aria-pressed="${bf.cal === m}">${m.toUpperCase()}</button>`).join('')}</div>${btCal(bf.cal)}
-        <p class="bt-cap">Prop model v2 alone on every Kalshi strike of 2025-26: its probability (across) vs how often YES hit (up). Dots sized by strikes; on the dashed line is perfectly calibrated.</p></div>
+        <p class="bt-cap">Model probability (across) vs how often YES hit (up). On the dashed line is perfect.</p></div>
       <div><div class="nt-tw"><table class="nt bt-small bt-narrow"><thead><tr><th class="l">Sportsbook close, log loss</th><th>Book</th><th>v2</th><th>Blend t</th></tr></thead><tbody>
         ${Object.entries(P.books).map(([m, r]) => `<tr><td class="l"><b>${m.toUpperCase()}</b><small>${(r.n || 0).toLocaleString()} lines</small></td><td class="${r.market <= r.v2 ? 'bt-best' : ''}">${r.market.toFixed(4)}</td><td class="${r.v2 < r.market ? 'bt-best' : ''}">${r.v2.toFixed(4)}</td><td>${r.t}</td></tr>`).join('')}</tbody></table></div>
-        <p class="bt-cap">Sportsbook prop closes are sharper: the model adds little (t under 2 almost everywhere), which is why no book signal passed.</p></div></div>`;
+        <p class="bt-cap">Sportsbook closes are sharper: the model adds little (t under 2), so no book signal passed.</p></div></div>`;
   }
   // consensus
   const CS = BT.consensus;
   const TN = {kalshi_ladder: 'Kalshi ladder, leave one out', books_to_kalshi: 'Books moved to Kalshi\'s line', kalshi_to_books: 'Kalshi moved to the book\'s line'};
   if (CS) $('btcons').innerHTML = `<div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Test</th><th class="l">Bet</th><th class="l">Verdict</th><th>Bets</th><th>Games</th><th>ROI</th><th>z</th></tr></thead><tbody>
     ${Object.entries(CS).flatMap(([t, rows]) => rows.map((r, i) => `<tr><td class="l">${i ? '' : `<b>${TN[t] || t}</b>`}</td><td class="l">${r[0].toUpperCase()} ${r[1]}</td><td class="l">${pill(r[2] === 'GO' ? 'ok' : r[2] === 'WATCH' ? 'warn' : 'bad', r[2])}</td><td>${(r[3] || 0).toLocaleString()}</td><td>${r[4] || ''}</td><td class="${r[5] > 0 ? 'pos' : 'neg'}">${r[5] != null ? (r[5] >= 0 ? '+' : '') + (r[5] * 100).toFixed(1) + '%' : ''}</td><td>${r[6] != null ? fmt(r[6], 2) : ''}</td></tr>`)).join('')}</tbody></table></div>
-    <p class="bt-cap">Consensus + model, second half of 2025-26, 3%+ edge after fees. Small samples (under 50 games) cannot reach GO however good they look.</p>`;
+    <p class="bt-cap">Consensus + model, second half of 2025-26, 3%+ edge after fees. Under 50 games cannot reach GO.</p>`;
   $('btfoot').innerHTML = `
     <div><b>Walk-forward.</b> Every model is fit on earlier seasons and scored on later games (2025-26 has been re-used across many tests, so the live ledger is the clean test): the prop models fit on 2024-25 and tested on 2025-26; the game and minutes models tuned on 2022-23 and 2023-24 and tested on both later seasons. Injury news is the official report as it stood at bet time, never who actually sat. Prices are what you could have taken: Kalshi's 30-minute pre-tip trades, the last sportsbook line before tip.</div>
     <div><b>Rules come first.</b> Each test's ship rule is written before it runs and the verdict follows the rule, including when a newer model is more accurate but loses a passing signal (${n(/^Kept/)} of these kept the incumbent that way). GO = out-of-sample ROI above zero by 2+ standard errors over 50+ games; WATCH = positive but short of that.</div>
