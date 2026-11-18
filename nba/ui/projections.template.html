@@ -351,6 +351,7 @@ details.tfold[open]>summary{padding-bottom:0}
 @media (prefers-reduced-motion:reduce){ details.tfold>summary::after,.tpk-chev{transition:none} }
 .tverdict{margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-ctl);font-size:13.5px;line-height:1.5;color:var(--fg2)}
 .tverdict b{color:var(--fg);font-weight:600}
+.title #tsub:empty{display:none}
 .tsubfold{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
 .tsubfold>summary{cursor:pointer;font-size:14px;font-weight:600;padding:2px 0 8px}
 .tsubfold>summary:hover{text-decoration:underline;text-decoration-color:var(--fg3);text-underline-offset:3px}
@@ -3786,7 +3787,7 @@ function show(v){
   if (v === 'props' || v === 'mybets' || v === 'propboard'){
     pv.tab = {props: 'v2', mybets: 'bets', propboard: 'full'}[v];
     $('tname').textContent = {props: 'Player Props', mybets: 'My Bets', propboard: 'Player Props'}[v];
-    $('tsub').textContent = {props: 'ONE DECISION PER PROP · WHERE TO BET IT · WHY', mybets: 'YOUR BETS · RESULTS · CLOSING-LINE VALUE', propboard: 'EVERY LINE · EVERY VENUE · ONE TABLE'}[v];
+    $('tsub').textContent = '';
     renderProps();
     if (v === 'props' && pvNavCount()){ $('pv-alerts').hidden = false; pvRenderAlerts(); }    // new alerts open on arrival, not behind a button
     if (!boardTried) loadBoard();
@@ -3800,7 +3801,7 @@ function show(v){
   }
   if (v === 'bankroll'){
     $('tname').textContent = 'Bankroll Builder';
-    $('tsub').textContent = 'SHORT PRICES · AT OR BETTER THAN THE MARKET · TRACKED FLAT 1 UNIT';
+    $('tsub').textContent = '';
     renderBankroll();
     if (hashT === 'COMBO' && !$('cc-fold').open) $('cc-fold').open = true;     // the old #combo link lands on the fold
     if (!boardTried) loadBoard();
@@ -3815,14 +3816,14 @@ function show(v){
   }
   if (v === 'pairs'){
     $('tname').textContent = "Pick'em of the Night";
-    $('tsub').textContent = 'ONE PLAYER PER TEAM · BEST SLIP TONIGHT · THE ODDS IT PAYS';
+    $('tsub').textContent = '';
     renderPairs();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'sharp'){
     $('tname').textContent = 'Sharp Price';
-    $('tsub').textContent = 'PINNACLE FAIR · LINE MOVES · SHARP ACCOUNTS · GRADED ON CLV';
+    $('tsub').textContent = '';
     renderSharp();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -3830,21 +3831,21 @@ function show(v){
   }
   if (v === 'follow'){
     $('tname').textContent = 'Follow Board';
-    $('tsub').textContent = 'RANKED POLYMARKET ACCOUNTS · FOLLOW PRICE · PAPER-TRACKED, NOT A BET';
+    $('tsub').textContent = '';
     renderFollow();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'wallets'){
     $('tname').textContent = 'Wallets';
-    $('tsub').textContent = 'SKILL AGAINST THE CLOSE · SHRUNK TO THE LEAGUE AVERAGE · POOLED ACROSS SPORTS';
+    $('tsub').textContent = '';
     renderWallets();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'tells'){
     $('tname').textContent = 'Prop Tells';
-    $('tsub').textContent = 'PINNACLE MOVES · DRAFTKINGS BEHIND PINNACLE · KALSHI MONEY · SHARP ACCOUNTS · EACH GRADED ON ITS OWN';
+    $('tsub').textContent = '';
     renderTells();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -3853,14 +3854,14 @@ function show(v){
   if (v === 'sharps'){
     // Proven-sharps side cards: the card is sharp-money/side-cards.js (one file for Sharp Money and this page), drawn with this page's theme.
     $('tname').textContent = 'Sharps';
-    $('tsub').textContent = 'WHO HOLDS EACH SIDE ON POLYMARKET · CONTEXT · FLAT 1U FROM AN UNTESTED RULE';
+    $('tsub').textContent = '';
     const go = () => window.VaultSideCards ? (VaultSideCards.mountPage($('provsharps'), {skin: 'nba', sport: 'nba'}), true) : false;
     if (!go()) document.addEventListener('DOMContentLoaded', go, {once: true});
     return;
   }
   if (v === 'steam'){
     $('tname').textContent = 'Steam Chaser';
-    $('tsub').textContent = 'A REFERENCE MOVED · A SLOWER BOOK MAY HOLD THE OLD NUMBER · CONTEXT, NOT A BET';
+    $('tsub').textContent = '';
     renderSteam();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -3868,28 +3869,28 @@ function show(v){
   }
   if (v === 'matchups'){
     $('tname').textContent = 'Matchups';
-    $('tsub').textContent = 'WHERE EACH DEFENSE GIVES SHOTS UP · WHERE EACH PLAYER TAKES HIS';
+    $('tsub').textContent = '';
     renderMatchups();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'slate' || v === 'lines'){
     $('tname').textContent = v === 'lines' ? 'Game Lines' : 'Slate';
-    $('tsub').textContent = v === 'lines' ? 'EVERY BOOK · KALSHI · POLYMARKET · VAULT LINE AS CONTEXT' : 'STARTING FIVES · WHO IS OUT · HOW EACH DEFENSE GUARDS EACH POSITION';
+    $('tsub').textContent = '';
     renderSlate();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'games'){
     $('tname').textContent = 'Game Picks';
-    $('tsub').textContent = 'SPREAD AND WINNER · LOCKED 4 HOURS BEFORE TIP · GRADED IN PUBLIC';
+    $('tsub').textContent = '';
     renderGamePicks();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'wire'){
     $('tname').textContent = 'Injury Wire';
-    $('tsub').textContent = 'NEWS · WHO REPRICED · HOW FAST';
+    $('tsub').textContent = '';
     renderWire();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -3897,14 +3898,14 @@ function show(v){
   }
   if (v === 'profile'){
     $('tname').textContent = 'Profile';
-    $('tsub').textContent = 'YOUR TEAM · YOUR PLAYERS · YOUR BADGES';
+    $('tsub').textContent = '';
     renderProfile();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'control'){
     $('tname').textContent = 'Control Room';
-    $('tsub').textContent = 'PIPELINES · MODELS · PRE-REGISTERED TESTS';
+    $('tsub').textContent = '';
     renderControl();
     if (!boardTried) loadBoard();
     if (!CR.runs || Date.now() / 1000 - CR.at > 120) loadRuns();
@@ -3912,21 +3913,21 @@ function show(v){
   }
   if (v === 'propsim'){
     $('tname').textContent = 'Props Simulation';
-    $('tsub').textContent = 'PICK A PLAYER · SEE THE PROP · TRACK RECORD';
+    $('tsub').textContent = '';
     renderPropSim();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'sim'){
     $('tname').textContent = 'Game Simulation';
-    $('tsub').textContent = "10,000 GAMES · SCORE · PLAYER STATS · JOINT ODDS";
+    $('tsub').textContent = '';
     renderSim();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'tonight'){
     $('tname').textContent = 'Tonight';
-    $('tsub').textContent = "MINUTES · WHAT THE MARKET PRICES · WHAT-IF · RECORD";
+    $('tsub').textContent = '';
     renderTonight();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -3934,7 +3935,7 @@ function show(v){
   }
   if (v === 'edges'){
     $('tname').textContent = 'Edges';
-    $('tsub').textContent = 'EVERY MARKET · WHY IT IS MISPRICED · HOW FAR TO TRUST IT';
+    $('tsub').textContent = '';
     renderEdges();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -3942,14 +3943,14 @@ function show(v){
   }
   if (isTrack(v)){
     $('tname').textContent = {track: 'Track Record', checks: 'Model checks', pickrec: 'Pick\'em record'}[v];
-    $('tsub').textContent = {track: 'SHADOW LEDGER · SETTLED FROM THE BOX SCORE', checks: 'THE MODELS SCORED ON THEIR OWN TERMS · NOT BETS', pickrec: 'EVERY SLIP SIZE · SETTLED FROM THE BOX SCORE'}[v];
+    $('tsub').textContent = '';
     if (v === 'pickrec') $('tpkncard').open = true;
     renderTrack();
     if (!trackTried) loadTrack();
     return;
   }
   $('tname').textContent = 'Data Health';
-  $('tsub').textContent = 'RECORDER · MODEL INPUTS · ARCHIVE';
+  $('tsub').textContent = '';
   renderHealth();
   if (!liveTried) loadLive();
 }
@@ -5595,7 +5596,7 @@ function renderTrack(){
 
   // graded signals, all time: the prop model's backtests plus any combo the consensus engine graded GO or WATCH
   const SG = signalList(all);
-  $('tsignote').textContent = 'A bet takes the better of two backtest grades: the prop model\'s (rows with a backtest figure) or the consensus engine\'s (rows marked consensus engine, tested in nba/docs/consensus-engine.md). A signal is proven only after ' + MIN_LIVE + ' settled bets and a result clearly above zero (z of 2 or more). Over and Under throughout; on Kalshi YES is Over and NO is Under.';
+  $('tsignote').textContent = 'Proven only after ' + MIN_LIVE + ' settled bets and a result clearly above zero (z of 2 or more). Over and Under throughout; on Kalshi YES is Over and NO is Under.';
   $('tsigsub').textContent = SG.length ? `${SG.length} graded ${SG.length === 1 ? 'signal' : 'signals'}, live record next to the backtest` : 'No graded signals in this build';
   $('tsig').innerHTML = SG.length ? SG.map(({st, sd, g, bt, x}) => `<tr><td class="l"><b>${SLABEL[st] || st} ${sd === 'YES' ? 'Over' : 'Under'}</b><small>Kalshi ${sd}</small></td><td class="l">${gatePill(g)}</td>
       <td class="num">${x.bets}</td><td class="num">${x.settled ? `${x.w}-${x.l}-${x.p}` : ''}</td><td class="num">${x.settled ? tUnits(x.units) : ''}</td>
@@ -8552,7 +8553,7 @@ function renderTrackGames(){
   if (!gpTried) loadGamePicks();
   const all = gpItems(), items = all, A = gpStats(items, 'ats'), M = gpStats(items, 'ml');
   $('tgamestat').textContent = items.length ? `ATS ${gpRec(A)} · winner ${M.w}${DASH}${M.l} · ${items.length} games` : 'No games graded yet';
-  $('tgamesub').textContent = `The Vault line's side against DraftKings' spread, and its pick to win straight up. Each pick is written once, 4 hours before tip, and graded on the final. Not a bet: the game model adds nothing the closing line has not priced. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
+  $('tgamesub').textContent = `Each pick is written once, 4 hours before tip, and graded on the final. Not a bet. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
   $('tgamek').innerHTML = gp2Hero(items);
   const empty = '<tbody><tr><td class="l"><p class="empty">No game picks graded yet. They are written 4 hours before tip and graded after the final.</p></td></tr></tbody>';
   const ats = items.filter(x => x.r.ats_res), bin = (lo, hi) => ats.filter(x => x.r.ats_edge >= lo && x.r.ats_edge < hi);
@@ -9246,7 +9247,7 @@ const WK_STAT = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': '3-point
 const WK_WHY = {
   '3pm': "People like betting overs, so Kalshi's YES side is overpriced: last season YES hit 2 to 5 points less often than its price said, in every stat. The model points at the rungs that are overpriced the most.",
   pts: 'The same overs bias as 3-pointers, smaller. Points markets are deeper and better priced, so the edge is thinner and less consistent.'};
-const WK_PAGES = {works: ['What Works', 'THIS SEASON SO FAR · WHAT HOLDS UP · WHAT DID NOT WORK'], finder: ['Edge Finder', 'SLICE LAST SEASON · SEE WHAT HELD UP'], lab: ['Backtest Lab', 'HELD-OUT TESTS · RULES FIXED FIRST · TECHNICAL RESULTS']};
+const WK_PAGES = {works: ['What Works', ''], finder: ['Edge Finder', ''], lab: ['Backtest Lab', '']};
 const money = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toLocaleString(undefined, {maximumFractionDigits: 0});
 const per100 = roi => roi == null ? '' : (roi < 0 ? '-' : '+') + '$' + Math.abs(roi * 100).toFixed(2);
 const oneIn = z => { const p = 1 - Phi(z); if (p >= .5) return null; const n = 1 / p; return n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n); };
@@ -10415,14 +10416,8 @@ function renderPairs(){
   const others = Object.entries(S.by).filter(([a, s]) => s && S.shown && a !== S.shown.app).map(([a, s]) => `${a} ${s.ev >= 0 ? '+' : '-'}$${Math.abs(10 * s.ev).toFixed(2)}`).join(' · ');
   $('pp-root').innerHTML = `
     <section class="card pp-read pp-v2">
-      <p class="big">V2 verdict: no profitable slip found yet</p>
-      <p>We tested every way of choosing picks on <b>1,695 PrizePicks and Underdog lines</b> from the first week of the season, scored from box scores. The pay tables need <b>54.2% to 59.1%</b> per pick (54.2% on a 5 or 6-pick Flex, the lowest). The best rule we picked on the first four nights hit <b>56.1%</b> there and <b>53.8%</b> on the last three (95% range 50.4% to 57.1%), a loss after payouts. The old slip chances below ran 20 points too high: the picks it rated 60%+ hit <b>43%</b>.</p>
-      <p>So every slip here is a Pass. "Claimed chance" is the old moved-consensus number, kept so you can see it, not a forecast. We are tracking the one rule that came closest forward, from Oct 27, and will not call it a Lean before it clears the holdout test. Method: nba/docs/pickem-v2.md.</p>
-    </section>
-    <section class="card pp-read">
-      <p class="big">Pick'em of the night</p>
-      <p class="pp-rule"><b>${PP_RULE}</b> A slip can have any number of games but never two players from one team.</p>
-      <p>The best slip we can build from tonight's PrizePicks, Underdog and Sleeper lines: the picks the market says are most likely first, each from a different team, all from one app. A ${pp.n}-pick at ${pay}x needs <b>${pc(need, 1)}</b> per pick. Only lines priced near even money count (Underdog and Sleeper price each side; a lopsided line pays a different multiple than the standard one). App lines sit near even money, so on most nights the honest answer is that no slip pays. Picks from different teams hit about independently, so the chances multiply.</p>
+      <p class="big">No profitable slip found yet</p>
+      <p>Pay tables need <b>54.2% to 59.1%</b> per pick. Our best rule hit <b>53.8%</b> on the last three nights, so every slip is a Pass. One player per team. A ${pp.n}-pick at ${pay}x needs <b>${pc(need, 1)}</b> per pick. Method: nba/docs/pickem-v2.md.</p>
     </section>
     <section class="card">
       <div class="pp-tools"><h2>Tonight's slip</h2><span class="pv-grow"></span>
@@ -10434,7 +10429,7 @@ function renderPairs(){
     </section>
     <section class="card">
       <div class="pp-tools"><h2>Best single picks tonight</h2><span class="pv-grow"></span><span class="muted" style="font-size:12.5px">The market's chance on the likelier side, at the app's own line. A ${pp.n}-pick at ${pay}x needs ${pc(need, 1)} each.</span></div>
-      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Pick</th><th class="l">App</th><th>Line</th><th>Side</th><th>Claimed chance</th><th>Model</th><th>vs ${pc(need, 1)} needed</th><th class="l">Notes</th></tr></thead><tbody>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Pick</th><th class="l">App</th><th>Line</th><th>Side</th><th title="The old moved-consensus number, kept for reference. Not a forecast.">Claimed chance</th><th>Model</th><th>vs ${pc(need, 1)} needed</th><th class="l">Notes</th></tr></thead><tbody>
       ${singles.length ? singles.map(l => { const g = l.r.game, d = l.p - need; return `<tr><td class="l"><b>${esc(l.r.name)}</b><small>${esc(l.team)} vs ${esc(l.team === g.home ? g.away : g.home)} · ${PP_SHORT[l.r.e.s]}</small></td><td class="l">${esc(l.app)}</td><td>${l.line}</td><td>${l.side === 'over' ? '▲ More' : '▼ Less'}</td><td>${pc(l.p, 1)}</td><td>${pc(l.pm, 1)}</td><td class="${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)} pts</td><td class="l"><small>${[l.q ? `<span class="warnt">${esc(l.inj)}: wait for the report</span>` : '', l.far ? 'check news: model and market far apart' : ''].filter(Boolean).join(' · ') || '&nbsp;'}</small></td></tr>`; }).join('')
         : `<tr><td class="l" colspan="8"><p class="empty">${rows.length ? 'No pick\'em lines with a market to price against yet.' : 'No player props listed yet.'}</p></td></tr>`}
       </tbody></table></div>
