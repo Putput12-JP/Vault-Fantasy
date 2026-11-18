@@ -175,7 +175,7 @@ a.btn{text-decoration:none}
 <script src="../v2/gates.js?v=side1"></script>
 <script src="../v2-pages.js?v=side1"></script>
 <script src="../side-cards.js?v=43"></script>
-<script src="../following.js?v=5"></script>
+<script src="../following.js?v=6"></script>
 <script>
 let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
@@ -1189,7 +1189,7 @@ function route(){
  const r=(location.hash||'#plays').slice(1),sc=$('scr');let html,tab;
  if(!D){sc.innerHTML=loadErr?'<div class="title">Sharp Money</div><div class="card"><b>Could not load the data</b><div style="color:var(--mut);font-size:13px;margin-top:6px">The data file did not load. Check your connection and try again.</div><button class="btn" data-retry style="margin:10px 0 0">Try again</button></div>':skeleton();return}
  if(r==='plays'||r==='signals'||r==='vrecord'){tab='plays';html=r==='plays'?v2Plays():r==='signals'?v2Signals():v2Record()}
- else if(r==='following'){tab='plays';html=head('Following','Open bets from the proven wallets you follow. Context only')+v2nav('following')+'<div data-following></div>'}
+ else if(r==='following'){tab='plays';html=head('Following','Open bets from the wallets you follow. Context only')+v2nav('following')+'<div data-following></div>'}
  else if(r==='sharps'){tab='plays';html=head('Sharps','Who holds each side on Polymarket. Context, with a suggested size from an untested rule')+v2nav('sharps')+'<div data-side-cards></div>'}
  else if(r.startsWith('game/')){const gk=decodeURIComponent(r.slice(5));html=gamePage(gk)+(GM[gk]?'<div data-side-card="'+gk.replace(/"/g,'&quot;')+'"></div>':'');tab='board'}
  else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='reads'}

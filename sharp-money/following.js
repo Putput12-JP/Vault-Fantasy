@@ -1,4 +1,4 @@
-/* Following: follow specific proven Polymarket wallets and see every bet they have open, for Sharp Money.
+/* Following: follow specific Polymarket wallets (hot ones, and price-sharp ones in NBA and NFL) and see every bet they have open, for Sharp Money.
    One file for both layouts (sharp-money/index.html and sharp-money/new/index.html), so the two stay the same page.
    Data: wallets.json on the pm-cards-live branch, built every 10 minutes by scripts/build_side_cards.py --wallets-out
    (docs/side-cards.md, "Wallets file"). Until that file exists the page says so.
@@ -11,7 +11,7 @@
    followed" counts a wallet's settled games dated after its follow time, from the 20 most recent the file carries.
 
    A bet in the feed opens a detail panel: the position, how the wallet has done on bets like it, and who else holds the game (read
-   from the Sharps cards, live.json). The panel names the side of the card's suggested play but never shows a size. */
+   from the Sharps cards, live.json). The panel names the side of the card's suggested play, flat 1u on NBA and NFL and none on college (the same rule as side-cards.js). */
 (function(){
 'use strict';
 var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -19,6 +19,7 @@ var DEV = LOCAL && (location.search.match(/[?&]wallets=([^&]+)/) || [])[1];     
 var SRC = DEV ? decodeURIComponent(DEV) : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/wallets.json';
 var DEVC = LOCAL && (location.search.match(/[?&]cards=([^&]+)/) || [])[1];        /* localhost only: ?cards=/path/to/live.json */
 var CARDS_SRC = DEVC ? decodeURIComponent(DEVC) : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/live.json';
+var FLAT_SP = {nba: 1, nfl: 1};      /* the Sharps card shows a flat 1u on these only (side-cards.js) */
 var KEY = 'vault-sharps-following', SEASONED = 20, PRESS = 1.5, PAGE = 12;
 var GROUPS = {ml: 'Moneyline', spread: 'Spread', total: 'Total'};
 var SPORTS = [['all', 'All'], ['nfl', 'NFL'], ['cfb', 'CFB'], ['nba', 'NBA'], ['cbb', 'CBB']];
@@ -60,6 +61,7 @@ var CSS = [
 '.vfw .fw-feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;align-items:start}',
 '.vfw .fw-g{padding:16px 18px;min-width:0}.vfw .fw-dir{min-width:0;overflow:hidden}',
 '.vfw .fw-gh{display:flex;align-items:center;gap:10px;margin-bottom:6px}.vfw .fw-gh b{font-size:14.5px;font-weight:600;white-space:nowrap}.vfw .fw-gh time{margin-left:auto;font-size:12px;color:var(--c-mut);white-space:nowrap}',
+'.vfw .fw-rk{margin-left:7px;font-weight:600}.vfw .fw-rk.sharp{color:var(--c-good)}.vfw .fw-rk.dull{color:var(--c-bad)}',
 '.vfw .fw-tag{font-family:var(--c-num);font-style:normal;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-mut);background:var(--c-box);border-radius:5px;padding:3px 6px}',
 '.vfw .fw-badge{font-size:11px;font-weight:600;border-radius:999px;padding:3px 9px}.vfw .fw-badge.agree{background:var(--c-good-bg);color:var(--c-good)}.vfw .fw-badge.split{background:var(--c-warn-bg);color:var(--c-warn)}',
 '.vfw .fw-side{padding:11px 0 2px;border-top:1px solid var(--c-line);margin-top:8px}',
@@ -147,7 +149,7 @@ function index(d){
   Object.keys(d.sports || {}).forEach(function(sport){ var ws = d.sports[sport];
     Object.keys(ws).forEach(function(w){ var e = ws[w], dv = e.dive || {}, k = sport + '|' + w;
       var x = {k: k, w: w, sport: sport, name: shortName(w, e.name), wl: [e.w_, e.l_], roi: e.roi, n: e.n, usual: e.usual, pnl: e.pnl,
-        clv: e.clv || {}, lane: dv.lane || {}, fav: dv.fav, dog: dv.dog, size: dv.size || {}, legs: e.legs || [], pos: e.positions || []};
+        rk: e.rk || null, clv: e.clv || {}, lane: dv.lane || {}, fav: dv.fav, dog: dv.dog, size: dv.size || {}, legs: e.legs || [], pos: e.positions || []};
       W.push(x); BOOK[k] = x; if (x.pos.length) OPEN[k] = x.pos.length;
       x.pos.forEach(function(p){ var id = p.ev + '@' + p.gst;
         (gm[id] = gm[id] || {id: id, sport: sport, ev: p.ev, gst: p.gst, pos: []}).pos.push({k: k, p: p}); }); }); });
@@ -191,7 +193,7 @@ function whoSide(c, m, name, mine, sport){
   var a = (m.sides[name] || {}).all; if (!a) return '';
   var n = ((a.counts || {}).hc || 0) + ((a.counts || {}).sharp || 0);
   return '<div class="fw-who"><div class="fw-who-h"><b>' + esc(name) + '</b>' + (mine ? '<em>this bet</em>' : '') +
-    '<span class="fw-num">' + usd(a.sharp_usd) + ' proven · ' + n + (n === 1 ? ' wallet' : ' wallets') + ' · ' + usd(a.loser_usd) + ' from losing wallets</span></div>' +
+    '<span class="fw-num">' + usd(a.sharp_usd) + ' hot · ' + n + (n === 1 ? ' wallet' : ' wallets') + ' · ' + usd(a.loser_usd) + ' from losing wallets</span></div>' +
     (a.list || []).map(function(x){ var b = BOOK[sport + '|' + x.w];
       return '<div class="fw-who-w"><span class="fw-nm">' + (FOLLOWS[sport + '|' + x.w] ? '<u>★</u> ' : '') + esc(b ? b.name : shortName(x.w)) + '</span><span class="fw-rec fw-num">' + x.w_ + '-' + x.l_ + '</span>' +
         '<span class="fw-usd fw-num">' + usd(x.usd) + '</span>' + xUsual(x) + '</div>'; }).join('') +
@@ -204,8 +206,8 @@ function whoElse(g, p){
   var names = Object.keys(m.sides).sort(function(a, b){ return (b === p.side) - (a === p.side); });
   var sf = (m.sf || {}).all, key = (c.vault || {}).key;
   return names.map(function(n){ return whoSide(c, m, n, n === p.side, g.sport); }).join('') +
-    '<p class="fw-det-n">' + (sf && sf.side && sf.units > 0 ? 'The Sharps card has a suggested play on ' + esc(sf.side) + ' in this market. Its size comes from an untested rule.'
-      : 'The Sharps card has no suggested play in this market.') + '</p>' +
+    '<p class="fw-det-n">' + (sf && sf.side && sf.units > 0 && FLAT_SP[g.sport] ? 'The Sharps card has a suggested play on ' + esc(sf.side) + ' in this market. Its size is a flat 1u from an untested rule.'
+      : sf && sf.side && sf.units > 0 ? 'The Sharps card shows no size on college games.' : 'The Sharps card has no suggested play in this market.') + '</p>' +
     '<div class="fw-det-l"><a href="#sharps">Open the Sharps cards</a>' + (key ? '<a href="#game/' + encodeURIComponent(key) + '">Open this game</a>' : '') + '</div>';
 }
 /* one bet, opened from the feed: the position, how this wallet has done on bets like it, and who else holds the game */
@@ -286,7 +288,8 @@ function rows(S){
   var o = function(w){ return OPEN[w.k] || 0; }, f = function(w){ return FOLLOWS[w.k] ? 1 : 0; };
   var beat = function(w){ return w.clv.n ? w.clv.beat / w.clv.n : -1; };
   var by = {open: function(a, b){ return f(b) - f(a) || o(b) - o(a) || b.n - a.n; }, roi: function(a, b){ return b.roi - a.roi; },
-    n: function(a, b){ return b.n - a.n; }, clv: function(a, b){ return beat(b) - beat(a); }};
+    n: function(a, b){ return b.n - a.n; }, clv: function(a, b){ return beat(b) - beat(a); },
+    tier: function(a, b){ var ta = a.rk ? TIER_ORD[a.rk.tier] : -1, tb = b.rk ? TIER_ORD[b.rk.tier] : -1; return (tb - ta) || ((b.rk ? b.rk.p : 0) - (a.rk ? a.rk.p : 0)) || (o(b) - o(a)); }};
   return ws.sort(by[S.sort]);
 }
 function split3(title, items){
@@ -309,6 +312,7 @@ function profile(w){
     split3('By market', [['Moneyline', w.lane.ml], ['Spread', w.lane.spread], ['Total', w.lane.total]]) +
     split3('Favorite or underdog', [['Favorites', w.fav], ['Underdogs', w.dog]]) +
     split3('By bet size', [['Under usual stake', w.size.small], ['Usual stake', w.size.usual], ['1.5x or more', w.size.big]]) +
+    (w.rk && w.rk.tier !== 'thin' ? '<p class="fw-pn">Price skill: <b>' + w.rk.tier + '</b>. Its entries have beaten the close by ' + (w.rk.mean >= 0 ? '' : '-') + Math.abs(w.rk.mean * 100).toFixed(1) + ' points on average over ' + w.rk.n + ' games (the estimate is shrunk toward the average wallet).</p>' : '') +
     '<p class="fw-pn">Record and dollar ROI in ' + w.sport.toUpperCase() + ' as of the last ledger run. Lifetime profit ' + usd(Math.abs(w.pnl)).replace('$', w.pnl < 0 ? '-$' : '$') + '.' +
     (w.n < SEASONED ? ' <b class="fw-dn">Only ' + w.n + ' graded bets: treat this record as thin.</b>' : '') + '</p></div>';
 }
@@ -318,19 +322,26 @@ function dots(w){
   var wn = l.filter(function(x){ return x[1] === 'win'; }).length;
   return '<span class="fw-dots" role="img" aria-label="Last ' + l.length + ' settled: ' + wn + ' won, ' + (l.length - wn) + ' lost, newest first">' + l.map(function(x){ return '<i class="' + (x[1] === 'win' ? 'w' : 'l') + '"></i>'; }).join('') + '</span>';
 }
+/* CLV tier (scripts/pm_clv_tiers.py): price skill that held up week to week in testing. NBA and NFL only, so other sports carry no tag. */
+var TIER_ORD = {sharp: 3, mid: 2, thin: 1, dull: 0};
+function rkTag(w){
+  var t = w.rk && w.rk.tier;
+  return t === 'sharp' ? '<i class="fw-tag fw-rk sharp" title="Its entry prices have beaten the closing line by more than luck explains, using only games before today">price-sharp</i>'
+    : t === 'dull' ? '<i class="fw-tag fw-rk dull" title="Its entry prices have lost to the closing line by more than luck explains">price-dull</i>' : '';
+}
 function dir(S){
   var all = rows(S), ws = all.slice(0, S.shown);
   var head = '<div class="fw-cols"><span></span><span>Wallet</span><span>Last 10</span><span>Sport</span><span>Record</span><span>ROI</span><span>Bets</span><span>Usual stake</span><span>Beat the close</span><span>Open now</span></div>';
   var body = ws.map(function(w){ var on = !!FOLLOWS[w.k], n = OPEN[w.k] || 0, beat = w.clv.n ? Math.round(w.clv.beat / w.clv.n * 100) + '%' : '';
     return '<div class="fw-row fw-press" role="button" tabindex="0" data-k="' + w.k + '" aria-expanded="' + (S.open === w.k) + '">' +
       '<span class="c-star"><button type="button" class="fw-star fw-press' + (on ? ' on' : '') + '" data-star="' + w.k + '" aria-pressed="' + on + '" aria-label="' + (on ? 'Unfollow ' : 'Follow ') + esc(w.name) + '">' + (on ? '★' : '☆') + '</button></span>' +
-      '<span class="c-name fw-nm">' + esc(w.name) + (w.n < SEASONED ? '<i class="fw-thin">thin</i>' : '') + '</span>' +
+      '<span class="c-name fw-nm">' + esc(w.name) + (w.n < SEASONED ? '<i class="fw-thin">thin</i>' : '') + rkTag(w) + '</span>' +
       '<span class="c-dots">' + dots(w) + '</span><span><i class="fw-tag">' + w.sport + '</i></span><span class="fw-num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
       '<span class="c-roi fw-num ' + cls(w.roi) + '">' + pct(w.roi) + '</span><span class="fw-num">' + w.n + '</span><span class="fw-num">' + usd(w.usual) + '</span><span class="fw-num">' + beat + '</span>' +
       '<span class="c-open"><i class="fw-open fw-num' + (n ? ' fw-has' : '') + '">' + n + '</i></span>' +
       '<span class="c-meta fw-num">' + w.sport.toUpperCase() + ' · ' + w.wl[0] + '-' + w.wl[1] + ' · ' + w.n + ' bets · ' + usd(w.usual) + ' usual</span></div>' +
       (S.open === w.k ? profile(w) : ''); }).join('');
-  return {n: all.length, html: head + (body || '<div class="fw-empty"><b>No proven wallets here</b>Try another sport or turn off the 20+ bets filter.</div>') +
+  return {n: all.length, html: head + (body || '<div class="fw-empty"><b>No wallets here</b>Try another sport or turn off the 20+ bets filter.</div>') +
     (all.length > S.shown ? '<button type="button" class="fw-link fw-more" data-more>Show ' + Math.min(PAGE * 2, all.length - S.shown) + ' more of ' + all.length + '</button>' : '')};
 }
 
@@ -362,11 +373,12 @@ function draw(el){
       '<div class="fw-card fw-empty"><b>' + (nf ? 'No open bets from your wallets right now' : 'Follow a wallet to start your feed') + '</b>' +
       (nf ? 'Their next bets land here as soon as a scan picks them up.' : 'Tap a star in the list below. Their open bets show up here.') + '</div>') +
     (nf ? '<div class="fw-h"><h2>Since you followed</h2><p>Counted forward from the day you follow each wallet. Nothing is backfilled.</p></div>' + since(S) : '') +
-    '<div class="fw-h"><h2>Proven wallets</h2><p>' + D.n + ' proven ' + (D.n === 1 ? 'wallet' : 'wallets') + '</p><span class="sp"></span><div class="fw-tools">' +
+    '<div class="fw-h"><h2>Wallets</h2><p>' + D.n + (D.n === 1 ? ' wallet' : ' wallets') + ': hot ones (a record) and price-sharp ones (price skill)</p><span class="sp"></span><div class="fw-tools">' +
       '<label class="fw-chk"><input type="checkbox" data-seas' + (S.seasoned ? ' checked' : '') + '>20+ bets only</label>' +
-      seg('sort', [['open', 'Open now'], ['roi', 'ROI'], ['n', 'Bets'], ['clv', 'Beat the close']], S.sort) + '</div></div>' +
+      seg('sort', [['tier', 'Price skill'], ['open', 'Open now'], ['roi', 'ROI'], ['n', 'Bets'], ['clv', 'Beat the close']], S.sort) + '</div></div>' +
     '<div class="fw-card fw-dir" style="padding-left:0;padding-right:0">' + D.html + '</div>' +
-    '<p class="fw-note"><b>How to read this.</b> Proven means 6 or more graded bets, a 55% or better win rate and a dollar ROI above 3% in that sport. "Thin" marks a record under 20 bets. ' +
+    '<p class="fw-note"><b>How to read this.</b> Hot means 6 or more graded bets, a 55% or better win rate and a dollar ROI above 3% in that sport. That is a record, not proof of skill: in testing, hot wallets have not beaten the market going forward. ' +
+      '<b>Price-sharp</b> (NBA and NFL) means the wallet\'s entry prices have beaten the closing line by more than luck explains, judged only on earlier games; price-dull is the reverse. That skill held up week to week in testing, but it is a better price, not a promise of winning picks, and these markets only show a wallet\'s buy a few minutes later. College wallets (CFB, CBB) carry no price tier: their price data is too thin to test, and in our tests college wallets did not beat the market. "Thin" marks a record under 20 bets. ' +
       'Stake is what the position is worth at the last scan, and "x usual" compares it with the wallet\'s usual stake. Price is the market\'s price now, not what the wallet paid: no entry price is stored. ' +
       '"Held since" is the first scan that saw the position, and "price when first seen" is the market\'s price at that scan. Follows are saved in this browser only. This page shows who holds what and never suggests a size.</p>';
   rails(el, S); window.scrollTo(0, y);
@@ -376,7 +388,7 @@ function mountPage(el, o){
   o = o || {}; css();
   el.className = 'vfw' + (o.skin === 'new' ? ' vfw-new' : '');
   if (!el._fw){
-    el._fw = {o: o, sport: 'all', sort: 'open', seasoned: false, open: null, bet: null, shown: PAGE, geom: {}};
+    el._fw = {o: o, sport: 'all', sort: 'tier', seasoned: false, open: null, bet: null, shown: PAGE, geom: {}};
     el.addEventListener('click', function(e){
       var S = el._fw, t = e.target, b;
       if ((b = t.closest('[data-bet]'))){ S.bet = S.bet === b.dataset.bet ? null : b.dataset.bet; if (S.bet && CARDS.state === 'idle') loadCards(); draw(el); return; }
