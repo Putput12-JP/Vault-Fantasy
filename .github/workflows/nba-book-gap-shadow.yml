@@ -1,0 +1,51 @@
+# Exchange price gap vs the US books (docs/exchange-book-gap-prereg.md): rebuilds nba/data/exchange_book_gap.json from the recorded
+# actionprops, novigdepth, kaldepth, kalshi and meta files on the `nba-data` branch. Read-only on nba-data; nothing here prices or bets.
+# Its own workflow so it never edits nba-daily.yml. Does nothing until a day with kaldepth.jsonl exists.
+name: NBA exchange price-gap shadow
+
+on:
+  schedule:
+    - cron: '47 12 * * *'     # 7:47 AM CT, after the overnight settle
+  workflow_dispatch:
+
+concurrency:
+  group: nba-book-gap-shadow
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          ref: nba-data
+          path: nba-data
+          sparse-checkout: |
+            snapshots/*/actionprops.jsonl
+            snapshots/*/novigdepth.jsonl
+            snapshots/*/kaldepth.jsonl
+            snapshots/*/kalshi.jsonl
+            snapshots/*/meta.jsonl
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build the shadow record
+        run: python3 -I nba/scripts/exchange_book_gap.py --dir=nba-data
+      - name: Commit if changed
+        run: |
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add nba/data/exchange_book_gap.json
+          if git diff --cached --quiet; then echo "Nothing changed."; exit 0; fi
+          git commit -q -m "nba: exchange price-gap shadow $(date -u +%Y-%m-%d) [skip ci]"
+          for i in 1 2 3 4; do
+            git pull -q --rebase && git push -q && exit 0
+            sleep $((i * 5))
+          done
+          echo "push failed" && exit 1
