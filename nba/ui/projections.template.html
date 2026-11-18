@@ -3483,9 +3483,11 @@ $('aboutbtn').addEventListener('click', () => {
 });
 $('aboutsheet').addEventListener('click', e => { if (e.target === $('aboutsheet') || e.target.closest('[data-close]')) $('aboutsheet').close(); });
 new MutationObserver(() => { if (!$('aboutsheet').open) renderAbout(); }).observe($('app'), {subtree: true, childList: true, attributes: true, attributeFilter: ['hidden']});
+// Bankroll Builder runs on private SmartStake prices: it is in the nav only for an account that can see them.
+const navPages = () => window.__altsState === 'ok' || (() => { try { return SS_ON; } catch (e) { return false; } })() ? PAGES : PAGES.map(([g, items]) => [g, items.filter(x => x[3] !== 'bankroll')]);
 function renderNav(){
   let n = 0; try { n = pvNavCount(); } catch (e) {}
-  HK.mount($('hk-side'), 'Sidebar', {pages: PAGES, view: pageFam(view), season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === pageFam(view)) || [''])[0]}`, pvCount: n, onGo: navGo, collapsed: sideOn(), onToggle: toggleSide, brand: favBrand(), onBrand: () => navGo('profile')});
+  HK.mount($('hk-side'), 'Sidebar', {pages: navPages(), view: pageFam(view), season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === pageFam(view)) || [''])[0]}`, pvCount: n, onGo: navGo, collapsed: sideOn(), onToggle: toggleSide, brand: favBrand(), onBrand: () => navGo('profile')});
   const g = PAGES.find(gr => gr[1].some(x => x[3] === pageFam(view))); $('tcrumb').textContent = g ? g[0] : '';
   renderChip();
   renderFam();
@@ -4823,7 +4825,7 @@ async function ssMerge(b){
     const [j, ja] = [await get('props_nba.json'), await get('props_nba_alts.json')];
     window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); window.__comboRecord = await get('combo_record.json'); window.__bankrollRecord = await get('bankroll_record.json'); window.__bkComboRecord = await get('bankroll_combo_record.json'); return;
   }
-  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); } });
+  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; renderNav(); if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); } });
 }
 async function ssSignIn(){
   try { await window.VaultAuth.signInWithGoogle(); } catch (e) { window.__altsState = 'signin'; }
@@ -11196,12 +11198,17 @@ function bkCombos(){
 }
 function renderBankroll(){
   const R = window.__bankrollRecord;
+  const priv = window.__altsState !== 'ok' && !SS_ON;
+  $('cc-fold').parentElement.hidden = priv;
   const gate = window.__altsState === 'signin' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>`
     : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-bksignin="1">Use another account</button></div>` : '';
-  const intro = `${gate}<details class="card tfold" id="bk-intro"${bk.intro ? ' open' : ''}><summary><span class="tf-t"><b>Bankroll Builder</b><small>Unders priced -110 to -220 at or better than the market's fair price. Flat 1 unit on a $1,000 paper bankroll. Not proof until 100 settled picks.</small></span></summary>
+  const intro = `${priv ? '' : gate}<details class="card tfold" id="bk-intro"${bk.intro ? ' open' : ''}><summary><span class="tf-t"><b>Bankroll Builder</b><small>Unders priced -110 to -220 at or better than the market's fair price. Flat 1 unit on a $1,000 paper bankroll. Not proof until 100 settled picks.</small></span></summary>
     <div class="card-b bk-how"><p>One sportsbook bet (no parlays) priced <b>-110 to -220</b> at <b>or better than the market's fair price</b>: the no-vig price of three or more other venues quoting the same line. The price band by itself is not an edge (bet blindly, it lost about 7% on the first nights); the edge is getting a price the rest of the market says is fair or better. Main and alt lines both count. <b>Unders only:</b> overs that pass every other rule are tracked in a separate shadow and are not bets, because overs lost money on the first nights (that choice was made after looking at them, so it is in-sample too). Core = 4%+ better than fair. Our model's chance is recorded on every pick but does not pick the bets. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll. The first nights, before tracking started, were replayed from the recorded tape and sit in the same record, tagged <b>replayed</b>.</p>
     <p>Sportsbook prices via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Nothing here is proof of anything until <b>100 settled picks</b> and a closing-line value that is positive by two standard errors. Until then it is a record to watch, not a system to trust.</p></div></details>`;
-  if (!R || !R.all){
+  if (priv){
+    const so = window.__altsState === 'signin' ? '<button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button>' : window.__altsState === 'denied' ? '<span class="neg">This Google account is not allowed to see it.</span> <button class="pv-ghost" type="button" data-bksignin="1">Use another account</button>' : '';
+    $('bk-root').innerHTML = `<section class="card"><div class="pp-tools"><h2>Bankroll Builder is private</h2></div><p class="pp-empty">It runs on sportsbook prices that are not public, so its picks and record show only for the owner's Google account. ${so}</p></section>` + intro;
+  } else if (!R || !R.all){
     $('bk-root').innerHTML = intro + `<section class="card"><div class="pp-tools"><h2>Record</h2></div><p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>`;
   } else {
     const V = bk.src === 'live' && R.live ? {...R, ...R.live} : R, rp = R.replay, nLive = R.live ? R.live.all.picks : R.all.picks;
