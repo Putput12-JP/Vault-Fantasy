@@ -22,6 +22,8 @@ appends ONLY what changed since the last poll:
               game|player|stat|strike. Props rotate across polls; unread keys are carried forward, so a quiet key is 'unchanged since read'.
   novigdepth  Novig prop depth (from 2026-11-16): the OVER side's [bid, ask, over depth $, under depth $] per game|player|stat|strike,
               depth = dollars within 3 cents of that side's best bid, rounded to $100. Same carry-forward as novigprops.
+  kaldepth    Kalshi NBA prop depth (from 2026-11-19): [yes bid, yes ask, over $, under $] per Kalshi ticker, dollars resting at the best price
+              (not within 3 cents), rounded to $10 (kal_depth.py). Props only. Context for docs/exchange-book-gap-prereg.md.
   lineups     NBA.com daily lineups: each listed player's starting slot, Expected / Confirmed, active / inactive,
               so the log shows when each team's five went from Expected to Confirmed
 
@@ -722,6 +724,14 @@ def poll(root):
                 rows, meta = got
                 rec['n'] = len(rows)
                 rec['chg'] = day.record(name, int(t0), rows, meta)
+                if name == 'kalshi':          # best-level depth of the NBA prop rungs, kept for the exchange price-gap shadow test (kal_depth.py)
+                    try:
+                        import kal_depth
+                        krows = kal_depth.depth_quotes(rows, meta, KAL_SIZE, PROP_SERIES)
+                        rec['kdep'] = len(krows)
+                        rec['kdchg'] = day.record('kaldepth', int(t0), krows, {})
+                    except Exception as e:       # never stops the poll
+                        rec['kdep_err'] = str(e)[:120]
                 if name in PK_SEEN:           # lines listed for games in the window vs lines we kept
                     rec['seen'] = PK_SEEN[name]
                     if PK_SEEN[name] and not rows:
