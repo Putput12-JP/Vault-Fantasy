@@ -1891,7 +1891,7 @@ table.nt.sl-rt{min-width:420px}
   --r-card:24px; --r-ctl:8px;
   /* theme tokens: dark here, light in the :root[data-theme="light"] block below */
   --ink:255 255 255; --shc:0 0 0; --shk:1;
-  --btn:#333; --btn-h:#3d3d3d; --chip:#2a2a2a; --chip-h:#333; --track:rgba(51,51,51,.5); --seg-on:#2a2a2a; --ctl:#252525; --pop:#2a2a2a; --pop-b:#3a3a3a; --nav-on:#333;
+  --btn:#333; --btn-h:#3d3d3d; --chip:#2a2a2a; --chip-h:#333; --track:rgba(0,0,0,.38); --seg-on:#3c3c3c; --ctl:#252525; --pop:#2a2a2a; --pop-b:#3a3a3a; --nav-on:#333;
   --primary-hover:#e6e6e6; --c-blue:#93c5fd; --c-pink:#f9a8d4; --c-violet:#c4b5fd;
 }
 body::after{display:none}
@@ -1918,8 +1918,8 @@ body::after{display:none}
 .pv-preset[aria-pressed="true"]{background:rgba(147,197,253,.12);color:var(--c-blue);border-color:rgba(147,197,253,.33)}
 .pv-preset[aria-pressed="true"] b{color:var(--c-blue)}
 .seg{border:0;background:var(--track);border-radius:16px;padding:3px}
-.seg button{border-radius:11px;height:30px;padding:0 12px}
-.seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--fg);box-shadow:0 1px 3px rgb(var(--shc) / calc(.2 * var(--shk)))}
+.seg button{border-radius:12px;height:32px;padding:0 14px}
+.seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--border2),0 1px 3px rgb(var(--shc) / calc(.2 * var(--shk)))}
 .sel,.pfind,.search input,.slicer>button,.minctl input[type=number],.nt-min input{background-color:var(--ctl);border:1px solid rgb(var(--ink) / .06);border-radius:8px}
 .sel{background-color:var(--ctl)}
 .slicer>button:hover{border-color:var(--pop-b)}
@@ -3166,7 +3166,7 @@ rd-x.go>rd-n{opacity:1;transform:none}
 
 <script src="../sharp-money/line-chart.js?v=2" defer></script>
 <script src="../sharp-money/v2/gates.js?v=cap2" defer></script>
-<script src="../sharp-money/side-cards.js?v=43" defer></script>
+<script src="../sharp-money/side-cards.js?v=44" defer></script>
 <script>/*HALASKA*/</script>
 <script>
 const D = /*DATA*/null;
