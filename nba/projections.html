@@ -11864,12 +11864,12 @@ function pvInsights(S, calls){
   const early = W['6+ hours before tip'], late = W['Last hour'];
   if (early && late && early.length >= 3 && late.length >= 3){
     const a = avg(early), b = avg(late);
-    out.push(`<p><b>${a > b ? 'Betting early is where your value comes from.' : 'Your late bets get the better prices.'}</b> Bets 6+ hours before tip averaged <b class="${a >= 0 ? 'pos' : 'neg'}">${pvSg(a)}</b>; bets in the last hour <b class="${b >= 0 ? 'pos' : 'neg'}">${pvSg(b)}</b>${b < 0 && b > -.08 ? ', about the vig or fee, since the price has little time to move after you bet' : ''}.</p>`);
+    out.push(`<p><b>${a > b ? 'Betting early is where your value comes from.' : 'Your late bets get the better prices.'}</b> 6+ hours before tip: <b class="${a >= 0 ? 'pos' : 'neg'}">${pvSg(a)}</b>. Last hour: <b class="${b >= 0 ? 'pos' : 'neg'}">${pvSg(b)}</b>.</p>`);
   }
   const bet = calls.find(c => c[0] === 'bet'), pass = calls.find(c => c[0] === 'pass');
-  if (bet && bet[1].clv != null) out.push(bet[1].clv < 0 ? `<p>The <b>${bet[1].n} bet${bet[1].n > 1 ? 's' : ''} we rated Bet</b> ${bet[1].n > 1 ? 'show' : 'shows'} ${pvSg(bet[1].clv)} here, and that alone is not a warning: those bet types passed a backtest against game results at prices like these, so the closing price is not the right judge for them. Judge them on results over a season, as the Track Record does.</p>`
+  if (bet && bet[1].clv != null) out.push(bet[1].clv < 0 ? `<p>The <b>${bet[1].n} bet${bet[1].n > 1 ? 's' : ''} we rated Bet</b> ${bet[1].n > 1 ? 'show' : 'shows'} ${pvSg(bet[1].clv)}. That alone is not a warning: judge these on season results, as the Track Record does.</p>`
     : `<p>The <b>${bet[1].n} bet${bet[1].n > 1 ? 's' : ''} we rated Bet</b> averaged <b class="pos">${pvSg(bet[1].clv)}</b> closing-line value.</p>`);
-  if (pass && pass[1].n >= 3 && pass[1].clv != null) out.push(`<p>Your <b>${pass[1].n} picks we rated Pass</b> averaged <b class="${pass[1].clv >= 0 ? 'pos' : 'neg'}">${pvSg(pass[1].clv)}</b> and went ${pass[1].w}-${pass[1].l}${pass[1].clv > .02 ? ': you are finding prices we do not flag, worth noting where' : pass[1].clv < 0 ? ': on those you paid more than the fair price' : ''}.</p>`);
+  if (pass && pass[1].n >= 3 && pass[1].clv != null) out.push(`<p>Your <b>${pass[1].n} picks we rated Pass</b> averaged <b class="${pass[1].clv >= 0 ? 'pos' : 'neg'}">${pvSg(pass[1].clv)}</b> and went ${pass[1].w}-${pass[1].l}${pass[1].clv > .02 ? ': you are finding prices we do not flag' : ''}.</p>`);
   return out.join('');
 }
 // Bets grouped under a divider per game day (ET, the key everything else uses): Upcoming, Today, Yesterday, then the rest.
@@ -11921,10 +11921,9 @@ function pvRenderBets(){
     </div>
     <section class="card pv-read two">
       <div class="pv-rd-a">${T.clv == null ? '<p class="big">Closing-line value shows up here once your first bet settles.</p>'
-        : `<p class="big">${T.clv >= 0 ? `Your prices beat the fair closing price by <b class="pos">${pc(T.clv, 1)}</b> on average.` : `Your prices were <b class="neg">${pc(-T.clv, 1)}</b> worse than the fair closing price on average.`}</p>
-      <p>That tells you more than the ${T.w}-${T.l} record: over ${T.w + T.l} bets, wins and losses are mostly luck, while closing-line value shows whether you are getting good prices long before the record can.</p>`}</div>
+        : `<p class="big">${T.clv >= 0 ? `Your prices beat the fair closing price by <b class="pos">${pc(T.clv, 1)}</b> on average.` : `Your prices were <b class="neg">${pc(-T.clv, 1)}</b> worse than the fair closing price on average.`}</p>`}</div>
       <div class="pv-rd-b">${pvInsights(S, calls)}</div>
-      <p class="fine">Closing-line value: the fair chance at tip (Pinnacle's closing price with the vig removed, else the other sportsbooks', else Kalshi's) divided by what your price charged, minus one. +3% means your price was 3% cheaper than fair. Measured at your number: the close at your exact line where one exists; if the line moved off it, the nearest close is moved back to your line along our curve.</p>
+      <details class="fine"><summary>How closing-line value is measured</summary>Closing-line value: the fair chance at tip (Pinnacle's closing price with the vig removed, else the other sportsbooks', else Kalshi's) divided by what your price charged, minus one. +3% means your price was 3% cheaper than fair. Measured at your number: the close at your exact line where one exists; if the line moved off it, the nearest close is moved back to your line along our curve.</details>
     </section>
     <section class="card"><div class="pv-bets">
       <div class="pv-bt h"><span>Bet</span><span>Price you got</span><span>Fair close</span><span>Closing-line value</span><span>Our call then</span><span>Result</span><span></span></div>
