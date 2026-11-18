@@ -790,6 +790,17 @@ function recSport(sp, D){
   var sigHtml = sigRows ? '<section class="vr-card"><h3>By signal</h3><div class="vr-grid"><span></span><span class="vr-col">When on</span><span class="vr-col">When off</span>' + sigRows + '</div>' +
     '<p class="vr-fn">The same plays split by what Pinnacle showed at the lock. Context only, and small samples swing hard.</p></section>' : '';
   var out = '<div class="vr-hero">' + hero + ft + '</div>';
+  /* the three registered price-tier shadows (scripts/sf_tiers.py, docs/sharp-tier-prereg.md): NBA and NFL, cards cut from Nov 19, counted cards only */
+  var TL = [['tA', 'Follow price-sharps'], ['tB', 'Fade price-dull'], ['tC', 'Both']];
+  var tierRows = ['nba', 'nfl'].filter(inSp).map(function(s){ return TL.map(function(t){
+    var x = {n: 0, w: 0, l: 0, p: 0, rs: 0, cn: 0, cs: 0};
+    G.forEach(function(g){ var c = ((((cs(s)[t[0]] || {}).all || {})[g[0]] || {}).counted); if (!c || !c.n) return;
+      x.n += c.n; x.w += c.w; x.l += c.l; x.p += c.p || 0; if (c.flat_roi != null) x.rs += c.flat_roi * c.n; if (c.clv_n){ x.cn += c.clv_n; x.cs += c.clv_mean * c.clv_n; } });
+    return '<span class="vr-mk">' + s.toUpperCase() + '<em class="vr-tsub"> ' + t[1] + '</em></span>' + (x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num">' + roi(x.rs / x.n) + '</span>' +
+      '<span class="vr-c num">' + (x.cn ? (x.cs / x.cn > 0 ? '+' : '') + trim((x.cs / x.cn * 100).toFixed(1)) + ' pts' : '—') + '</span>' : '<span class="vr-none">—</span><span class="vr-none">—</span><span class="vr-none">—</span>'); }).join(''); }).join('');
+  if (tierRows) out += '<section class="vr-card"><h3>Price-tier tests</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">ROI</span><span class="vr-col">CLV</span>' + tierRows + '</div>' +
+    '<p class="vr-fn">Registered Nov 18, one play per rule per market from cards cut Nov 19 on, flat 1u at the stored price, graded by Polymarket\'s result. Shadows: not picks, not on cards. ' +
+    'Rules and the pass test are in the pre-registration; only its final read gives a verdict, and small samples swing hard.</p></section>';
   out += '<section class="vr-card"><h3>By market</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">Units</span><span class="vr-col">ROI</span>' +
     G.map(function(g){ var x = vg(g[0]);
       return '<span class="vr-mk">' + g[1] + '</span>' + (x && x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num ' + (x.units_pl > 0 ? 'up' : x.units_pl < 0 ? 'dn' : '') + '">' + u2(x.units_pl) + '</span><span class="vr-c num">' + roi(x.flat_roi) + '</span>'

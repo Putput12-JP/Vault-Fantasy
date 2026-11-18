@@ -65,6 +65,7 @@ import sf_rungs as SF  # noqa: E402
 import sf_signals as SIG  # noqa: E402
 import sf_publish as PUB  # noqa: E402
 import pm_clv_tiers as CT  # noqa: E402
+import sf_tiers as TIERS  # noqa: E402
 
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
 FLOOR_USD = 250
@@ -536,6 +537,8 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
                 p["win_pct"] = round(100 * p["w"] / (p["w"] + p["l"]), 1) if p["w"] + p["l"] else None
                 out["markets"][g]["sides"].setdefault(side, {})[variant] = side_out
             out["markets"][g]["lock_shadow"][variant] = lock_shadow(g, ws, cls, variant, kf)
+            if variant == "all" and sport in TIERS.TIER_SPORTS and cut >= TIERS.REGISTERED_AT:    # docs/sharp-tier-prereg.md: shadows only
+                out["markets"][g]["tp"] = TIERS.tier_plays(ws, cls, rk, ledger.first_seen, kf, cut)
             out["markets"][g].setdefault("sf", {})[variant] = sf_market(g, ws, cls, variant, kf, sides_all, out["markets"][g]["sides"],
                                                                         ledger, sport, tape, vault)
         for variant in ("all", "fwd"):                # the publish-mute shadow of the shown size (scripts/sf_publish.py)

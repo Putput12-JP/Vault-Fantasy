@@ -34,6 +34,7 @@ from pm_data_api import PMDataError  # noqa: E402
 import sf_publish as PUB  # noqa: E402
 import sf_solo as SOLO  # noqa: E402
 import sf_shadows as SHD  # noqa: E402
+import sf_tiers as TIERS  # noqa: E402
 import build_side_cards as BSC  # noqa: E402                # card_signals, BookTape (the signals are re-derived for every card)
 
 GROUP_MT = {"ml": "moneyline", "spread": "spreads", "total": "totals"}
@@ -43,7 +44,7 @@ UNPRICED_FAIL = 0.10               # prereg: unpriced over 10% of a sport's coun
 NO_CLOSES = {"cfb", "cbb"}         # prereg: CFB has no stored close, read on ROI only; CBB likewise (data/pm_closes.json has none)
 BOOT_N, BOOT_SEED = 10000, 20261111
 VERSION = 1
-SHADOWS = ("pub", "solo") + SHD.RULES      # shadows of the shown size: graded beside it, never listed as open plays
+SHADOWS = ("pub", "solo") + SHD.RULES + TIERS.RULES      # shadows of the shown size: graded beside it, never listed as open plays
 
 
 # ---------- pure logic (tests/test_side_card_record.py) ----------
@@ -110,6 +111,13 @@ def plays(card, kf):
                 out.append({"group": g, "variant": variant, "play": "sf", "side": sf["side"], "cid": cid, "line": sf.get("line"),
                             "outs": mk.get("outs"), "price": sf.get("price"), "price_t": sf.get("price_t"), "units": sf["units"],
                             "rung": sf.get("rung")})
+            if variant == "all":                                # tA / tB / tC: the registered CLV-tier shadows (docs/sharp-tier-prereg.md)
+                for rule, tp in ((m.get("tp") or {})).items():
+                    if tp and tp.get("side"):
+                        out.append({"group": g, "variant": variant, "play": rule, "side": tp["side"], "cid": tp.get("cid"), "line": tp.get("line"),
+                                    "outs": tp.get("outs"), "price": tp.get("price"), "price_t": tp.get("price_t"), "units": 1,
+                                    "sharp_for": tp.get("sharp_for"), "sharp_against": tp.get("sharp_against"),
+                                    "dull_for": tp.get("dull_for"), "dull_against": tp.get("dull_against")})
             if variant in ("all", "fwd"):                       # pub: derived from the stored sf + ags, so old cards grade too
                 pb = PUB.pub_play(m, variant) or {}
                 if pb.get("side") and (pb.get("units") or 0) > 0:
@@ -262,17 +270,18 @@ def open_plays(todo, graded, now, days=7):
     return sorted(out, key=lambda r: (-r["gst"], r["ev"], r["group"], r["play"]))
 
 
-def boot_ci(xs, n=BOOT_N, seed=BOOT_SEED):
-    """95% percentile bootstrap of the mean (prereg: 10,000 resamples, seed 20261111)."""
+def boot_ci(xs, n=BOOT_N, seed=BOOT_SEED, alpha=0.05):
+    """Percentile bootstrap of the mean, 95% by default (prereg: 10,000 resamples, seed 20261111). alpha 0.05 / 6 is the tier test's
+    Bonferroni interval (docs/sharp-tier-prereg.md)."""
     if len(xs) < 2:
         return None
     rng = random.Random(seed)
     k = len(xs)
     means = sorted(sum(xs[rng.randrange(k)] for _ in range(k)) / k for _ in range(n))
-    return [round(means[int(0.025 * n)], 4), round(means[int(0.975 * n) - 1], 4)]
+    return [round(means[int(alpha / 2 * n)], 4), round(means[int((1 - alpha / 2) * n) - 1], 4)]
 
 
-def summarize(rows, boot=True, closes=None):
+def summarize(rows, boot=True, closes=None, wide=False):
     """rows: result rows. closes: {result key: close row}."""
     closes = closes or {}
     priced = [r for r in rows if r.get("status") == "graded"]
@@ -287,6 +296,9 @@ def summarize(rows, boot=True, closes=None):
            "no_close": sum(1 for r in priced if r["key"] not in closes),
            "unpriced": sum(1 for r in rows if r.get("status") == "unpriced"),
            "unmatched": sum(1 for r in rows if r.get("status") in ("no_market", "side_not_in_market"))}
+    if wide and boot:                       # the six tier tests: 99.17% intervals (Bonferroni over 3 candidates x 2 sports)
+        out["flat_ci99"] = boot_ci(flat, alpha=0.05 / 6) if flat else None
+        out["clv_ci99"] = boot_ci(clv, alpha=0.05 / 6) if clv else None
     return out
 
 
@@ -343,7 +355,7 @@ def record(rows, cards, now, sig=None):
                     if not sub:
                         continue
                     s[play].setdefault(variant, {})[g] = {
-                        "counted": summarize([r for r in sub if r["counts"]], closes=closes),
+                        "counted": summarize([r for r in sub if r["counts"]], closes=closes, wide=play in TIERS.RULES),
                         "all_cards": summarize(sub, boot=False, closes=closes)}
                     if play in SHD.RULES:                       # rows from before the rules were registered are in-sample
                         s[play][variant][g]["forward"] = summarize([r for r in sub if not r.get("in_sample")], boot=False, closes=closes)
