@@ -1,0 +1,61 @@
+# Sharp tape (scripts/pm_sharp_tape.py, docs/sharp-speed-prereg.md): watches the CLV-tiered wallets (sharp, dull, and a control of active
+# mid wallets) and, when a pre-game NBA/NFL buy shows up in the trade feed, stores the order book: the ask a follower would pay.
+# Writes pm_tape/<sport>/<date>.jsonl on the never-force-pushed `pm-holders-data` branch, then grades what has a close
+# (scripts/grade_sharp_tape.py -> pm_tape/tape_record.json). Each run loops ~170 minutes, the cron starts one every 3 hours, and a
+# run that starts late leaves a gap that the run markers (`k: r`) show. Sharp money is context only (CLAUDE.md).
+name: Sharp tape
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */3 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pm-tape
+  cancel-in-progress: false
+
+jobs:
+  tape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python3 -m unittest tests.test_pm_sharp_tape tests.test_grade_sharp_tape tests.test_pm_clv_tiers
+      - name: Inputs (holders data, ledger)
+        run: |
+          if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then
+            echo "No holders data yet."; echo "SKIP=1" >> "$GITHUB_ENV"; exit 0
+          fi
+          git fetch -q --depth=1 origin +pm-holders-data:refs/remotes/origin/pm-holders-data +sharp-history:refs/remotes/origin/sharp-history
+          git worktree add -q --detach pmdata origin/pm-holders-data   # not `data`: the repo has a data/ folder
+          git worktree add -q --detach hist origin/sharp-history
+          git -C pmdata config user.name  "vault-bot"
+          git -C pmdata config user.email "vault-bot@users.noreply.github.com"
+      - name: Tiers as of now
+        if: env.SKIP != '1'
+        run: |
+          for s in nba nfl; do
+            python3 scripts/pm_clv_tiers.py --root hist/pm_ledger --holders pmdata/pm_holders --closes data/pm_closes.json --sport $s --out tiers_$s.json
+          done
+      - name: Watch
+        if: env.SKIP != '1'
+        run: |
+          python3 scripts/pm_sharp_tape.py --tiers nba=tiers_nba.json nfl=tiers_nfl.json --first-seen hist/pm_ledger/first_seen.json \
+            --out pmdata/pm_tape --loop --max-minutes 170 --commit
+      - name: Grade and commit the record
+        if: env.SKIP != '1' && always()
+        run: |
+          python3 scripts/grade_sharp_tape.py --tape pmdata/pm_tape --closes data/pm_closes.json --out pmdata/pm_tape/tape_record.json
+          python3 - <<'PY'
+          import sys; sys.path.insert(0, "scripts")
+          import scan_pm_holders as H, datetime as dt
+          ok = H.commit_push("pmdata", "pm_tape", ["tape_record.json"], "pm_tape: record " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
+          sys.exit(0 if ok else 1)
+          PY
