@@ -228,6 +228,16 @@ function half(s, max, dir){
 /* v3: a stack of small modules. Verdict, money split, hot record, wallets (collapsed), data notes (collapsed). */
 /* The benchmark's score and label for the market: the one side whose stored `ags` score is above zero, or nothing */
 var TIER = {WEAK: 'Weak', LEAN: 'Lean', LOCK: 'Lock', PREMIUM: 'Prem', ELITE: 'Elite'};
+/* CLV-ranked wallets on the shown side (scripts/pm_clv_tiers.py, docs/pm-clv-tiers.md): sharp = their price beat the close, shrunk and
+   point in time. Any holder at $250 or more counts, not only hot ones. Context only; hidden on cards built before the field existed. */
+function rkRow(S, side, names){
+  var me = (S[side] || {}).rk, ot = (S[names.filter(function(n){ return n !== side; })[0]] || {}).rk;
+  if (!me || !ot) return '';
+  var t = function(ok, h){ return '<span class="vc-tick ' + (ok ? 'ok' : 'no') + '">' + (ok ? CHK : XX) + h + '</span>'; };
+  return '<div class="vc-ticks" title="Wallets whose entry prices have beaten the closing line, tiered with only games played before this lock. A better price, not a pick.">' +
+    t(me.sharp_n > ot.sharp_n, '<span class="num">' + me.sharp_n + '</span> price-sharp for') + t(ot.sharp_n === 0, '<span class="num">' + ot.sharp_n + '</span> against') +
+    t(me.dull_n <= ot.dull_n, '<span class="num">' + usd(me.dull_usd) + '</span> from price-dull wallets') + '</div>';
+}
 function agsRow(m, names, v){
   var n = names.filter(function(x){ var a = m.sides[x][v].ags; return a && a.score > 0 && TIER[a.tier]; })[0];
   if (!n) return '';
@@ -248,7 +258,7 @@ function verdict(g, m, key, names, v){
       agsRow(m, names, v) + (q ? '<div class="vc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> hot for') +
       tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>'
       : '<p class="vc-why">' + (rg ? rg[1] : 'This side meets one of the staking rules.') + '</p>') +
-      '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size is a flat 1 unit. The older 1u to 5u ladder lost money in testing and is now tracked beside the record, not shown. ' +
+      rkRow(S, ls.side, names) + '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size is a flat 1 unit. The older 1u to 5u ladder lost money in testing and is now tracked beside the record, not shown. ' +
       'The play is still the staking rule\'s pick, built from Vault\'s own wallet records, and it has not shown an edge yet.</p></details>' + steamRow(ls, key) + '<button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
   }
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
@@ -980,6 +990,7 @@ var FDEFS = [
   ['Unopposed', 'No hot wallet holds $250 or more on the other side.'],
   ['Steam', 'Pinnacle\'s price is moving toward the side (a 3% shortening, or half a point on a line), read from Vault\'s own tape. Games with no tape are not counted.'],
   ['Hot wallet', 'A wallet with at least 6 recorded bets in the sport, a 55% or better win rate and a dollar ROI above 3% in Vault\'s own ledger. It is a record, not proof of skill: going forward these wallets have not beaten the market.'],
+  ['Price-sharp wallet', 'A wallet with 30 or more games in the sport whose entry prices have beaten the closing line by more than luck explains (95% chance its price skill is above zero), counting only games played before this lock. Price-dull is the reverse. In testing this tier kept beating the close the next week; that is a better price, not a promise of winning picks.'],
   ['Moneyline, Spread, Total', 'The market the play is on.']
 ];
 function filterBar(total, shown){
@@ -1018,6 +1029,12 @@ function combinedP(name, p, cn){
     c(susd(p.lifetime_pnl), 'Lifetime', sign(p.lifetime_pnl)) + c(p.w + '-' + p.l, 'Record') + '</div>' +
     (f.length ? '<div class="vp-form" role="img" aria-label="Last ' + f.length + ' results, oldest first">' + f.map(function(r, i){ return '<i class="' + r + '" style="--d:' + i + '"></i>'; }).join('') + '<span>Last ' + f.length + '</span></div>' : '') + '</section>';
 }
+/* price-sharp wallets (CLV tier, pm_clv_tiers.py) for and against the shown side, for the plays footer. '' on cards built before the field. */
+function rkP(me, ot){
+  if (!me || !ot) return '';
+  return '<span title="Wallets whose entry prices have beaten the closing line, tiered with only games played before this lock. A better price, not a pick.">' +
+    '<span class="num">' + me.sharp_n + '</span> price-sharp for, <span class="num">' + ot.sharp_n + '</span> against</span>';
+}
 function ticketP(p, i){
   var g = p.g, m = g.markets[p.k], ls = p.ls, nm = sideOrder(g, m, p.k), a = m.sides[nm[0]].all, b = m.sides[nm[1]].all, me = m.sides[ls.side].all;
   var max = Math.max(counted(a), counted(b)) || 1, u = units(ls), un = parseFloat(u) || 0, t = lockLeft(g), soon = t && g.cut - Date.now() / 1000 < 3600;
@@ -1033,7 +1050,7 @@ function ticketP(p, i){
     combinedP(ls.side, me.proven, me.counts) +
     '<div class="vp-ft">' + (ag && ag.score > 0 && TIER[ag.tier] ? '<span class="vc-tier ' + ag.tier + '">' + TIER[ag.tier] + '</span><span>score <span class="num">+' + ag.score.toFixed(2) + '</span></span>' : '') +
       (st ? '<span class="' + st + '">' + (st === 'on' ? 'Pinnacle steam toward ' + esc(ls.side) : st === 'off' ? 'No Pinnacle steam' : 'Pinnacle steam unknown') + '</span>' : '') + (bits[0] ? '<span>' + bits[0] + '</span>' : '') +
-      '<span class="sp"></span><button type="button" class="vp-who" data-p="' + i + '">See who\'s on it</button></div></div></article>';
+      (FLAT_SP[g.sport] ? rkP(me.rk, m.sides[nm[0] === ls.side ? nm[1] : nm[0]].all.rk) : '') + '<span class="sp"></span><button type="button" class="vp-who" data-p="' + i + '">See who\'s on it</button></div></div></article>';
 }
 function leadSide(g){ var x = null; Object.keys(g.markets).forEach(function(k){ var m = g.markets[k]; Object.keys(m.sides).forEach(function(n){ var v = m.sides[n].all.sharp_usd; if (v > 0 && (!x || v > x.v)) x = {k: k, n: n, v: v}; }); }); return x; }
 function railRowP(g, i, showSport){
