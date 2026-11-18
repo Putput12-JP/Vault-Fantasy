@@ -780,9 +780,9 @@ function recSport(sp, D){
   var n = ml.n || 0, pct = Math.min(100, n / REC_N * 100), ft;
   if (ALL) ft = '<section class="vr-card"><h3>By sport</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">Units</span><span class="vr-col">ROI</span>' +
     ['nfl', 'cfb', 'nba', 'cbb'].filter(inSp).map(function(s){ var x = sumRec(G.map(function(g){ return FLAT_SP[s] ? vgs(s, g[0]) : flatOf(rawg(s, g[0])); }));
-      return '<span class="vr-mk">' + s.toUpperCase() + (FLAT_SP[s] ? '' : '<em class="vr-tsub"> 1u, not shown</em>') + '</span>' + (x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num ' + (x.units_pl > 0 ? 'up' : x.units_pl < 0 ? 'dn' : '') + '">' + u2(x.units_pl) + '</span><span class="vr-c num">' + roi(x.flat_roi) + '</span>'
+      return '<span class="vr-mk">' + s.toUpperCase() + (FLAT_SP[s] ? '' : '<em class="vr-tsub"> 1u</em>') + '</span>' + (x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num ' + (x.units_pl > 0 ? 'up' : x.units_pl < 0 ? 'dn' : '') + '">' + u2(x.units_pl) + '</span><span class="vr-c num">' + roi(x.flat_roi) + '</span>'
         : '<span class="vr-none">—</span><span class="vr-none">—</span><span class="vr-none">—</span>'); }).join('') + '</div>' +
-    '<p class="vr-fn">Pick a sport to see its forward test.</p></section>';
+    '</section>';
   else if (!REC_READ[sp]) ft = '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">not registered</span></div>' +
     '<p class="vr-fn">Not in a registered test. Graded here for reference only.</p></section>';
   else ft = '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">' + n + ' / ' + REC_N + '</span></div>' +
@@ -795,7 +795,7 @@ function recSport(sp, D){
   var sg = function(name, k){ return sumRec(SPS.map(function(x){ return ((((cs(x).signals || {}).sf || {})[name] || {})[k]); })); };
   var sigRows = SIGS.map(function(d){ var y = sg(d[0], 'yes'), n = sg(d[0], 'no'); return y.n && n.n ? '<span class="vr-mk">' + d[1] + '</span><span class="vr-c">' + cell(y) + '</span><span class="vr-c">' + cell(n) + '</span>' : ''; }).join('');
   var sigHtml = sigRows ? '<section class="vr-card"><h3>By signal</h3><div class="vr-grid"><span></span><span class="vr-col">When on</span><span class="vr-col">When off</span>' + sigRows + '</div>' +
-    '<p class="vr-fn">The same plays split by what Pinnacle showed at the lock. Context only, and small samples swing hard.</p></section>' : '';
+    '<p class="vr-fn">Split by what Pinnacle showed at the lock. Context only.</p></section>' : '';
   var out = '<div class="vr-hero">' + hero + ft + '</div>';
   /* the three registered price-tier shadows (scripts/sf_tiers.py, docs/sharp-tier-prereg.md): NBA and NFL, cards cut from Nov 19, counted cards only */
   var TL = [['tA', 'Follow price-sharps'], ['tB', 'Fade price-dull'], ['tC', 'Both']];
