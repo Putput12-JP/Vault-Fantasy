@@ -3441,8 +3441,7 @@ const PAGES = [
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
   ['Model', [
-    ['Backtest Lab', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'The technical results: every held-out test, the model versions and the decision log.', 'btlab'],
-    ['Data Health', SVG('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'), 'Is every feed alive: the live price recorder, model inputs and the history archive.', 'health'],
+    ['Model Room', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'The technical results (held-out tests, model versions, decision log) and whether every feed is alive (price recorder, model inputs, archive).', 'btlab'],
   ]],
   ['You', [
     ['Profile', SVG('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'), 'Your favorite team and players, your badges and your preferences.', 'profile'],
@@ -3455,8 +3454,7 @@ const FAMILIES = [
   ['lab', [['lab', 'Minutes Lab'], ['tonight', 'Tonight']]],
   ['sharps', [['sharps', 'Sharps'], ['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser']]],
   ['track', [['track', 'Record'], ['pairs', 'Pick\'em slip'], ['pickrec', 'Pick\'em record'], ['backtests', 'What Works']]],
-  ['btlab', [['btlab', 'Backtest Lab'], ['checks', 'Model checks'], ['finder', 'Edge Finder']]],
-  ['health', [['health', 'Data Health'], ['control', 'Control Room']]],
+  ['btlab', [['btlab', 'Backtest Lab'], ['checks', 'Model checks'], ['finder', 'Edge Finder'], ['health', 'Data Health'], ['control', 'Control Room']]],
 ];
 const pageFam = v => (FAMILIES.find(f => f[1].some(x => x[0] === v)) || [v])[0];
 function renderFam(){
