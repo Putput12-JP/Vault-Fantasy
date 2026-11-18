@@ -197,6 +197,8 @@ def cladder():
         return None
     return {'cuts': CL.CUTS, 'w': list(CL.COMB_W), 'b': CL.COMB_B, 'c': CL.COMB_C, 'phi': CL.MIN_PHI, 'q': q}
 
+LAZY = {'logs': 'gamelogs.json', 'state': 'model_state_page.json', 'health': 'data_health.json'}   # key on window.__LZ -> file in nba/data
+
 
 def render(full=False):
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
@@ -209,19 +211,30 @@ def render(full=False):
     tpl = tpl.replace('/*MINUTES_GBM_JS*/', open(gj).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*ROTATION_MINUTES_JS*/', open(rj).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*PROPS_BOARD_JS*/', open(os.path.join(HERE, '..', 'ui', 'props_board.js')).read().replace('</script', '<\\/script'))   # the Outlier-style Props Table
-    tpl = tpl.replace('<!--PRELOAD-->', '' if full else '<link rel="preload" href="data/track.json" as="fetch" crossorigin="anonymous">')   # starts the snapshot download while the page itself is still arriving
+    if full:
+        tpl = tpl.replace('/*APPOPEN*/', '<script>').replace('<!--PRELOAD-->', '').replace('<!--APPEND-->', '')
+    else:
+        # Game logs, model state and data health are files beside the page. The app script is held as text until they have all arrived
+        # (8 s cap; a file that fails becomes null, which the page already treats as "no data"), then runs, so it sees them as if inlined.
+        # The track snapshot keeps its own in-app fetch and 2.5 s first-draw wait.
+        files = {k: f'data/{v}' for k, v in LAZY.items()}
+        json.dump(model_state(), open(os.path.join(DATA, 'model_state_page.json'), 'w'), separators=(',', ':'))
+        pre = '<link rel="preload" href="data/track.json" as="fetch" crossorigin="anonymous">' + ''.join(f'<link rel="preload" href="{u}" as="fetch" crossorigin="anonymous">' for u in files.values())
+        tpl = (tpl.replace('/*APPOPEN*/', '<script id="vault-app-src" type="text/plain">')
+                  .replace('<!--PRELOAD-->', pre)
+                  .replace('<!--APPEND-->', '<script>(function(){var F=%s,L=window.__LZ={};Promise.all(Object.keys(F).map(function(k){return fetch(F[k],{signal:AbortSignal.timeout(8000)}).then(function(r){return r.ok?r.json():null}).catch(function(){return null}).then(function(d){L[k]=d})})).then(function(){var s=document.createElement("script");s.textContent=document.getElementById("vault-app-src").textContent;document.body.appendChild(s)})})()</script>' % json.dumps(files)))
     html = (tpl.replace('/*DATA*/null', json.dumps(projections(), separators=(',', ':')))
-               .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
+               .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')) if full else '__LZ.health')
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))
                .replace('/*BOARD*/null', json.dumps(load('prop_board.json'), separators=(',', ':')))
-               .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
+               .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')) if full else '__LZ.logs')
                .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')) if full else 'null')
                .replace('/*TRACKFILE*/null', 'null' if full else "'data/track.json'")
                .replace('/*GPICKS*/null', json.dumps(load('game_picks.json'), separators=(',', ':')))
                .replace('/*LIVESEASON*/null', json.dumps(load('live_season.json'), separators=(',', ':')))
                .replace('/*GBMMODEL*/null', json.dumps(load('minutes_gbm.json'), separators=(',', ':')))
                .replace('/*ROTMODEL*/null', json.dumps(load('rotation_minutes_model.json'), separators=(',', ':')))
-               .replace('/*STATE*/null', json.dumps(model_state(), separators=(',', ':')))
+               .replace('/*STATE*/null', json.dumps(model_state(), separators=(',', ':')) if full else '__LZ.state')
                .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
                .replace('/*PICKEM*/null', json.dumps(pickem(), separators=(',', ':')))
                .replace('/*CONTROL*/null', json.dumps(control(), separators=(',', ':')))
