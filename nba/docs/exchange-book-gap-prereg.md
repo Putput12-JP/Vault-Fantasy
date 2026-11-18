@@ -26,8 +26,11 @@ registration." This is that test. It leaves `p_dep` untouched, shares none of it
 
 ## What the recorder PR adds (not in this PR)
 
-A day file `kaldepth.jsonl` beside `kalshi.jsonl`: per rung `[bid, ask, bid contracts, ask contracts]`, dollars = price x contracts / 100,
-rounded to $100, with the same carry-forward rule as `novigdepth`. No new requests: the sizes are already read each poll.
+A day file `kaldepth.jsonl` beside `kalshi.jsonl` (built in the recorder PR, `nba/scripts/kal_depth.py`): per prop rung
+`[yes bid, yes ask, over $, under $]`, over $ = bid x contracts at the best yes bid, under $ = (1 - ask) x contracts at the best yes ask.
+Kalshi contracts pay $1, so dollars = price x contracts, rounded to $10. **Top of book only**: the market list gives the best level, so
+Kalshi depth is not the same measure as Novig's (orders within 3 cents of the best bid), and the thresholds below are read per exchange.
+No new requests: the sizes are already read each poll.
 
 ## Rule (frozen)
 
