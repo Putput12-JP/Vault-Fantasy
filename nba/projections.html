@@ -540,6 +540,7 @@ details.tfold[open]>summary{padding-bottom:0}
 @media (prefers-reduced-motion:reduce){ details.tfold>summary::after,.tpk-chev{transition:none} }
 .tverdict{margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-ctl);font-size:13.5px;line-height:1.5;color:var(--fg2)}
 .tverdict b{color:var(--fg);font-weight:600}
+.title #tsub:empty{display:none}
 .tsubfold{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
 .tsubfold>summary{cursor:pointer;font-size:14px;font-weight:600;padding:2px 0 8px}
 .tsubfold>summary:hover{text-decoration:underline;text-decoration-color:var(--fg3);text-underline-offset:3px}
@@ -2079,7 +2080,7 @@ table.nt.sl-rt{min-width:420px}
   --r-card:24px; --r-ctl:8px;
   /* theme tokens: dark here, light in the :root[data-theme="light"] block below */
   --ink:255 255 255; --shc:0 0 0; --shk:1;
-  --btn:#333; --btn-h:#3d3d3d; --chip:#2a2a2a; --chip-h:#333; --track:rgba(51,51,51,.5); --seg-on:#2a2a2a; --ctl:#252525; --pop:#2a2a2a; --pop-b:#3a3a3a; --nav-on:#333;
+  --btn:#333; --btn-h:#3d3d3d; --chip:#2a2a2a; --chip-h:#333; --track:rgba(0,0,0,.38); --seg-on:#3c3c3c; --ctl:#252525; --pop:#2a2a2a; --pop-b:#3a3a3a; --nav-on:#333;
   --primary-hover:#e6e6e6; --c-blue:#93c5fd; --c-pink:#f9a8d4; --c-violet:#c4b5fd;
 }
 body::after{display:none}
@@ -2106,8 +2107,8 @@ body::after{display:none}
 .pv-preset[aria-pressed="true"]{background:rgba(147,197,253,.12);color:var(--c-blue);border-color:rgba(147,197,253,.33)}
 .pv-preset[aria-pressed="true"] b{color:var(--c-blue)}
 .seg{border:0;background:var(--track);border-radius:16px;padding:3px}
-.seg button{border-radius:11px;height:30px;padding:0 12px}
-.seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--fg);box-shadow:0 1px 3px rgb(var(--shc) / calc(.2 * var(--shk)))}
+.seg button{border-radius:12px;height:32px;padding:0 14px}
+.seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--border2),0 1px 3px rgb(var(--shc) / calc(.2 * var(--shk)))}
 .sel,.pfind,.search input,.slicer>button,.minctl input[type=number],.nt-min input{background-color:var(--ctl);border:1px solid rgb(var(--ink) / .06);border-radius:8px}
 .sel{background-color:var(--ctl)}
 .slicer>button:hover{border-color:var(--pop-b)}
@@ -2206,8 +2207,8 @@ th{font-weight:500}
   .lv-card .lv-asof{display:none}
   .bar{position:relative;top:auto;min-height:0;padding:calc(env(safe-area-inset-top,0px) + 8px) 16px 4px;gap:4px 8px;flex-wrap:wrap;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;background:none}
   #menu,.crumb,#tsub,#favchip,.favchip,.favmore{display:none!important}
-  .title{order:1;flex:1 1 0;min-width:0;display:block}
-  .title h1{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+  .title{order:1;flex:1 1 0;min-width:0;display:block;padding-right:48px}
+  .title h1{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.15;white-space:normal;overflow:visible;text-overflow:clip}
   #themebtn{order:2;width:40px;height:40px}
   .mode{order:3;flex:1 1 100%;margin:0;min-height:0;font-size:12.5px;color:var(--fg3);white-space:nowrap;overflow:hidden;gap:8px;padding-right:96px}
   .mode>span{overflow:hidden;text-overflow:ellipsis}
@@ -3354,7 +3355,7 @@ rd-x.go>rd-n{opacity:1;transform:none}
 
 <script src="../sharp-money/line-chart.js?v=2" defer></script>
 <script src="../sharp-money/v2/gates.js?v=cap2" defer></script>
-<script src="../sharp-money/side-cards.js?v=43" defer></script>
+<script src="../sharp-money/side-cards.js?v=44" defer></script>
 <script>(()=>{var Fu=Object.create;var Rs=Object.defineProperty;var Nu=Object.getOwnPropertyDescriptor;var Wu=Object.getOwnPropertyNames;var _u=Object.getPrototypeOf,Hu=Object.prototype.hasOwnProperty;var Es=(e,t,n)=>()=>{if(n)throw n[0];try{return e&&(t=e(e=0)),t}catch(o){throw n=[o],o}};var Qe=(e,t)=>()=>{try{return t||e((t={exports:{}}).exports,t),t.exports}catch(n){throw t=0,n}};var ju=(e,t,n,o)=>{if(t&&typeof t=="object"||typeof t=="function")for(let i of Wu(t))!Hu.call(e,i)&&i!==n&&Rs(e,i,{get:()=>t[i],enumerable:!(o=Nu(t,i))||o.enumerable});return e};var Ne=(e,t,n)=>(n=e!=null?Fu(_u(e)):{},ju(t||!e||!e.__esModule?Rs(n,"default",{value:e,enumerable:!0}):n,e));var _s=Qe(M=>{"use strict";var Bn=Symbol.for("react.element"),Vu=Symbol.for("react.portal"),Uu=Symbol.for("react.fragment"),Ku=Symbol.for("react.strict_mode"),Xu=Symbol.for("react.profiler"),Yu=Symbol.for("react.provider"),Gu=Symbol.for("react.context"),Qu=Symbol.for("react.forward_ref"),qu=Symbol.for("react.suspense"),Zu=Symbol.for("react.memo"),Ju=Symbol.for("react.lazy"),Os=Symbol.iterator;function ep(e){return e===null||typeof e!="object"?null:(e=Os&&e[Os]||e["@@iterator"],typeof e=="function"?e:null)}var Ms={isMounted:function(){return!1},enqueueForceUpdate:function(){},enqueueReplaceState:function(){},enqueueSetState:function(){}},Ls=Object.assign,Bs={};function en(e,t,n){this.props=e,this.context=t,this.refs=Bs,this.updater=n||Ms}en.prototype.isReactComponent={};en.prototype.setState=function(e,t){if(typeof e!="object"&&typeof e!="function"&&e!=null)throw Error("setState(...): takes an object of state variables to update or a function which returns an object of state variables.");this.updater.enqueueSetState(this,e,t,"setState")};en.prototype.forceUpdate=function(e){this.updater.enqueueForceUpdate(this,e,"forceUpdate")};function Ps(){}Ps.prototype=en.prototype;function oa(e,t,n){this.props=e,this.context=t,this.refs=Bs,this.updater=n||Ms}var ia=oa.prototype=new Ps;ia.constructor=oa;Ls(ia,en.prototype);ia.isPureReactComponent=!0;var zs=Array.isArray,Ds=Object.prototype.hasOwnProperty,aa={current:null},Fs={key:!0,ref:!0,__self:!0,__source:!0};function Ns(e,t,n){var o,i={},a=null,r=null;if(t!=null)for(o in t.ref!==void 0&&(r=t.ref),t.key!==void 0&&(a=""+t.key),t)Ds.call(t,o)&&!Fs.hasOwnProperty(o)&&(i[o]=t[o]);var s=arguments.length-2;if(s===1)i.children=n;else if(1<s){for(var l=Array(s),p=0;p<s;p++)l[p]=arguments[p+2];i.children=l}if(e&&e.defaultProps)for(o in s=e.defaultProps,s)i[o]===void 0&&(i[o]=s[o]);return{$$typeof:Bn,type:e,key:a,ref:r,props:i,_owner:aa.current}}function tp(e,t){return{$$typeof:Bn,type:e.type,key:t,ref:e.ref,props:e.props,_owner:e._owner}}function ra(e){return typeof e=="object"&&e!==null&&e.$$typeof===Bn}function np(e){var t={"=":"=0",":":"=2"};return"$"+e.replace(/[=:]/g,function(n){return t[n]})}var As=/\/+/g;function na(e,t){return typeof e=="object"&&e!==null&&e.key!=null?np(""+e.key):t.toString(36)}function zo(e,t,n,o,i){var a=typeof e;(a==="undefined"||a==="boolean")&&(e=null);var r=!1;if(e===null)r=!0;else switch(a){case"string":case"number":r=!0;break;case"object":switch(e.$$typeof){case Bn:case Vu:r=!0}}if(r)return r=e,i=i(r),e=o===""?"."+na(r,0):o,zs(i)?(n="",e!=null&&(n=e.replace(As,"$&/")+"/"),zo(i,t,n,"",function(p){return p})):i!=null&&(ra(i)&&(i=tp(i,n+(!i.key||r&&r.key===i.key?"":(""+i.key).replace(As,"$&/")+"/")+e)),t.push(i)),1;if(r=0,o=o===""?".":o+":",zs(e))for(var s=0;s<e.length;s++){a=e[s];var l=o+na(a,s);r+=zo(a,t,n,l,i)}else if(l=ep(e),typeof l=="function")for(e=l.call(e),s=0;!(a=e.next()).done;)a=a.value,l=o+na(a,s++),r+=zo(a,t,n,l,i);else if(a==="object")throw t=String(e),Error("Objects are not valid as a React child (found: "+(t==="[object Object]"?"object with keys {"+Object.keys(e).join(", ")+"}":t)+"). If you meant to render a collection of children, use an array instead.");return r}function Oo(e,t,n){if(e==null)return e;var o=[],i=0;return zo(e,o,"","",function(a){return t.call(n,a,i++)}),o}function op(e){if(e._status===-1){var t=e._result;t=t(),t.then(function(n){(e._status===0||e._status===-1)&&(e._status=1,e._result=n)},function(n){(e._status===0||e._status===-1)&&(e._status=2,e._result=n)}),e._status===-1&&(e._status=0,e._result=t)}if(e._status===1)return e._result.default;throw e._result}var he={current:null},Ao={transition:null},ip={ReactCurrentDispatcher:he,ReactCurrentBatchConfig:Ao,ReactCurrentOwner:aa};function Ws(){throw Error("act(...) is not supported in production builds of React.")}M.Children={map:Oo,forEach:function(e,t,n){Oo(e,function(){t.apply(this,arguments)},n)},count:function(e){var t=0;return Oo(e,function(){t++}),t},toArray:function(e){return Oo(e,function(t){return t})||[]},only:function(e){if(!ra(e))throw Error("React.Children.only expected to receive a single React element child.");return e}};M.Component=en;M.Fragment=Uu;M.Profiler=Xu;M.PureComponent=oa;M.StrictMode=Ku;M.Suspense=qu;M.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED=ip;M.act=Ws;M.cloneElement=function(e,t,n){if(e==null)throw Error("React.cloneElement(...): The argument must be a React element, but you passed "+e+".");var o=Ls({},e.props),i=e.key,a=e.ref,r=e._owner;if(t!=null){if(t.ref!==void 0&&(a=t.ref,r=aa.current),t.key!==void 0&&(i=""+t.key),e.type&&e.type.defaultProps)var s=e.type.defaultProps;for(l in t)Ds.call(t,l)&&!Fs.hasOwnProperty(l)&&(o[l]=t[l]===void 0&&s!==void 0?s[l]:t[l])}var l=arguments.length-2;if(l===1)o.children=n;else if(1<l){s=Array(l);for(var p=0;p<l;p++)s[p]=arguments[p+2];o.children=s}return{$$typeof:Bn,type:e.type,key:i,ref:a,props:o,_owner:r}};M.createContext=function(e){return e={$$typeof:Gu,_currentValue:e,_currentValue2:e,_threadCount:0,Provider:null,Consumer:null,_defaultValue:null,_globalName:null},e.Provider={$$typeof:Yu,_context:e},e.Consumer=e};M.createElement=Ns;M.createFactory=function(e){var t=Ns.bind(null,e);return t.type=e,t};M.createRef=function(){return{current:null}};M.forwardRef=function(e){return{$$typeof:Qu,render:e}};M.isValidElement=ra;M.lazy=function(e){return{$$typeof:Ju,_payload:{_status:-1,_result:e},_init:op}};M.memo=function(e,t){return{$$typeof:Zu,type:e,compare:t===void 0?null:t}};M.startTransition=function(e){var t=Ao.transition;Ao.transition={};try{e()}finally{Ao.transition=t}};M.unstable_act=Ws;M.useCallback=function(e,t){return he.current.useCallback(e,t)};M.useContext=function(e){return he.current.useContext(e)};M.useDebugValue=function(){};M.useDeferredValue=function(e){return he.current.useDeferredValue(e)};M.useEffect=function(e,t){return he.current.useEffect(e,t)};M.useId=function(){return he.current.useId()};M.useImperativeHandle=function(e,t,n){return he.current.useImperativeHandle(e,t,n)};M.useInsertionEffect=function(e,t){return he.current.useInsertionEffect(e,t)};M.useLayoutEffect=function(e,t){return he.current.useLayoutEffect(e,t)};M.useMemo=function(e,t){return he.current.useMemo(e,t)};M.useReducer=function(e,t,n){return he.current.useReducer(e,t,n)};M.useRef=function(e){return he.current.useRef(e)};M.useState=function(e){return he.current.useState(e)};M.useSyncExternalStore=function(e,t,n){return he.current.useSyncExternalStore(e,t,n)};M.useTransition=function(){return he.current.useTransition()};M.version="18.3.1"});var tn=Qe((Qm,Hs)=>{"use strict";Hs.exports=_s()});var Zs=Qe(D=>{"use strict";function ca(e,t){var n=e.length;e.push(t);e:for(;0<n;){var o=n-1>>>1,i=e[o];if(0<Mo(i,t))e[o]=t,e[n]=i,n=o;else break e}}function We(e){return e.length===0?null:e[0]}function Bo(e){if(e.length===0)return null;var t=e[0],n=e.pop();if(n!==t){e[0]=n;e:for(var o=0,i=e.length,a=i>>>1;o<a;){var r=2*(o+1)-1,s=e[r],l=r+1,p=e[l];if(0>Mo(s,n))l<i&&0>Mo(p,s)?(e[o]=p,e[l]=n,o=l):(e[o]=s,e[r]=n,o=r);else if(l<i&&0>Mo(p,n))e[o]=p,e[l]=n,o=l;else break e}}return t}function Mo(e,t){var n=e.sortIndex-t.sortIndex;return n!==0?n:e.id-t.id}typeof performance=="object"&&typeof performance.now=="function"?(js=performance,D.unstable_now=function(){return js.now()}):(sa=Date,Vs=sa.now(),D.unstable_now=function(){return sa.now()-Vs});var js,sa,Vs,qe=[],mt=[],ap=1,ze=null,le=3,Po=!1,Bt=!1,Dn=!1,Xs=typeof setTimeout=="function"?setTimeout:null,Ys=typeof clearTimeout=="function"?clearTimeout:null,Us=typeof setImmediate<"u"?setImmediate:null;typeof navigator<"u"&&navigator.scheduling!==void 0&&navigator.scheduling.isInputPending!==void 0&&navigator.scheduling.isInputPending.bind(navigator.scheduling);function ua(e){for(var t=We(mt);t!==null;){if(t.callback===null)Bo(mt);else if(t.startTime<=e)Bo(mt),t.sortIndex=t.expirationTime,ca(qe,t);else break;t=We(mt)}}function pa(e){if(Dn=!1,ua(e),!Bt)if(We(qe)!==null)Bt=!0,ma(ha);else{var t=We(mt);t!==null&&fa(pa,t.startTime-e)}}function ha(e,t){Bt=!1,Dn&&(Dn=!1,Ys(Fn),Fn=-1),Po=!0;var n=le;try{for(ua(t),ze=We(qe);ze!==null&&(!(ze.expirationTime>t)||e&&!qs());){var o=ze.callback;if(typeof o=="function"){ze.callback=null,le=ze.priorityLevel;var i=o(ze.expirationTime<=t);t=D.unstable_now(),typeof i=="function"?ze.callback=i:ze===We(qe)&&Bo(qe),ua(t)}else Bo(qe);ze=We(qe)}if(ze!==null)var a=!0;else{var r=We(mt);r!==null&&fa(pa,r.startTime-t),a=!1}return a}finally{ze=null,le=n,Po=!1}}var Do=!1,Lo=null,Fn=-1,Gs=5,Qs=-1;function qs(){return!(D.unstable_now()-Qs<Gs)}function la(){if(Lo!==null){var e=D.unstable_now();Qs=e;var t=!0;try{t=Lo(!0,e)}finally{t?Pn():(Do=!1,Lo=null)}}else Do=!1}var Pn;typeof Us=="function"?Pn=function(){Us(la)}:typeof MessageChannel<"u"?(da=new MessageChannel,Ks=da.port2,da.port1.onmessage=la,Pn=function(){Ks.postMessage(null)}):Pn=function(){Xs(la,0)};var da,Ks;function ma(e){Lo=e,Do||(Do=!0,Pn())}function fa(e,t){Fn=Xs(function(){e(D.unstable_now())},t)}D.unstable_IdlePriority=5;D.unstable_ImmediatePriority=1;D.unstable_LowPriority=4;D.unstable_NormalPriority=3;D.unstable_Profiling=null;D.unstable_UserBlockingPriority=2;D.unstable_cancelCallback=function(e){e.callback=null};D.unstable_continueExecution=function(){Bt||Po||(Bt=!0,ma(ha))};D.unstable_forceFrameRate=function(e){0>e||125<e?console.error("forceFrameRate takes a positive int between 0 and 125, forcing frame rates higher than 125 fps is not supported"):Gs=0<e?Math.floor(1e3/e):5};D.unstable_getCurrentPriorityLevel=function(){return le};D.unstable_getFirstCallbackNode=function(){return We(qe)};D.unstable_next=function(e){switch(le){case 1:case 2:case 3:var t=3;break;default:t=le}var n=le;le=t;try{return e()}finally{le=n}};D.unstable_pauseExecution=function(){};D.unstable_requestPaint=function(){};D.unstable_runWithPriority=function(e,t){switch(e){case 1:case 2:case 3:case 4:case 5:break;default:e=3}var n=le;le=e;try{return t()}finally{le=n}};D.unstable_scheduleCallback=function(e,t,n){var o=D.unstable_now();switch(typeof n=="object"&&n!==null?(n=n.delay,n=typeof n=="number"&&0<n?o+n:o):n=o,e){case 1:var i=-1;break;case 2:i=250;break;case 5:i=1073741823;break;case 4:i=1e4;break;default:i=5e3}return i=n+i,e={id:ap++,callback:t,priorityLevel:e,startTime:n,expirationTime:i,sortIndex:-1},n>o?(e.sortIndex=n,ca(mt,e),We(qe)===null&&e===We(mt)&&(Dn?(Ys(Fn),Fn=-1):Dn=!0,fa(pa,n-o))):(e.sortIndex=i,ca(qe,e),Bt||Po||(Bt=!0,ma(ha))),e};D.unstable_shouldYield=qs;D.unstable_wrapCallback=function(e){var t=le;return function(){var n=le;le=t;try{return e.apply(this,arguments)}finally{le=n}}}});var el=Qe((Zm,Js)=>{"use strict";Js.exports=Zs()});var iu=Qe(Ee=>{"use strict";var rp=tn(),Ie=el();function x(e){for(var t="https://reactjs.org/docs/error-decoder.html?invariant="+e,n=1;n<arguments.length;n++)t+="&args[]="+encodeURIComponent(arguments[n]);return"Minified React error #"+e+"; visit "+t+" for the full message or use the non-minified dev environment for full errors and additional helpful warnings."}var sd=new Set,ro={};function Yt(e,t){Sn(e,t),Sn(e+"Capture",t)}function Sn(e,t){for(ro[e]=t,e=0;e<t.length;e++)sd.add(t[e])}var lt=!(typeof window>"u"||typeof window.document>"u"||typeof window.document.createElement>"u"),Fa=Object.prototype.hasOwnProperty,sp=/^[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD][:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\-.0-9\u00B7\u0300-\u036F\u203F-\u2040]*$/,tl={},nl={};function lp(e){return Fa.call(nl,e)?!0:Fa.call(tl,e)?!1:sp.test(e)?nl[e]=!0:(tl[e]=!0,!1)}function dp(e,t,n,o){if(n!==null&&n.type===0)return!1;switch(typeof t){case"function":case"symbol":return!0;case"boolean":return o?!1:n!==null?!n.acceptsBooleans:(e=e.toLowerCase().slice(0,5),e!=="data-"&&e!=="aria-");default:return!1}}function cp(e,t,n,o){if(t===null||typeof t>"u"||dp(e,t,n,o))return!0;if(o)return!1;if(n!==null)switch(n.type){case 3:return!t;case 4:return t===!1;case 5:return isNaN(t);case 6:return isNaN(t)||1>t}return!1}function ge(e,t,n,o,i,a,r){this.acceptsBooleans=t===2||t===3||t===4,this.attributeName=o,this.attributeNamespace=i,this.mustUseProperty=n,this.propertyName=e,this.type=t,this.sanitizeURL=a,this.removeEmptyString=r}var ae={};"children dangerouslySetInnerHTML defaultValue defaultChecked innerHTML suppressContentEditableWarning suppressHydrationWarning style".split(" ").forEach(function(e){ae[e]=new ge(e,0,!1,e,null,!1,!1)});[["acceptCharset","accept-charset"],["className","class"],["htmlFor","for"],["httpEquiv","http-equiv"]].forEach(function(e){var t=e[0];ae[t]=new ge(t,1,!1,e[1],null,!1,!1)});["contentEditable","draggable","spellCheck","value"].forEach(function(e){ae[e]=new ge(e,2,!1,e.toLowerCase(),null,!1,!1)});["autoReverse","externalResourcesRequired","focusable","preserveAlpha"].forEach(function(e){ae[e]=new ge(e,2,!1,e,null,!1,!1)});"allowFullScreen async autoFocus autoPlay controls default defer disabled disablePictureInPicture disableRemotePlayback formNoValidate hidden loop noModule noValidate open playsInline readOnly required reversed scoped seamless itemScope".split(" ").forEach(function(e){ae[e]=new ge(e,3,!1,e.toLowerCase(),null,!1,!1)});["checked","multiple","muted","selected"].forEach(function(e){ae[e]=new ge(e,3,!0,e,null,!1,!1)});["capture","download"].forEach(function(e){ae[e]=new ge(e,4,!1,e,null,!1,!1)});["cols","rows","size","span"].forEach(function(e){ae[e]=new ge(e,6,!1,e,null,!1,!1)});["rowSpan","start"].forEach(function(e){ae[e]=new ge(e,5,!1,e.toLowerCase(),null,!1,!1)});var Or=/[\-:]([a-z])/g;function zr(e){return e[1].toUpperCase()}"accent-height alignment-baseline arabic-form baseline-shift cap-height clip-path clip-rule color-interpolation color-interpolation-filters color-profile color-rendering dominant-baseline enable-background fill-opacity fill-rule flood-color flood-opacity font-family font-size font-size-adjust font-stretch font-style font-variant font-weight glyph-name glyph-orientation-horizontal glyph-orientation-vertical horiz-adv-x horiz-origin-x image-rendering letter-spacing lighting-color marker-end marker-mid marker-start overline-position overline-thickness paint-order panose-1 pointer-events rendering-intent shape-rendering stop-color stop-opacity strikethrough-position strikethrough-thickness stroke-dasharray stroke-dashoffset stroke-linecap stroke-linejoin stroke-miterlimit stroke-opacity stroke-width text-anchor text-decoration text-rendering underline-position underline-thickness unicode-bidi unicode-range units-per-em v-alphabetic v-hanging v-ideographic v-mathematical vector-effect vert-adv-y vert-origin-x vert-origin-y word-spacing writing-mode xmlns:xlink x-height".split(" ").forEach(function(e){var t=e.replace(Or,zr);ae[t]=new ge(t,1,!1,e,null,!1,!1)});"xlink:actuate xlink:arcrole xlink:role xlink:show xlink:title xlink:type".split(" ").forEach(function(e){var t=e.replace(Or,zr);ae[t]=new ge(t,1,!1,e,"http://www.w3.org/1999/xlink",!1,!1)});["xml:base","xml:lang","xml:space"].forEach(function(e){var t=e.replace(Or,zr);ae[t]=new ge(t,1,!1,e,"http://www.w3.org/XML/1998/namespace",!1,!1)});["tabIndex","crossOrigin"].forEach(function(e){ae[e]=new ge(e,1,!1,e.toLowerCase(),null,!1,!1)});ae.xlinkHref=new ge("xlinkHref",1,!1,"xlink:href","http://www.w3.org/1999/xlink",!0,!1);["src","href","action","formAction"].forEach(function(e){ae[e]=new ge(e,1,!1,e.toLowerCase(),null,!0,!0)});function Ar(e,t,n,o){var i=ae.hasOwnProperty(t)?ae[t]:null;(i!==null?i.type!==0:o||!(2<t.length)||t[0]!=="o"&&t[0]!=="O"||t[1]!=="n"&&t[1]!=="N")&&(cp(t,n,i,o)&&(n=null),o||i===null?lp(t)&&(n===null?e.removeAttribute(t):e.setAttribute(t,""+n)):i.mustUseProperty?e[i.propertyName]=n===null?i.type===3?!1:"":n:(t=i.attributeName,o=i.attributeNamespace,n===null?e.removeAttribute(t):(i=i.type,n=i===3||i===4&&n===!0?"":""+n,o?e.setAttributeNS(o,t,n):e.setAttribute(t,n))))}var pt=rp.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED,Fo=Symbol.for("react.element"),an=Symbol.for("react.portal"),rn=Symbol.for("react.fragment"),Mr=Symbol.for("react.strict_mode"),Na=Symbol.for("react.profiler"),ld=Symbol.for("react.provider"),dd=Symbol.for("react.context"),Lr=Symbol.for("react.forward_ref"),Wa=Symbol.for("react.suspense"),_a=Symbol.for("react.suspense_list"),Br=Symbol.for("react.memo"),gt=Symbol.for("react.lazy"),cd=Symbol.for("react.offscreen"),ol=Symbol.iterator;function Nn(e){return e===null||typeof e!="object"?null:(e=ol&&e[ol]||e["@@iterator"],typeof e=="function"?e:null)}var U=Object.assign,ga;function Xn(e){if(ga===void 0)try{throw Error()}catch(n){var t=n.stack.trim().match(/\n( *(at )?)/);ga=t&&t[1]||""}return`
 `+ga+e}var ya=!1;function va(e,t){if(!e||ya)return"";ya=!0;var n=Error.prepareStackTrace;Error.prepareStackTrace=void 0;try{if(t)if(t=function(){throw Error()},Object.defineProperty(t.prototype,"props",{set:function(){throw Error()}}),typeof Reflect=="object"&&Reflect.construct){try{Reflect.construct(t,[])}catch(p){var o=p}Reflect.construct(e,[],t)}else{try{t.call()}catch(p){o=p}e.call(t.prototype)}else{try{throw Error()}catch(p){o=p}e()}}catch(p){if(p&&o&&typeof p.stack=="string"){for(var i=p.stack.split(`
 `),a=o.stack.split(`
@@ -5041,7 +5042,6 @@ const PAGES = [
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Opens on Sharps: who holds each side on Polymarket. Pinnacle, Kalshi and Polymarket as the sharp anchor, line moves and sharp-account flow are the other tabs.', 'sharps'],
   ]],
   ['Betting', [
-    ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
     ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced unders (-110 to -220) at a price as good as or better than the market\'s fair price, tracked flat 1 unit on a $1,000 paper bankroll, plus two-leg combos built only from those picks (a shadow record).', 'bankroll'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
@@ -5060,8 +5060,7 @@ const FAMILIES = [
   ['propboard', [['propboard', 'Table'], ['props', 'Picks'], ['edges', 'All edges']]],
   ['lab', [['lab', 'Minutes Lab'], ['tonight', 'Tonight']]],
   ['sharps', [['sharps', 'Sharps'], ['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser']]],
-  ['pairs', [['pairs', 'Tonight\'s slip'], ['pickrec', 'Record']]],
-  ['track', [['track', 'Record'], ['backtests', 'What Works']]],
+  ['track', [['track', 'Record'], ['pairs', 'Pick\'em slip'], ['pickrec', 'Pick\'em record'], ['backtests', 'What Works']]],
   ['btlab', [['btlab', 'Backtest Lab'], ['checks', 'Model checks'], ['finder', 'Edge Finder']]],
   ['health', [['health', 'Data Health'], ['control', 'Control Room']]],
 ];
@@ -5090,9 +5089,11 @@ $('aboutbtn').addEventListener('click', () => {
 });
 $('aboutsheet').addEventListener('click', e => { if (e.target === $('aboutsheet') || e.target.closest('[data-close]')) $('aboutsheet').close(); });
 new MutationObserver(() => { if (!$('aboutsheet').open) renderAbout(); }).observe($('app'), {subtree: true, childList: true, attributes: true, attributeFilter: ['hidden']});
+// Bankroll Builder runs on private SmartStake prices: it is in the nav only for an account that can see them.
+const navPages = () => window.__altsState === 'ok' || (() => { try { return SS_ON; } catch (e) { return false; } })() ? PAGES : PAGES.map(([g, items]) => [g, items.filter(x => x[3] !== 'bankroll')]);
 function renderNav(){
   let n = 0; try { n = pvNavCount(); } catch (e) {}
-  HK.mount($('hk-side'), 'Sidebar', {pages: PAGES, view: pageFam(view), season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === pageFam(view)) || [''])[0]}`, pvCount: n, onGo: navGo, collapsed: sideOn(), onToggle: toggleSide, brand: favBrand(), onBrand: () => navGo('profile')});
+  HK.mount($('hk-side'), 'Sidebar', {pages: navPages(), view: pageFam(view), season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === pageFam(view)) || [''])[0]}`, pvCount: n, onGo: navGo, collapsed: sideOn(), onToggle: toggleSide, brand: favBrand(), onBrand: () => navGo('profile')});
   const g = PAGES.find(gr => gr[1].some(x => x[3] === pageFam(view))); $('tcrumb').textContent = g ? g[0] : '';
   renderChip();
   renderFam();
@@ -5392,7 +5393,7 @@ function show(v){
   if (v === 'props' || v === 'mybets' || v === 'propboard'){
     pv.tab = {props: 'v2', mybets: 'bets', propboard: 'full'}[v];
     $('tname').textContent = {props: 'Player Props', mybets: 'My Bets', propboard: 'Player Props'}[v];
-    $('tsub').textContent = {props: 'ONE DECISION PER PROP · WHERE TO BET IT · WHY', mybets: 'YOUR BETS · RESULTS · CLOSING-LINE VALUE', propboard: 'EVERY LINE · EVERY VENUE · ONE TABLE'}[v];
+    $('tsub').textContent = '';
     renderProps();
     if (v === 'props' && pvNavCount()){ $('pv-alerts').hidden = false; pvRenderAlerts(); }    // new alerts open on arrival, not behind a button
     if (!boardTried) loadBoard();
@@ -5406,7 +5407,7 @@ function show(v){
   }
   if (v === 'bankroll'){
     $('tname').textContent = 'Bankroll Builder';
-    $('tsub').textContent = 'SHORT PRICES · AT OR BETTER THAN THE MARKET · TRACKED FLAT 1 UNIT';
+    $('tsub').textContent = '';
     renderBankroll();
     if (hashT === 'COMBO' && !$('cc-fold').open) $('cc-fold').open = true;     // the old #combo link lands on the fold
     if (!boardTried) loadBoard();
@@ -5421,14 +5422,14 @@ function show(v){
   }
   if (v === 'pairs'){
     $('tname').textContent = "Pick'em of the Night";
-    $('tsub').textContent = 'ONE PLAYER PER TEAM · BEST SLIP TONIGHT · THE ODDS IT PAYS';
+    $('tsub').textContent = '';
     renderPairs();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'sharp'){
     $('tname').textContent = 'Sharp Price';
-    $('tsub').textContent = 'PINNACLE FAIR · LINE MOVES · SHARP ACCOUNTS · GRADED ON CLV';
+    $('tsub').textContent = '';
     renderSharp();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -5436,21 +5437,21 @@ function show(v){
   }
   if (v === 'follow'){
     $('tname').textContent = 'Follow Board';
-    $('tsub').textContent = 'RANKED POLYMARKET ACCOUNTS · FOLLOW PRICE · PAPER-TRACKED, NOT A BET';
+    $('tsub').textContent = '';
     renderFollow();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'wallets'){
     $('tname').textContent = 'Wallets';
-    $('tsub').textContent = 'SKILL AGAINST THE CLOSE · SHRUNK TO THE LEAGUE AVERAGE · POOLED ACROSS SPORTS';
+    $('tsub').textContent = '';
     renderWallets();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'tells'){
     $('tname').textContent = 'Prop Tells';
-    $('tsub').textContent = 'PINNACLE MOVES · DRAFTKINGS BEHIND PINNACLE · KALSHI MONEY · SHARP ACCOUNTS · EACH GRADED ON ITS OWN';
+    $('tsub').textContent = '';
     renderTells();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -5459,14 +5460,14 @@ function show(v){
   if (v === 'sharps'){
     // Proven-sharps side cards: the card is sharp-money/side-cards.js (one file for Sharp Money and this page), drawn with this page's theme.
     $('tname').textContent = 'Sharps';
-    $('tsub').textContent = 'WHO HOLDS EACH SIDE ON POLYMARKET · CONTEXT · FLAT 1U FROM AN UNTESTED RULE';
+    $('tsub').textContent = '';
     const go = () => window.VaultSideCards ? (VaultSideCards.mountPage($('provsharps'), {skin: 'nba', sport: 'nba'}), true) : false;
     if (!go()) document.addEventListener('DOMContentLoaded', go, {once: true});
     return;
   }
   if (v === 'steam'){
     $('tname').textContent = 'Steam Chaser';
-    $('tsub').textContent = 'A REFERENCE MOVED · A SLOWER BOOK MAY HOLD THE OLD NUMBER · CONTEXT, NOT A BET';
+    $('tsub').textContent = '';
     renderSteam();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -5474,28 +5475,28 @@ function show(v){
   }
   if (v === 'matchups'){
     $('tname').textContent = 'Matchups';
-    $('tsub').textContent = 'WHERE EACH DEFENSE GIVES SHOTS UP · WHERE EACH PLAYER TAKES HIS';
+    $('tsub').textContent = '';
     renderMatchups();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'slate' || v === 'lines'){
     $('tname').textContent = v === 'lines' ? 'Game Lines' : 'Slate';
-    $('tsub').textContent = v === 'lines' ? 'EVERY BOOK · KALSHI · POLYMARKET · VAULT LINE AS CONTEXT' : 'STARTING FIVES · WHO IS OUT · HOW EACH DEFENSE GUARDS EACH POSITION';
+    $('tsub').textContent = '';
     renderSlate();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'games'){
     $('tname').textContent = 'Game Picks';
-    $('tsub').textContent = 'SPREAD AND WINNER · LOCKED 4 HOURS BEFORE TIP · GRADED IN PUBLIC';
+    $('tsub').textContent = '';
     renderGamePicks();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'wire'){
     $('tname').textContent = 'Injury Wire';
-    $('tsub').textContent = 'NEWS · WHO REPRICED · HOW FAST';
+    $('tsub').textContent = '';
     renderWire();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -5503,14 +5504,14 @@ function show(v){
   }
   if (v === 'profile'){
     $('tname').textContent = 'Profile';
-    $('tsub').textContent = 'YOUR TEAM · YOUR PLAYERS · YOUR BADGES';
+    $('tsub').textContent = '';
     renderProfile();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'control'){
     $('tname').textContent = 'Control Room';
-    $('tsub').textContent = 'PIPELINES · MODELS · PRE-REGISTERED TESTS';
+    $('tsub').textContent = '';
     renderControl();
     if (!boardTried) loadBoard();
     if (!CR.runs || Date.now() / 1000 - CR.at > 120) loadRuns();
@@ -5518,21 +5519,21 @@ function show(v){
   }
   if (v === 'propsim'){
     $('tname').textContent = 'Props Simulation';
-    $('tsub').textContent = 'PICK A PLAYER · SEE THE PROP · TRACK RECORD';
+    $('tsub').textContent = '';
     renderPropSim();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'sim'){
     $('tname').textContent = 'Game Simulation';
-    $('tsub').textContent = "10,000 GAMES · SCORE · PLAYER STATS · JOINT ODDS";
+    $('tsub').textContent = '';
     renderSim();
     if (!boardTried) loadBoard();
     return;
   }
   if (v === 'tonight'){
     $('tname').textContent = 'Tonight';
-    $('tsub').textContent = "MINUTES · WHAT THE MARKET PRICES · WHAT-IF · RECORD";
+    $('tsub').textContent = '';
     renderTonight();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -5540,7 +5541,7 @@ function show(v){
   }
   if (v === 'edges'){
     $('tname').textContent = 'Edges';
-    $('tsub').textContent = 'EVERY MARKET · WHY IT IS MISPRICED · HOW FAR TO TRUST IT';
+    $('tsub').textContent = '';
     renderEdges();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
@@ -5548,14 +5549,14 @@ function show(v){
   }
   if (isTrack(v)){
     $('tname').textContent = {track: 'Track Record', checks: 'Model checks', pickrec: 'Pick\'em record'}[v];
-    $('tsub').textContent = {track: 'SHADOW LEDGER · SETTLED FROM THE BOX SCORE', checks: 'THE MODELS SCORED ON THEIR OWN TERMS · NOT BETS', pickrec: 'EVERY SLIP SIZE · SETTLED FROM THE BOX SCORE'}[v];
+    $('tsub').textContent = '';
     if (v === 'pickrec') $('tpkncard').open = true;
     renderTrack();
     if (!trackTried) loadTrack();
     return;
   }
   $('tname').textContent = 'Data Health';
-  $('tsub').textContent = 'RECORDER · MODEL INPUTS · ARCHIVE';
+  $('tsub').textContent = '';
   renderHealth();
   if (!liveTried) loadLive();
 }
@@ -6430,7 +6431,7 @@ async function ssMerge(b){
     const [j, ja] = [await get('props_nba.json'), await get('props_nba_alts.json')];
     window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); window.__comboRecord = await get('combo_record.json'); window.__bankrollRecord = await get('bankroll_record.json'); window.__bkComboRecord = await get('bankroll_combo_record.json'); return;
   }
-  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); } });
+  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; renderNav(); if (view === 'bankroll'){ renderBankroll(); if ($('cc-fold').open) renderCombo(); } });
 }
 async function ssSignIn(){
   try { await window.VaultAuth.signInWithGoogle(); } catch (e) { window.__altsState = 'signin'; }
@@ -7085,7 +7086,7 @@ function renderTrackTop(d, all){
   }
   // answer 1: how are we doing
   const a1 = tot.settled
-    ? `<b class="tbig">${rec(tot)}<small>${tUnits(tot.units)}u</small></b><span class="tsm">${tRoi(tot.roi)} profit per unit across <b>${tot.settled.toLocaleString()}</b> settled bets${tot.open ? `, ${tot.open.toLocaleString()} still open` : ''}. ${picksOf(bets.filter(b => b.result !== 'open'))} distinct picks settled.</span>`
+    ? `<b class="tbig">${rec(tot)}<small>${tUnits(tot.units)}u</small></b><span class="tsm">${tRoi(tot.roi)} profit per unit across <b>${tot.settled.toLocaleString()}</b> settled bets${tot.open ? `, ${tot.open.toLocaleString()} still open` : ''}${tot.void ? `, ${tot.void.toLocaleString()} void (player did not play, stake returned)` : ''}. One pick at several books counts once per book.</span>`
     : `<b class="tbig wait">Waiting for results</b><span class="tsm"><b>${tot.bets.toLocaleString()} bets</b>, all still open, on <b>${nPicks}${partial ? '+' : ''} distinct picks</b> and ${players} players.<span class="tsm-x"> ${partial ? `Counted from the latest ${bets.length.toLocaleString()} bets, ` + (bets.length - nPicks).toLocaleString() + ' of them are' : (bets.length - nPicks).toLocaleString() + ' bets are'} the same pick at another book, app or Kalshi line.</span></span>`;
   // answer 2: is it real
   const have = gated.settled, bt = SG.filter(x => x.g === 'go' && x.bt && x.bt.roi != null).slice(0, 2);
@@ -7093,17 +7094,16 @@ function renderTrackTop(d, all){
     <span class="tsm"><b>${have} of ${MIN_LIVE}</b> settled GO and WATCH bets before a verdict.<span class="tsm-x"> ${bt.length ? `The backtest on past seasons is positive (${bt.map(x => `${SLABEL[x.st]} ${x.sd === 'YES' ? 'Over' : 'Under'} ${tRoi(x.bt.roi)} over ${x.bt.n.toLocaleString()} bets, z ${x.bt.z}`).join('; ')}). Live says nothing until bets settle.` : ''}</span></span>`;
   // answer 3: what to do
   const a3 = `<b class="tbig wait" style="color:var(--fg)">Not a tip sheet</b><span class="tsm">Nothing here is a real bet.<span class="tsm-x"> <b>${goS.length} GO</b> and <b>${wS.length} WATCH</b> ${goS.length + wS.length === 1 ? 'signal is' : 'signals are'} being tested; <b>${proven} ${proven === 1 ? 'is' : 'are'} proven</b> on live bets. Only a proven signal earns a real stake, and <button class="linkbtn" type="button" data-go="edges">Edges</button> sizes those.</span></span>`;
-  const gl = (label, sub, a, bs) => `<tr><td class="l"><b>${label}</b><small>${sub}</small></td><td>${a.bets.toLocaleString()}</td><td>${picksOf(bs)}${partial ? '*' : ''}</td><td>${a.settled ? rec(a) : '<span class="muted">0 settled</span>'}</td><td>${a.settled ? tUnits(a.units) + `<small>${tRoi(a.roi)}</small>` : '<span class="muted">none</span>'}</td><td>${a.clv != null ? tClv(a.clv) : ''}</td></tr>`;
+  const gl = (label, sub, a, bs) => `<tr><td class="l"><b>${label}</b><small>${sub}</small></td><td>${a.bets.toLocaleString()}</td>${partial ? '' : `<td>${picksOf(bs)}</td>`}<td>${a.settled ? rec(a) : '<span class="muted">0 settled</span>'}</td><td>${a.settled ? tUnits(a.units) + `<small>${tRoi(a.roi)}</small>` : '<span class="muted">none</span>'}</td><td>${a.clv != null ? tClv(a.clv) : ''}</td></tr>`;
   const gcls = [...new Set(gB.map(betFam))].map(f => VLABEL[f]).join(' and ');
   const early = tot.open > 0;
   $('tscore').innerHTML = `<div class="card-h"><div><h2>Season record</h2><p>Every 3%+ edge the model priced, tracked as 1-unit paper bets and settled from ESPN's box score. Preseason is not included.</p></div></div>
     <div class="card-b">
       <div class="tans"><div class="tan"><span class="tq">How are we doing?</span>${a1}</div><div class="tan"><span class="tq">Is it real?</span>${a2}</div><div class="tan"><span class="tq">What do I do with it?</span>${a3}</div></div>
-      <div class="tablewrap"><table class="tgrp"><thead><tr><th class="l" scope="col"></th><th scope="col">Bets</th><th scope="col" title="Distinct player, stat and side. The same pick at several books and apps counts once.">Picks</th><th scope="col" title="Wins, losses, pushes">Record</th><th scope="col" title="1 unit per bet at the entry price, and profit per unit">Units</th><th scope="col" title="Closing-line value: how far the price moved toward our side after entry, in points of win chance">Price move</th></tr></thead><tbody>
+      <div class="tablewrap"><table class="tgrp"><thead><tr><th class="l" scope="col"></th><th scope="col">Bets</th>${partial ? '' : '<th scope="col" title="Distinct player, stat and side. The same pick at several books and apps counts once.">Picks</th>'}<th scope="col" title="Wins, losses, pushes">Record</th><th scope="col" title="1 unit per bet at the entry price, and profit per unit">Units</th><th scope="col" title="Closing-line value: how far the price moved toward our side after entry, in points of win chance">Price move</th></tr></thead><tbody>
         ${gl('GO and WATCH', gcls ? `${gcls} markets the model backtested` : 'Passed or nearly passed a backtest', gated, gB)}
         ${gl('NO-GO', 'For the record: the model says not to bet', ng, nB)}
         <tr class="tot">${gl('All bets', '', tot, bets).replace(/^<tr>/, '').replace(/<\/tr>$/, '')}</tr></tbody></table></div>
-      ${partial ? `<p class="tclv">* Picks are counted from the latest ${bets.length.toLocaleString()} of ${tot.bets.toLocaleString()} bets. A pick can sit in both rows when one venue is graded and another is not.</p>` : ''}
       ${tot.clv_n ? `<p class="tclv"><b>Price move so far:</b> after we logged each bet the price moved ${tot.clv >= 0 ? 'toward' : 'against'} our side by <b>${sgn(tot.clv * 100)} points</b> on average over ${tot.clv_n.toLocaleString()} bets${gated.clv != null && ng.clv != null ? ` (GO and WATCH ${sgn(gated.clv * 100)}, NO-GO ${sgn(ng.clv * 100)})` : ''}. <span class="tsm-x"> Positive is the earliest sign of a real edge, ahead of any win or loss; it is not profit.</span>${early ? ' Games that have not finished use the latest price, not the final close.' : ''}</p>` : ''}
       ${preStrip(P)}
     </div>`;
@@ -7201,7 +7201,7 @@ function renderTrack(){
 
   // graded signals, all time: the prop model's backtests plus any combo the consensus engine graded GO or WATCH
   const SG = signalList(all);
-  $('tsignote').textContent = 'A bet takes the better of two backtest grades: the prop model\'s (rows with a backtest figure) or the consensus engine\'s (rows marked consensus engine, tested in nba/docs/consensus-engine.md). A signal is proven only after ' + MIN_LIVE + ' settled bets and a result clearly above zero (z of 2 or more). Over and Under throughout; on Kalshi YES is Over and NO is Under.';
+  $('tsignote').textContent = 'Proven only after ' + MIN_LIVE + ' settled bets and a result clearly above zero (z of 2 or more). Over and Under throughout; on Kalshi YES is Over and NO is Under.';
   $('tsigsub').textContent = SG.length ? `${SG.length} graded ${SG.length === 1 ? 'signal' : 'signals'}, live record next to the backtest` : 'No graded signals in this build';
   $('tsig').innerHTML = SG.length ? SG.map(({st, sd, g, bt, x}) => `<tr><td class="l"><b>${SLABEL[st] || st} ${sd === 'YES' ? 'Over' : 'Under'}</b><small>Kalshi ${sd}</small></td><td class="l">${gatePill(g)}</td>
       <td class="num">${x.bets}</td><td class="num">${x.settled ? `${x.w}-${x.l}-${x.p}` : ''}</td><td class="num">${x.settled ? tUnits(x.units) : ''}</td>
@@ -8749,7 +8749,7 @@ function renderPropSim(){
       const cutoff = Math.floor(Date.parse(g.day + 'T00:00Z') / 864e5), last = ((GL && GL.players[sel.pid]) || []).filter(x => x[0] < cutoff).slice(0, 5);
       const chips = last.length ? `<div class="ps-lbl ps-sec">Last ${last.length} games · newest first</div><div class="ps-chips">${last.map(x => { const v = gval(x, stat); return `<div class="${v > L ? 'o' : 'u'}"><b>${v}</b><small>${v > L ? 'OVER' : 'UNDER'}</small></div>`; }).join('')}</div>` : '';
       const pmS = i.pmOver == null ? null : side === 'over' ? i.pmOver : 1 - i.pmOver, vS = i.vOver == null ? null : side === 'over' ? i.vOver : 1 - i.vOver, pc0 = x => Math.round(x * 100) + '%';
-      const mkTxt = i.pmOver != null ? `The price (${esc(mkLine.src)}) says ${pc0(pmS)} ${side}, the model ${pc0(pSide)}. The Vault chance starts from the price and moves ${Math.round(psVW() * 100)}% of the way toward the model: ${pc0(vS)}, ${psSg((vS - pmS) * 100, 1)} pts from the price. The model projects ${fmt(i.mu, 1)} against a line of ${L}.`
+      const mkTxt = i.pmOver != null ? `${esc(mkLine.src)} says ${pc0(pmS)} ${side}, the model ${pc0(pSide)}. Vault moves ${Math.round(psVW() * 100)}% of the way from price to model: ${pc0(vS)}. The model projects ${fmt(i.mu, 1)} against ${L}.`
         : mkLine && mkLine.line === L ? `Line from ${esc(mkLine.src)}, a flat line with no price, so there is nothing to anchor to and no Vault chance. The model alone says ${pc0(pSide)} ${side}; on its own it has trailed the price this season.`
         : mkLine ? `${esc(mkLine.src)} has ${mkLine.line}, not ${L}, so there is no price at your line and no Vault chance. The model alone says ${pc0(pSide)} ${side}.` : `No line on this prop yet. The model alone says ${pc0(pSide)} ${side}.`;
       const X = p => (Math.min(.99, Math.max(.01, p)) * 100).toFixed(1) + '%';
@@ -8757,7 +8757,7 @@ function renderPropSim(){
         <div class="ps-scl"><span>0%</span><span><i style="background:var(--fg3)"></i>price</span><span><i style="border:2px solid var(--chart-3);box-sizing:border-box"></i>model</span><span><i style="background:var(--fg)"></i>Vault</span><span>100%</span></div>`;
       const lv = psLevel(i.pOver), lr = psLvRec(stat)[lv - 1], la = psLvRec('all')[lv - 1];
       const conf = `<div class="ps-conf"><div class="lv">L${lv}<small>of 4</small></div><div>${psPips(lv)} <b style="margin-left:6px">${PS_LVN[lv]} confidence · ${i.lean} ${L}</b></div>
-        <div class="tx" style="grid-column:1/-1">${lr[0] ? `Level ${lv} ${PS_LBL[stat].toLowerCase()} props this season: the model's side won <b>${lr[1]} of ${lr[0]} (${pc(lr[1] / lr[0])})</b>, the under landed ${pc(lr[2] / lr[0])} on the same props.` : `No level ${lv} ${PS_LBL[stat].toLowerCase()} props settled yet.`}${la[0] && la[0] !== lr[0] ? ` All stats at level ${lv}: ${pc(la[1] / la[0])} of ${la[0].toLocaleString()}.` : ''}${lv < 3 ? ' Levels 1 and 2 have won about half the time, so treat this as a pass.' : ''}${side !== i.lean ? ` Confidence is for the model's side, the ${i.lean}.` : ''}</div></div>`;
+        <div class="tx" style="grid-column:1/-1">${lr[0] ? `Level ${lv} ${PS_LBL[stat].toLowerCase()} props this season: the model's side won <b>${lr[1]} of ${lr[0]} (${pc(lr[1] / lr[0])})</b>.` : `No level ${lv} ${PS_LBL[stat].toLowerCase()} props settled yet.`}${lv < 3 ? ' About a coin flip: treat it as a pass.' : ''}${side !== i.lean ? ` Confidence is for the model's side, the ${i.lean}.` : ''}</div></div>`;
       $('psprop').innerHTML = `<div class="card-h"><div><div class="ps-who big">${cutImg(sel.pid, sel.name, 56)}<div><h2>${esc(sel.name)}</h2><small><i style="background:${teamWash(sel.team) || 'var(--fg3)'}"></i>${sel.team} · ${fmt(sel.min, 1)} min in the simulation</small></div></div><p class="ps-desc">The prop being simulated: <b>${PS_LBL[stat]}, ${side} ${L}</b>${mkLine && mkLine.line === L ? ` (${esc(mkLine.src)}'s line)` : ' (your line)'}.</p></div></div>
         <div class="card-b"><div class="ps-ctl"><div class="ps-tabs">${SIM_STATS.map(s => { const x = psInfo(sel, s, null, gid, B); return `<button type="button" data-st="${s}" aria-pressed="${s === stat}">${PS_ABB[s]}${x.line != null ? `<small title="The model's side and confidence level">${x.lean === 'over' ? 'o' : 'u'} · L${psLevel(x.pOver)}</small>` : ''}</button>`; }).join('')}</div>
         <div class="ps-side"><button type="button" data-sd="over" aria-pressed="${side === 'over'}">OVER ${L}</button><button type="button" data-sd="under" aria-pressed="${side === 'under'}">UNDER ${L}</button></div></div>
@@ -10158,7 +10158,7 @@ function renderTrackGames(){
   if (!gpTried) loadGamePicks();
   const all = gpItems(), items = all, A = gpStats(items, 'ats'), M = gpStats(items, 'ml');
   $('tgamestat').textContent = items.length ? `ATS ${gpRec(A)} · winner ${M.w}${DASH}${M.l} · ${items.length} games` : 'No games graded yet';
-  $('tgamesub').textContent = `The Vault line's side against DraftKings' spread, and its pick to win straight up. Each pick is written once, 4 hours before tip, and graded on the final. Not a bet: the game model adds nothing the closing line has not priced. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
+  $('tgamesub').textContent = `Each pick is written once, 4 hours before tip, and graded on the final. Not a bet. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
   $('tgamek').innerHTML = gp2Hero(items);
   const empty = '<tbody><tr><td class="l"><p class="empty">No game picks graded yet. They are written 4 hours before tip and graded after the final.</p></td></tr></tbody>';
   const ats = items.filter(x => x.r.ats_res), bin = (lo, hi) => ats.filter(x => x.r.ats_edge >= lo && x.r.ats_edge < hi);
@@ -10799,10 +10799,10 @@ function renderLab(){
   if (G){
     const ths = Object.keys(G.ats_close);
     $('btgame').innerHTML = `${btBars([['Model, no injuries', G.mae.none.margin], ['Model, report 30 min pre-tip', G.mae.tip.margin], ['Model, hindsight lineups', G.mae.oracle.margin], ['Opening line', G.mae.market_open.margin], ['Closing line', G.mae.market_close.margin]], {})}
-      <p class="bt-cap">Average miss on the final margin, points, ${G.games.toLocaleString()} games of 2024-25 and 2025-26. The close is the bar; the model never reaches it.</p>
+      <p class="bt-cap">Average miss on the final margin, ${G.games.toLocaleString()} games. The close is the bar; the model never reaches it.</p>
       ${btLine([{v: ths.map(k => G.ats_close[k].win), c: 'var(--fg)'}, {v: ths.map(k => (G.ats_open[k] || {}).win ?? null), c: 'var(--fg3)', dash: 1}],
         {xs: ths.map(k => k + '+ pts'), yMin: .42, yMax: .62, yFmt: v => Math.round(v * 100) + '%', ref: {v: .5238, label: 'break-even at -110'}})}
-      <p class="bt-cap"><span class="bt-key"><i></i>vs the close, report at tip</span><span class="bt-key d"><i></i>vs the untimed open, report at 1pm</span> Win rate betting the model's side when it disagrees by at least the gap. Against the close it never clears break-even (t = ${G.info.info_spread_close.t}).</p>
+      <p class="bt-cap"><span class="bt-key"><i></i>vs the close, report at tip</span><span class="bt-key d"><i></i>vs the untimed open, report at 1pm</span> Win rate on the model's side at each gap. Never clears break-even against the close (t = ${G.info.info_spread_close.t}).</p>
       <div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Kalshi moneyline at 1pm, model edge</th>${G.kalshi.ml.map(r => `<th>${r[0]}</th>`).join('')}</tr></thead><tbody>
         <tr><td class="l">Bets</td>${G.kalshi.ml.map(r => `<td>${r[1].toLocaleString()}</td>`).join('')}</tr>
         <tr><td class="l">ROI after fees</td>${G.kalshi.ml.map(r => `<td class="${r[2] >= 0 ? 'pos' : 'neg'}">${(r[2] >= 0 ? '+' : '') + (r[2] * 100).toFixed(1)}%</td>`).join('')}</tr></tbody></table></div>
@@ -10810,8 +10810,8 @@ function renderLab(){
   }
   // minutes
   const M = BT.minutes;
-  if (M) $('btmin').innerHTML = `${btBars(M.v1.rows.map(r => [r[0], r[1]]), {})}<p class="bt-cap">Average miss, minutes, ${M.v1.n.toLocaleString()} player-games of ${M.v1.seasons} who played. Injury report as of 30 minutes before tip.</p>
-    ${M.v3 ? btBars(M.v3.rows.map(r => [r[0], r[1], `${pc(r[2], 1)} miss by 8+`]), {fmtv: v => fmt(v, 3)}) + `<p class="bt-cap">A second test on ${M.v3.n.toLocaleString()} player-games of ${M.v3.seasons}, so compare within each chart, not across. "Knowing who started" is what a perfect lineups feed adds.</p>` : ''}`;
+  if (M) $('btmin').innerHTML = `${btBars(M.v1.rows.map(r => [r[0], r[1]]), {})}<p class="bt-cap">Average miss, minutes, ${M.v1.n.toLocaleString()} player-games. Injury report as of 30 minutes before tip.</p>
+    ${M.v3 ? btBars(M.v3.rows.map(r => [r[0], r[1], `${pc(r[2], 1)} miss by 8+`]), {fmtv: v => fmt(v, 3)}) + `<p class="bt-cap">${M.v3.n.toLocaleString()} player-games. Compare within a chart, not across.</p>` : ''}`;
   // prop model
   const P = BT.props;
   if (P){
@@ -10820,19 +10820,19 @@ function renderLab(){
     $('btprop').innerHTML = `<div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Kalshi log loss</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}<th title="t of the model's weight when blended with the price">Blend t</th></tr></thead><tbody>
       ${ks.map(m => { const r = P.kalshi[m], best = Math.min(...cols.map(c => r[c[0]]).filter(v => v != null));
         return `<tr><td class="l"><b>${m.toUpperCase()}</b><small>${r.n.toLocaleString()} strikes</small></td>${cols.map(c => `<td class="${r[c[0]] === best ? 'bt-best' : ''}">${r[c[0]] != null ? r[c[0]].toFixed(4) : ''}</td>`).join('')}<td>${r.t}</td></tr>`; }).join('')}</tbody></table></div>
-      <p class="bt-cap">Lower is better. Alone, no model beats the Kalshi price on points, rebounds or assists; blended with the price it adds real information (t 4 to 7). That blend is what the GO signals bet.</p>
+      <p class="bt-cap">Lower is better. No model beats the Kalshi price alone; blended with it, it adds real information (t 4 to 7). That blend is what GO bets.</p>
       <div class="bt-two"><div><div class="seg" id="btcal" role="group" aria-label="Stat">${Object.keys(P.cal).map(m => `<button type="button" data-v="${m}" aria-pressed="${bf.cal === m}">${m.toUpperCase()}</button>`).join('')}</div>${btCal(bf.cal)}
-        <p class="bt-cap">Prop model v2 alone on every Kalshi strike of 2025-26: its probability (across) vs how often YES hit (up). Dots sized by strikes; on the dashed line is perfectly calibrated.</p></div>
+        <p class="bt-cap">Model probability (across) vs how often YES hit (up). On the dashed line is perfect.</p></div>
       <div><div class="nt-tw"><table class="nt bt-small bt-narrow"><thead><tr><th class="l">Sportsbook close, log loss</th><th>Book</th><th>v2</th><th>Blend t</th></tr></thead><tbody>
         ${Object.entries(P.books).map(([m, r]) => `<tr><td class="l"><b>${m.toUpperCase()}</b><small>${(r.n || 0).toLocaleString()} lines</small></td><td class="${r.market <= r.v2 ? 'bt-best' : ''}">${r.market.toFixed(4)}</td><td class="${r.v2 < r.market ? 'bt-best' : ''}">${r.v2.toFixed(4)}</td><td>${r.t}</td></tr>`).join('')}</tbody></table></div>
-        <p class="bt-cap">Sportsbook prop closes are sharper: the model adds little (t under 2 almost everywhere), which is why no book signal passed.</p></div></div>`;
+        <p class="bt-cap">Sportsbook closes are sharper: the model adds little (t under 2), so no book signal passed.</p></div></div>`;
   }
   // consensus
   const CS = BT.consensus;
   const TN = {kalshi_ladder: 'Kalshi ladder, leave one out', books_to_kalshi: 'Books moved to Kalshi\'s line', kalshi_to_books: 'Kalshi moved to the book\'s line'};
   if (CS) $('btcons').innerHTML = `<div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Test</th><th class="l">Bet</th><th class="l">Verdict</th><th>Bets</th><th>Games</th><th>ROI</th><th>z</th></tr></thead><tbody>
     ${Object.entries(CS).flatMap(([t, rows]) => rows.map((r, i) => `<tr><td class="l">${i ? '' : `<b>${TN[t] || t}</b>`}</td><td class="l">${r[0].toUpperCase()} ${r[1]}</td><td class="l">${pill(r[2] === 'GO' ? 'ok' : r[2] === 'WATCH' ? 'warn' : 'bad', r[2])}</td><td>${(r[3] || 0).toLocaleString()}</td><td>${r[4] || ''}</td><td class="${r[5] > 0 ? 'pos' : 'neg'}">${r[5] != null ? (r[5] >= 0 ? '+' : '') + (r[5] * 100).toFixed(1) + '%' : ''}</td><td>${r[6] != null ? fmt(r[6], 2) : ''}</td></tr>`)).join('')}</tbody></table></div>
-    <p class="bt-cap">Consensus + model, second half of 2025-26, 3%+ edge after fees. Small samples (under 50 games) cannot reach GO however good they look.</p>`;
+    <p class="bt-cap">Consensus + model, second half of 2025-26, 3%+ edge after fees. Under 50 games cannot reach GO.</p>`;
   $('btfoot').innerHTML = `
     <div><b>Walk-forward.</b> Every model is fit on earlier seasons and scored on later games (2025-26 has been re-used across many tests, so the live ledger is the clean test): the prop models fit on 2024-25 and tested on 2025-26; the game and minutes models tuned on 2022-23 and 2023-24 and tested on both later seasons. Injury news is the official report as it stood at bet time, never who actually sat. Prices are what you could have taken: Kalshi's 30-minute pre-tip trades, the last sportsbook line before tip.</div>
     <div><b>Rules come first.</b> Each test's ship rule is written before it runs and the verdict follows the rule, including when a newer model is more accurate but loses a passing signal (${n(/^Kept/)} of these kept the incumbent that way). GO = out-of-sample ROI above zero by 2+ standard errors over 50+ games; WATCH = positive but short of that.</div>
@@ -10852,7 +10852,7 @@ const WK_STAT = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': '3-point
 const WK_WHY = {
   '3pm': "People like betting overs, so Kalshi's YES side is overpriced: last season YES hit 2 to 5 points less often than its price said, in every stat. The model points at the rungs that are overpriced the most.",
   pts: 'The same overs bias as 3-pointers, smaller. Points markets are deeper and better priced, so the edge is thinner and less consistent.'};
-const WK_PAGES = {works: ['What Works', 'THIS SEASON SO FAR · WHAT HOLDS UP · WHAT DID NOT WORK'], finder: ['Edge Finder', 'SLICE LAST SEASON · SEE WHAT HELD UP'], lab: ['Backtest Lab', 'HELD-OUT TESTS · RULES FIXED FIRST · TECHNICAL RESULTS']};
+const WK_PAGES = {works: ['What Works', ''], finder: ['Edge Finder', ''], lab: ['Backtest Lab', '']};
 const money = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toLocaleString(undefined, {maximumFractionDigits: 0});
 const per100 = roi => roi == null ? '' : (roi < 0 ? '-' : '+') + '$' + Math.abs(roi * 100).toFixed(2);
 const oneIn = z => { const p = 1 - Phi(z); if (p >= .5) return null; const n = 1 / p; return n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n); };
@@ -12021,14 +12021,8 @@ function renderPairs(){
   const others = Object.entries(S.by).filter(([a, s]) => s && S.shown && a !== S.shown.app).map(([a, s]) => `${a} ${s.ev >= 0 ? '+' : '-'}$${Math.abs(10 * s.ev).toFixed(2)}`).join(' · ');
   $('pp-root').innerHTML = `
     <section class="card pp-read pp-v2">
-      <p class="big">V2 verdict: no profitable slip found yet</p>
-      <p>We tested every way of choosing picks on <b>1,695 PrizePicks and Underdog lines</b> from the first week of the season, scored from box scores. The pay tables need <b>54.2% to 59.1%</b> per pick (54.2% on a 5 or 6-pick Flex, the lowest). The best rule we picked on the first four nights hit <b>56.1%</b> there and <b>53.8%</b> on the last three (95% range 50.4% to 57.1%), a loss after payouts. The old slip chances below ran 20 points too high: the picks it rated 60%+ hit <b>43%</b>.</p>
-      <p>So every slip here is a Pass. "Claimed chance" is the old moved-consensus number, kept so you can see it, not a forecast. We are tracking the one rule that came closest forward, from Oct 27, and will not call it a Lean before it clears the holdout test. Method: nba/docs/pickem-v2.md.</p>
-    </section>
-    <section class="card pp-read">
-      <p class="big">Pick'em of the night</p>
-      <p class="pp-rule"><b>${PP_RULE}</b> A slip can have any number of games but never two players from one team.</p>
-      <p>The best slip we can build from tonight's PrizePicks, Underdog and Sleeper lines: the picks the market says are most likely first, each from a different team, all from one app. A ${pp.n}-pick at ${pay}x needs <b>${pc(need, 1)}</b> per pick. Only lines priced near even money count (Underdog and Sleeper price each side; a lopsided line pays a different multiple than the standard one). App lines sit near even money, so on most nights the honest answer is that no slip pays. Picks from different teams hit about independently, so the chances multiply.</p>
+      <p class="big">No profitable slip found yet</p>
+      <p>Pay tables need <b>54.2% to 59.1%</b> per pick. Our best rule hit <b>53.8%</b> on the last three nights, so every slip is a Pass. One player per team. A ${pp.n}-pick at ${pay}x needs <b>${pc(need, 1)}</b> per pick. Method: nba/docs/pickem-v2.md.</p>
     </section>
     <section class="card">
       <div class="pp-tools"><h2>Tonight's slip</h2><span class="pv-grow"></span>
@@ -12040,7 +12034,7 @@ function renderPairs(){
     </section>
     <section class="card">
       <div class="pp-tools"><h2>Best single picks tonight</h2><span class="pv-grow"></span><span class="muted" style="font-size:12.5px">The market's chance on the likelier side, at the app's own line. A ${pp.n}-pick at ${pay}x needs ${pc(need, 1)} each.</span></div>
-      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Pick</th><th class="l">App</th><th>Line</th><th>Side</th><th>Claimed chance</th><th>Model</th><th>vs ${pc(need, 1)} needed</th><th class="l">Notes</th></tr></thead><tbody>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Pick</th><th class="l">App</th><th>Line</th><th>Side</th><th title="The old moved-consensus number, kept for reference. Not a forecast.">Claimed chance</th><th>Model</th><th>vs ${pc(need, 1)} needed</th><th class="l">Notes</th></tr></thead><tbody>
       ${singles.length ? singles.map(l => { const g = l.r.game, d = l.p - need; return `<tr><td class="l"><b>${esc(l.r.name)}</b><small>${esc(l.team)} vs ${esc(l.team === g.home ? g.away : g.home)} · ${PP_SHORT[l.r.e.s]}</small></td><td class="l">${esc(l.app)}</td><td>${l.line}</td><td>${l.side === 'over' ? '▲ More' : '▼ Less'}</td><td>${pc(l.p, 1)}</td><td>${pc(l.pm, 1)}</td><td class="${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)} pts</td><td class="l"><small>${[l.q ? `<span class="warnt">${esc(l.inj)}: wait for the report</span>` : '', l.far ? 'check news: model and market far apart' : ''].filter(Boolean).join(' · ') || '&nbsp;'}</small></td></tr>`; }).join('')
         : `<tr><td class="l" colspan="8"><p class="empty">${rows.length ? 'No pick\'em lines with a market to price against yet.' : 'No player props listed yet.'}</p></td></tr>`}
       </tbody></table></div>
@@ -12809,12 +12803,17 @@ function bkCombos(){
 }
 function renderBankroll(){
   const R = window.__bankrollRecord;
+  const priv = window.__altsState !== 'ok' && !SS_ON;
+  $('cc-fold').parentElement.hidden = priv;
   const gate = window.__altsState === 'signin' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>`
     : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-bksignin="1">Use another account</button></div>` : '';
-  const intro = `${gate}<details class="card tfold" id="bk-intro"${bk.intro ? ' open' : ''}><summary><span class="tf-t"><b>Bankroll Builder</b><small>Unders priced -110 to -220 at or better than the market's fair price. Flat 1 unit on a $1,000 paper bankroll. Not proof until 100 settled picks.</small></span></summary>
+  const intro = `${priv ? '' : gate}<details class="card tfold" id="bk-intro"${bk.intro ? ' open' : ''}><summary><span class="tf-t"><b>Bankroll Builder</b><small>Unders priced -110 to -220 at or better than the market's fair price. Flat 1 unit on a $1,000 paper bankroll. Not proof until 100 settled picks.</small></span></summary>
     <div class="card-b bk-how"><p>One sportsbook bet (no parlays) priced <b>-110 to -220</b> at <b>or better than the market's fair price</b>: the no-vig price of three or more other venues quoting the same line. The price band by itself is not an edge (bet blindly, it lost about 7% on the first nights); the edge is getting a price the rest of the market says is fair or better. Main and alt lines both count. <b>Unders only:</b> overs that pass every other rule are tracked in a separate shadow and are not bets, because overs lost money on the first nights (that choice was made after looking at them, so it is in-sample too). Core = 4%+ better than fair. Our model's chance is recorded on every pick but does not pick the bets. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll. The first nights, before tracking started, were replayed from the recorded tape and sit in the same record, tagged <b>replayed</b>.</p>
     <p>Sportsbook prices via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Nothing here is proof of anything until <b>100 settled picks</b> and a closing-line value that is positive by two standard errors. Until then it is a record to watch, not a system to trust.</p></div></details>`;
-  if (!R || !R.all){
+  if (priv){
+    const so = window.__altsState === 'signin' ? '<button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button>' : window.__altsState === 'denied' ? '<span class="neg">This Google account is not allowed to see it.</span> <button class="pv-ghost" type="button" data-bksignin="1">Use another account</button>' : '';
+    $('bk-root').innerHTML = `<section class="card"><div class="pp-tools"><h2>Bankroll Builder is private</h2></div><p class="pp-empty">It runs on sportsbook prices that are not public, so its picks and record show only for the owner's Google account. ${so}</p></section>` + intro;
+  } else if (!R || !R.all){
     $('bk-root').innerHTML = intro + `<section class="card"><div class="pp-tools"><h2>Record</h2></div><p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>`;
   } else {
     const V = bk.src === 'live' && R.live ? {...R, ...R.live} : R, rp = R.replay, nLive = R.live ? R.live.all.picks : R.all.picks;
