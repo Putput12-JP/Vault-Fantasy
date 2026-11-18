@@ -1,6 +1,6 @@
-/* Proven-sharps side cards for Sharp Money: the "Sharps" page and the "Proven sharps" section on a game page.
+/* Hot-sharps side cards for Sharp Money: the "Sharps" page and the "Hot wallets" section on a game page.
    One file for both layouts (sharp-money/index.html and sharp-money/new/index.html), so the two stay the same page.
-   Vault NBA loads the same file for its Proven Sharps page (nba/ui/projections.template.html, skin 'nba').
+   Vault NBA loads the same file for its Hot Sharps page (nba/ui/projections.template.html, skin 'nba').
    Data: live.json on the pm-cards-live branch, built every 10 minutes by scripts/build_side_cards.py (docs/side-cards.md).
    Until that branch exists the page says so and the game section stays hidden.
 
@@ -8,15 +8,23 @@
    untested rule, and it never feeds Top Reads, SM_GATE or an agree total. The rule is the pre-registered lock of
    docs/sharp-card-prereg.md. Every number on the card is a stored field; a null prints "n/a".
 
-   Size: the card shows the benchmark's clean-step press ladder exactly as the builder stores it (units_clean_ladder): 3u base, 2u at a
-   2x to 3x press, 5u at 3x or more, 1u for any side priced under 50 cents. The benchmark's live picks also step the size down when the
-   price has moved and add rescue rungs; the builder does not record those, so the card can read higher than the benchmark's own pick. */
+   Size (changed 2026-11-18, docs/sharps-audit-2026-11-18.md): the card shows a flat 1u on NBA and NFL plays, and no size on CFB and CBB.
+   The builder still stores the benchmark's press ladder (3u base, 2u at 2x to 3x, 5u at 3x or more, 1u under 50 cents) as `sf.units`;
+   the page keeps that as `units_ladder` and tracks it beside the record as a shadow. "Hot" wallets are a record (6+ bets, 55% wins, 3%+ ROI),
+   not proof of skill: forward, they have not beaten the market. */
 (function(){
 'use strict';
 var OPT = {}, UI = {}, SHOWN = {};
+/* sports whose suggested play carries a size: flat 1u. CFB and CBB plays are tracked (shadow) but not shown. */
+var FLAT_SP = {nba: 1, nfl: 1};
+function flatSize(g){
+  Object.keys(g.markets || {}).forEach(function(k){ var sf = g.markets[k].sf; if (!sf) return;
+    Object.keys(sf).forEach(function(v){ var x = sf[v]; if (!x || !x.side || !(x.units > 0) || x.units_ladder != null) return;
+      x.units_ladder = x.units; x.units = FLAT_SP[g.sport] ? 1 : 0; }); });
+}
 /* Vault NBA skin: every colour comes from the NBA page's own theme variables, so light, dark and charcoal follow the page */
 var STEAM_CSS = '.vsc .vc-steam{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:12px;font-size:13px}\n.vsc .vc-steam i{width:8px;height:8px;border-radius:50%;background:var(--c-dim);flex:none}\n.vsc .vc-steam.on i{background:var(--c-warn)}.vsc .vc-steam.off i{background:var(--c-mut)}.vsc .vc-steam.unknown i{background:transparent;border:1.5px dashed var(--c-dim)}\n.vsc .vc-steam b{font-weight:600}.vsc .vc-steam span{color:var(--c-mut)}\n.vd-pin{margin-top:12px;padding-top:12px;border-top:1px solid var(--c-line)}\n.vd-kv{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px}.vd-kv span{color:var(--c-mut);flex:none}.vd-kv b{font-weight:500;text-align:right}\n.vd-chain{margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--c-ink)}.vd-chain li{margin:2px 0}\n';
-/* HC +N: proven wallets sized up (1.5x+) on a side minus those on the other side, from the stored counts.hc. Context only. */
+/* HC +N: hot wallets sized up (1.5x+) on a side minus those on the other side, from the stored counts.hc. Context only. */
 var HC_CSS = '.vsc .vc-hc{margin-left:auto;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap;flex:none;color:var(--c-gold);border:1px solid currentColor}\n.vsc .vc-hc svg{width:11px;height:11px;flex:none}.vsc .vc-hc.x2{border-width:1.5px;background:color-mix(in srgb,var(--c-gold) 16%,transparent)}\n@media (max-width:767px){.vsc .vc-sth{flex-wrap:wrap;row-gap:6px}.vsc .vc-sth b{flex-shrink:0;max-width:calc(100% - 32px)}}\n';
 var RECORD_CSS = '.vsc .vr-view{margin:0 0 16px}\n.vsc .vr{display:flex;flex-direction:column;gap:14px;max-width:880px}\n.vsc .vr-head{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:32px}\n.vsc .vr-upd{font-size:12.5px;color:var(--c-dim)}\n.vsc .vr-score{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}\n.vsc .vr-tile{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:20px 20px 18px;min-width:0}\n.vsc .vr-tile.lead{box-shadow:inset 0 0 0 1px var(--c-good-line)}\n.vsc .vr-th{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:22px}\n.vsc .vr-th b{font-size:14px;font-weight:600}\n.vsc .vr-lead{font-size:11.5px;font-weight:600;color:var(--c-good);background:var(--c-good-box);padding:3px 8px;border-radius:7px;white-space:nowrap}\n.vsc .vr-big{font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:1;margin:14px 0 8px}\n.vsc .vr-big.up{color:var(--c-good)}.vsc .vr-big.dn{color:var(--c-bad)}.vsc .vr-big.dim{color:var(--c-dim)}\n.vsc .vr-ts{margin:0;font-size:14px;color:var(--c-ink)}\n.vsc .vr-tsub{margin:4px 0 0;font-size:12.5px;color:var(--c-mut);text-wrap:pretty}\n.vsc .vr-note{margin:-2px 2px 0;font-size:12.5px;line-height:1.5;color:var(--c-mut);max-width:65ch;text-wrap:pretty}\n.vsc .vr-card{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:18px 20px}\n.vsc .vr-card h3{margin:0;font-size:14px;font-weight:600;letter-spacing:-.01em}\n.vsc .vr-grid{display:grid;grid-template-columns:minmax(80px,1fr) minmax(0,1.2fr) minmax(0,1.2fr);margin-top:10px}\n.vsc .vr-grid>span{padding:10px 0;border-top:1px solid var(--c-line);font-size:13.5px;display:flex;align-items:baseline;gap:10px;min-width:0}\n.vsc .vr-grid>.vr-col{border-top:0;padding-top:0;font-size:12px;color:var(--c-mut)}.vsc .vr-grid>span:first-child{border-top:0;padding-top:0}\n.vsc .vr-mk{color:var(--c-mut)}.vsc .vr-c em{font-style:normal;font-size:12.5px;color:var(--c-mut)}.vsc .vr-c em.up{color:var(--c-good)}.vsc .vr-c em.dn{color:var(--c-bad)}\n.vsc .vr-none{color:var(--c-dim)}\n.vsc .vr-fh{display:flex;justify-content:space-between;align-items:baseline}.vsc .vr-fh span{font-size:13px;color:var(--c-mut)}\n.vsc .vr-bar{height:6px;border-radius:3px;background:var(--c-box);margin:12px 0 10px;overflow:hidden}.vsc .vr-bar i{display:block;height:100%;min-width:3px;border-radius:3px;background:var(--c-good)}\n.vsc .vr-fs{margin:0;font-size:14px}\n.vsc .vr-fn{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--c-mut);max-width:65ch}.vsc .vr-fn b.dn{color:var(--c-bad);font-weight:600}\n.vsc .vr-games{margin-top:6px}\n.vsc .vr-g{display:grid;grid-template-columns:minmax(110px,170px) minmax(0,1fr);gap:4px 16px;padding:12px 0;border-top:1px solid var(--c-line)}.vsc .vr-g:first-child{border-top:0}\n.vsc .vr-gn b{display:block;font-size:13.5px;font-weight:600}.vsc .vr-gn span{font-size:12px;color:var(--c-dim)}\n.vsc .vr-gp{display:flex;flex-direction:column;gap:6px;min-width:0}\n.vsc .vr-pl{display:grid;grid-template-columns:52px minmax(0,1fr) auto 24px;align-items:center;gap:10px;font-size:13.5px}\n.vsc .vr-pl b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vsc .vr-u{font-size:12.5px;color:var(--c-mut)}\n.vsc .vr-who{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--c-mut)}.vsc .vr-who.vault,.vsc .vr-who.lock{color:var(--c-ink)}\n.vsc .vr-res{display:inline-grid;place-items:center;width:24px;height:22px;border-radius:6px;font-size:11.5px;font-weight:700}\n.vsc .vr-res.win{background:var(--c-good);color:var(--c-on-good)}.vsc .vr-res.loss{background:var(--c-bad);color:#fff}.vsc .vr-res.push,.vsc .vr-res.na{background:var(--c-box);color:var(--c-mut)}\n.vsc .vr-more{all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;margin-top:10px;padding:10px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;color:var(--c-mut);background:var(--c-box);transition:color .15s ease}\n.vsc .vr-more:hover{color:var(--c-ink)}.vsc .vr-more:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}\n.vsc .vr-notes{padding:4px 2px}.vsc .vr-notes summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--c-mut);list-style:none;display:inline-flex;align-items:center;gap:6px}\n.vsc .vr-notes summary::-webkit-details-marker{display:none}\n.vsc .vr-notes summary::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .2s var(--ease-out)}\n.vsc .vr-notes[open] summary::after{transform:rotate(225deg) translateY(-1px)}\n.vsc .vr-notes ul{margin:10px 0 0;padding-left:18px;font-size:12.5px;line-height:1.6;color:var(--c-mut);max-width:70ch}\n.vsc .vr-skel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.vsc .vr-skel.tall{grid-template-columns:1fr}\n.vsc .vr-skel i{display:block;height:132px;border-radius:var(--c-r);background:var(--c-card);border:1px solid var(--c-line)}.vsc .vr-skel.tall i{height:180px}\n@media (max-width:767px){\n.vsc .vr{gap:12px}.vsc .vr-score{gap:8px}.vsc .vr-tile{padding:16px}.vsc .vr-big{font-size:34px;margin:12px 0 6px}\n.vsc .vr-ts{font-size:13px}.vsc .vr-card{padding:16px}\n.vsc .vr-g{grid-template-columns:1fr;gap:6px}.vsc .vr-pl{grid-template-columns:48px minmax(0,1fr) auto 24px;gap:8px}\n.vsc .vr-grid>span{gap:6px;flex-wrap:wrap}\n}\n@media (prefers-reduced-motion:reduce){.vsc .vr-notes summary::after,.vsc .vr-more{transition:none}}\n.vsc .vr-st{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:7px;font-size:11.5px;font-weight:600;white-space:nowrap}.vsc .vr-st.live{color:var(--c-mut);background:var(--c-box)}.vsc .vr-st.lock{color:var(--c-ink);background:var(--c-box)}.vsc .vr-st.wait{color:var(--c-warn);background:color-mix(in srgb,var(--c-warn) 12%,transparent)}.vsc .vr-res.open{background:transparent;border:1.5px dashed var(--c-line2)}.vsc .vr-gn{display:flex;flex-direction:column;align-items:flex-start}\n.vsc .vr-st{display:inline-flex;align-items:center;gap:5px}.vsc .vr-st svg{width:11px;height:11px;flex:none}.vsc .vr-res.locked{background:var(--c-box);color:var(--c-ink)}.vsc .vr-res.locked svg{width:12px;height:12px}.vsc .vr-st.lock{color:var(--c-good);background:var(--c-good-box)}\n.vsc .vr-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin:0 0 16px}.vsc .vr-topbar .vr-view{margin:0 0 0 auto}.vsc .vr-tl{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;min-width:0}.vsc .vr-tl .vc-upd{margin:0}.vsc .vr-lbl{display:flex;align-items:center;gap:8px;min-width:0}.vsc .vr-lbl b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vsc .vc-logo.xs{width:22px;height:22px;border-radius:6px;font-size:9px;flex:none}.vsc .vr-pl{grid-template-columns:52px minmax(0,1fr) auto auto}.vsc .vr-res.wide{width:auto;min-width:24px;padding:0 7px;gap:5px;display:inline-flex;align-items:center}.vsc .vr-res em{font-style:normal;font-weight:600;font-size:11.5px}@media (max-width:767px){.vsc .vr-pl{grid-template-columns:44px minmax(0,1fr) auto auto}}.vsc .vr{max-width:none}.vsc .vr-hero{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.vsc .vr-two{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}@media (min-width:900px){.vsc .vr-hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}@media (min-width:1100px){.vsc .vr-two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}.vsc .vr-grid.m{grid-template-columns:minmax(80px,1.2fr) repeat(3,minmax(0,1fr))}.vsc .vr-c.up{color:var(--c-good)}.vsc .vr-c.dn{color:var(--c-bad)}.vsc .vr-fh{gap:10px}.vsc .vr-fh h3{margin-right:auto}.vsc .vr-help{all:unset;box-sizing:border-box;cursor:pointer;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--c-mut);background:var(--c-box)}.vsc .vr-help[aria-expanded=true]{color:var(--c-ink);background:var(--c-line2)}.vsc .vr-help:focus-visible{outline:2px solid var(--c-ink);outline-offset:2px}.vsc .vr-defs{margin:12px 0 4px;padding:12px 14px;border-radius:12px;background:var(--c-box);display:grid;gap:10px}.vsc .vr-defs[hidden]{display:none}.vsc .vr-defs div{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;align-items:baseline}.vsc .vr-defs dt{margin:0}.vsc .vr-defs dd{margin:0;font-size:12.5px;line-height:1.5;color:var(--c-mut)}.vsc .vr-who[title]{cursor:help}.vsc .vr-res.np{opacity:.85}.vsc .vr-res.np em{font-weight:500;font-size:10.5px;opacity:.85}';
 RECORD_CSS += '.vsc .vr-shadow{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--c-line);font-size:13px;color:var(--c-ink)}.vsc .vr-shadow b{font-weight:600;margin-right:6px}.vsc .vr-shadow .up{color:var(--c-good)}.vsc .vr-shadow .dn{color:var(--c-bad)}.vsc .vr-shadow .vr-tsub{display:block}';
@@ -121,12 +129,12 @@ var CHK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-wid
 var XX = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
 function counted(s){ return s.sharp_usd + s.unproven_usd + s.loser_usd; }
 function nProven(s){ return s.counts.sharp + s.counts.hc; }
-/* HC margin for side n of market m: sized-up proven wallets for minus against (the benchmark's HC margin, from stored counts) */
+/* HC margin for side n of market m: sized-up hot wallets for minus against (the benchmark's HC margin, from stored counts) */
 function hcMargin(m, n, v){ var o = Object.keys(m.sides).filter(function(x){ return x !== n; })[0]; return m.sides[n][v].counts.hc - (o ? m.sides[o][v].counts.hc : 0); }
 function hcBadge(m, n, v){
   var d = hcMargin(m, n, v), f = m.sides[n][v].counts.hc;
   if (d < 1) return '';
-  return '<span class="vc-hc' + (d >= 2 ? ' x2' : '') + '" title="' + f + ' proven wallet' + (f === 1 ? '' : 's') + ' sized up to 1.5x or more on this side, ' + (f - d) + ' on the other">' +
+  return '<span class="vc-hc' + (d >= 2 ? ' x2' : '') + '" title="' + f + ' hot wallet' + (f === 1 ? '' : 's') + ' sized up to 1.5x or more on this side, ' + (f - d) + ' on the other">' +
     (d >= 2 ? ICON.star : '') + ICON.star + '<span class="num">HC +' + d + '</span></span>';
 }
 /* the market's play: the benchmark's stake policy as the builder replicates it (m.sf), else the older lock rule on cards built before it existed */
@@ -187,22 +195,22 @@ function chainList(ls){
   return '<div class="vd-pin"><span class="vd-cap">Size steps</span><ol class="vd-chain">' + items.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ol></div>';
 }
 var RUNG = {
-  'PRESS': ['Press', 'A proven wallet is sized up on this side, the money is with it, and no proven wallet is against it.'],
-  'PRESS-X': ['Press X', 'The press shape, but proven wallets on the other side are betting small and fewer than the proven wallets here.'],
-  'PRESS-N': ['Press N', 'A wallet with a long record is pressing, the money is with it, and no proven wallet is on either side.'],
-  'PRESS-U': ['Press U', 'More proven wallets here than against, the ones against are betting small, and nobody is pressing.'],
-  'PRESS-R6': ['Two veterans', 'Two wallets with long records are on this side at their normal size, the money is with it, and no proven wallet is against it.'],
+  'PRESS': ['Press', 'A hot wallet is sized up on this side, the money is with it, and no hot wallet is against it.'],
+  'PRESS-X': ['Press X', 'The press shape, but hot wallets on the other side are betting small and fewer than the hot wallets here.'],
+  'PRESS-N': ['Press N', 'A wallet with a long record is pressing, the money is with it, and no hot wallet is on either side.'],
+  'PRESS-U': ['Press U', 'More hot wallets here than against, the ones against are betting small, and nobody is pressing.'],
+  'PRESS-R6': ['Two veterans', 'Two wallets with long records are on this side at their normal size, the money is with it, and no hot wallet is against it.'],
   'FADE-F': ['Fade', 'The only losing wallet in this market is on the other side and is on a losing streak.'],
   'TRUST-G': ['Trusted wallet', 'A wallet that has beaten its own prices lately is on this moneyline, and the older score is positive.'],
   'TRUST-S': ['Trusted wallet', 'A wallet that has beaten its prices in spread markets is on this side and none is against it.'],
   'TRUST-T': ['Trusted wallets', 'Two or more wallets that have beaten their prices in totals are on this side and none is against.'],
-  'STEAM-C': ['Steam', 'Pinnacle\'s price is moving toward this side, and the proven wallets against it are betting small. The market overrules a small dissent.'],
+  'STEAM-C': ['Steam', 'Pinnacle\'s price is moving toward this side, and the hot wallets against it are betting small. The market overrules a small dissent.'],
   'STEAM-S': ['Steam', 'Pinnacle\'s price is moving toward this side against a seasoned wallet\'s ordinary-size bet, with 20% to 60% of the money here.'],
   'SOLO-Q': ['Quiet favourite', 'Nobody is against this side, Pinnacle is not moving, it is a 50% to 60% favourite, and the money here is small or from a wallet in hot form.'],
-  'PRESS-M': ['Mirror press', 'The press shape (money, a sized-up veteran, no proven wallet against) is on the side the wallet-quality score did not favour.'],
+  'PRESS-M': ['Mirror press', 'The press shape (money, a sized-up veteran, no hot wallet against) is on the side the wallet-quality score did not favour.'],
   'GAP-LEAD': ['Recent form', 'At least two wallets here have much better last-30-day results in this market than the wallets on the other side, whose recent results are negative.']
 };
-/* climate, from stored fields only: signal = a side meets the tracked rule; building = proven money somewhere; quiet = none */
+/* climate, from stored fields only: signal = a side meets the tracked rule; building = hot money somewhere; quiet = none */
 function climate(g, v){
   var c = 'quiet';
   Object.keys(g.markets).forEach(function(k){ var m = g.markets[k];
@@ -217,7 +225,7 @@ function half(s, max, dir){
   var seg = function(k, v){ return v > 0 ? '<i class="' + k + '" style="width:' + Math.max(1.2, v / max * 100).toFixed(2) + '%"></i>' : ''; };
   return '<div class="vc-half ' + dir + '">' + seg('hc', s.hc_usd) + seg('sharp', s.sharp_usd - s.hc_usd) + seg('unp', s.unproven_usd) + seg('loser', s.loser_usd) + seg('exc', s.excluded_usd) + '</div>';
 }
-/* v3: a stack of small modules. Verdict, money split, proven record, wallets (collapsed), data notes (collapsed). */
+/* v3: a stack of small modules. Verdict, money split, hot record, wallets (collapsed), data notes (collapsed). */
 /* The benchmark's score and label for the market: the one side whose stored `ags` score is above zero, or nothing */
 var TIER = {WEAK: 'Weak', LEAN: 'Lean', LOCK: 'Lock', PREMIUM: 'Prem', ELITE: 'Elite'};
 function agsRow(m, names, v){
@@ -225,7 +233,7 @@ function agsRow(m, names, v){
   if (!n) return '';
   var a = m.sides[n][v].ags;
   return '<div class="vc-ags"><span class="vc-tier ' + a.tier + '">' + TIER[a.tier] + '</span><span><b>' + esc(n) + '</b> score <span class="num">+' + a.score.toFixed(2) +
-    '</span></span><em>' + a.contributors + ' proven of ' + (a.for_n + a.against_n) + ' tracked</em></div>';
+    '</span></span><em>' + a.contributors + ' hot of ' + (a.for_n + a.against_n) + ' tracked</em></div>';
 }
 function verdict(g, m, key, names, v){
   var ls = shadow(m, v), S = {}; names.forEach(function(n){ S[n] = m.sides[n][v]; });
@@ -237,28 +245,28 @@ function verdict(g, m, key, names, v){
       '<strong>' + esc(sideLabel(ls.side, key, ls)) + '</strong><span class="vc-vs">' +
       (ls.price != null ? '<span class="num">' + trim((ls.price * 100).toFixed(1)) + '¢</span> on Polymarket' + (ls.price_t ? ', read ' + ct(ls.price_t) + ' CT' : '') : 'price n/a') + '</span></div>' +
       logo(ls.side, g) + '</div>' +
-      agsRow(m, names, v) + (q ? '<div class="vc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> proven for') +
+      agsRow(m, names, v) + (q ? '<div class="vc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> hot for') +
       tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>'
       : '<p class="vc-why">' + (rg ? rg[1] : 'This side meets one of the staking rules.') + '</p>') +
-      '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size comes from the staking rules, built from Vault\'s own wallet records. ' +
-      'They use Pinnacle steam, the odds cap, the trusted-margin, mirror, recent-form and top-wallet rules, the seat caps and the edge clamps. A few inputs Vault cannot observe are left out. This rule has no graded record yet.</p></details>' + steamRow(ls, key) + '<button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
+      '<details class="vc-more"><summary>How the size is set</summary><p>' + (ls.rung ? 'Rule: <b>' + esc(ls.rung) + '</b>. ' : '') + 'The size is a flat 1 unit. The older 1u to 5u ladder lost money in testing and is now tracked beside the record, not shown. ' +
+      'The play is still the staking rule\'s pick, built from Vault\'s own wallet records, and it has not shown an edge yet.</p></details>' + steamRow(ls, key) + '<button type="button" class="vc-open press press-btn">See who\'s on it</button></section>';
   }
   var lead = names.slice().sort(function(a, b){ return (nProven(S[b]) - nProven(S[a])) || (counted(S[b]) - counted(S[a])); })[0];
   var other = names.filter(function(n){ return n !== lead; })[0], tot = counted(S[lead]) + counted(S[other]);
   var share = tot ? counted(S[lead]) / tot : null, pf = nProven(S[lead]), pa = nProven(S[other]), why;
   if (!tot) why = 'No wallet holds $250 or more here yet.';
-  else if (!pf) why = v === 'fwd' ? 'No wallet is proven on forward-only results yet.' : 'No proven wallet on either side yet. The ledger is still filling.';
-  else if (pa) why = 'Proven wallets are on both sides.';
-  else if (share < .6) why = 'Proven money is on ' + esc(lead) + ', but it holds <span class="num">' + Math.round(share * 100) + '%</span> of the money. The rule needs 60%.';
-  else why = esc(lead) + ' has the money and a proven wallet. No wallet is sized up to 1.5x its usual stake yet.';
+  else if (!pf) why = v === 'fwd' ? 'No wallet is hot on forward-only results yet.' : 'No hot wallet on either side yet. The ledger is still filling.';
+  else if (pa) why = 'Hot wallets are on both sides.';
+  else if (share < .6) why = 'Hot money is on ' + esc(lead) + ', but it holds <span class="num">' + Math.round(share * 100) + '%</span> of the money. The rule needs 60%.';
+  else why = esc(lead) + ' has the money and a hot wallet. No wallet is sized up to 1.5x its usual stake yet.';
   return '<section class="vc-mod vc-v off"><div class="vc-v1"><b class="vc-vu num zero">0<small>u</small></b><div class="vc-vt"><span class="vc-cap">Suggested</span>' +
     '<strong>No play</strong><span class="vc-vs">' + why + '</span></div></div>' + agsRow(m, names, v) + (tot ? '<button type="button" class="vc-open press press-btn">See who\'s on it</button>' : '') + '</section>';
 }
 function sideTile(g, n, s, pick, hc){
   var line = function(k, v, t){ return v > 0 ? '<span class="vc-ln ' + k + '"><i></i><b class="num">' + usd(v) + '</b> ' + t + '</span>' : ''; };
-  var lines = line('hc', s.hc_usd, 'sized up') + line('sharp', s.sharp_usd - s.hc_usd, 'proven') + line('loser', s.loser_usd, 'losers') + line('exc', s.excluded_usd, 'excluded');
+  var lines = line('hc', s.hc_usd, 'sized up') + line('sharp', s.sharp_usd - s.hc_usd, 'hot') + line('loser', s.loser_usd, 'losers') + line('exc', s.excluded_usd, 'excluded');
   return '<div class="vc-mod vc-st' + (pick ? ' pk' : '') + '"><div class="vc-sth">' + logo(n, g).replace('vc-logo', 'vc-logo sm') + '<b>' + esc(n) + '</b>' + (hc || '') + '</div>' +
-    '<div class="vc-big num">' + usd(counted(s)) + '</div><div class="vc-lns">' + (lines || '<span class="vc-ln none">no proven or loser money</span>') + '</div></div>';
+    '<div class="vc-big num">' + usd(counted(s)) + '</div><div class="vc-lns">' + (lines || '<span class="vc-ln none">no hot or loser money</span>') + '</div></div>';
 }
 function walletRow(w, k){
   return '<div class="vc-w ' + k + '"><span class="vc-wd">' + (w.star ? ICON.star : '<i></i>') + '</span><b class="num">' + tail(w.w) + '</b>' +
@@ -269,10 +277,10 @@ function walletList(n, s){
   var sum = function(a){ return a.reduce(function(t, x){ return t + x.usd; }, 0); }, c = s.counts, np = nProven(s), h = '<div class="vc-wg"><span class="vc-cap">' + esc(n) + '</span>';
   var agg = function(k, t, v){ return '<div class="vc-w agg ' + k + '"><span class="vc-wd"><i></i></span><b>' + t + '</b><span class="vc-wu num">' + usd(v) + '</span></div>'; };
   s.list.forEach(function(w){ h += walletRow(w, w.star ? 'hc' : 'sharp'); });
-  if (np > s.list.length) h += agg('sharp', '+' + (np - s.list.length) + ' more proven', Math.max(0, s.sharp_usd - sum(s.list)));
+  if (np > s.list.length) h += agg('sharp', '+' + (np - s.list.length) + ' more hot', Math.max(0, s.sharp_usd - sum(s.list)));
   s.losers.forEach(function(w){ h += walletRow(w, 'loser'); });
   if (c.loser > s.losers.length) h += agg('loser', '+' + (c.loser - s.losers.length) + ' more losers', Math.max(0, s.loser_usd - sum(s.losers)));
-  if (c.unproven) h += agg('unp', c.unproven + ' unproven', s.unproven_usd);
+  if (c.unproven) h += agg('unp', c.unproven + ' other', s.unproven_usd);
   if (c.excluded) h += agg('exc', c.excluded + ' excluded, not counted', s.excluded_usd);
   if (!(np + c.loser + c.unproven + c.excluded)) h += '<div class="vc-w agg exc"><span class="vc-wd"><i></i></span><b>No holders at $250 or more</b></div>';
   return h + '</div>';
@@ -285,7 +293,7 @@ function body(g, st){
     '<div class="vc-bar">' + half(a, max, 'l') + '<u></u>' + half(b, max, 'r') + '</div></div>';
   var best = names.slice().sort(function(x, y){ return m.sides[y][v].sharp_usd - m.sides[x][v].sharp_usd; })[0], p = m.sides[best][v].proven;
   if (p.wallets){
-    h += '<section class="vc-mod vc-pr"><span class="vc-cap">Proven wallets on ' + esc(best) + ' · ' + p.wallets + '</span><div class="vc-kp">' +
+    h += '<section class="vc-mod vc-pr"><span class="vc-cap">Hot wallets on ' + esc(best) + ' · ' + p.wallets + '</span><div class="vc-kp">' +
       '<div><b class="num">' + (p.win_pct == null ? 'n/a' : p.win_pct + '%') + '</b><span>win</span></div><div><b class="num">' + p.w + '-' + p.l + '</b><span>record</span></div>' +
       '<div><b class="num">' + roi(p.l30_roi) + '</b><span>last 30 days</span></div><div><b class="num">' + susd(p.lifetime_pnl) + '</b><span>lifetime</span></div></div>' +
       (p.last20.length ? '<div class="vc-form">' + p.last20.map(function(r){ return '<i class="' + r + '"></i>'; }).join('') + '<span>last ' + p.last20.length + '</span></div>' : '') + '</section>';
@@ -298,13 +306,13 @@ function body(g, st){
   var cv = g.coverage, bits = ['Money is mark value ' + (g.frozen ? 'at the lock' : 'now') + ' (shares x price), not cost.',
     cv.markets_read + ' markets read, ' + cv.markets_missed + ' missed' + (cv.late_reads ? ', ' + cv.late_reads + ' late' : '') + '.',
     'Oldest read ' + dur(cv.max_read_lag_s) + ' before ' + (g.frozen ? 'the lock' : 'this build') + '.', 'Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.'];
-  if (names.some(function(n){ return m.sides[n][v].ags; })) bits.push('The score compares the average quality of the proven wallets on each side, from -1 to +1. The labels use published cut points (above 0.781 Lean, 0.916 Lock, 0.957 Prem, 0.981 Elite; any lower positive score is Weak). Those were fitted outside Vault, and the label does not set the size.');
+  if (names.some(function(n){ return m.sides[n][v].ags; })) bits.push('The score compares the average quality of the hot wallets on each side, from -1 to +1. The labels use published cut points (above 0.781 Lean, 0.916 Lock, 0.957 Prem, 0.981 Elite; any lower positive score is Weak). Those were fitted outside Vault, and the label does not set the size.');
   if (cv.two_way_dust_dropped) bits.push(cv.two_way_dust_dropped + ' two-way ' + (cv.two_way_dust_dropped === 1 ? 'wallet' : 'wallets') + ' dropped as balanced dust.');
   if ((g.vault || {}).start_gap_flag) bits.push('Start times differ by ' + g.vault.start_gap_min + ' min between Polymarket and Vault.');
   if (!g.vault) bits.push('This game is on Polymarket but not yet in Vault\'s schedule, so team names come from its listing.');
   if (g.test) bits.push(g.test.counts ? 'Counts for the forward test.' : 'Does not count for the forward test: ' + g.test.why_not.join(', ') + '.');
   return h + '<details class="vc-mod vc-dt" data-d="n"' + (st.open.n ? ' open' : '') + '><summary>Data notes</summary><div class="vc-dtb"><p>' + bits.join(' ') + '</p></div></details>' +
-    '<p class="vc-foot">Sharp money is context. The suggested size comes from an untested rule that is still in its forward test.</p>';
+    '<p class="vc-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. College games carry no size.</p>';
 }
 
 /* ---------- play detail: one market, every wallet on it, opened from the verdict ("See who's on it") ----------
@@ -399,7 +407,7 @@ function signalsHtml(ls){
 }
 function leadCard(x, side, key, g, sidePx){
   if (!x) return '';
-  var w = x.w, p = w.press, u = w.usual, a = w.at_size, k = {gold: 'Proven, sized up', sharp: 'Proven', unp: 'Unproven', loser: 'Losing'}[x.k];
+  var w = x.w, p = w.press, u = w.usual, a = w.at_size, k = {gold: 'Hot, sized up', sharp: 'Hot', unp: 'Other', loser: 'Losing'}[x.k];
   var pos = p == null ? null : Math.min(1, p / 4);
   return '<section class="vd-lead"><span class="vd-cap">Lead wallet</span><div class="vd-lh"><div><b class="num">' + tail(w.w) + '</b><span class="vd-tag ' + x.k + '">' + k + '</span></div>' +
     '<div class="vd-lu"><b class="num">' + usd(w.usd) + '</b><span>on ' + esc(side) + '</span></div></div>' +
@@ -417,8 +425,8 @@ function whoCol(name, s, total, own, key, g, sidePx){
       var row = '<div class="vd-w ' + x.k + '"><i></i><div><b class="num">' + tail(w.w) + '</b><span class="num">' + w.w_ + '-' + w.l_ + ' · ' + wr(w) + ' · ' + roi(w.roi) + ' ROI' +
         (w.clv && w.clv.n ? ' · ' + beatTxt(w) : '') + '</span>' + (dv ? '<span class="more">Tap for the deep dive</span>' : '') + '</div><div class="vd-wr"><b class="num">' + usd(w.usd) + '</b>' + (w.press != null ? '<span class="num">' + w.press + 'x</span>' : '') + '</div></div>';
       return dv ? '<details class="vd-wd"><summary>' + row + '</summary>' + dv + '</details>' : row; }).join('')
-      : '<p class="vd-none">No proven, tracked or losing wallet at $250 or more.</p>') +
-    (s.counts.unproven > (s.unproven_list || []).length ? '<p class="vd-more num">+' + (s.counts.unproven - (s.unproven_list || []).length) + ' more unproven or untracked</p>' : '') + '</div>';
+      : '<p class="vd-none">No hot, tracked or losing wallet at $250 or more.</p>') +
+    (s.counts.unproven > (s.unproven_list || []).length ? '<p class="vd-more num">+' + (s.counts.unproven - (s.unproven_list || []).length) + ' more other or untracked</p>' : '') + '</div>';
 }
 function detail(g, key, v){
   var m = g.markets[key], names = sideOrder(g, m, key), ls = shadow(m, v);
@@ -429,13 +437,13 @@ function detail(g, key, v){
   var h = '<div class="vd-top"><div><span class="vd-cap">' + g.sport.toUpperCase() + ' · ' + esc(teamName(g, 'away')) + ' at ' + esc(teamName(g, 'home')) + ' · ' + ct(g.gst, true) + ' CT</span>' +
     '<h2>' + esc(sideLabel(side, key, ls || {side: side})) + '</h2>' +
     (px != null ? '<div class="vd-px num"><b>' + cents(px) + '</b><span>' + (american(px) || '') + '</span>' + (mv != null ? '<em class="' + (mv > 0 ? 'up' : mv < 0 ? 'dn' : '') + '">' + (mv > 0 ? '+' : '') + mv.toFixed(1) + ' pts</em>' : '') + '</div>' +
-      (fl ? '<span class="vd-sub num">flagged at ' + cents(fl.price) + ', ' + ct(fl.t) + ' CT</span>' : '') : '<span class="vd-sub">No suggested size on this market. Showing the side with the most proven money.</span>') +
+      (fl ? '<span class="vd-sub num">flagged at ' + cents(fl.price) + ', ' + ct(fl.t) + ' CT</span>' : '') : '<span class="vd-sub">No suggested size on this market. Showing the side with the most hot money.</span>') +
     '</div><button type="button" class="vd-x press press-btn" aria-label="Close">' + XX + '</button></div>';
-  h += '<div class="vd-hero"><div><b class="num">' + usd(tot) + '</b><span class="vd-op ' + (against ? 'no' : 'ok') + '">' + (against ? against + ' proven against' : 'Unopposed') + '</span></div>' +
+  h += '<div class="vd-hero"><div><b class="num">' + usd(tot) + '</b><span class="vd-op ' + (against ? 'no' : 'ok') + '">' + (against ? against + ' hot against' : 'Unopposed') + '</span></div>' +
     (ls ? '<div class="vd-u"><b class="num">' + units(ls) + 'u</b><span class="vc-tag">untested rule</span></div>' : '') + '</div>' +
     (tot ? '<div class="vd-mix"><i class="sharp" style="width:' + (proven / tot * 100).toFixed(1) + '%"></i><i class="unp" style="width:' + (S.unproven_usd / tot * 100).toFixed(1) + '%"></i><i class="loser" style="width:' + (S.loser_usd / tot * 100).toFixed(1) + '%"></i></div>' +
-      '<div class="vd-mixl num"><span>Proven ' + Math.round(proven / tot * 100) + '%</span><span>Unproven ' + Math.round(S.unproven_usd / tot * 100) + '%</span>' + (S.loser_usd ? '<span>Losers ' + Math.round(S.loser_usd / tot * 100) + '%</span>' : '') + '</div>' : '');
-  h += '<section class="vd-sec"><span class="vd-cap">Where the money sits</span><div class="vd-key"><span><i class="sharp"></i>proven</span><span><i class="gold"></i>sized up</span><span><i class="unp"></i>unproven</span><span><i class="loser"></i>losing</span><span><i class="opp"></i>other side</span><em>size = $</em></div>' + scatter(mine, theirs) + '</section>';
+      '<div class="vd-mixl num"><span>Hot ' + Math.round(proven / tot * 100) + '%</span><span>Other ' + Math.round(S.unproven_usd / tot * 100) + '%</span>' + (S.loser_usd ? '<span>Losers ' + Math.round(S.loser_usd / tot * 100) + '%</span>' : '') + '</div>' : '');
+  h += '<section class="vd-sec"><span class="vd-cap">Where the money sits</span><div class="vd-key"><span><i class="sharp"></i>hot</span><span><i class="gold"></i>sized up</span><span><i class="unp"></i>other</span><span><i class="loser"></i>losing</span><span><i class="opp"></i>other side</span><em>size = $</em></div>' + scatter(mine, theirs) + '</section>';
   var spx = px != null && ls && ls.side === side ? px : null;
   h += leadCard(lead, side, key, g, spx);
   h += signalsHtml(ls);
@@ -443,7 +451,7 @@ function detail(g, key, v){
   if (ls){
     var rg = ls.rung && RUNG[ls.rung];
     h += '<section class="vd-sec"><span class="vd-cap">How the size is set</span><p class="vd-p"><b>' + (rg ? rg[0] : 'Press ladder') + '.</b> ' + (rg ? rg[1] : 'This side meets the pre-registered press-ladder gates.') +
-      ' The size comes from the staking rules, built from Vault\'s own wallet records, with Pinnacle steam, the odds cap and the seat and edge caps. It has no graded record yet.</p>' + steamDetail(ls, key, side) + chainList(ls) + '</section>';
+      ' The size is a flat 1 unit. The play is the staking rule\'s pick, built from Vault\'s own wallet records, and it has not shown an edge yet.</p>' + steamDetail(ls, key, side) + '</section>';
   }
   return h + '<p class="vd-foot">Sharp money is context. Price skill counts only past bets with a stored close; a wallet with fewer than ' + CLV_MIN + ' is listed but not plotted.</p>';
 }
@@ -492,7 +500,7 @@ function rail(strip, animate){
 function mount(el, g, opt){
   opt = opt || {};
   var keys = GROUPS.filter(function(x){ return g.markets[x[0]]; }).map(function(x){ return x[0]; });
-  /* open on the market that has a play, else the one with proven money, else the first */
+  /* open on the market that has a play, else the one with hot money, else the first */
   var lead = keys.filter(function(k){ return shadow(g.markets[k], 'all'); })[0] ||
     keys.filter(function(k){ var m = g.markets[k]; return Object.keys(m.sides).some(function(n){ return m.sides[n].all.sharp_usd > 0; }); })[0] || keys[0];
   var st = UI[g.ev] || (UI[g.ev] = {group: keys.indexOf(opt.group) >= 0 ? opt.group : lead, variant: 'all', open: {}});   /* survives a re-render */
@@ -528,7 +536,7 @@ function mount(el, g, opt){
 function units(ls){ var u = ls.units != null ? ls.units : ls.units_clean_ladder; return u == null ? null : String(u); }
 function foldHtml(g, key){
   var m = g.markets[key], tot = Object.keys(m.sides).reduce(function(t, n){ return t + counted(m.sides[n].all); }, 0);
-  return '<button type="button" class="vc-fold"><b>No proven money yet</b>' + usd(tot) + ' on the ' + GNAME[key] + '<span>Show</span></button>';
+  return '<button type="button" class="vc-fold"><b>No hot money yet</b>' + usd(tot) + ' on the ' + GNAME[key] + '<span>Show</span></button>';
 }
 
 /* ---------- data: one fetch shared by every mount, refreshed every 2 minutes ---------- */
@@ -543,7 +551,7 @@ function load(force){
     .then(function(j){
       STORE.busy = false;
       var changed = !STORE.d || !j || j.built !== STORE.d.built || STORE.state === 'loading';
-      if (j && j.games) STORE.d = j;
+      if (j && j.games){ j.games.forEach(flatSize); STORE.d = j; }
       STORE.state = STORE.d ? 'ok' : 'none';
       STORE.hosts = STORE.hosts.filter(function(h){ return document.contains(h.el); });
       if (changed) STORE.hosts.forEach(function(h){ h.render(); });
@@ -649,6 +657,9 @@ function recLoad(done, force){
   Promise.all([get('cards_record.json')].concat(rows)).then(function(r){
     var cards = [];
     r.slice(1).forEach(function(t){ cards.push.apply(cards, jsonl(t)); });
+    /* flat 1u on shown sports: the stored flat result replaces the ladder's units; college plays are not shown plays */
+    cards.forEach(function(x){ if (x.play === 'sf' && x.units_ladder == null && x.units != null){ x.units_ladder = x.units;
+      if (FLAT_SP[x.sport]){ x.units = 1; if (x.flat != null && x.res) x.units_pl = x.flat; } else x.college = true; } });
     REC.d = r[0] ? {cards: r[0], cardRows: cards} : null;
     REC.state = REC.d ? 'ok' : 'none'; REC.at = Date.now();
     var w = REC.wait || []; REC.wait = [];
@@ -712,20 +723,24 @@ function recSport(sp, D){
   var ALL = sp === 'all', SPS = ALL ? REC_SPORTS : [sp], inSp = function(s){ return SPS.indexOf(s) >= 0; };
   var cs = function(s){ return ((D.cards || {}).sports || {})[s] || {}; }, c = ALL ? {} : cs(sp);
   var G = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']];
-  var vgs = function(s, g){ return ((((cs(s).sf || {}).all || {})[g] || {}).all_cards); };
+  var rawg = function(s, g){ return ((((cs(s).sf || {}).all || {})[g] || {}).all_cards); };
+  var flatOf = function(x){ return x && x.n ? Object.assign({}, x, {units_pl: x.flat_roi != null ? x.flat_roi * x.n : 0}) : x; };
+  /* the shown size is flat 1u, on NBA and NFL only: the stored flat ROI times the play count (every history row, none dropped) */
+  var vgs = function(s, g){ return FLAT_SP[s] ? flatOf(rawg(s, g)) : null; };
   var vg = function(g){ return ALL ? sumRec(SPS.map(function(s){ return vgs(s, g); })) : vgs(sp, g); };
   var V = sumRec(G.map(function(g){ return vg(g[0]); }));
   /* the stricter shadow (scripts/sf_publish.py): the same plays minus sides whose wallet-quality score is not above zero, graded the same way */
   var pgs = function(s, g){ return ((((cs(s).pub || {}).all || {})[g] || {}).all_cards); };
   var P = sumRec(G.map(function(g){ return ALL ? sumRec(SPS.map(function(s){ return pgs(s, g[0]); })) : pgs(sp, g[0]); }));
-  /* the single-wallet cap (scripts/sf_solo.py): the same plays, capped at 1u on one proven wallet or a lead bet under its usual stake */
+  /* the single-wallet cap (scripts/sf_solo.py): the same plays, capped at 1u on one hot wallet or a lead bet under its usual stake */
   var qgs = function(s, g){ return ((((cs(s).solo || {}).all || {})[g] || {}).all_cards); };
   var Q = sumRec(G.map(function(g){ return ALL ? sumRec(SPS.map(function(s){ return qgs(s, g[0]); })) : qgs(sp, g[0]); }));
   /* three rules registered 2026-11-16 (scripts/sf_shadows.py): the shown play only when the rule holds. `forward` counts plays locked since then */
   var rgs = function(rule, key){ return sumRec(G.map(function(g){ return sumRec(SPS.map(function(s){ return ((((cs(s)[rule] || {}).all || {})[g[0]] || {})[key]); })); })); };
   var since = function(rule){ var f = rgs(rule, 'forward'); return ' ' + (f.n || 0) + (f.n === 1 ? ' play' : ' plays') + ' since the rule was written on Nov 16. Earlier plays were already known when it was chosen.'; };
   /* flat 1u: the shown plays at one unit each, from the stored flat ROI (no new rows) */
-  var F = {n: V.n, w: V.w, l: V.l, p: V.p, flat_roi: V.flat_roi, units_pl: V.flat_roi != null ? V.flat_roi * V.n : 0};
+  var LAD = sumRec(G.map(function(g){ return sumRec(SPS.map(function(s){ return rawg(s, g[0]); })); }));
+  var COL = sumRec(G.map(function(g){ return sumRec(SPS.filter(function(s){ return !FLAT_SP[s]; }).map(function(s){ return flatOf(rawg(s, g[0])); })); }));
   var shadowLine = function(name, X, how){ return X.n ? '<p class="vr-shadow num"><b>' + name + '</b> ' + wl(X) + ' · <span class="' + (X.units_pl > 0 ? 'up' : X.units_pl < 0 ? 'dn' : '') + '">' + u2(X.units_pl) + '</span>' + (X.flat_roi != null ? ' · ' + roi(X.flat_roi) + ' ROI' : '') + ' · ' + X.n + (X.n === 1 ? ' play' : ' plays') +
     '<span class="vr-tsub">' + how + '</span></p>' : ''; };
   /* one record: every Vault play, graded at its price at the lock by Polymarket's result */
@@ -733,21 +748,22 @@ function recSport(sp, D){
     (V.n ? '<div class="vr-big num ' + (V.units_pl > 0 ? 'up' : V.units_pl < 0 ? 'dn' : '') + '">' + u2(V.units_pl) + '</div>' +
       '<p class="vr-ts num">' + wl(V) + (V.flat_roi != null ? ' · ' + roi(V.flat_roi) + ' ROI' : '') + ' · ' + V.n + (V.n === 1 ? ' play' : ' plays') + '</p>'
       : '<div class="vr-big num dim">—</div><p class="vr-ts">No graded plays yet</p>') +
-    '<p class="vr-tsub">Every suggested play, graded by Polymarket\'s result at its price at the lock. Small samples swing hard.</p>' +
+    '<p class="vr-tsub">Every suggested play (NBA and NFL, flat 1u), graded by Polymarket\'s result at its price at the lock. Small samples swing hard. Since Nov 18 college plays and the old sizes sit in the shadows below, so this is not comparable with earlier readings.</p>' +
     shadowLine('Stricter rule (shadow)', P, 'Skips plays where the wallets against outweigh the wallets for, and markets where both sides qualify. Tracked beside the record, not shown on cards.') +
-    shadowLine('One-wallet cap (shadow)', Q, 'The same plays at 1u when one proven wallet is on the side, or when it bet under its usual stake. Tracked beside the record, not shown on cards.') +
-    shadowLine('Sharps only (shadow)', rgs('only', 'all_cards'), 'Only plays with a proven wallet on the side and none against.' + since('only')) +
-    shadowLine('Two sharps (shadow)', rgs('two', 'all_cards'), 'Only plays with two or more proven wallets on the side and none against.' + since('two')) +
-    shadowLine('Seasoned wallets (shadow)', rgs('seas', 'all_cards'), 'Sharps only, counting a wallet as proven only with 20 or more graded bets.' + since('seas')) +
-    shadowLine('Flat 1u (shadow)', F, 'Every suggested play at one unit, to test whether the sizing adds anything.') + '</div>';
+    shadowLine('One-wallet cap (shadow)', Q, 'The same plays at 1u when one hot wallet is on the side, or when it bet under its usual stake. Tracked beside the record, not shown on cards.') +
+    shadowLine('Sharps only (shadow)', rgs('only', 'all_cards'), 'Only plays with a hot wallet on the side and none against.' + since('only')) +
+    shadowLine('Two sharps (shadow)', rgs('two', 'all_cards'), 'Only plays with two or more hot wallets on the side and none against.' + since('two')) +
+    shadowLine('Seasoned wallets (shadow)', rgs('seas', 'all_cards'), 'Sharps only, counting a wallet as hot only with 20 or more graded bets.' + since('seas')) +
+    shadowLine('Old size ladder (shadow)', LAD, 'Every play, all sports, at the old 1u to 5u sizes the card showed until Nov 18. Kept to check whether the sizing ever added anything.') +
+    shadowLine('College at 1u (shadow)', COL, 'CFB and CBB plays at one unit. The card shows no size on college games.') + '</div>';
   /* the pre-registered forward test: counted moneyline locks toward 300, and the lock record over every market */
   var ml = ((((c.lock || {}).all || {}).ml || {}).counted) || {}, L = sumRec(G.map(function(g){ return ((((c.lock || {}).all || {})[g[0]] || {}).counted); }));
   var clvN = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n || 0); }, 0);
   var clvS = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n ? x.clv_mean * x.clv_n : 0); }, 0);
   var n = ml.n || 0, pct = Math.min(100, n / REC_N * 100), ft;
   if (ALL) ft = '<section class="vr-card"><h3>By sport</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">Units</span><span class="vr-col">ROI</span>' +
-    ['nfl', 'cfb', 'nba', 'cbb'].filter(inSp).map(function(s){ var x = sumRec(G.map(function(g){ return vgs(s, g[0]); }));
-      return '<span class="vr-mk">' + s.toUpperCase() + '</span>' + (x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num ' + (x.units_pl > 0 ? 'up' : x.units_pl < 0 ? 'dn' : '') + '">' + u2(x.units_pl) + '</span><span class="vr-c num">' + roi(x.flat_roi) + '</span>'
+    ['nfl', 'cfb', 'nba', 'cbb'].filter(inSp).map(function(s){ var x = sumRec(G.map(function(g){ return FLAT_SP[s] ? vgs(s, g[0]) : flatOf(rawg(s, g[0])); }));
+      return '<span class="vr-mk">' + s.toUpperCase() + (FLAT_SP[s] ? '' : '<em class="vr-tsub"> 1u, not shown</em>') + '</span>' + (x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num ' + (x.units_pl > 0 ? 'up' : x.units_pl < 0 ? 'dn' : '') + '">' + u2(x.units_pl) + '</span><span class="vr-c num">' + roi(x.flat_roi) + '</span>'
         : '<span class="vr-none">—</span><span class="vr-none">—</span><span class="vr-none">—</span>'); }).join('') + '</div>' +
     '<p class="vr-fn">Each sport has its own forward test. Pick a sport to see its progress.</p></section>';
   else if (!REC_READ[sp]) ft = '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">not registered</span></div>' +
@@ -779,9 +795,9 @@ function recSport(sp, D){
   /* just locked: plays on cards frozen in the last 12 hours (published with the live cards at every lock), until their row is graded */
   var graded = {}; D.cardRows.forEach(function(r){ graded[r.key] = 1; });
   var seen = {}, addOnce = function(ev, gst, row){ var k = ev + '|' + row.who + '|' + row.label; if (seen[k]) return; seen[k] = 1; addO(ev, gst, row); };
-  ((STORE.d || {}).locked || []).filter(function(r){ return inSp(r.sport) && r.play === 'sf' && !graded[r.key]; }).forEach(function(r){
+  ((STORE.d || {}).locked || []).filter(function(r){ return inSp(r.sport) && FLAT_SP[r.sport] && r.play === 'sf' && !graded[r.key]; }).forEach(function(r){
     addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
-  (((D.cards || {}).open) || []).filter(function(r){ return inSp(r.sport) && r.play === 'sf' && r.gst > nowS - 7 * 86400; }).forEach(function(r){
+  (((D.cards || {}).open) || []).filter(function(r){ return inSp(r.sport) && FLAT_SP[r.sport] && r.play === 'sf' && r.gst > nowS - 7 * 86400; }).forEach(function(r){
     addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units});
     if (r.postponed && og[r.ev]) og[r.ev].pp = true; });
   /* a live card past its lock time is locked, even before the live file drops it */
@@ -796,7 +812,7 @@ function recSport(sp, D){
   }
   /* recent games: Vault's plays (suggested size, and the lock when it counts), newest first */
   var by = {};
-  D.cardRows.filter(function(r){ return inSp(r.sport) && r.kind !== 'close' && r.side && r.variant === 'all' && r.play === 'sf'; })
+  D.cardRows.filter(function(r){ return inSp(r.sport) && FLAT_SP[r.sport] && r.kind !== 'close' && r.side && r.variant === 'all' && r.play === 'sf'; })
     .forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: [], sp: r.sport}).v.push(r); });
   var evs = Object.keys(by).sort(function(a, b){ return by[b].gst - by[a].gst; }), shown = REC_ALL ? evs : evs.slice(0, 8);
   if (evs.length){
@@ -846,7 +862,7 @@ function renderRecord(el, o){
 }
 /* ---------- play feed: one ticket per suggested play, with the game list kept behind "All games" ----------
    The Sharps page used to be a grid of equal game cards. It is now a feed of plays (size sets the weight of each ticket), with games
-   that have proven money but no play in a side list. Every number is a stored field. "See who's on it" opens the same play detail. */
+   that have hot money but no play in a side list. Every number is a stored field. "See who's on it" opens the same play detail. */
 var EO = 'var(--ease-out,cubic-bezier(.16,1,.3,1))', ESP = 'var(--ease-spring,cubic-bezier(.34,1.56,.64,1))';
 var PLAY_CSS = [
 '.vsc .vp{container-type:inline-size;container-name:vp}',
@@ -932,9 +948,9 @@ var PLAY_CSS = [
 var PV = {sort: 'lock', all: false, seen: null, plays: [], rows: [], f: null, fopen: false};
 /* ---------- filters for the plays list (Plays view only). Chips in one group are "any of"; the Sharps chips and the other groups each narrow it further. ---------- */
 var FTIERS = [['ELITE', 'Elite'], ['PREMIUM', 'Prem'], ['LOCK', 'Lock'], ['LEAN', 'Lean'], ['WEAK', 'Weak'], ['NONE', 'No tier']];
-var FSHARPS = [['win60', 'Win 60%+'], ['pro2', '2+ proven'], ['up', 'Sized up'], ['unopp', 'Unopposed'], ['steam', 'Steam'], ['u2', '2u+']];
+var FSHARPS = [['win60', 'Win 60%+'], ['pro2', '2+ hot'], ['up', 'Sized up'], ['unopp', 'Unopposed'], ['steam', 'Steam']];
 var FMKT = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']];
-var WIN_MIN = 60, WIN_MIN_N = 20;     /* pooled win rate of the proven wallets, over at least this many recorded bets (AGS gives a record full credit at 20) */
+var WIN_MIN = 60, WIN_MIN_N = 20;     /* pooled win rate of the hot wallets, over at least this many recorded bets (AGS gives a record full credit at 20) */
 function fLoad(){
   var f = {tier: {}, mkt: {}, on: {}};
   try { var j = JSON.parse(localStorage.getItem('vsc-filters') || 'null'); if (j && typeof j === 'object'){ f.tier = j.tier || {}; f.mkt = j.mkt || {}; f.on = j.on || {}; } } catch (e) {}
@@ -956,15 +972,14 @@ function fPass(p){
   return Object.keys(f.on).every(function(c){ return x[c]; });
 }
 var FDEFS = [
-  ['Elite, Prem, Lock, Lean, Weak', 'The label SharpFlow\'s score gives the side. Each proven wallet earns a quality score from its past ROI (capped at 30%), how big it bet next to its usual stake, and how long its record is (full credit from 20 bets). The side\'s score compares the average quality for the side with the average against it. Above 0 it is Weak, from 0.78 Lean, from 0.92 Lock, from 0.96 Prem, from 0.98 Elite. At 0 or below it is Fade and never a play. This is not the "Lock" in the forward test, which is a separate rule.'],
+  ['Elite, Prem, Lock, Lean, Weak', 'The label SharpFlow\'s score gives the side. Each hot wallet earns a quality score from its past ROI (capped at 30%), how big it bet next to its usual stake, and how long its record is (full credit from 20 bets). The side\'s score compares the average quality for the side with the average against it. Above 0 it is Weak, from 0.78 Lean, from 0.92 Lock, from 0.96 Prem, from 0.98 Elite. At 0 or below it is Fade and never a play. This is not the "Lock" in the forward test, which is a separate rule.'],
   ['No tier', 'A suggested play whose side did not score above 0, so it has no label. The size came from another rule.'],
-  ['Win 60%+', 'The proven wallets on the side have won 60% or more of their recorded bets, over at least 20 bets together. A win rate is not an edge: at -150 a bet needs 60% just to break even.'],
-  ['2+ proven', 'Two or more proven wallets hold $250 or more on the side.'],
-  ['Sized up', 'A proven wallet bet at least 1.5 times its usual stake on this side.'],
-  ['Unopposed', 'No proven wallet holds $250 or more on the other side.'],
+  ['Win 60%+', 'The hot wallets on the side have won 60% or more of their recorded bets, over at least 20 bets together. A win rate is not an edge: at -150 a bet needs 60% just to break even.'],
+  ['2+ hot', 'Two or more hot wallets hold $250 or more on the side.'],
+  ['Sized up', 'A hot wallet bet at least 1.5 times its usual stake on this side.'],
+  ['Unopposed', 'No hot wallet holds $250 or more on the other side.'],
   ['Steam', 'Pinnacle\'s price is moving toward the side (a 3% shortening, or half a point on a line), read from Vault\'s own tape. Games with no tape are not counted.'],
-  ['2u+', 'The suggested size is 2 units or more. The size is an untested rule.'],
-  ['Proven wallet', 'A wallet with at least 6 recorded bets in the sport, a 55% or better win rate and a dollar ROI above 3% in Vault\'s own ledger.'],
+  ['Hot wallet', 'A wallet with at least 6 recorded bets in the sport, a 55% or better win rate and a dollar ROI above 3% in Vault\'s own ledger. It is a record, not proof of skill: going forward these wallets have not beaten the market.'],
   ['Moneyline, Spread, Total', 'The market the play is on.']
 ];
 function filterBar(total, shown){
@@ -989,14 +1004,14 @@ function halfP(s, max, dir){
 }
 function keyP(s, dir){
   var b = function(k, v, t){ return v > 0 ? '<span class="' + k + '"><b class="num">' + usd(v) + '</b> ' + t + '</span>' : ''; };
-  return '<div class="' + dir + '">' + (b('hc', s.hc_usd, 'sized up') + b('sharp', s.sharp_usd - s.hc_usd, 'proven') + b('loser', s.loser_usd, 'losers') || '<span>no proven or loser money</span>') + '</div>';
+  return '<div class="' + dir + '">' + (b('hc', s.hc_usd, 'sized up') + b('sharp', s.sharp_usd - s.hc_usd, 'hot') + b('loser', s.loser_usd, 'losers') || '<span>no hot or loser money</span>') + '</div>';
 }
-/* the benchmark's "combined proven sharps" strip, from the stored `proven` block of the suggested side; it always shows its wallet count */
+/* the benchmark's "combined hot wallets" strip, from the stored `hot` block of the suggested side; it always shows its wallet count */
 function combinedP(name, p, cn){
-  /* the wallet count is proven wallets out of every wallet holding $250 or more on the side (the counts block), so one proven wallet never reads as the whole side */
+  /* the wallet count is hot wallets out of every wallet holding $250 or more on the side (the counts block), so one hot wallet never reads as the whole side */
   var tot = cn ? (cn.hc || 0) + (cn.sharp || 0) + (cn.unproven || 0) + (cn.loser || 0) + (cn.excluded || 0) : 0;
-  var cap = '<div class="vp-cap">Combined proven sharps<em>on ' + esc(name) + (p && p.wallets ? ' · ' + p.wallets + ' proven' + (tot > p.wallets ? ' of ' + tot + ' wallets over $250' : (p.wallets === 1 ? ' wallet' : ' wallets')) : (tot ? ' · ' + tot + (tot === 1 ? ' wallet' : ' wallets') + ' over $250' : '')) + '</em></div>';
-  if (!p || !p.wallets) return '<section class="vp-cps">' + cap + '<p class="vp-none">No proven wallet on this side yet. The size here comes from the staking rule, not from a wallet record.</p></section>';
+  var cap = '<div class="vp-cap">Combined hot wallets<em>on ' + esc(name) + (p && p.wallets ? ' · ' + p.wallets + ' hot' + (tot > p.wallets ? ' of ' + tot + ' wallets over $250' : (p.wallets === 1 ? ' wallet' : ' wallets')) : (tot ? ' · ' + tot + (tot === 1 ? ' wallet' : ' wallets') + ' over $250' : '')) + '</em></div>';
+  if (!p || !p.wallets) return '<section class="vp-cps">' + cap + '<p class="vp-none">No hot wallet on this side yet. The size here comes from the staking rule, not from a wallet record.</p></section>';
   var c = function(v, l, cls){ return '<div class="vp-c"><b class="num ' + (cls || '') + '">' + v + '</b><span>' + l + '</span></div>'; };
   var sign = function(x){ return x > 0 ? 'up' : x < 0 ? 'dn' : ''; }, f = p.last20 || [];
   return '<section class="vp-cps">' + cap + '<div class="vp-cells">' + c(p.win_pct == null ? 'n/a' : p.win_pct + '%', 'Win') + c(roi(p.l30_roi), 'L30 ROI', sign(p.l30_roi)) +
@@ -1024,7 +1039,7 @@ function leadSide(g){ var x = null; Object.keys(g.markets).forEach(function(k){ 
 function railRowP(g, i, showSport){
   var x = leadSide(g), m = g.markets[x.k], nm = sideOrder(g, m, x.k), a = m.sides[nm[0]].all, b = m.sides[nm[1]].all, max = Math.max(counted(a), counted(b)) || 1, p = m.sides[x.n].all.proven;
   return '<button type="button" class="vp-row" data-r="' + i + '"><div class="vp-ra">' + esc(matchName(g)) + '<span class="num">' + (showSport ? g.sport.toUpperCase() + ' · ' : '') + ct(g.gst, true) + '</span></div>' +
-    '<div class="vp-rb"><b class="num">' + usd(x.v) + '</b> proven on ' + esc(x.n) + (x.k === 'total' ? '' : ' ' + GNAME[x.k]) + (p && p.wallets ? ', <span class="num">' + p.w + '-' + p.l + '</span>' : '') + '</div>' +
+    '<div class="vp-rb"><b class="num">' + usd(x.v) + '</b> hot on ' + esc(x.n) + (x.k === 'total' ? '' : ' ' + GNAME[x.k]) + (p && p.wallets ? ', <span class="num">' + p.w + '-' + p.l + '</span>' : '') + '</div>' +
     '<div class="vp-mini">' + halfP(a, max, 'l') + '<u></u>' + halfP(b, max, 'r') + '</div></button>';
 }
 function slateP(games){
@@ -1032,7 +1047,7 @@ function slateP(games){
   games.forEach(function(x){ cl[x.c]++; Object.keys(x.g.markets).forEach(function(k){ var m = x.g.markets[k]; if (shadow(m, 'all')) plays++;
     Object.keys(m.sides).forEach(function(s){ usdSum += m.sides[s].all.sharp_usd; }); }); });
   return {cl: cl, html: '<div class="vp-slate"><div class="vp-f good"><b class="num">' + plays + '</b><span>suggested ' + (plays === 1 ? 'play' : 'plays') + ' across ' + n + (n === 1 ? ' game' : ' games') + '</span></div>' +
-    '<div class="vp-f gold"><b class="num">' + usd(usdSum) + '</b><span>proven money</span></div>' +
+    '<div class="vp-f gold"><b class="num">' + usd(usdSum) + '</b><span>hot money</span></div>' +
     '<div class="vp-clim"><div role="img" aria-label="' + cl.signal + ' signal, ' + cl.building + ' building, ' + cl.quiet + ' quiet">' + ['signal', 'building'].map(function(k){ return cl[k] ? '<i class="' + k + '" style="width:' + (cl[k] / n * 100).toFixed(2) + '%"></i>' : ''; }).join('') +
     '</div><span>' + cl.signal + ' signal, ' + cl.building + ' building, ' + cl.quiet + ' quiet</span></div></div>'};
 }
@@ -1063,12 +1078,12 @@ function renderFeed(el, o, games, sp){
     var nx = plays.filter(function(p){ return lockLeft(p.g); }).sort(function(a, b){ return a.g.cut - b.g.cut; })[0];
     box.innerHTML = sl.html + '<div class="vp-cols"><div>' + head + '<div class="vp-feed">' +
       (feed || (fCount() && allPlays.length ? '<div class="vc-note"><b>No plays match these filters</b><p>' + allPlays.length + ' suggested ' + (allPlays.length === 1 ? 'play is' : 'plays are') + ' hidden. Clear a filter to see them.</p></div>'
-        : '<div class="vc-note"><b>No suggested plays right now</b><p>No side meets the staking rules yet. Games with proven money on one side are listed under Building, and every game is under All games.</p></div>')) + '</div></div>' +
+        : '<div class="vc-note"><b>No suggested plays right now</b><p>No side meets the staking rules yet. Games with hot money on one side are listed under Building, and every game is under All games.</p></div>')) + '</div></div>' +
       '<aside class="vp-rail">' + (nx ? '<div class="vp-next"><span>Next lock</span><b class="num vp-cd" data-cut="' + nx.g.cut + '">' + lockLeft(nx.g) + '</b><em>' + esc(playLabelP(nx.ls, nx.k)) + ', ' + ct(nx.g.cut) + ' CT</em></div>' : '') +
-      '<section class="vp-rsec"><h2>Building</h2><p>Proven money on a side, no play yet.</p>' + rows.map(function(g, i){ return railRowP(g, i, !sp); }).join('') +
+      '<section class="vp-rsec"><h2>Building</h2><p>Hot money on a side, no play yet.</p>' + rows.map(function(g, i){ return railRowP(g, i, !sp); }).join('') +
       (bld.length > rows.length ? '<div class="vp-quiet">' + (bld.length - rows.length) + ' more building, under All games</div>' : '') +
-      (bld.length ? '' : '<div class="vp-quiet">Nothing building.</div>') + '<div class="vp-quiet">' + sl.cl.quiet + ' quiet ' + (sl.cl.quiet === 1 ? 'game' : 'games') + ' with no proven money</div></section></aside></div>' +
-      '<p class="vp-foot">Sharp money is context. The suggested size comes from an untested rule that is still in its forward test.</p>';
+      (bld.length ? '' : '<div class="vp-quiet">Nothing building.</div>') + '<div class="vp-quiet">' + sl.cl.quiet + ' quiet ' + (sl.cl.quiet === 1 ? 'game' : 'games') + ' with no hot money</div></section></aside></div>' +
+      '<p class="vp-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. College games carry no size.</p>';
   }
   box.addEventListener('click', function(e){
     var fc = e.target.closest('.vf-chip'), ft = e.target.closest('.vf-toggle'), fx = e.target.closest('.vf-clear');
@@ -1089,7 +1104,7 @@ function renderFeed(el, o, games, sp){
 function topSlot(body){ var t = body && body.previousElementSibling; return t && t.classList.contains('vr-topbar') ? t.querySelector('.vr-tl') : null; }
 function renderCards(el, o){
   if (STORE.state === 'loading'){ el.innerHTML = '<div class="vc-note"><b>Loading the cards</b></div>'; return; }
-  if (STORE.state === 'none'){ el.innerHTML = '<div class="vc-note"><b>No cards yet</b><p>Proven sharps cards start once the Polymarket holders log is running. Nothing is shown until then.</p></div>'; return; }
+  if (STORE.state === 'none'){ el.innerHTML = '<div class="vc-note"><b>No cards yet</b><p>Hot wallets cards start once the Polymarket holders log is running. Nothing is shown until then.</p></div>'; return; }
   var sp = o.sport && o.sport !== 'all' ? o.sport : null, rank = {signal: 0, building: 1, quiet: 2};
   var games = STORE.d.games.filter(function(g){ return !sp || g.sport === sp; }).map(function(g){ return {g: g, c: climate(g, 'all')}; })
     .sort(function(a, b){ return (rank[a.c] - rank[b.c]) || (a.g.gst - b.g.gst); });
@@ -1140,7 +1155,7 @@ function mountGame(el, key, o){
     var g = STORE.d && STORE.d.games.filter(function(x){ return x.vault && x.vault.key === key; })[0];
     el.innerHTML = ''; el.style.display = g ? '' : 'none';
     if (!g) return;
-    var h = document.createElement('div'); h.className = 'vc-sech'; h.innerHTML = 'Proven sharps<span>who holds each side on Polymarket</span>'; el.appendChild(h);
+    var h = document.createElement('div'); h.className = 'vc-sech'; h.innerHTML = 'Hot wallets<span>who holds each side on Polymarket</span>'; el.appendChild(h);
     el.appendChild(card(g, o, false));
     [].forEach.call(el.querySelectorAll('.vseg'), function(s){ rail(s, false); });
   });
