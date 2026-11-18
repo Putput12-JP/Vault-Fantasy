@@ -64,6 +64,7 @@ from build_pm_ledger import CUTOFF_SEC, FULL_GAME  # noqa: E402
 import sf_rungs as SF  # noqa: E402
 import sf_signals as SIG  # noqa: E402
 import sf_publish as PUB  # noqa: E402
+import pm_clv_tiers as CT  # noqa: E402
 
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
 FLOOR_USD = 250
@@ -161,6 +162,7 @@ class Ledger:
         self.closes = closes or {}
         self.sf_excluded = set()                     # The benchmark's published exclusion list, for the `sfx` variant
         self._wide, self._mb, self._t5 = {}, {}, {}   # ledger-wide reads for sf_rungs (TOP3-PICK, GAP-LEAD, season tier 5)
+        self._clv_obs, self._clv_fit = None, {}       # CLV tiers (scripts/pm_clv_tiers.py), one fit per cut
 
     @classmethod
     def load(cls, root, sport, holders=None, pm_closes=None, follow=False):
@@ -189,6 +191,15 @@ class Ledger:
             rows = [r for r in rows if r["w"] in fs]
         return cls(rows, markets, fs, us,
                    (j(os.path.join(root, "summary.json"), {}) or {}).get("run_at"), load_closes(holders, sport, markets, pm_closes))
+
+    def clv_tiers(self, asof):
+        """{wallet: {n, mean, post, sd, p, tier}} as of `asof`: games that started before it, stored closes only (docs/pm-clv-tiers.md).
+        Empty when too few wallets have a close yet. Context only: it never changes a size, a lock or a count."""
+        if self._clv_obs is None:
+            self._clv_obs = CT.observations([r for rs in self.by_w.values() for r in rs], self.markets, self.closes, event_of)
+        if asof not in self._clv_fit:
+            self._clv_fit[asof] = CT.fit(self._clv_obs, asof)["wallets"]
+        return self._clv_fit[asof]
 
     def stats(self, w, asof):
         """The wallet's sport book as of `asof` (rows settled strictly before it), all rows and forward rows."""
@@ -457,6 +468,10 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
         else:
             side, usd, cid = max(legs, key=lambda l: l[1])
         groups.setdefault(g, []).append({"w": w, "side": side, "usd": usd, "cid": cid, "two_way": two_way, "s": s})
+    rk = ledger.clv_tiers(cut)
+    for ws_ in groups.values():
+        for x in ws_:
+            x["rk"] = rk.get(x["w"])
     built = int(time.time())
     out = {"v": VERSION, "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "cut": cut, "frozen": frozen, "sf_excluded_n": len(ledger.sf_excluded), "pop": len(ledger.population("all", cut)),
            "built": built, "keyframe_written": kf.get("written"), "ledger_run_at": ledger.run_at,
@@ -514,6 +529,7 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
                     "counts": {k: sum(1 for x in mine if cls[x["w"]] == k) for k in ("hc", "sharp", "unproven", "loser", "excluded")},
                 }
                 side_out["ags"] = ags_side(side, ws, cls, variant)
+                side_out["rk"] = rk_side(mine)
                 if variant == "sfx":                     # a shadow: money and score only, the wallet lists are the `all` ones
                     side_out.update({"list": [], "losers": [], "unproven_list": []})
                 p = side_out["proven"]
@@ -827,6 +843,16 @@ def wallet_dive(b):
 
 
 _DIVES = {}
+
+
+def rk_side(mine):
+    """CLV-tier read of the holders on a side (scripts/pm_clv_tiers.py): every holder at $250 or more, not just the hot ones.
+    sharp / dull are the tiers; `list` is the largest sharp positions. Additive and context only."""
+    by = lambda t: [x for x in mine if (x.get("rk") or {}).get("tier") == t]
+    sh, du = by("sharp"), by("dull")
+    return {"sharp_n": len(sh), "sharp_usd": round(sum(x["usd"] for x in sh)), "dull_n": len(du), "dull_usd": round(sum(x["usd"] for x in du)),
+            "list": [{"w": x["w"], "usd": round(x["usd"]), "n": x["rk"]["n"], "mean": x["rk"]["mean"], "p": x["rk"]["p"]}
+                     for x in sorted(sh, key=lambda x: -x["usd"])[:SHOW_PROVEN]]}
 
 
 def wallet_line(x, variant, k):
