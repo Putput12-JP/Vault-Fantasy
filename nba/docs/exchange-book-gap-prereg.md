@@ -71,7 +71,7 @@ Two exchanges at 2 standard errors is not a multiple-test correction, so a clear
 A clear lets the user consider a labeled context line on the prop page (exchange price versus best US book). It makes no signal, size, gate,
 Top Reads input or agree total.
 
-**Kill:** mean plus 2 standard errors below 0 at n >= 500 for an exchange (the data rule out a move toward the exchange). A mean under 2 standard errors, but not below zero by that margin, is read as not cleared and keeps collecting until the next 500. That exchange's strip is not built.
+**Kill:** mean plus 2 standard errors below 0 at n >= 500 for an exchange (the data rule out a move toward the exchange). That exchange's strip is not built. A mean that is not cleared but is not below zero by that margin is read as not cleared and is read again on the next 500.
 
 ## Known limits
 
