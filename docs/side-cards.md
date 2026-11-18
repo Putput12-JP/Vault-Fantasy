@@ -185,3 +185,11 @@ specific wallets. A card cannot do that: it keeps a wallet's largest rung per si
 
 It is a snapshot, rebuilt every run on a force-pushed branch, so it has no history to correct. Context only: never a pick, a size or
 an agree total.
+
+### Change on 2026-11-18: price-sharp wallets and the "hot" label in the wallets file
+
+Each wallet entry now carries `rk` (`tier`, `n`, `mean`, `p`): its CLV tier as of the build (`scripts/pm_clv_tiers.py`, `docs/pm-clv-tiers.md`),
+NBA and NFL only (`null` elsewhere). In NBA and NFL a **price-sharp wallet is listed even when it is not "hot"**, with its book and open
+positions, so the Following page can show price skill. The "hot" rule (6+ bets, 55%, 3% ROI) is unchanged and is a record, not proof of skill.
+The Following page tags price-sharp and price-dull wallets, sorts by price skill by default, shows no size on college plays, and no longer
+calls wallets "proven" (`following.js?v=6`). Context only: no size, pick or agree total comes from it.

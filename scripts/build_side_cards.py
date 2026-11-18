@@ -911,14 +911,15 @@ def position_history(st, cid, oi, w, fs, cut):
     return out
 
 
-def wallet_positions(kf, ledger, sport, st=None):
+def wallet_positions(kf, ledger, sport, st=None, rk=None):
     """{wallet: [position]}: every open position of every proven wallet on one game, for the wallets file. Unlike a card, which keeps a
     wallet's largest rung per side and lists the 4 largest wallets, this keeps every rung at or above the floor ($250; FOLLOW_FLOOR lowers it for CBB) for every proven
     wallet that Vault does not exclude (variant `all`, as of the keyframe's cut). Stored values only: the line and price are the
     market's at the scan, `since` is the first scan that saw the wallet holding it, and no entry price is known or estimated.
     `two_way` marks a wallet holding more than one side of the market group above the floor (a card may collapse or drop it).
     `cens` marks a wallet already holding at the scan's first read of the market, so it got in before `since`. With the scan state
-    `st`, each position also carries `px_first` and `hist` (position_history)."""
+    `st`, each position also carries `px_first` and `hist` (position_history). With `rk` (CLV tiers as of now, pm_clv_tiers) a price-sharp
+    wallet is listed too, proven or not."""
     cut, ix = kf["cut"], {c: i for i, c in enumerate(kf["cols"])}
     floor = FOLLOW_FLOOR.get(sport, FLOOR_USD)
     rows, sides = [], {}
@@ -934,7 +935,7 @@ def wallet_positions(kf, ledger, sport, st=None):
         if w not in stats:
             stats[w] = ledger.stats(w, cut)
         s = stats[w]
-        if not s["all"]["proven"] or s["excluded"]:
+        if not (s["all"]["proven"] or (rk or {}).get(w, {}).get("tier") == "sharp") or s["excluded"]:
             continue
         usual, px = s["all"]["usual"], (mk.get("px") or [None] * (oi + 1))[oi]
         out.setdefault(w, []).append({
@@ -951,6 +952,7 @@ def wallet_positions(kf, ledger, sport, st=None):
 def wallets_file(per_sport, now):
     """The wallets file: per sport, every proven wallet (variant `all`, not excluded) with its book and its open positions."""
     return {"built": now, "v": VERSION, "context_only": True, "floor_usd": FLOOR_USD, "floor_usd_by_sport": FOLLOW_FLOOR,
+            "tier_rule": "rk: the wallet's CLV tier now (scripts/pm_clv_tiers.py, NBA and NFL only): sharp, mid, dull or thin. Price skill, not a record.",
             "proven_rule": "sport book n >= %d, win rate >= %d%%, dollar ROI > %d%%, not excluded (hedger, churn)" % (PROVEN_N, PROVEN_WR * 100, PROVEN_ROI * 100),
             "note": "Who holds what, as of the last holders scan. Money is shares x market price, not what the wallet paid. No entry price "
                     "is stored. Context only: never a pick, a size or an agree total.",
@@ -1140,6 +1142,7 @@ def main():
             wrote.append(os.path.relpath(out, a.frozen_out))
         # live: every game not yet at its cut, from the replayed holder logs
         st, _ = H.replay(a.holders, sport, now)
+        rk = fl.clv_tiers(now) if a.wallets_out and sport in TIERS.TIER_SPORTS else {}     # price-sharp wallets join the directory (docs/pm-clv-tiers.md)
         evs = {(m["ev"], m["gst"]) for m in st.m.values() if m.get("gst") and m.get("mt") in FULL_GAME and now < m["gst"] - CUTOFF_SEC}
         for ev, gst in sorted(evs, key=lambda x: x[1]):
             kf = H.keyframe(st, ev, gst, now)
@@ -1148,7 +1151,7 @@ def main():
                 carry_flagged(c, prev.get((ev, gst)), now)
                 live["games"].append(c)
                 if a.wallets_out:
-                    pos, sts = wallet_positions(kf, fl, sport, st)
+                    pos, sts = wallet_positions(kf, fl, sport, st, rk)
                     names.update({w: n for w, n in (kf.get("names") or {}).items() if n})
                     for w, ps in pos.items():
                         e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w]), positions=[]))
@@ -1158,10 +1161,12 @@ def main():
                 if w in wallets.get(sport, {}):
                     continue
                 s = fl.stats(w, now)
-                if s["all"]["proven"] and not s["excluded"]:
+                if (s["all"]["proven"] or (rk.get(w) or {}).get("tier") == "sharp") and not s["excluded"]:
                     wallets.setdefault(sport, {})[w] = dict(wallet_book(s), positions=[])
             for w, e in wallets.get(sport, {}).items():
                 e["name"] = names.get(w)
+                t = rk.get(w)
+                e["rk"] = {"tier": t["tier"], "n": t["n"], "mean": t["mean"], "p": t["p"]} if t else None     # CLV tier now; NBA and NFL only
                 e["positions"].sort(key=lambda p: (p["gst"], -p["usd"]))
     live["locked"] = locked_plays(a.frozen_out, now)
     os.makedirs(os.path.dirname(os.path.abspath(a.live_out)), exist_ok=True)
