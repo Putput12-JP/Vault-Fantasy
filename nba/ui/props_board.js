@@ -805,20 +805,22 @@ window.PBX = (() => {
 #pbx-root{--pbx-g:var(--up);--pbx-r:var(--down);--pbx-v:var(--c-violet,#c4b5fd);--pbx-vbg:color-mix(in srgb,var(--pbx-v) 12%,transparent)}
 .pbx-games{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px;margin-bottom:10px}
 .pbx-games::-webkit-scrollbar{display:none}
-.pbx-g{flex:none;display:grid;grid-template-columns:auto auto;gap:2px 12px;align-items:center;text-align:left;padding:8px 12px;min-width:150px;border-radius:12px;background:var(--surface);border:1px solid rgb(var(--ink) / .08);color:var(--fg);transition:border-color .15s}
-.pbx-g:hover{border-color:rgb(var(--ink) / .2)}
-.pbx-g.on{border-color:var(--pbx-g);box-shadow:inset 0 0 0 1px var(--pbx-g)}
+/* one selected look for every toggle on the page: the .seg track behind, the lighter --seg-on segment with a thin ring on the pick */
+.pbx-g{flex:none;display:grid;grid-template-columns:auto auto;gap:2px 12px;align-items:center;text-align:left;padding:8px 12px;min-width:150px;border-radius:14px;background:var(--track);border:1px solid transparent;color:var(--fg2);transition:background-color .15s,border-color .15s,color .15s}
+.pbx-g:hover{color:var(--fg)}
+.pbx-g.on{color:var(--fg);background:var(--seg-on);border-color:var(--border2);box-shadow:0 1px 3px rgb(var(--shc) / calc(.2 * var(--shk)))}
 .pbx-g.all{min-width:auto;display:flex;font-weight:600}
 .pbx-g .tm{display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
 .pbx-g small{grid-column:2;grid-row:1/3;text-align:right;color:var(--fg3);font-size:11px;line-height:1.35}
-.pbx-stats{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px}
+.pbx-stats{display:flex;gap:2px;width:fit-content;max-width:100%;padding:3px;border-radius:16px;background:var(--track);overflow-x:auto;scrollbar-width:none;margin-bottom:10px}
 .pbx-stats::-webkit-scrollbar{display:none}
-.pbx-stats button{flex:none;padding:6px 11px;border-radius:8px;font-weight:600;font-size:12px;color:var(--fg3);border:1px solid transparent;background:none}
+.pbx-stats button{flex:none;height:32px;padding:0 12px;border-radius:12px;font-weight:500;font-size:12.5px;color:var(--fg2);border:0;background:none;transition:color .15s,background-color .15s}
 .pbx-stats button:hover{color:var(--fg)}
-.pbx-stats button.on{color:var(--fg);background:var(--surface2);border-color:rgb(var(--ink) / .08)}
+.pbx-stats button.on{color:var(--fg);font-weight:600;background:var(--seg-on);box-shadow:inset 0 0 0 1px var(--border2),0 1px 3px rgb(var(--shc) / calc(.2 * var(--shk)))}
 .pbx-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.pbx-fb{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:var(--r-pill);background:var(--chip);border:1px solid transparent;color:var(--fg2);font-weight:600;font-size:12.5px}
-.pbx-fb:hover,.pbx-fb.on{color:var(--fg);border-color:rgb(var(--ink) / .15)}
+.pbx-fb{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:16px;background:var(--track);border:1px solid transparent;color:var(--fg2);font-weight:500;font-size:12.5px}
+.pbx-fb:hover{color:var(--fg)}
+.pbx-fb.on{color:var(--fg);font-weight:600;background:var(--seg-on);border-color:var(--border2)}
 .pbx-fb svg{width:14px;height:14px}
 .pbx-wf.on{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
 .pbx-fb i{font-style:normal;background:var(--fg);color:var(--bg);border-radius:6px;font-size:11px;padding:0 6px}
