@@ -4163,6 +4163,19 @@ window.PBX = (() => {
   const sgnPt = v => v == null ? '-' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
   function sumRec(list){ const o = [0, 0, 0, null, 0, 0]; list.forEach(rc => { if (!rc) return; o[0] += rc[0]; o[1] += rc[1]; o[2] += rc[2]; o[4] += rc[4]; o[5] += rc[5]; }); return o; }
   function tierRec(tier, fwd){ if (!PSIG || !PSIG.tier_days) return null; return sumRec(Object.entries(PSIG.tier_days).filter(([d]) => fwd ? d >= SIG_FWD : d < SIG_FWD).map(([, t]) => t[tier])); }
+  // Resting orders (exchange-depth shadow test, nba/docs/exchange-depth-prereg.md): Novig's offers within 3c of each side's best bid at the rung nearest the
+  // line. A market fact: neutral colours, no ranking, never a call, and not one of the five signal checks. Same logic as the old pvNovig strip and Steam Chaser.
+  function restCard(x){
+    const r = x.r, N = PS.live && PS.live.novig && PS.live.novig.props && PS.live.novig.props[`${r.e.p}|${r.e.s}`]; if (!N || !N.lad) return '';
+    const ref = r.line != null ? r.line : null;
+    const rung = N.lad.filter(z => Array.isArray(z.dp)).sort((a, b) => Math.abs(a.k - (ref ?? a.k)) - Math.abs(b.k - (ref ?? b.k)))[0]; if (!rung) return '';
+    const i = String((rung.o || [])[0]).toLowerCase().startsWith('over') ? 0 : 1, ov = rung.dp[i] || 0, un = rung.dp[1 - i] || 0, tot = ov + un; if (tot < 100) return '';
+    const usd = v => v >= 1000 ? '$' + (v / 1000).toFixed(v >= 1e4 ? 0 : 1) + 'k' : '$' + Math.round(v), big = ov >= 500 && ov >= 2 * un ? 'o' : un >= 500 && un >= 2 * ov ? 'n' : '';
+    return `<section class="pbx-card2 pbx-rest"><header><h3>Resting orders</h3><small>Novig · untested</small></header>
+      <div class="pbx-rest-b"><div class="pbx-rest-bar" role="img" aria-label="Over ${usd(ov)} against Under ${usd(un)}"><u class="o" style="width:${(ov / tot * 100).toFixed(1)}%"></u><u class="n" style="width:${(un / tot * 100).toFixed(1)}%"></u></div>
+        <p class="pbx-rest-v">${big === 'o' ? `Over <b>${usd(ov)}</b>` : `Over ${usd(ov)}`} · ${big === 'n' ? `Under <b>${usd(un)}</b>` : `Under ${usd(un)}`} <span class="muted">at ${rung.k}</span></p>
+        <p class="note">Offers within 3¢ of each side's best bid on Novig, not trades. Untested as a signal: the test is registered and reads on or after Dec 7.</p></div></section>`;
+  }
   function sigCard(x, all0, hist, side){
     const S = sigOf(x, all0, hist);
     const head = `<header><h3>Prop signals</h3>${S ? `<small>Model side: ${S.ms === 'O' ? 'Over' : 'Under'}</small>` : ''}</header>`;
@@ -4360,6 +4373,7 @@ window.PBX = (() => {
         ${DS.rtab === 'game' && g ? `<div class="pbx-gc"><div><small>Tip</small><b>${clock(g.tip)} ${TZL}</b></div><div><small>Spread</small><b>${g.spread != null ? `${g.home} ${sgn(g.spread)}` : '-'}</b></div><div><small>Total</small><b>${g.total ?? '-'}</b></div><div><small>Kalshi, ${g.home} win</small><b>${kw != null ? pc(kw) : '-'}</b></div></div><p class="note">Game lines are context for the prop, not part of its edge.</p>` : ''}
         </div></section>
       ${sigCard(x, all0, hist, side)}
+      ${restCard(x)}
       <section class="pbx-card2"><header><h3>Line movement</h3><small>${hist.state === 'ok' ? 'DraftKings · over price at each point' : esc(r.lineFrom || '')}</small></header>
         ${hist.state === 'ok' ? `<div class="pbx-lc">${lineChart(hist.ser)}</div>
           <table class="pbx-lm"><thead><tr><th>When (${TZL})</th><th>Line</th><th>Over</th><th>Under</th></tr></thead><tbody>
@@ -4730,6 +4744,8 @@ window.PBX = (() => {
 .pbx-dt tr.on td{font-weight:700}
 /* prop signals card: verdict, agreement meter, agree ladder, check tiles */
 .pbx-sig header{margin-bottom:4px}
+.pbx-rest-b{padding:12px 16px}.pbx-rest-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:rgb(var(--ink) / .08);margin:0 0 8px}.pbx-rest-bar u{display:block;height:100%}.pbx-rest-bar .o{background:var(--fg2)}.pbx-rest-bar .n{background:var(--fg3);opacity:.55}
+.pbx-rest-v{margin:0 0 6px;font-size:13px}.pbx-rest-v b{color:var(--fg)}.pbx-rest-b .note{margin:0;padding:0;font-size:11.5px;color:var(--fg3)}
 .pbx-sigc{display:inline-flex;align-items:baseline;gap:1px;padding:2px 7px;border-radius:999px;background:rgb(var(--ink) / .06);color:var(--fg2);font:600 12px var(--font-mono)}
 .pbx-sigc small{font-size:10px;color:var(--fg3)}
 .pbx-sigc.strong{background:color-mix(in srgb,var(--pbx-g) 18%,transparent);color:var(--pbx-g)}
