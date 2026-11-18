@@ -3165,7 +3165,7 @@ rd-x.go>rd-n{opacity:1;transform:none}
 
 <script src="../sharp-money/line-chart.js?v=2" defer></script>
 <script src="../sharp-money/v2/gates.js?v=cap2" defer></script>
-<script src="../sharp-money/side-cards.js?v=36" defer></script>
+<script src="../sharp-money/side-cards.js?v=43" defer></script>
 <script>/*HALASKA*/</script>
 <script>
 const D = /*DATA*/null;
@@ -3432,7 +3432,7 @@ const PAGES = [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
     ['Game Picks', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 10.5 12 7l3.5 3.5"/>'), 'The Vault line\'s side against the spread and straight up, written 4 hours before tip and graded in public.', 'games'],
     ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'propboard'],
-    ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Opens on Proven Sharps: who holds each side on Polymarket. Pinnacle, Kalshi and Polymarket as the sharp anchor, line moves and sharp-account flow are the other tabs.', 'sharps'],
+    ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Opens on Sharps: who holds each side on Polymarket. Pinnacle, Kalshi and Polymarket as the sharp anchor, line moves and sharp-account flow are the other tabs.', 'sharps'],
   ]],
   ['Betting', [
     ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
@@ -3453,7 +3453,7 @@ const PAGES = [
 const FAMILIES = [
   ['propboard', [['propboard', 'Table'], ['props', 'Picks'], ['edges', 'All edges']]],
   ['lab', [['lab', 'Minutes Lab'], ['tonight', 'Tonight']]],
-  ['sharps', [['sharps', 'Proven Sharps'], ['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser']]],
+  ['sharps', [['sharps', 'Sharps'], ['sharp', 'Sharp Price'], ['follow', 'Follow Board'], ['wallets', 'Wallets'], ['tells', 'Prop Tells'], ['steam', 'Steam Chaser']]],
   ['pairs', [['pairs', 'Tonight\'s slip'], ['pickrec', 'Record']]],
   ['track', [['track', 'Record'], ['backtests', 'What Works']]],
   ['btlab', [['btlab', 'Backtest Lab'], ['checks', 'Model checks'], ['finder', 'Edge Finder']]],
@@ -3852,8 +3852,8 @@ function show(v){
   }
   if (v === 'sharps'){
     // Proven-sharps side cards: the card is sharp-money/side-cards.js (one file for Sharp Money and this page), drawn with this page's theme.
-    $('tname').textContent = 'Proven Sharps';
-    $('tsub').textContent = 'WHO HOLDS EACH SIDE ON POLYMARKET · CONTEXT · SUGGESTED SIZE FROM AN UNTESTED RULE';
+    $('tname').textContent = 'Sharps';
+    $('tsub').textContent = 'WHO HOLDS EACH SIDE ON POLYMARKET · CONTEXT · FLAT 1U FROM AN UNTESTED RULE';
     const go = () => window.VaultSideCards ? (VaultSideCards.mountPage($('provsharps'), {skin: 'nba', sport: 'nba'}), true) : false;
     if (!go()) document.addEventListener('DOMContentLoaded', go, {once: true});
     return;
