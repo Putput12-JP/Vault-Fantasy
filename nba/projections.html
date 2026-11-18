@@ -484,6 +484,7 @@ table.tmx tr.tot td{border-top:1px solid var(--border2)}
 #v-track p.tplain{color:var(--fg)}
 #v-track .sim-h:first-child{margin-top:0}
 .tscore .card-b{display:grid;gap:14px}
+.tfwd .card-b{display:grid;gap:10px}.tfwd .tfw-n{white-space:normal;font-size:12px;color:var(--fg3)}.tfwd .tfw-h{margin:0}.tfwd td small{display:block}.tfwd table{min-width:0;width:100%}
 .tans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
 .tan{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-ctl)}
 .tq{font-size:11.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;font-weight:500}
@@ -556,7 +557,8 @@ details.tfold[open]>summary{padding-bottom:0}
   .tpk-chev{display:none}
   .tpk-d{padding-left:4px}
   .tpk-res small,.tpk-edge small{display:inline;margin-left:6px}.tpk-edge{display:flex;align-items:baseline;justify-content:flex-end}
-  .tscore>.card-h p,.tsm-x{display:none}
+  .tscore>.card-h p,.tfwd>.card-h p,.tfwd .tfw-h,.tsm-x{display:none}
+  .tfwd td small{font-size:11px}.tfwd .tfw-n{display:none}.tfwd th,.tfwd td{padding-left:6px;padding-right:6px}.tfwd td,.tfwd small{white-space:normal}.tfwd td.l small{display:none}.tfwd .tablewrap{overflow-x:visible}.tfwd td:first-child b{display:block;line-height:1.25}.tfwd .tfw-w{display:none}.tfwd td{font-size:13px}.tfwd td:first-child{width:38%}
   table.tgrp th:nth-child(5),table.tgrp td:nth-child(5){display:none}
   table.tgrp td.l small{display:none}
   table.tgrp td.l,table.tgrp td{white-space:nowrap}
@@ -2948,7 +2950,8 @@ rd-x.go>rd-n{opacity:1;transform:none}
     <footer id="hfoot" hidden></footer>
 
     <main id="v-track" hidden>
-      <section class="card tscore" id="tscore" aria-label="Season record"></section>
+      <section class="card tfwd" id="tfwd" aria-label="The record that counts"></section>
+      <section class="card tscore" id="tscore" aria-label="Bet everything baseline"></section>
 
       <details class="card tfold" id="tgamecard">
         <summary><span class="tf-t"><b>Game picks: spread and winner</b><small id="tgamestat">The Vault line's side on every regular-season game</small></span></summary>
@@ -3043,7 +3046,7 @@ rd-x.go>rd-n{opacity:1;transform:none}
       </details>
 
       <details class="card tfold" id="texplore">
-        <summary><span class="tf-t"><b>Explore the record</b><small>Filter by venue, stat, side, grade, book and day. Filters apply only inside this section.</small></span></summary>
+        <summary><span class="tf-t"><b>Bet everything, cut by market</b><small>Filter by venue, stat, side, grade, book and day. Filters apply only inside this section.</small></span></summary>
         <div class="card-b">
           <div class="tbar" aria-label="Filters for this section">
             <div class="tfilters" id="tfilters"></div>
@@ -7131,6 +7134,58 @@ function pickList(el, moreEl, picks, sect, empty){
   moreEl.hidden = picks.length <= lim;
   moreEl.innerHTML = `<button class="btn" type="button" data-pkmore="${sect}">Show all ${picks.length.toLocaleString()} picks</button>`;
 }
+
+// ── The record that counts: forward-tested rules first, the bet-everything baseline second ───────────────────────────
+// Frozen on 2026-11-18 (docs/nba-edge-rules-prereg.md, read by scripts/nba_edge_rules_read.py). Definitions here must match that file.
+const EDGE_RULES = {since: '2026-11-19', read: 'Dec 10', rules: [
+  {id: 'R1', name: 'Edge above 12%', ctl: 'edges of 3 to 12%', need: 'ROI 1.0 pt below the control, win rate no higher, 3,000+ bets',
+   g: r => r.ebin === '12%+', c: r => r.ebin !== '12%+', min: 3000},
+  {id: 'R2', name: 'Model and gap agree', ctl: 'either alone', need: 'ROI 2.0 pts above the control, 1,500+ bets',
+   g: r => r.etype === 'both', c: r => r.etype !== 'both', min: 1500},
+  {id: 'R3', name: 'High-edge weak cells', ctl: 'all bets', need: 'ROI at or below -5% and 3 pts under all bets, 1,500+ bets',
+   g: r => r.ebin === '12%+' && ((r.stat === 'pra' && r.side === 'under') || (r.stat === '3pm' && r.side === 'over') || r.stat === 'pr' || r.stat === 'pa'), c: () => true, min: 1500},
+]};
+function edgeAgg(rows){
+  let n = 0, u = 0, sq = 0, w = 0, l = 0;
+  for (const r of rows){ n += r.bets; u += r.units; sq += r.units_sq || 0; w += r.w; l += r.l; }
+  if (!n) return {n: 0};
+  const m = u / n, v = Math.max(sq / n - m * m, 0);
+  return {n, roi: m, hw: 1.96 * Math.sqrt(v / n), win: w + l ? w / (w + l) : null};
+}
+const edgeCell = a => !a.n ? '<span class="muted">none yet</span>' : `${tRoi(a.roi)}<small>${a.n.toLocaleString()} bets<span class="tfw-w"> · win ${a.win == null ? DASH : (a.win * 100).toFixed(1) + '%'}</span></small>`;
+function baseNote(all){
+  if (!all.length) return '';
+  const hi = edgeAgg(all.filter(r => r.ebin === '12%+')), lo = edgeAgg(all.filter(r => r.ebin !== '12%+')), t = edgeAgg(all);
+  return `<p class="tclv"><b>What this means:</b> betting every one of these returns ${tRoi(t.roi)} on ${t.n.toLocaleString()} bets${t.roi < 0 && t.roi > -0.08 ? ", about the bookmaker's margin" : ''}. Edges above 12% return ${tRoi(hi.roi)} and edges of 3 to 12% return ${tRoi(lo.roi)}${hi.roi != null && lo.roi != null && hi.roi <= lo.roi ? ', so a bigger claimed edge has not won more' : ''}.</p>`;
+}
+function playRows(){                          // Sharp Plays for NBA props, split at the day rule C went live
+  const G = window.V2Gates, since = G && G.GATES ? G.GATES.NBA_FAIR_SINCE : null;
+  const S = (SMP.play || []).filter(p => p.kind === 'prop' && (p.status === 'won' || p.status === 'lost'));
+  const sum = a => { const w = a.filter(p => p.status === 'won').length, u = a.reduce((x, p) => x + (p.units || 0), 0); return {n: a.length, w, l: a.length - w, u, roi: a.length ? u / a.length : null}; };
+  return since == null ? null : {fwd: sum(S.filter(p => p.firstSeen >= since)), old: sum(S.filter(p => p.firstSeen < since))};
+}
+function renderTrackFwd(){
+  const el = $('tfwd'); if (!el) return;
+  const all = cubeRows(), R = SMP.play ? playRows() : null;
+  const rec = (a, note) => a.n ? `<b>${a.w}-${a.l}</b> ${tUnits(a.u)}u<small>${tRoi(a.roi)} · ${a.n} settled${note ? ' · ' + note : ''}</small>` : '<span class="muted">none settled</span>';
+  const plays = R
+    ? `<tr><td class="l"><b>Forward</b><small>first seen after rule C went live, Nov 3</small></td><td>${rec(R.fwd, R.fwd.n < 100 ? 'too few to call' : '')}</td><td class="l tfw-n">${R.fwd.n < 100 ? `Too few to call (${R.fwd.n} of 100).` : 'Enough to read.'}</td></tr>
+       <tr class="dim"><td class="l"><b>Before Nov 3</b><small>the rule was found on these, so not evidence</small></td><td>${rec(R.old, 'in-sample')}</td><td class="l tfw-n">In-sample.</td></tr>`
+    : `<tr><td class="l" colspan="3"><span class="muted">${SMP.tried && !SMP.play ? 'The Play ledger loads on vaultfantasy.com.' : 'Loading the Play ledger'}</span></td></tr>`;
+  const rows = EDGE_RULES.rules.map(r => {
+    const B = edgeAgg(all.filter(x => x.day < EDGE_RULES.since && r.g(x))), F = edgeAgg(all.filter(x => x.day >= EDGE_RULES.since && r.g(x)));
+    return `<tr><td class="l"><b>${r.id} ${r.name}</b><small>against ${r.ctl}</small></td><td>${edgeCell(B)}</td><td>${edgeCell(F)}</td><td class="l tfw-n">${r.need}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<div class="card-h"><div><h2>The record that counts</h2><p>Rules written down before they were graded, read at the price you could take. Everything under this card is context.</p></div></div>
+    <div class="card-b">
+      <h3 class="sim-h">Plays: fair prices agree and Kalshi quotes the line</h3>
+      <div class="tablewrap"><table class="ht tsim"><thead><tr><th class="l" scope="col">Sample</th><th scope="col">Record</th><th class="l tfw-n" scope="col">Read</th></tr></thead><tbody>${plays}</tbody></table></div>
+      <p class="hint tfw-h">NBA props only, 3 to 10% over the exchange, the night's top 5, 1 unit at the entry price.</p>
+      <h3 class="sim-h">Three edge rules, frozen Nov 18, read ${EDGE_RULES.read}</h3>
+      <div class="tablewrap"><table class="ht tsim"><thead><tr><th class="l" scope="col">Rule</th><th scope="col">Before Nov 19</th><th scope="col">Since Nov 19</th><th class="l tfw-n" scope="col">Passes if</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint tfw-h">Even a pass only earns a proposal to change the model. Every group is expected to stay at or below zero.</p>
+    </div>`;
+}
 function renderTrackTop(d, all){
   const tot = trAgg(all), bets = (d && d.bets) || [];
   const gated = trAgg(all.filter(r => r.gate !== 'no-go')), ng = trAgg(all.filter(r => r.gate === 'no-go'));
@@ -7143,7 +7198,7 @@ function renderTrackTop(d, all){
   const sgn = (x, f = 1) => (x >= 0 ? '+' : '') + x.toFixed(f);
 
   if (!tot.bets){
-    $('tscore').innerHTML = `<div class="card-h"><div><h2>Season record</h2><p>No shadow bets yet.</p></div></div><div class="card-b"><p class="tclv">The recorder logs every edge the Props page prices at 3% or more (Kalshi, sportsbooks, Polymarket and pick'em apps) for games within 24 hours, and settles it from the box score. Props list the morning of a game; the record starts on opening night, October 20. Nothing here is a real bet.</p>${preStrip(P)}</div>`;
+    $('tscore').innerHTML = `<div class="card-h"><div><h2>Bet everything: the baseline</h2><p>No shadow bets yet.</p></div></div><div class="card-b"><p class="tclv">The recorder logs every edge the Props page prices at 3% or more (Kalshi, sportsbooks, Polymarket and pick'em apps) for games within 24 hours, and settles it from the box score. Props list the morning of a game; the record starts on opening night, October 20. Nothing here is a real bet.</p>${preStrip(P)}</div>`;
     $('tplayssub').textContent = ''; pickList($('tplaylist'), $('tplaymore'), [], 'plays', 'No picks yet.'); pickList($('tnogolist'), $('tnogomore'), [], 'nogo', 'No picks yet.');
     $('tgloss').innerHTML = TGLOSS.map(([t, x]) => `<dt>${t}</dt><dd>${x}</dd>`).join('');
     return;
@@ -7161,13 +7216,14 @@ function renderTrackTop(d, all){
   const gl = (label, sub, a, bs) => `<tr><td class="l"><b>${label}</b><small>${sub}</small></td><td>${a.bets.toLocaleString()}</td>${partial ? '' : `<td>${picksOf(bs)}</td>`}<td>${a.settled ? rec(a) : '<span class="muted">0 settled</span>'}</td><td>${a.settled ? tUnits(a.units) + `<small>${tRoi(a.roi)}</small>` : '<span class="muted">none</span>'}</td><td>${a.clv != null ? tClv(a.clv) : ''}</td></tr>`;
   const gcls = [...new Set(gB.map(betFam))].map(f => VLABEL[f]).join(' and ');
   const early = tot.open > 0;
-  $('tscore').innerHTML = `<div class="card-h"><div><h2>Season record</h2><p>Every 3%+ edge the model priced, tracked as 1-unit paper bets and settled from ESPN's box score. Preseason is not included.</p></div></div>
+  $('tscore').innerHTML = `<div class="card-h"><div><h2>Bet everything: the baseline</h2><p>Every 3%+ edge the model priced, at 1 unit each, settled from ESPN's box score. Nobody would bet this way. It is the floor a signal has to beat, not a record of picks. Preseason is not included.</p></div></div>
     <div class="card-b">
       <div class="tans"><div class="tan"><span class="tq">How are we doing?</span>${a1}</div><div class="tan"><span class="tq">Is it real?</span>${a2}</div><div class="tan"><span class="tq">What do I do with it?</span>${a3}</div></div>
       <div class="tablewrap"><table class="tgrp"><thead><tr><th class="l" scope="col"></th><th scope="col">Bets</th>${partial ? '' : '<th scope="col" title="Distinct player, stat and side. The same pick at several books and apps counts once.">Picks</th>'}<th scope="col" title="Wins, losses, pushes">Record</th><th scope="col" title="1 unit per bet at the entry price, and profit per unit">Units</th><th scope="col" title="Closing-line value: how far the price moved toward our side after entry, in points of win chance">Price move</th></tr></thead><tbody>
         ${gl('GO and WATCH', gcls ? `${gcls} markets the model backtested` : 'Passed or nearly passed a backtest', gated, gB)}
         ${gl('NO-GO', 'For the record: the model says not to bet', ng, nB)}
         <tr class="tot">${gl('All bets', '', tot, bets).replace(/^<tr>/, '').replace(/<\/tr>$/, '')}</tr></tbody></table></div>
+      ${baseNote(all)}
       ${tot.clv_n ? `<p class="tclv"><b>Price move so far:</b> after we logged each bet the price moved ${tot.clv >= 0 ? 'toward' : 'against'} our side by <b>${sgn(tot.clv * 100)} points</b> on average over ${tot.clv_n.toLocaleString()} bets${gated.clv != null && ng.clv != null ? ` (GO and WATCH ${sgn(gated.clv * 100)}, NO-GO ${sgn(ng.clv * 100)})` : ''}. <span class="tsm-x"> Positive is the earliest sign of a real edge, ahead of any win or loss; it is not profit.</span>${early ? ' Games that have not finished use the latest price, not the final close.' : ''}</p>` : ''}
       ${preStrip(P)}
     </div>`;
@@ -7196,6 +7252,8 @@ function renderTrack(){
   $('mode').innerHTML = !d ? pill('idle', 'No ledger yet')
     : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ${TZL}</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ${TZL}</span>`;
   renderTrackTop(d, all);
+  renderTrackFwd();
+  if (!SMP.tried) smLoadPlays();
   if (window.PBX) PBX.trackCard($('tpsig'), $('tpsigstat'));                // ui/props_board.js
 
   // filters
@@ -13019,7 +13077,7 @@ async function smLoadPlays(){
     if (window.V2Gates && window.V2Gates.setKalshiReads) window.V2Gates.setKalshiReads(k);
     const nba = L => Object.values((L && L.plays) || {}).filter(p => p.sport === 'nba');
     SMP.rows = nba(j); SMP.play = smPlaySet(SMP.rows, nba(q)); SMP.at = Date.now() / 1000;
-    if (view === 'summary') renderSummary();
+    if (view === 'summary') renderSummary(); else if (view === 'track') renderTrackFwd();
   } catch (e) { /* the page works without them */ }
   clearTimeout(SMP.timer); SMP.timer = setTimeout(() => { if (view === 'summary') smLoadPlays(); else SMP.tried = false; }, 5 * 60 * 1000);
 }
