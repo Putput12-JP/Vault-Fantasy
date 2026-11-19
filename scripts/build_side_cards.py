@@ -696,6 +696,15 @@ def compact_steam(st):
     return {k: st[k] for k in keep if k in st}
 
 
+def signed_line(mk, g, oi):
+    """The line as it reads for the side held. Polymarket stores a spread's line for outcomes[0]; the other side has the opposite sign
+    (Texans -13.5 means Colts +13.5). A total has one line for both sides, and a moneyline has none."""
+    line = mk.get("line")
+    if line is None or g == "total" or oi == 0:
+        return line
+    return -line
+
+
 def pinnacle_price(game, g, norm, cut, line=None):
     """Pinnacle's price for the side at the cut, from the last tape row at or before it. On a spread or total it is the main line's
     price, and None when the side's ticket line is not Pinnacle's main at the cut (the tape keeps no alt lines)."""
@@ -965,7 +974,7 @@ def wallet_positions(kf, ledger, sport, st=None, rk=None, extra=None):
             continue
         usual, px = s["all"]["usual"], (mk.get("px") or [None] * (oi + 1))[oi]
         out.setdefault(w, []).append({
-            "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "g": g, "side": mk["outs"][oi], "line": mk.get("line"), "cid": cid,
+            "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "g": g, "side": mk["outs"][oi], "line": signed_line(mk, g, oi), "cid": cid,
             "usd": round(usd), "shares": round(h[ix["shares"]], 2) if h[ix["shares"]] is not None else None,
             "px": px, "px_t": mk.get("px_t"), "press": round(usd / usual, 2) if usual else None,
             "since": h[ix["fs"]] if "fs" in ix else None, "cens": bool(h[ix["cens"]]) if "cens" in ix else None,
