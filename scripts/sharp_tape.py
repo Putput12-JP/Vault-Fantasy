@@ -28,7 +28,7 @@ import datetime as dt, glob, json, os, subprocess, sys, time
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 URL = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/sharp-data/data.json'
-SPORTS = ('cfb', 'nba')
+SPORTS = ('cfb', 'nba', 'cbb')      # cbb added 2026-11-19: forward tape only (no pinHist, Kalshi or Novig backfill, no edge record), see docs/stale-number-prereg.md
 BF_SPORTS = ('nfl', 'cfb', 'nba')
 NFL_ALIAS = {'WSH': 'WAS', 'LA': 'LAR', 'JAC': 'JAX', 'LVR': 'LV', 'OAK': 'LV'}
 KAL = 'https://api.elections.kalshi.com/trade-api/v2'
@@ -437,7 +437,7 @@ def main():
     feed = load(src)
     update_results(feed.get('games', []))
     allg = [g for g in feed.get('games', []) if g.get('sport') in BF_SPORTS and g.get('start', 0) > now and g.get('away') and g.get('home') and not g.get('final')]
-    games = [g for g in allg if g['sport'] in SPORTS]
+    games = [g for g in feed.get('games', []) if g.get('sport') in SPORTS and g.get('start', 0) > now and g.get('away') and g.get('home') and not g.get('final')]
     total = 0
     for sp in SPORTS:
         d = os.path.join(ROOT, 'data', 'book_tape', sp)
