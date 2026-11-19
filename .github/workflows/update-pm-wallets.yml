@@ -1,11 +1,11 @@
 name: Update Polymarket account scorecard
 
-# Weekly: add newly settled NFL, CFB, NBA and college basketball games' $1k+ pre-kickoff trades to the account
+# Daily: add newly settled NFL, CFB, NBA and college basketball games' $1k+ pre-kickoff trades to the account
 # scorecard (scripts/build_pm_wallets.py -> data/pm_wallets.json), which the
 # hourly Polymarket job uses to split out sharp vs usually-losing accounts.
 on:
   schedule:
-    - cron: '0 12 * * 2'     # Tuesday 12:00 UTC, after MNF settles
+    - cron: '0 12 * * *'     # daily 12:00 UTC (7 AM Central): Monday-night and weekend games are settled by then
   workflow_dispatch:
 
 permissions:

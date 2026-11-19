@@ -150,7 +150,7 @@ function index(d){
   Object.keys(d.sports || {}).forEach(function(sport){ var ws = d.sports[sport];
     Object.keys(ws).forEach(function(w){ var e = ws[w], dv = e.dive || {}, k = sport + '|' + w;
       var x = {k: k, w: w, sport: sport, name: shortName(w, e.name), wl: [e.w_, e.l_], roi: e.roi, n: e.n, usual: e.usual, pnl: e.pnl,
-        rk: e.rk || null, clv: e.clv || {}, lane: dv.lane || {}, fav: dv.fav, dog: dv.dog, size: dv.size || {}, legs: e.legs || [], pos: e.positions || []};
+        rk: e.rk || null, sc: !!e.sc, clv: e.clv || {}, lane: dv.lane || {}, fav: dv.fav, dog: dv.dog, size: dv.size || {}, legs: e.legs || [], pos: e.positions || []};
       W.push(x); BOOK[k] = x; if (x.pos.length) OPEN[k] = x.pos.length;
       x.pos.forEach(function(p){ var id = p.ev + '@' + p.gst;
         (gm[id] = gm[id] || {id: id, sport: sport, ev: p.ev, gst: p.gst, pos: []}).pos.push({k: k, p: p}); }); }); });
@@ -343,7 +343,8 @@ var TIER_ORD = {sharp: 3, mid: 2, thin: 1, dull: 0};
 function rkTag(w){
   var t = w.rk && w.rk.tier;
   return t === 'sharp' ? '<i class="fw-tag fw-rk sharp" title="Its entry prices have beaten the closing line by more than luck explains, using only games before today">price-sharp</i>'
-    : t === 'dull' ? '<i class="fw-tag fw-rk dull" title="Its entry prices have lost to the closing line by more than luck explains">price-dull</i>' : '';
+    : t === 'dull' ? '<i class="fw-tag fw-rk dull" title="Its entry prices have lost to the closing line by more than luck explains">price-dull</i>'
+    : w.sc ? '<i class="fw-tag fw-rk sharp" title="On the daily account scorecard\'s price-sharp list (closing-line skill after a false-discovery control). The same accounts as the Accounts page.">scorecard sharp</i>' : '';
 }
 function dir(S){
   var all = rows(S), ws = all.slice(0, S.shown);

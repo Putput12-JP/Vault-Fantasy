@@ -55,7 +55,7 @@ jobs:
         run: |
           python3 scripts/build_side_cards.py --holders pmdata/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
             --frozen-out pmdata/pm_cards --live-out live/live.json --closes data/pm_closes.json --prev-live prev_live.json \
-            --sf-excluded sf_excluded.json --wallets-out live/wallets.json
+            --sf-excluded sf_excluded.json --scorecard-dir data --wallets-out live/wallets.json
       - name: Commit frozen cards (append-only)
         if: env.SKIP != '1'
         run: |

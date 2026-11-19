@@ -578,5 +578,17 @@ class FollowOnly(unittest.TestCase):
         self.assertEqual(cards.population("all", 1000), ["0xreg"])
 
 
+class ScorecardSharpTest(unittest.TestCase):
+    def test_reads_sharp_lists_lowercased_and_survives_missing_files(self):
+        import json, tempfile
+        d = tempfile.mkdtemp()
+        json.dump({"sharp": ["0xAB", "0xcd"], "dull": ["0xee"]}, open(os.path.join(d, "pm_wallets.json"), "w"))
+        open(os.path.join(d, "pm_wallets_cfb.json"), "w").write("not json")
+        out = C.scorecard_sharp(d)
+        self.assertEqual(out["nfl"], {"0xab", "0xcd"})          # dull accounts are not followed
+        self.assertEqual(out["cfb"], set())                      # unreadable file: empty, never an error
+        self.assertEqual(out["nba"], set())                      # missing file: empty
+
+
 if __name__ == "__main__":
     unittest.main()
