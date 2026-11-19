@@ -369,7 +369,25 @@
     var sp = g.pin && g.pin.sp && g.sport === 'nfl' ? keyNote(F, g.pin.sp.line) : '';
     var cs = built.all.filter(function (c) { return c.gk === g.key && c.tier !== 'none'; });
     var read = cs.filter(function (c) { return c.tier === 'play'; }).length ? cs.filter(function (c) { return c.tier === 'play'; }).length + ' price(s) on this game clear every gate: ' + cs.filter(function (c) { return c.tier === 'play'; }).map(function (c) { return c.title + ' at ' + c.price.book + ' ' + am(c.price.am); }).join('; ') + '.' : cs.length ? 'Nothing clears every gate. ' + cs.length + ' price(s) looked at and held back: ' + cs.map(function (c) { return c.title + ' (' + c.reasons[0] + ')'; }).join(' ') : 'No price here beats Pinnacle by enough to look at.';
+    var usd = function (n) { return n == null ? '-' : '$' + Math.round(n).toLocaleString(); }, ams = function (n) { return n == null ? '' : (n > 0 ? '+' : '') + n; };
+    /* Stale number (docs/stale-number-prereg.md): the market moved a line and one book still hangs the old one. Untested, context only. */
+    var staleBlock = (g.stale || []).length ? h('div', { key: 'stale', style: { display: 'grid', gap: 12 } },
+      h(k.je, { hint: 'untested rule, context only' }, 'Stale number'),
+      g.stale.map(function (x, i) {
+        var who = x.m === 'tot' ? (x.side === 'over' ? 'Over' : 'Under') : (g[x.side].short || g[x.side].abbr), num = x.m === 'tot' ? String(x.line) : sgn(x.line), mkn = x.m === 'tot' ? 'total' : 'spread';
+        var pf = function (v) { return x.m === 'tot' ? String(v) : g.home.abbr + ' ' + sgn(v); };
+        var row = function (l, v) { return h('div', { key: l, style: { display: 'flex', justifyContent: 'space-between', gap: 12 } }, h(k.T, { size: 'sm' }, l), h(k.M, { size: 'sm', mono: true }, v)); };
+        return h('div', { key: i, style: { display: 'grid', gap: 8, padding: 16, borderRadius: 12, border: '1px solid rgba(245,184,74,.6)', background: 'linear-gradient(180deg,rgba(245,184,74,.14),transparent 70%)' } },
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } }, h(k.M, { size: 'lg', weight: 'semibold' }, x.book + ' ' + who + ' ' + num + ' ' + ams(x.price)), h(k.oe, { variant: 'warning' }, 'untested rule'), h(k.oe, { variant: 'default' }, 'context only')),
+          row('Pinnacle ' + mkn + ' moved', pf(x.pin.from) + ' to ' + pf(x.pin.to)),
+          row('Other US books that moved with it', String(x.agree)),
+          row('This number vs Pinnacle now', x.gap + ' pts better'),
+          row('Pinnacle limit', x.limit && x.limit.from != null ? usd(x.limit.from) + ' to ' + usd(x.limit.to) + (x.limit.up ? ' (limit up)' : '') : '-'),
+          row('EV at this number', x.ev == null ? 'n/a' : (x.ev > 0 ? '+' : '') + (x.ev * 100).toFixed(1) + '%'),
+          h(k.T, { size: 'xs' }, 'Seen ' + dur(tnow() - x.since) + ' ago. Not a bet signal: it is not in Top Reads or any agree total. The replay (NBA 38 games, CFB 18) did not prove that a stale line beats the price you pay, so treat it as a reason to look, not a play.'));
+      })) : null;
     return h('div', { style: { display: 'grid', gap: 12 } },
+      staleBlock,
       h(k.je, { hint: 'the V2 read of this game' }, 'Plays on this game'), h(k.K, { padding: 16 }, h(k.T, { size: 'base' }, read)),
       h(k.je, { hint: 'from the book tape' }, 'Who is behind'),
       parts.length ? h('div', { style: { display: 'grid', gap: 14 } }, parts.concat(sp ? [h(k.T, { key: 'kn', size: 'sm' }, 'Spread: ' + sp)] : [])) : h(k.K, { padding: 16 }, h(k.T, { size: 'sm' }, 'No book history for this game yet. The tape records a book only when its number changes, from the first run after it appears.')));

@@ -861,6 +861,52 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
       text: `${x.book} still has ${fmtLine(g, x.m, x.side, x.hline ?? x.line)} ${x.price > 0 ? '+' : ''}${x.price}; Pinnacle's fair price is ${am(x.fair) > 0 ? '+' : ''}${am(x.fair)} (${(x.ev * 100).toFixed(1)}% EV)` });
   }
 
+  // (b2) Stale number: the market moved a line and a soft book still hangs the old one (docs/stale-number-prereg.md, the registered
+  // rule). Pinnacle's number moved >= 2 pts in 90 min, >= 2 OTHER soft books moved the same way by >= 1 pt, and this book hangs a number
+  // >= 1 pt better for the side Pinnacle moved toward. Context only and UNTESTED (docs/stale-number-results.md: not proven, 56 of 100
+  // games): it is not a bet signal, is not in EF_KIND / BET_KINDS, and never feeds Top Reads, SM_GATE or an agree total. The EV shown is
+  // Pinnacle's fair at that number, null when its ladder has no such number. History starts when this code first ran, so a base line
+  // is the earliest one stored when less than 90 minutes exist.
+  const staleNow = [];
+  {
+    const WIN = 90 * 60, THR = 2, bk = (G.bk ||= {});
+    for (const [book, b] of Object.entries(g.soft || {})) for (const m of ['sp', 'tot']) {
+      const ln = b[m]?.line; if (ln == null) continue;
+      const a = ((bk[book] ||= {})[m] ||= []);
+      if (!a.length || a[a.length - 1][1] !== ln) a.push([t, ln]);
+      while (a.length > 2 && a[1][0] < t - 4 * H) a.shift();
+    }
+    const at = (a, ts) => { let v = a[0][1]; for (const e of a) { if (e[0] <= ts) v = e[1]; else break; } return v; };
+    if (P && hist.length > 1) for (const m of ['sp', 'tot']) {
+      const curL = m === 'sp' ? P.sp?.line : P.tot?.line; if (curL == null) continue;
+      let b0 = null;
+      for (const s of hist) { const v = m === 'sp' ? s.sp : s.tot; if (v == null) continue; if (b0 == null || s.ts <= t - WIN) b0 = v; else break; }
+      const mv = curL - (b0 ?? curL); if (Math.abs(mv) < THR) continue;
+      const dir = mv > 0 ? 1 : -1, side = m === 'tot' ? (dir > 0 ? 'over' : 'under') : (dir > 0 ? 'away' : 'home');
+      const rows = [];
+      for (const [book, b] of Object.entries(g.soft || {})) { const a = bk[book]?.[m]; const ln = b[m]?.line; if (a?.length && ln != null) rows.push({ book, b, ln, d: ln - at(a, t - WIN) }); }
+      let best = null;
+      for (const r of rows) {
+        const gap = dir > 0 ? curL - r.ln : r.ln - curL;
+        const agree = rows.filter(x => x.book !== r.book && x.d * dir >= 1).length;
+        if (gap >= 1 && agree >= 2 && (!best || gap > best.gap)) best = { ...r, gap, agree };
+      }
+      if (!best) continue;
+      const price = best.b[m][side], lims = hist.filter(s => s.lim && s.lim[m]);
+      const limKnown = lims.length >= 2 && lims[lims.length - 1].ts - lims[0].ts >= 3 * H;
+      const lim0 = lims[0]?.lim[m] ?? null, lim1 = lims[lims.length - 1]?.lim[m] ?? null;
+      const f = price == null ? null : fairNow(P, { m, side, hline: best.ln, line: best.ln });
+      const key = `${m}:${side}:${best.book}:${best.ln}`, first = (G.staleSeen ||= {})[key] ??= t;
+      staleNow.push({ m, side, book: best.book, price, hline: m === 'sp' ? best.ln : null, line: m === 'sp' ? (side === 'home' ? best.ln : -best.ln) : best.ln,
+        pin: { from: b0, to: curL }, gap: +best.gap.toFixed(1), agree: best.agree, limit: { known: limKnown, up: !!(limKnown && lim1 >= lim0 * 1.5), from: lim0, to: lim1 },
+        fair: f == null ? null : r3(f), ev: f == null || price == null ? null : r3(f * (1 + payout(price)) - 1), since: first });
+      if (price != null) pushAlert(S, { ...base, ts: t, type: 'stale', m, side, book: best.book, price, hline: m === 'sp' ? best.ln : null, line: staleNow[staleNow.length - 1].line, ctx: true,
+        id: `${g.key}:stale:${key}`, text: `${best.book} still has ${fmtLine(g, m, side, m === 'sp' ? best.ln : best.ln)} ${price > 0 ? '+' : ''}${price} after the market moved: Pinnacle ${b0} → ${curL}, ${best.agree} other books moved with it` });
+    }
+    for (const k of Object.keys(G.staleSeen || {})) if (!staleNow.some(x => `${x.m}:${x.side}:${x.book}:${x.m === 'sp' ? x.hline : x.line}` === k)) delete G.staleSeen[k];
+  }
+  G.stale = staleNow;
+
   // (c) Polymarket sharp accounts, (d) whale tickets (PM + Kalshi).
   const cutoff = t - 40 * 60;
   const pmNew = (G.pm || []).filter(x => x.ts > (G._pmSeen || 0) || x.late);
@@ -1327,7 +1373,7 @@ function payload(S, byGame, W, status) {
       pinHist: (G.pin || []).map(s => [s.ts, s.ml ?? null, s.sp ?? null, s.spP ?? null, s.tot ?? null, s.oP ?? null]),
       splitHist: G.split || [],
       pm: pm ? { slug: pm.slug, vol: pm.vol, vol24: pm.vol24, px: Object.fromEntries(Object.entries(pm.mk).filter(([, v]) => v).map(([k, v]) => [k, { line: v.line, outs: v.outs, px: v.px, vol: Math.round(v.vol) }])) } : null,
-      kal: K || null, nov: g._nov || null, flow, tickets, behind: G.behind || [], final: G.final || null,
+      kal: K || null, nov: g._nov || null, flow, tickets, behind: G.behind || [], stale: G.stale || [], final: G.final || null,
     });
   }
   games.sort((a, b) => a.start - b.start);
