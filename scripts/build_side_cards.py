@@ -70,6 +70,7 @@ import sf_tiers as TIERS  # noqa: E402
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
 FLOOR_USD = 250
 FOLLOW_FLOOR = {"cbb": 100}          # the wallets file (Following page) lists smaller CBB positions: thin markets, small bettors. Cards keep FLOOR_USD.
+SCORECARD_FILES = {"nfl": "pm_wallets.json", "cfb": "pm_wallets_cfb.json", "nba": "pm_wallets_nba.json", "cbb": "pm_wallets_cbb.json"}
 PRESS = 1.5
 L30_DAYS, L30_MIN_N = 30, 2
 HEDGER_SHARE, HEDGER_MIN_MARKETS = 0.25, 8
@@ -870,6 +871,20 @@ def wallet_line(x, variant, k):
             "dive": wallet_dive(b)}
 
 
+def scorecard_sharp(data_dir):
+    """{sport: set of wallets} the account scorecard (scripts/build_pm_wallets.py, data/pm_wallets*.json) calls price-sharp: closing-line
+    skill after a false-discovery control, not a win record. This is the list the Sharp Money Accounts page tracks (fetch-sharp-money.mjs
+    loadWallets), so reading it here keeps Following and Accounts the same set of accounts. Missing or unreadable files give an empty set."""
+    out = {}
+    for sport, fn in SCORECARD_FILES.items():
+        try:
+            with open(os.path.join(data_dir, fn)) as f:
+                out[sport] = {str(w).lower() for w in (json.load(f).get("sharp") or [])}
+        except (OSError, ValueError, TypeError):
+            out[sport] = set()
+    return out
+
+
 def wallet_book(s, name=None):
     """A proven wallet's sport book for the wallets file (variant `all`): the card's wallet line without the position fields, plus the
     wallet's name and its last settled legs ([settled_at, result], newest first), so a page can count results since a follow date."""
@@ -911,10 +926,10 @@ def position_history(st, cid, oi, w, fs, cut):
     return out
 
 
-def wallet_positions(kf, ledger, sport, st=None, rk=None):
+def wallet_positions(kf, ledger, sport, st=None, rk=None, extra=None):
     """{wallet: [position]}: every open position of every proven wallet on one game, for the wallets file. Unlike a card, which keeps a
     wallet's largest rung per side and lists the 4 largest wallets, this keeps every rung at or above the floor ($250; FOLLOW_FLOOR lowers it for CBB) for every proven
-    wallet that Vault does not exclude (variant `all`, as of the keyframe's cut). Stored values only: the line and price are the
+    wallet that Vault does not exclude (variant `all`, as of the keyframe's cut). `extra` is a set of scorecard price-sharp wallets, listed proven or not. Stored values only: the line and price are the
     market's at the scan, `since` is the first scan that saw the wallet holding it, and no entry price is known or estimated.
     `two_way` marks a wallet holding more than one side of the market group above the floor (a card may collapse or drop it).
     `cens` marks a wallet already holding at the scan's first read of the market, so it got in before `since`. With the scan state
@@ -935,7 +950,7 @@ def wallet_positions(kf, ledger, sport, st=None, rk=None):
         if w not in stats:
             stats[w] = ledger.stats(w, cut)
         s = stats[w]
-        if not (s["all"]["proven"] or (rk or {}).get(w, {}).get("tier") == "sharp") or s["excluded"]:
+        if not (s["all"]["proven"] or (rk or {}).get(w, {}).get("tier") == "sharp" or w in (extra or ())) or s["excluded"]:
             continue
         usual, px = s["all"]["usual"], (mk.get("px") or [None] * (oi + 1))[oi]
         out.setdefault(w, []).append({
@@ -1067,6 +1082,7 @@ def main():
     ap.add_argument("--sharp-data", help="sharp-data data.json, for the Vault game key")
     ap.add_argument("--frozen-out", required=True, help="pm_cards folder on pm-holders-data")
     ap.add_argument("--live-out", required=True)
+    ap.add_argument("--scorecard-dir", help="folder with pm_wallets*.json: its price-sharp accounts join the wallets file, proven or not (the Accounts page list)")
     ap.add_argument("--wallets-out", help="per-wallet file: every proven wallet's book and all of its open positions (for a follow page)")
     ap.add_argument("--sports", default="nba,nfl,cfb,cbb")
     ap.add_argument("--closes", default="data/pm_closes.json", help="Pendulum Flow closes, for wallet price skill")
@@ -1103,6 +1119,7 @@ def main():
         except (OSError, ValueError, KeyError):
             prev = {}
     names, wallets = {}, {}
+    SC = scorecard_sharp(a.scorecard_dir) if a.scorecard_dir else {}
     uni = sorted(glob.glob(os.path.join(a.ledger, "universe", "*.json")))
     if a.wallets_out and uni:
         try:
@@ -1143,6 +1160,7 @@ def main():
         # live: every game not yet at its cut, from the replayed holder logs
         st, _ = H.replay(a.holders, sport, now)
         rk = fl.clv_tiers(now) if a.wallets_out and sport in TIERS.TIER_SPORTS else {}     # price-sharp wallets join the directory (docs/pm-clv-tiers.md)
+        scx = set().union(*SC.values()) if SC else set()           # skill travels across sports: a scorecard-sharp wallet is listed wherever it holds a position
         evs = {(m["ev"], m["gst"]) for m in st.m.values() if m.get("gst") and m.get("mt") in FULL_GAME and now < m["gst"] - CUTOFF_SEC}
         for ev, gst in sorted(evs, key=lambda x: x[1]):
             kf = H.keyframe(st, ev, gst, now)
@@ -1151,20 +1169,21 @@ def main():
                 carry_flagged(c, prev.get((ev, gst)), now)
                 live["games"].append(c)
                 if a.wallets_out:
-                    pos, sts = wallet_positions(kf, fl, sport, st, rk)
+                    pos, sts = wallet_positions(kf, fl, sport, st, rk, scx)
                     names.update({w: n for w, n in (kf.get("names") or {}).items() if n})
                     for w, ps in pos.items():
                         e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w]), positions=[]))
                         e["positions"] += ps
         if a.wallets_out:                            # proven wallets with nothing open: the directory lists them too
-            for w in fl.population("all", now):
+            for w in set(fl.population("all", now)) | SC.get(sport, set()):
                 if w in wallets.get(sport, {}):
                     continue
                 s = fl.stats(w, now)
-                if (s["all"]["proven"] or (rk.get(w) or {}).get("tier") == "sharp") and not s["excluded"]:
+                if (s["all"]["proven"] or (rk.get(w) or {}).get("tier") == "sharp" or w in SC.get(sport, ())) and not s["excluded"]:
                     wallets.setdefault(sport, {})[w] = dict(wallet_book(s), positions=[])
             for w, e in wallets.get(sport, {}).items():
                 e["name"] = names.get(w)
+                e["sc"] = any(w in v for v in SC.values())      # on the account scorecard's price-sharp list (the Accounts page set)
                 t = rk.get(w)
                 e["rk"] = {"tier": t["tier"], "n": t["n"], "mean": t["mean"], "p": t["p"]} if t else None     # CLV tier now; NBA and NFL only
                 e["positions"].sort(key=lambda p: (p["gst"], -p["usd"]))
