@@ -812,15 +812,16 @@ function recSport(sp, D){
     var lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), pad = Math.max(0.5, (hi - lo) * 0.12); lo -= pad; hi += pad;
     var W = 420, H = 150, L = 4, R = 74, T = 8, B = 20, X = function(i){ return L + (W - L - R) * i / N; }, Y = function(v){ return T + (H - T - B) * (hi - v) / (hi - lo); };
     var d = pts.map(function(v, i){ return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }).join('');
-    var fin = pts[N], cls = fin < 0 ? 'dn' : 'up', y0 = Y(0).toFixed(1);
+    var fin = pts[N], cls = fin < 0 ? 'dn' : 'up', y0 = Y(0).toFixed(1); var zo = Math.min(1, Math.max(0, (Y(0) - T) / (H - B - T))).toFixed(4);
     var dt = function(t){ return new Date(t * 1000).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'America/Chicago'}); };
     var tick = function(v){ var y = Y(v); return '<text class="ax" x="' + (W - R + 8) + '" y="' + (y + 3.5).toFixed(1) + '">' + (v === 0 ? '0u · $0' : u2(v) + ' · ' + usd(v)) + '</text>'; };
     var ticks = fin > 0.05 ? [0, fin] : fin < -0.05 ? [0, fin] : [0];
     return '<section class="vr-card vr-pl-card"><div class="vr-pl-top"><h3>Units won and lost</h3><span class="num ' + cls + '">' + u2(fin) + ' · ' + usd(fin) + '</span></div>' +
       '<svg class="vr-plot ' + cls + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cumulative units after each play, ' + N + ' plays, now ' + u2(fin) + ' or ' + usd(fin) + ' at $100 a unit">' +
       '<line class="zl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y0 + '" y2="' + y0 + '"/>' +
-      '<path class="ar" d="' + d + 'L' + X(N).toFixed(1) + ' ' + y0 + 'L' + X(0).toFixed(1) + ' ' + y0 + 'Z"/>' +
-      '<path class="ln" pathLength="1" d="' + d + '"/>' +
+      '<defs><linearGradient id="vrg" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '"><stop offset="' + zo + '" style="stop-color:var(--c-good)"/><stop offset="' + zo + '" style="stop-color:var(--c-bad)"/></linearGradient></defs>' +
+      '<path class="ar" style="fill:url(#vrg)" d="' + d + 'L' + X(N).toFixed(1) + ' ' + y0 + 'L' + X(0).toFixed(1) + ' ' + y0 + 'Z"/>' +
+      '<path class="ln" style="stroke:url(#vrg)" pathLength="1" d="' + d + '"/>' +
       '<circle class="dt" cx="' + X(N).toFixed(1) + '" cy="' + Y(fin).toFixed(1) + '" r="3.8"/>' + ticks.map(tick).join('') +
       '<text class="ax" x="' + L + '" y="' + (H - 4) + '">' + dt(ser[0].gst) + '</text><text class="ax" text-anchor="end" x="' + (W - R) + '" y="' + (H - 4) + '">' + dt(ser[N - 1].gst) + '</text></svg>' +
       '<p class="vr-fn">After each of ' + N + ' graded plays, flat 1u, 1u = $100. Past results, not a forecast.</p></section>';
