@@ -185,7 +185,7 @@ window.PBX = (() => {
   }
 
   // ── prop detail page (#propboard/<player id>/<stat>/<o|u>) ──
-  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null, n: 15, fo: false, rw: 'all', rf: {}, rng: {}, sp: {}, sim: 'role'};
+  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null, n: 15, fo: false, rw: 'all', rf: {}, rng: {}, sp: {}, sim: 'role', ft: 'sug'};
   const MIN_I = 5, START_I = 21;                     // START_I: 1 when he started (game-log column 21; rows built before it existed have none)
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], monOf = z => new Date(z[0] * 864e5).getUTCMonth();
   const routeOf = () => { const m = /^#propboard\/(\d+)\/([a-z0-9]+)\/([ou])$/i.exec(location.hash); return m ? {pid: +m[1], s: m[2].toLowerCase(), side: m[3].toLowerCase()} : null; };
@@ -622,7 +622,7 @@ window.PBX = (() => {
           ${sim.rows.slice(0, 40).map(z => { const d = z.line > 0 ? (z.res - z.line) / z.line : null; return `<tr><td>${mdShort(z.day)}</td><td>${esc(z.team || '')}</td><td><span class="pbx-tmh sm"><b>${esc(initials(z.name))}</b><img src="${phSrc(z.pid)}" alt="" loading="lazy" onerror="this.remove()"></span>${esc(z.name.split(' ')[0][0] + '. ' + z.name.split(' ').slice(1).join(' '))}</td><td>${z.line}</td><td>${fmt(z.res)}</td><td>${d == null ? '-' : `<span class="pbx-dp ${sim.fav(d) ? 'g' : 'r'}">${sgn(d * 100, 0)}%</span>`}</td></tr>`; }).join('')}
         </tbody></table></div><p class="note">${sim.rows.length} game${sim.rows.length === 1 ? '' : 's'}. Lines are the closing lines our recorder stored, so games before it started are missing, and a small count swings hard. Context, not a bet signal.</p>`}
       </section>`;
-    const tmCards = mrows.length ? `<div class="pbx-fh"><h5>Teammates <small>${esc(SLABEL[s])} average without him in the lineup, against with</small></h5></div>
+    const tmCards = mrows.length ? `<p class="pbx-cap">His ${esc(SLABEL[s])} average without that teammate, against with. Tap a card to see only the games he missed.</p>
           <div class="pbx-tms">${mrows.map(z => { const d = z.awo != null && z.aw != null ? z.awo - z.aw : null, big = d != null && z.nwo >= 3, fav = d != null && (side === 'o' ? d > 0 : d < 0), on = DS.mate && DS.mate.id === z.m.id && DS.mate.mode === 'wo', nm = z.m.name.split(' '), st = z.m.st && /out|doubt|quest|inactive/i.test(z.m.st) ? z.m.st : null;
             return `<button type="button" class="pbx-tm${on ? ' on' : ''}" data-mate="${z.m.id}" aria-pressed="${on}" title="${esc(z.m.name)}: ${z.nwo} game${z.nwo === 1 ? '' : 's'} without, ${z.nw} with"><span class="pbx-tmh"><b>${esc(initials(z.m.name))}</b><img src="${phSrc(z.m.id)}" alt="" loading="lazy" onerror="this.remove()"></span>
               ${st ? `<span class="pbx-otag${/quest/i.test(st) ? ' q' : ''}">${/quest/i.test(st) ? 'QUES' : /doubt/i.test(st) ? 'DOUBT' : 'OUT'}</span>` : '<span class="pbx-otag-gap"></span>'}<span class="nm">${esc(nm[0][0] + '. ' + nm.slice(1).join(' '))}</span>
@@ -641,22 +641,34 @@ window.PBX = (() => {
     for (const z of mrows) if (z.m.st && /out|doubt|inactive/i.test(z.m.st) && z.m.mpg >= 15) sgAdd(`mate|${z.m.id}`, `${z.m.name.split(' ')[0][0]}. ${z.m.name.split(' ').slice(1).join(' ')} out`, mateSplit(all0, z.m.id, true).wo, !!DS.mate && DS.mate.id === z.m.id && DS.mate.mode === 'wo');
     }catch(err){ console.error('suggested', err); }
     sugg.sort((a, b) => (b.n >= 8) - (a.n >= 8) || b.n - a.n);
-    const sgHtml = sugg.length ? `<div class="pbx-fh"><h5>Suggested <small>matched to tonight's game · ${esc(SLABEL[s])} ${side === 'o' ? 'over' : 'under'} ${r.line} · all games: ${base == null ? '-' : Math.round(base * 100) + '%'}</small></h5></div>
+    const sgHtml = sugg.length ? `<p class="pbx-cap">Matched to tonight's game. Hit rate shown is for ${esc(SLABEL[s])} ${side === 'o' ? 'over' : 'under'} ${r.line} over all his games (<b>${base == null ? '-' : Math.round(base * 100) + '%'}</b> overall). Tap one to apply it.</p>
           <div class="pbx-rkc">${sugg.map(z => `<button type="button" data-sg="${z.key}" aria-pressed="${z.on}" class="${z.n < 8 ? 'thin' : ''}" title="${z.n} game${z.n === 1 ? '' : 's'}${z.n < 8 ? ', a small sample' : ''}">${esc(z.label)} <b class="${z.n < 8 ? '' : z.hit > .5 ? 'pos' : z.hit < .5 ? 'neg' : ''}">${Math.round(z.hit * 100)}%</b><i>${z.n}g</i></button>`).join('')}</div>` : '';
-    const fpanel = !DS.fo ? '' : `<div class="pbx-fp">
-          ${sgHtml}
-          ${tmCards}
-          <div class="pbx-fh"><h5>Opponent rankings${x.opp ? ` <small>tonight: ${esc(x.opp)}</small>` : ''}</h5><span class="seg">${['all', 'L5', 'L10', 'L15'].map(k => `<button type="button" data-rw="${k}" aria-pressed="${DS.rw === k}">${k === 'all' ? 'All' : k}</button>`).join('')}</span></div>
-          ${trk || !rkMeta.length ? '' : '<p class="note">Loading team rankings…</p>'}
+    // The Filters panel: one tab at a time so it stays short. Ranges are dual sliders; they update in place while dragging and re-draw when released.
+    const slText = (kind, lo, hi, min, max) => kind === 'rf' ? `#${lo} to #${hi}` : lo <= min && hi >= max ? 'Any' : lo <= min ? `up to ${hi}` : hi >= max ? `${lo}+` : `${lo} to ${hi}`;
+    const dsl = (key, lo, hi, min, max, tick) => `<div class="pbx-ds" data-dk="${key}" data-min="${min}" data-max="${max}" style="--a:${(lo - min) / (max - min) * 100}%;--b:${(hi - min) / (max - min) * 100}%"><div class="pbx-dst"><i class="tr"></i><i class="fl"></i>${tick == null ? '' : `<i class="mk" style="left:${(tick - min) / (max - min) * 100}%" title="Tonight's opponent: #${tick}"></i>`}<input type="range" min="${min}" max="${max}" step="1" value="${lo}" data-dh="lo" aria-label="Minimum"><input type="range" min="${min}" max="${max}" step="1" value="${hi}" data-dh="hi" aria-label="Maximum"></div></div>`;
+    const rngMax = {min: 48, fga: Math.max(20, Math.ceil(Math.max(0, ...all0.map(z => z[14] || 0)) / 5) * 5), tpa: Math.max(10, Math.ceil(Math.max(0, ...all0.map(z => z[17] || 0)) / 5) * 5), fta: Math.max(10, Math.ceil(Math.max(0, ...all0.map(z => z[16] || 0)) / 5) * 5)};
+    const nRk = Object.keys(DS.rf).length, nSp = (DS.sp.role ? 1 : 0) + (DS.sp.mo != null ? 1 : 0), nRg = Object.keys(DS.rng).length;
+    const ftabs = [['sug', 'Suggested', sugg.length ? 0 : -1], ['tm', 'Teammates', mrows.length ? (DS.mate ? 1 : 0) : -1], ['opp', 'Opp rankings', nRk], ['sp', 'Splits', nSp], ['st', 'Stats', nRg]].filter(z => z[2] >= 0 || z[0] === 'opp' || z[0] === 'sp' || z[0] === 'st');
+    const ft = ftabs.some(z => z[0] === DS.ft) ? DS.ft : ftabs[0][0];
+    const ftBody = ft === 'sug' ? `${sgHtml}<div class="pbx-rkc">${sugg.map(z => `<button type="button" data-sg="${z.key}" aria-pressed="${z.on}" class="${z.n < 8 ? 'thin' : ''}" title="${z.n} game${z.n === 1 ? '' : 's'}${z.n < 8 ? ', a small sample' : ''}">${esc(z.label)} <b class="${z.n < 8 ? '' : z.hit > .5 ? 'pos' : z.hit < .5 ? 'neg' : ''}">${Math.round(z.hit * 100)}%</b><i>${z.n}g</i></button>`).join('')}</div>`
+      : ft === 'tm' ? tmCards
+      : ft === 'opp' ? `<div class="pbx-fh"><p class="pbx-cap">${x.opp ? `Tonight he plays <b>${esc(x.opp)}</b>. ` : ''}Pick a ranking, then drag to keep only games against teams ranked in that range. 30th is friendliest for an over.</p><span class="seg">${['all', 'L5', 'L10', 'L15'].map(k => `<button type="button" data-rw="${k}" aria-pressed="${DS.rw === k}">${k === 'all' ? 'All' : k}</button>`).join('')}</span></div>
+          ${trk || !rkMeta.length ? '' : '<p class="pbx-cap">Loading team rankings…</p>'}
           <div class="pbx-rkc">${rkMeta.map(([k, l, hint]) => { const n = x.opp ? rankOf(x.opp, k, grpP, s) : null, lo = n == null ? 1 : Math.max(1, n - 5), hi = n == null ? 30 : Math.min(30, n + 5);
             return `<button type="button" data-rf="${k}" data-rdef="${lo}|${hi}" title="${esc(hint)}" aria-pressed="${!!DS.rf[k]}">${esc(l)}${n == null ? '' : ` <b class="${rkCls(n)}">#${n}</b>`}</button>`; }).join('')}</div>
-          ${Object.entries(DS.rf).map(([k, c]) => `<div class="pbx-rr"><span>${esc(rkName[k] || k)}</span><label>from #<input type="number" inputmode="numeric" min="1" max="30" value="${c[0]}" data-rlo="${k}"></label><label>to #<input type="number" inputmode="numeric" min="1" max="30" value="${c[1]}" data-rhi="${k}"></label><button type="button" data-rset="${k}|1|10">Challenging</button><button type="button" data-rset="${k}|21|30">Favorable</button><small>${logs0.filter(z => rfIn(z, k, c)).length} games</small></div>`).join('')}
-          <div class="pbx-fh"><h5>Splits <small>${hasStart ? 'started or came off the bench, and the month' : 'the month'}</small></h5></div>
-          <div class="pbx-rkc">${hasStart ? [['start', 'Starter'], ['bench', 'Bench']].map(([k, l]) => { const n = logs0.filter(z => z[START_I] === (k === 'start' ? 1 : 0)).length; return `<button type="button" data-sp="role|${k}" aria-pressed="${DS.sp.role === k}"${n ? '' : ' disabled'}>${l} <b>${n}</b></button>`; }).join('') : ''}${months.map(m => { const n = logs0.filter(z => monOf(z) === m).length; return `<button type="button" data-sp="mo|${m}" aria-pressed="${DS.sp.mo === m}">${MON[m]} <b>${n}</b></button>`; }).join('')}</div>
-          <div class="pbx-fh"><h5>What he did in the game <small>known only after the game</small></h5></div>
-          <div class="pbx-rng">${RNG.map(([k, l]) => { const c = DS.rng[k] || [null, null]; return `<label><span>${l}</span><input type="number" inputmode="decimal" min="0" placeholder="min" value="${c[0] == null ? '' : c[0]}" data-rmin="${k}"><i>to</i><input type="number" inputmode="decimal" min="0" placeholder="max" value="${c[1] == null ? '' : c[1]}" data-rmax="${k}"></label>`; }).join('')}</div>
-          <p class="note">30th is always the friendliest for an over: fastest pace, the most allowed, the worst defense. Ranks are today's, over ${trk ? `${trk.season - 1}-${String(trk.season).slice(2)} regular-season games through ${trk.through}` : 'this season'}, so an old game is matched on how its opponent looks now. This is context, not a bet signal.${nAct ? ' Every filter shrinks the sample, so check the game count.' : ''}</p>
-          ${nAct ? '<button type="button" class="pbx-alt" data-fclear="1">Clear panel filters</button>' : ''}
+          ${Object.entries(DS.rf).map(([k, c]) => `<div class="pbx-sl"><div class="pbx-slh"><b>${esc(rkName[k] || k)}</b><span class="pbx-dv" data-dv>${slText('rf', c[0], c[1], 1, 30)}</span></div>${dsl('rf|' + k, c[0], c[1], 1, 30, x.opp ? rankOf(x.opp, k, grpP, s) : null)}
+            <div class="pbx-slf"><button type="button" data-rset="${k}|1|10">Challenging</button><button type="button" data-rset="${k}|21|30">Favorable</button><button type="button" data-rclear="${k}">Remove</button><small>${logs0.filter(z => rfIn(z, k, c)).length} games</small></div></div>`).join('')}
+          <p class="pbx-cap dim">Ranks are today's over ${trk ? `${trk.season - 1}-${String(trk.season).slice(2)} regular-season games through ${trk.through}` : 'this season'}, so an old game is matched on how its opponent looks now.</p>`
+      : ft === 'sp' ? `<p class="pbx-cap">Games he started or came off the bench, and the month played. Counts are his games.</p>
+          ${hasStart ? `<div class="pbx-grp"><span>Role</span><div class="pbx-rkc">${[['start', 'Starter'], ['bench', 'Bench']].map(([k, l]) => { const n = logs0.filter(z => z[START_I] === (k === 'start' ? 1 : 0)).length; return `<button type="button" data-sp="role|${k}" aria-pressed="${DS.sp.role === k}"${n ? '' : ' disabled'}>${l} <b>${n}</b></button>`; }).join('')}</div></div>` : ''}
+          <div class="pbx-grp"><span>Month</span><div class="pbx-rkc">${months.map(m => { const n = logs0.filter(z => monOf(z) === m).length; return `<button type="button" data-sp="mo|${m}" aria-pressed="${DS.sp.mo === m}">${MON[m]} <b>${n}</b></button>`; }).join('')}</div></div>`
+      : `<p class="pbx-cap">What he did in the game, so these are known only after it. Drag to keep games inside a range; the ends mean no limit.</p>
+          <div class="pbf-stats">${RNG.map(([k, l, i]) => { const mx = rngMax[k], c = DS.rng[k] || [null, null], lo = c[0] == null ? 0 : Math.min(c[0], mx), hi = c[1] == null ? mx : Math.min(c[1], mx);
+            return `<div class="pbx-sl"><div class="pbx-slh"><b>${l}</b><span class="pbx-dv" data-dv>${slText('rng', lo, hi, 0, mx)}</span></div>${dsl('rng|' + k, lo, hi, 0, mx, null)}${DS.rng[k] ? `<div class="pbx-slf"><button type="button" data-rngclear="${k}">Reset</button><small>${logs0.filter(z => { const v = z[i]; return v != null && (c[0] == null || v >= c[0]) && (c[1] == null || v <= c[1]); }).length} games</small></div>` : ''}</div>`; }).join('')}</div>`;
+    const fpanel = !DS.fo ? '' : `<div class="pbx-fp">
+          <div class="pbx-fth"><span class="seg pbx-ftabs">${ftabs.map(([k, l, n]) => `<button type="button" data-ft="${k}" aria-pressed="${ft === k}">${l}${n > 0 ? `<em>${n}</em>` : ''}</button>`).join('')}</span></div>
+          <div class="pbf-body">${ftBody}</div>
+          ${nAct ? `<div class="pbx-ff"><p class="pbx-cap dim">${wg.length} game${wg.length === 1 ? '' : 's'} left${wg.length < 8 ? ', a small sample' : ''}. Context, not a bet signal.</p><button type="button" class="pbx-clr" data-fclear="1">Clear all</button></div>` : ''}
         </div>`;
     const pmS = r.pm == null ? null : side === 'o' ? r.pm : 1 - r.pm, mkS = r.mkt == null ? null : side === 'o' ? r.mkt : 1 - r.mkt;
     const other = all.find(z => z.r === r && z.side !== side);
@@ -803,7 +815,7 @@ window.PBX = (() => {
   }
   function trkUpdate(){ const rt = routeOf(); if (!rt) return; const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (x && $('pbx-tro')) $('pbx-tro').innerHTML = trkReadout(x); }
   function detailClick(e){
-    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-sg],[data-sim],[data-sp],[data-spclear],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
+    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-ft],[data-sg],[data-sim],[data-sp],[data-spclear],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
     const d = b.dataset, rt = routeOf(); if (!rt && !d.back) return false;
     if (d.back){ history.length > 1 && /#propboard\//.test(location.hash) ? (location.hash = '#propboard') : goView('propboard'); return true; }
     if (d.totrk){ $('pbx-trk').scrollIntoView({behavior: 'smooth', block: 'center'}); return true; }
@@ -817,6 +829,7 @@ window.PBX = (() => {
     if (d.rset){ const [k, lo, hi] = d.rset.split('|'); DS.rf[k] = [+lo, +hi]; rerender(); return true; }
     if (d.rclear){ delete DS.rf[d.rclear]; rerender(); return true; }
     if (d.rngclear){ delete DS.rng[d.rngclear]; rerender(); return true; }
+    if (d.ft){ DS.ft = d.ft; rerender(); return true; }
     if (d.sg){ const [k, a, b, c] = d.sg.split('|');
       if (k === 'rf'){ if (DS.rf[a] && DS.rf[a][0] === +b && DS.rf[a][1] === +c) delete DS.rf[a]; else DS.rf[a] = [+b, +c]; }
       else if (k === 'gf') DS.gf = DS.gf === a ? null : a;
@@ -840,20 +853,17 @@ window.PBX = (() => {
       pvBets.unshift(bet); pvSave(); pvSettle(); DS.T = null; rerender(); pvToast(bet.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.'); return true; }
     return true;
   }
-  // the number boxes of the Filters panel: a rank range per chip, a minutes / shots range per stat; applied when the box loses focus or Enter is pressed
-  function detailRange(e){
-    const t = e.target, d = t.dataset; if (!d || !(d.rlo || d.rhi || d.rmin || d.rmax)) return false;
-    const v = t.value === '' || !isFinite(+t.value) ? null : +t.value;
-    if (d.rlo || d.rhi){
-      const k = d.rlo || d.rhi, c = DS.rf[k]; if (!c) return true;
-      let lo = d.rlo ? v : c[0], hi = d.rhi ? v : c[1];
-      lo = Math.max(1, Math.min(30, lo == null ? 1 : lo)); hi = Math.max(1, Math.min(30, hi == null ? 30 : hi)); if (lo > hi) [lo, hi] = [hi, lo];
-      DS.rf[k] = [lo, hi];
-    } else {
-      const k = d.rmin || d.rmax, c = (DS.rng[k] || [null, null]).slice(); if (d.rmin) c[0] = v; else c[1] = v;
-      if (c[0] == null && c[1] == null) delete DS.rng[k]; else DS.rng[k] = c;
-    }
-    rerender(); return true;
+  // the dual sliders of the Filters panel: update the state and the label in place while dragging (a redraw would drop the thumb), redraw on release
+  function detailSlide(e){
+    const t = e.target, box = t.closest('.pbx-ds'); if (!box) return;
+    const [kind, k] = box.dataset.dk.split('|'), min = +box.dataset.min, max = +box.dataset.max, ins = box.querySelectorAll('input');
+    let lo = +ins[0].value, hi = +ins[1].value;
+    if (lo > hi){ if (t === ins[0]){ lo = hi; ins[0].value = lo; } else { hi = lo; ins[1].value = hi; } }
+    box.style.setProperty('--a', (lo - min) / (max - min) * 100 + '%'); box.style.setProperty('--b', (hi - min) / (max - min) * 100 + '%');
+    if (kind === 'rf') DS.rf[k] = [lo, hi];
+    else { const c = [lo <= min ? null : lo, hi >= max ? null : hi]; if (c[0] == null && c[1] == null) delete DS.rng[k]; else DS.rng[k] = c; }
+    const dv = box.closest('.pbx-sl').querySelector('[data-dv]');
+    if (dv) dv.textContent = kind === 'rf' ? `#${lo} to #${hi}` : lo <= min && hi >= max ? 'Any' : lo <= min ? `up to ${hi}` : hi >= max ? `${lo}+` : `${lo} to ${hi}`;
   }
   function detailInput(e){
     const t = e.target; if (!DS.T) return;
@@ -952,9 +962,9 @@ window.PBX = (() => {
       if (tr){ const x = root._show[+tr.closest('.pbx-row').dataset.i]; DS.T = null; S.scroll = scrollY; goProp(x.r.e.p, x.r.e.s, x.side); }
     });
     root.addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, rerender); });
-    root.addEventListener('change', e => { if (detailRange(e)) return; if (e.target.id === 'pbx-tven'){ detailInput(e); return; } if (e.target.id === 'pbx-gf'){ DS.gf = e.target.value || null; rerender(); return; } if (e.target.id === 'pbx-mate'){ const v = e.target.value; DS.mate = v ? {mode: v.split('|')[0], id: +v.split('|')[1]} : null; rerender(); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
+    root.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.dh){ rerender(); return; } if (e.target.id === 'pbx-tven'){ detailInput(e); return; } if (e.target.id === 'pbx-gf'){ DS.gf = e.target.value || null; rerender(); return; } if (e.target.id === 'pbx-mate'){ const v = e.target.value; DS.mate = v ? {mode: v.split('|')[0], id: +v.split('|')[1]} : null; rerender(); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
     let qT = null;
-    root.addEventListener('input', e => { if (e.target.id === 'pbx-tprice' || e.target.id === 'pbx-tstake'){ detailInput(e); return; } if (e.target.id !== 'pbx-q') return; S.q = e.target.value; clearTimeout(qT);
+    root.addEventListener('input', e => { if (e.target.dataset && e.target.dataset.dh){ detailSlide(e); return; } if (e.target.id === 'pbx-tprice' || e.target.id === 'pbx-tstake'){ detailInput(e); return; } if (e.target.id !== 'pbx-q') return; S.q = e.target.value; clearTimeout(qT);
       qT = setTimeout(() => { const at = e.target.selectionStart; rerender(); const n = $('pbx-q'); if (n){ n.focus(); n.setSelectionRange(at, at); } }, 150); });
   }
 
@@ -1234,26 +1244,42 @@ window.PBX = (() => {
 .pbx-mf button{background:none;border:0;color:inherit;font-size:13px;padding:0 3px}
 .pbx-lo{margin-left:12px;color:var(--warn);font-weight:700}
 .pbx-step{display:inline-flex;align-items:center;height:34px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);overflow:hidden}
-.pbx-step[data-on="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.pbx-step[data-on="true"]{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 14%,transparent)}
 .pbx-step button{background:none;border:0;color:var(--fg);width:30px;height:100%;font-size:15px;cursor:pointer}
 .pbx-step b{font:600 12.5px var(--font-sans);min-width:30px;text-align:center;font-variant-numeric:tabular-nums}
-.pbx-fbtn{cursor:pointer}.pbx-fbtn[aria-expanded="true"]{border-color:var(--accent)}
-.pbx-fp{margin:10px 16px 6px;padding:12px 14px;border-radius:12px;background:var(--surface2);display:grid;gap:10px}
-.pbx-fh{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.pbx-fh h5{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg2)}.pbx-fh h5 small{text-transform:none;letter-spacing:0;color:var(--fg3);font-weight:500;margin-left:6px}
+.pbx-fbtn{cursor:pointer}.pbx-fbtn[aria-expanded="true"]{border-color:var(--primary)}
+.pbx-fp{margin:12px 16px 8px;padding:6px;border-radius:14px;background:var(--surface2)}
+.pbx-fth{display:flex;padding:6px 6px 0}
+.pbx-ftabs{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-width:0}.pbx-ftabs button{white-space:nowrap;padding:0 11px;flex:0 0 auto}
+.pbx-ftabs em{font-style:normal;font-size:10.5px;font-weight:700;margin-left:6px;padding:1px 6px;border-radius:var(--r-pill);background:var(--primary);color:var(--on-primary,var(--bg))}
+.pbx-ff{display:flex;align-items:center;justify-content:space-between;gap:10px}.pbx-clr{flex:0 0 auto;background:none;border:0;color:var(--fg2);font:600 12.5px var(--font-sans);cursor:pointer;padding:6px 8px;border-radius:8px}.pbx-clr:hover{color:var(--fg);background:var(--ctl)}
+.pbf-body{display:grid;gap:16px;padding:16px 14px 14px}
+.pbx-fh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.pbx-fh .pbx-cap{flex:1 1 260px}
+.pbx-cap{margin:0;font-size:12.5px;line-height:1.55;color:var(--fg2)}.pbx-cap b{color:var(--fg)}.pbx-cap.dim{font-size:11.5px;color:var(--fg3);padding:0 14px 10px}.pbf-body > .pbx-cap.dim{padding:0}
+.pbx-grp{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:start}.pbx-grp > span{font:600 12px var(--font-sans);color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;padding-top:10px}
+.pbf-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px}
+.pbx-sl{display:grid;gap:6px;padding:12px 14px;border-radius:12px;background:var(--ctl)}.pbf-stats .pbx-sl{background:none;padding:0}
+.pbx-slh{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.pbx-slh b{font-size:13px}.pbx-dv{font:700 13px var(--font-mono);font-variant-numeric:tabular-nums;color:var(--primary)}
+.pbx-slf{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pbx-slf small{margin-left:auto;color:var(--fg3);font-size:11.5px}
+.pbx-slf button{height:28px;padding:0 11px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:none;color:var(--fg2);font:500 12px var(--font-sans);cursor:pointer}.pbx-slf button:hover{color:var(--fg);border-color:rgb(var(--ink) / .3)}
+.pbx-ds{--a:0%;--b:100%}.pbx-dst{position:relative;height:30px}
+.pbx-dst .tr,.pbx-dst .fl{position:absolute;top:13px;height:4px;border-radius:2px}.pbx-dst .tr{left:0;right:0;background:rgb(var(--ink) / .16)}.pbx-dst .fl{left:var(--a);right:calc(100% - var(--b));background:var(--primary)}
+.pbx-dst .mk{position:absolute;top:5px;width:2px;height:20px;margin-left:-1px;background:var(--fg3);border-radius:1px;opacity:.7}
+.pbx-dst input{position:absolute;left:0;top:0;width:100%;height:30px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+.pbx-dst input::-webkit-slider-runnable-track{background:none;height:30px}.pbx-dst input::-moz-range-track{background:none}
+.pbx-dst input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;pointer-events:auto;width:22px;height:22px;margin-top:4px;border-radius:50%;background:var(--bg);border:2px solid var(--primary);box-shadow:0 1px 4px rgb(0 0 0 / .35);cursor:grab}
+.pbx-dst input::-moz-range-thumb{pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--bg);border:2px solid var(--primary);cursor:grab}
+.pbx-dst input:focus-visible::-webkit-slider-thumb{outline:2px solid var(--primary);outline-offset:2px}
+.pbx-dst input:active::-webkit-slider-thumb{cursor:grabbing;transform:scale(1.08)}
+@media (max-width:640px){.pbx-fp{margin:10px 8px 6px}.pbf-stats{grid-template-columns:1fr}.pbx-grp{grid-template-columns:1fr}.pbx-grp > span{padding-top:0}.pbx-dst input::-webkit-slider-thumb{width:26px;height:26px;margin-top:2px}}
+.pbx-wins .pbx-fbtn{margin-left:auto}.pbx-wins #pbx-mate{margin-left:0}.pbx-wins .pbx-alt:not(.pbx-fbtn){flex:1 1 220px;max-width:340px}
 .pbx-rkc{display:flex;flex-wrap:wrap;gap:8px}
 .pbx-rkc button{height:34px;padding:0 12px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);font:500 12.5px var(--font-sans);cursor:pointer}
-.pbx-rkc button b{margin-left:3px;font-weight:700}.pbx-rkc button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.pbx-rkc button b{margin-left:3px;font-weight:700}.pbx-rkc button[aria-pressed="true"]{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 16%,transparent)}
 .pbx-rkc b.pos{color:var(--pbx-g)}.pbx-rkc b.neg{color:var(--pbx-r)}
-.pbx-rr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:12.5px}.pbx-rr > span{font-weight:600;min-width:120px}
-.pbx-rr label,.pbx-rng label{display:inline-flex;align-items:center;gap:6px;color:var(--fg2)}
-.pbx-rr input,.pbx-rng input{width:64px;height:32px;border-radius:8px;border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);padding:0 8px;font:500 12.5px var(--font-sans)}
-.pbx-rr button,.pbx-fp > button{height:30px;padding:0 11px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);font:500 12px var(--font-sans);cursor:pointer;justify-self:start}
-.pbx-rr small{color:var(--fg3);margin-left:auto}
-.pbx-rng{display:flex;flex-wrap:wrap;gap:10px 18px}.pbx-rng label > span{min-width:54px;font-weight:600;color:var(--fg)}.pbx-rng i{font-style:normal;color:var(--fg3)}
 .pbx-tms{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .pbx-tm{flex:0 0 auto;width:104px;display:grid;justify-items:center;gap:3px;padding:10px 6px 8px;border-radius:12px;border:1px solid rgb(var(--ink) / .1);background:var(--ctl);color:var(--fg);cursor:pointer}
-.pbx-tm.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.pbx-tm.on{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 14%,transparent)}
 .pbx-tmh{position:relative;width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--surface2);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--fg3)}
 .pbx-tmh img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 12%}
 .pbx-tm .pbx-otag{margin:0}.pbx-otag-gap{height:15px}
@@ -1270,7 +1296,6 @@ window.PBX = (() => {
 .pbx-dp.g{background:color-mix(in srgb,var(--pbx-g) 22%,transparent);color:var(--pbx-g)}.pbx-dp.r{background:color-mix(in srgb,var(--pbx-r) 22%,transparent);color:var(--pbx-r)}
 .pbx-rkc button i{font-style:normal;font-size:10.5px;color:var(--fg3);margin-left:5px}.pbx-rkc button.thin{opacity:.6}
 .pbx-tm small{font-size:10.5px;color:var(--fg3)}
-.pbx-fp .note{margin:0;font-size:11.5px;color:var(--fg3);line-height:1.5}
 .pbx-st td small{color:var(--fg3);font-weight:500}
 .pbx-st tr.cl{cursor:pointer}.pbx-st tr.cl:hover td{background:var(--surface2)}
 .pbx-st .pbx-hc{height:24px}
