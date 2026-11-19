@@ -1,0 +1,66 @@
+# Sharp agreement on Vault's own game prices (Step 4). Registration: docs/sharp-agree-prereg.md. Script: scripts/sharp_agree.py.
+#   derive: one flag per new V2 game row (NBA and NFL, first seen on or after 2026-11-20 00:00 CT), rebuilt as of the row's first sight.
+#           Rows are written once and never rewritten.
+#   report: the registered contrasts per sport, rebuilt every run from the flags and the rows' own stored results.
+# Output goes to pm_agree/ on `pm-holders-data` (never force-pushed, append-only like pm_cards/), not to main, so no race with the tape
+# commits. Sharp money is context only (CLAUDE.md): nothing here feeds a Play, Top Reads, SM_GATE or an agree total.
+# GitHub's own cron can fire late; a late run loses nothing, because a flag is rebuilt from stored logs as of first sight (the one input that
+# only exists while a game is on the board is its team names, used for NFL).
+name: Sharp agreement flags
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,37 * * * *'
+
+concurrency:
+  group: sharp-agree
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  agree:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python3 -m unittest tests.test_sharp_agree
+      - name: Inputs (holders, ledger, V2 rows, Vault games)
+        run: |
+          git fetch -q --depth=1 origin \
+            +pm-holders-data:refs/remotes/origin/pm-holders-data \
+            +sharp-history:refs/remotes/origin/sharp-history \
+            +sharp-data:refs/remotes/origin/sharp-data
+          git worktree add -q --detach pmdata origin/pm-holders-data   # not `data`: the repo has a data/ folder
+          git worktree add -q --detach hist origin/sharp-history
+          mkdir -p v2in
+          for f in v2_plays v2_watch v2_passed; do git show origin/sharp-data:$f.json > v2in/$f.json || rm -f v2in/$f.json; done
+          git show origin/sharp-data:data.json > sharp_data.json || echo '{"games":[]}' > sharp_data.json
+          git -C pmdata config user.name  "vault-bot"
+          git -C pmdata config user.email "vault-bot@users.noreply.github.com"
+          [ -s v2in/v2_plays.json ] || { echo "No V2 rows yet; nothing to derive."; echo "SKIP=1" >> "$GITHUB_ENV"; }
+      - name: Derive flags
+        if: env.SKIP != '1'
+        run: |
+          mkdir -p pmdata/pm_agree
+          python3 scripts/sharp_agree.py derive --data v2in --holders pmdata/pm_holders --ledger hist/pm_ledger \
+            --sharp-data sharp_data.json --closes data/pm_closes.json --out pmdata/pm_agree/sharp_agree.json
+      - name: Report
+        if: env.SKIP != '1'
+        run: |
+          python3 scripts/sharp_agree.py report --data v2in --derived pmdata/pm_agree/sharp_agree.json \
+            --out pmdata/pm_agree/sharp_agree_record.json > /dev/null
+      - name: Commit (append-only)
+        if: env.SKIP != '1'
+        run: |
+          python3 - <<'PY'
+          import sys; sys.path.insert(0, "scripts")
+          import datetime as dt, scan_pm_holders as H
+          ok = H.commit_push("pmdata", "pm_agree", [""], "sharp agree: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
+          sys.exit(0 if ok and H.remote_has_head("pmdata") else 1)
+          PY
