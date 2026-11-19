@@ -179,7 +179,7 @@ a.btn{text-decoration:none}
 <script src="../side-cards.js?v=57"></script>
 <script src="../following.js?v=8"></script>
 <script>
-let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
+let D=null,REF=0,G=[],GM={},SB=null,loadErr=false;
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
 const RAW='https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/';
 const SRC=LOCAL&&!LIVE?'/.claude/sharp-money/data.json':RAW+'sharp-data/data.json';
@@ -392,21 +392,6 @@ function props(){
  h+=`</div>`;
  if(rows.length>st.props)h+=`<button class="btn" data-more="props">Show more (${rows.length-st.props} left)</button>`;
  h+=`<div class="card"><div class="ph"><span>More prop tools</span></div><div class="m" style="color:var(--mut);font-size:13px">The +EV plays, price gaps, pick'em, Vault grades and the prop record are still on the classic page.</div><a class="btn" href="../" style="margin:10px 0 0">Open the classic page</a></div>`;
- return h;
-}
-function acctBlock(){
- let h='';
- h+=`<div class="sec"><span>Scored wallets</span></div><div class="hs">${['nfl','cfb','nba','cbb'].filter(k=>D.wallets[k]).map(k=>{const w=D.wallets[k];return `<div class="card hc"><div class="gtop"><span>${SPORT[k]}</span><span>${w.scored.toLocaleString()} scored</span></div><div class="big cond" style="font-size:30px;font-weight:600">${w.sharp}</div><div class="m" style="color:var(--mut);font-size:12px">sharp · ${w.borrowed} borrowed · ${w.dull} dull</div></div>`}).join('')}</div>`;
- h+=`<div class="sec"><span>Sharpest accounts</span><span>by t-stat</span></div><div class="card">`+ACC.map((a,i)=>`<div class="row tap" data-go="acct/${i}"><div class="grow"><b>${esc(a.who)}</b><div class="m">t ${a.rec.t} · ${sgn(a.rec.clv*100)} pts vs close · ${a.rec.n} bets, ${a.rec.games} games · ${SPORT[a.rec.sport]||''}</div></div><div class="amt cond">${money(a.buy24)}<small>bought, 24h</small></div></div>`).join('')+`</div>`;
- return h;
-}
-function acct(i){
- const a=ACC[i];if(!a)return head('Account','Not found');const s=a.stats&&a.stats.all,sp=a.stats&&a.stats.sp;
- let h=`<div class="back" data-back role="button" tabindex="0" style="margin:calc(env(safe-area-inset-top) + 10px) 16px 6px">&lsaquo; Top Reads</div><div class="title" style="margin-top:0">${esc(a.who)}</div><p class="ctx">Last seen ${ago(a.last)} · scored in ${SPORT[a.rec.sport]||''} · context only</p>`;
- h+=`<div class="platter"><div class="ph"><span>Record vs the close</span></div><div class="kv"><span>t-stat</span><em class="cond">${a.rec.t}</em></div><div class="kv"><span>Avg gain vs close</span><em class="cond">${sgn(a.rec.clv*100)} pts</em></div><div class="kv"><span>Bets scored</span><em class="cond">${a.rec.n} in ${a.rec.games} games</em></div></div>`;
- if(s)h+=`<div class="platter"><div class="ph"><span>Results${a.stats.days?`, last ${a.stats.days} days`:''}</span>${a.stats.capped?'<span class="badge">capped sample</span>':''}</div><div class="kv"><span>Bets</span><em class="cond">${s.n}</em></div><div class="kv"><span>Won</span><em class="cond">${Math.round(s.win*100)}%</em></div><div class="kv"><span>ROI</span><em class="cond ${s.roi>=0?'pos':'neg'}">${sgn(s.roi*100,0)}%</em></div><div class="kv"><span>Profit and loss</span><em class="cond ${s.pnl>=0?'pos':'neg'}">${s.pnl<0?'-':''}${money(Math.abs(s.pnl))}</em></div><div class="kv"><span>Volume</span><em class="cond">${money(s.vol)}</em></div></div>`;
- h+=`<div class="platter"><div class="ph"><span>Open positions</span><span>${money(a.posVal)}</span></div>${a.pos.map(p=>`<div class="row"><div class="grow"><b>${esc(p.out)}</b><div class="m">${esc(p.title)} · avg ${cents(p.avg)}, now ${cents(p.cur)}</div></div><div class="amt cond">${money(p.val)}<small class="${p.pnl>=0?'pos':'neg'}">${p.pnl<0?'-':'+'}${money(Math.abs(p.pnl))}</small></div></div>`).join('')}</div>`;
- h+=`<div class="platter"><div class="ph"><span>Recent trades</span></div>${a.trades.map(t=>`<div class="row"><div class="grow"><b>${t.side} ${esc(t.out)}</b><div class="m">${esc(t.title)} · ${cents(t.px)} · ${ago(t.ts)}</div></div><div class="amt cond">${money(t.usd)}</div></div>`).join('')}</div>`;
  return h;
 }
 function alertCard(a){
@@ -1205,9 +1190,8 @@ function route(){
  else if(r==='following'){tab='plays';html=head('Sharp Accounts','Every bet the sharp accounts have open. Star one to follow it. Context only')+v2nav('following')+'<div data-following></div>'}
  else if(r==='sharps'){tab='plays';html=head('Sharps','Who holds each side on Polymarket. Context, with a suggested size from an untested rule')+v2nav('sharps')+'<div data-side-cards></div>'}
  else if(r.startsWith('game/')){const gk=decodeURIComponent(r.slice(5));html=gamePage(gk)+(GM[gk]?'<div data-side-card="'+gk.replace(/"/g,'&quot;')+'"></div>':'');tab='board'}
- else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='reads'}
  else if(r==='models'||r.startsWith('pick/')){['nfl','cfb','sb'].forEach(k=>loadModel(k));tab='models';if(r==='models')html=modelsPage();else{const q=r.split('/');html=pickPage(q[1],decodeURIComponent(q.slice(2).join('/')))}}
- else{tab=r==='accounts'?'reads':r;html=({board,props,reads:topPage,accounts:topPage,alerts,record,edge}[r]||board)()}
+ else{tab=r;html=({board,props,reads:topPage,alerts,record,edge}[r]||board)()}
  sc.innerHTML=html;
  sc.querySelectorAll('[data-go]').forEach(x=>{x.tabIndex=0;x.setAttribute('role','button')});
  if(window.VaultLineChart)VaultLineChart.scan(sc,k=>GM[k]);
@@ -1245,7 +1229,7 @@ function scoreCards(){
  const vk=sg.vault_vs_kalshi;if(vk)out.push(['Vault line vs Kalshi',vk.won+' of '+vk.n,'won, priced for '+vk.said.toFixed(1)+'. '+(vk.verdict||''),vk.n,50,/no edge/.test(vk.verdict||'')?1:0,vk.verdict]);
  return out}
 function apply(d){D=d;REF=Date.now()/1000;G=d.games||[];GM=Object.fromEntries(G.map(g=>[g.key,g]));
- ACC=(d.accounts||[]).filter(a=>a.rec).sort((a,b)=>b.rec.t-a.rec.t).slice(0,14);loadErr=false}
+ loadErr=false}
 function load(fresh){
  const plain=()=>fetch(SRC,{cache:'no-store'}),api=()=>fetch('https://api.github.com/repos/Putput12-JP/Vault-Fantasy/contents/data.json?ref=sharp-data',{cache:'no-store',headers:{Accept:'application/vnd.github.raw+json'}});
  const go=fresh&&!LOCAL?api().then(r=>r.ok?r:plain()).catch(plain):plain();
