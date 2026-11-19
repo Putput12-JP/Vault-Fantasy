@@ -81,6 +81,8 @@ jobs:
       - name: Projections, game logs, model state
         run: |
           python3 nba/scripts/build_team_ranks.py || echo "team ranks not rebuilt; keeping the last file"
+          git fetch -q origin nba-data || true
+          python3 nba/scripts/build_similar_closes.py || echo "closing lines not rebuilt; keeping the last file"
           python3 nba/scripts/build_player_projections.py
           python3 nba/scripts/build_gamelogs.py
           python3 nba/scripts/build_matchups.py
