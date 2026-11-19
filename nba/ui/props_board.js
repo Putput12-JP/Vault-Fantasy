@@ -7,7 +7,7 @@
 window.PBX = (() => {
   const LS = 'nba-pbx-f';
   try{ localStorage.removeItem('nba-pbx-classic'); }catch(e){}   // the classic table is gone; forget a saved choice of it
-  const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any', watch: false, sig: 'any', agree: null, lvl: null};
+  const FDEF = {ven: {book: 1, kalshi: 1, poly: 1, pickem: 1}, gate: 'any', minEdge: null, minGap: null, minL10: null, oppFav: false, oMin: '', oMax: '', healthy: false, starters: false, moved: 'any', watch: false, sig: 'any', agree: null, lvl: null, grade: null};
   const load = () => { try{ const f = JSON.parse(localStorage.getItem(LS)); return f ? {...FDEF, ...f, ven: {...FDEF.ven, ...(f.ven || {})}} : JSON.parse(JSON.stringify(FDEF)); }catch(e){ return JSON.parse(JSON.stringify(FDEF)); } };
   const S = {stat: 'all', side: 'all', game: 'all', q: '', sort: 'edge', dir: -1, limit: 60, fOpen: false, f: load(), open: null};
   const save = () => { try{ localStorage.setItem(LS, JSON.stringify(S.f)); }catch(e){} };
@@ -99,6 +99,7 @@ window.PBX = (() => {
     if (f.starters) o.push(['starters', 'Starters only']);
     if (f.watch) o.push(['watch', 'Watching only']);
     if (f.sig !== 'any') o.push(['sig', {strong: 'Signals: Strong', lean: 'Signals: Lean or Strong', notag: 'Signals: not Against'}[f.sig] || 'Signals']);
+    if (f.grade != null) o.push(['grade', f.grade >= 7 ? 'Grade A+' : `Grade ${grName(f.grade)} or better`]);
     if (f.agree != null) o.push(['agree', f.agree === 5 ? 'All 5 checks agree' : `${f.agree}+ of 5 checks agree`]);
     if (f.lvl != null) o.push(['lvl', f.lvl === 4 ? 'Props Sim L4' : `Props Sim L${f.lvl}+`]);
     if (f.moved !== 'any') o.push(['moved', f.moved === 'with' ? 'Line moved toward side' : 'Line moved against side']);
@@ -109,6 +110,7 @@ window.PBX = (() => {
   const SORTS = {
     prop: x => x.r.name, line: x => x.r.line, odds: x => x.edge, proj: x => x.diff, fair: x => x.fair, edge: x => x.edge,
     sig: x => { const g = rowSig(x); return g && (x.side === 'o' ? 'O' : 'U') === g.ms ? g.kf - g.ka / 10 : null; },
+    grade: x => { const g = rowGrade(x); return g && g.over === (x.side === 'o') ? Math.abs(g.t) + (g.t ? 0 : -.5) : null; },
     opp: x => x.orank ? (x.side === 'o' ? x.orank[0] : 31 - x.orank[0]) : null,
     L5: x => (hits(x).L5 || {}).pct, L10: x => (hits(x).L10 || {}).pct, L20: x => (hits(x).L20 || {}).pct, H2H: x => (hits(x).H2H || {}).pct, S0: x => (hits(x).S0 || {}).pct, S1: x => (hits(x).S1 || {}).pct,
   };
@@ -139,6 +141,7 @@ window.PBX = (() => {
         if (f.agree != null && S2.kf < f.agree) return false;
         if (f.lvl != null && S2.lv < f.lvl) return false;
       }
+      if (f.grade != null){ const G2 = rowGrade(x); if (!G2 || G2.over !== (x.side === 'o') || Math.abs(G2.t) < f.grade) return false; }      // the grade sits on the side its points favour
       if (f.moved !== 'any'){ const d = x.sc.dm; if (!d) return false; if ((f.moved === 'with') !== (x.side === 'o' ? d < 0 : d > 0)) return false; }   // a falling line makes the over easier
       return true;
     });
@@ -178,6 +181,7 @@ window.PBX = (() => {
       <div><h6>Best odds (American)</h6><div class="rng"><input data-fodds="oMin" placeholder="-200" value="${esc(f.oMin)}" aria-label="Shortest price">to<input data-fodds="oMax" placeholder="+200" value="${esc(f.oMax)}" aria-label="Longest price"></div></div>
       <div><h6>Line move since open</h6><div>${o('moved', 'any', 'Any', f.moved === 'any')}${o('moved', 'with', 'Toward side', f.moved === 'with')}${o('moved', 'against', 'Against side', f.moved === 'against')}</div></div>
       <div><h6>Prop signals (model's side)</h6><div>${o('sig', 'any', 'Any', f.sig === 'any')}${o('sig', 'strong', 'Strong', f.sig === 'strong')}${o('sig', 'lean', 'Lean or Strong', f.sig === 'lean')}${o('sig', 'notag', 'Not Against', f.sig === 'notag')}</div></div>
+      <div><h6>Prop grade (untested)</h6><div>${o('grade', 'null', 'Any', f.grade == null)}${[4, 5, 6].map(v => o('grade', v, grName(v) + ' or better', f.grade === v)).join('')}${o('grade', 7, 'A+', f.grade === 7)}</div></div>
       <div><h6>Checks agreeing (of 5)</h6><div>${o('agree', 'null', 'Any', f.agree == null)}${[1, 2, 3, 4].map(v => o('agree', v, v + '+', f.agree === v)).join('')}${o('agree', 5, 'All 5', f.agree === 5)}</div></div>
       <div><h6>Props Sim level (model's side)</h6><div>${o('lvl', 'null', 'Any', f.lvl == null)}${[2, 3].map(v => o('lvl', v, `L${v}+`, f.lvl === v)).join('')}${o('lvl', 4, 'L4', f.lvl === 4)}</div></div>
       <div><h6>Player and matchup</h6><div>${o('oppFav', 1, 'Soft matchup', f.oppFav)}${o('healthy', 1, 'No injury tag', f.healthy)}${o('starters', 1, 'Starters only', f.starters)}${o('watch', 1, '★ Watching only', f.watch)}</div></div>
@@ -482,6 +486,34 @@ window.PBX = (() => {
     const ms = out.model.side, kf = SIG_COUNTED.filter(k => out[k].side === ms).length, ka = SIG_COUNTED.filter(k => out[k].side && out[k].side !== ms).length;
     return {c: out, ms, kf, ka, lv: sigLevel(r.pm), tier: sigTier(sigLevel(r.pm), kf, ka)};
   }
+  // ── prop grade: matchup + projection + situation, A+ to D, on the side the points favour (data/prop_grades.json, build_prop_grades.py) ──
+  // The points and cuts below must match build_prop_grades.py exactly. They were fixed by how often each grade should appear, never tuned on the record.
+  const GR_FWD = '2026-11-19';                        // forward test: cuts frozen on Nov 19 2026; nights from here on are out of sample
+  const grName = t => { t = Math.abs(t); return t >= 7 ? 'A+' : t === 6 ? 'A' : t === 5 ? 'A-' : t === 4 ? 'B+' : t === 3 ? 'B' : t === 2 ? 'C' : 'D'; };
+  const grCls = n => ({'A+': 'ap', 'A': 'a', 'A-': 'am', 'B+': 'bp', 'B': 'b', 'C': 'c', 'D': 'd'})[n];
+  let GRK = 0, GST = null, GOUT = {};                 // render counter, board status by player, teammates out by team (reset each render)
+  function gradeTeamOut(r){
+    if (!GOUT[r.team]) GOUT[r.team] = Object.entries(PIDX).filter(([id, v]) => v.t === r.team && GST[+id] && /out|doubt|inactive/i.test(GST[+id]))
+      .map(([id, v]) => ({id: +id, name: v.p.name, mpg: v.p.min0 || v.p.last_mpg || 0})).filter(m => m.mpg >= 20);
+    return GOUT[r.team].filter(m => m.id !== +r.e.p);
+  }
+  function gradeOf(x){
+    const r = x.r; if (r.pm == null) return null;
+    const s = r.e.s, all0 = (r._logs || (r._logs = logsOf(r))).all.filter(z => !z[4]), rk = ranks(), z = rk && x.grp && SIG_RANKED.includes(s) ? rk[`${x.opp}|${x.grp}|${s}`] : null;
+    const m = !z || z[2] < 5 ? 0 : z[0] >= 26 ? 2 : z[0] >= 21 ? 1 : z[0] <= 5 ? -2 : z[0] <= 10 ? -1 : 0;
+    const lv = sigLevel(r.pm), pr = [0, 1, 1, 2, 3][lv] * (r.pm > .5 ? 1 : -1), l5 = all0.slice(0, 5);
+    let d = null, mi = 0; if (r.min != null && l5.length === 5){ d = r.min - l5.reduce((t, g) => t + g[MIN_I], 0) / 5; mi = d >= 5 ? 2 : d >= 2 ? 1 : d <= -5 ? -2 : d <= -2 ? -1 : 0; }
+    const outs = GST ? gradeTeamOut(r) : [], mo = outs.length >= 2 || outs.some(o => o.mpg >= 28) ? 2 : outs.length ? 1 : 0, t = m + pr + mi + mo;
+    return {t, g: t ? grName(t) : 'D', over: t ? t > 0 : r.pm > .5, m, pr, mi, mo, lv, z, d, outs};
+  }
+  const rowGrade = x => x.r._gr && x.r._gr.k === GRK ? x.r._gr.v : (x.r._gr = {k: GRK, v: gradeOf(x)}).v;
+  const gradeC = x => { const g = rowGrade(x); if (!g) return '<span class="muted" title="No model price">-</span>';
+    const sw = g.over ? 'Over' : 'Under'; if (g.over !== (x.side === 'o')) return `<span class="muted" title="This prop's points favour the ${sw.toLowerCase()}">-</span>`;
+    const sg = v => (v > 0 ? '+' : '') + v, gw = x.grp === 'G' ? 'guards' : x.grp === 'C' ? 'centers' : 'forwards', rc = PSIG && PSIG.grade && PSIG.grade.grade && PSIG.grade.grade[g.g];
+    const why = [`Matchup ${sg(g.m)}${g.z && g.z[2] >= 5 ? ` (${x.opp} ${ordinal(g.z[0])} vs ${gw})` : ' (not ranked)'}`, `Projection ${sg(g.pr)} (level ${g.lv})`, `Minutes ${sg(g.mi)}${g.d == null ? '' : ` (${g.d >= 0 ? '+' : ''}${fmt(g.d)} vs last 5)`}`,
+      `Teammate out ${sg(g.mo)}${g.outs.length ? ` (${g.outs.map(o => o.name).join(', ')})` : ''}`].join(' · ');
+    const rec = rc && rc[0] ? ` This season's rebuild: ${rc[1]}-${rc[0] - rc[1]}, ${Math.round(rc[1] / rc[0] * 1000) / 10}% vs ${Math.round(rc[2] / rc[0] * 1000) / 10}% the market expected (${rc[0]} props, in-sample).` : '';
+    return `<span class="pbx-gr ${grCls(g.g)}" title="${esc(`Grade ${g.g} for the ${sw}: ${sg(g.t * (g.over ? 1 : -1))} points. ${why}.${rec} Untested going forward: frozen ${GR_FWD.slice(5).replace('-', '/')}.`)}"><b>${g.g}</b></span>`; };
   // records by how many counted checks agree with the model (any number against), from the per-bucket table
   function agreeRec(k){ if (!PSIG || !PSIG.agree) return null; return sumRec(Object.entries(PSIG.agree).filter(([b]) => +b.split('|')[0] === k).map(([, rc]) => rc)); }
   // record text: rec = [n, wins, market-expected wins, se, priced n, units]
@@ -884,6 +916,7 @@ window.PBX = (() => {
     if (DS.at){ DS.at = null; const y = S.scroll || 0; setTimeout(() => window.scrollTo(0, y), 0); }
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
+    GRK++; GST = statusFromBoard(B); GOUT = {};                 // the grade reads tonight's OUT / doubtful tags, so it is recomputed every render
     const all = build(B), rows = filtered(all), show = rows.slice(0, S.limit);
     const nWatch = new Set(all.filter(x => watched(x.r, x.side)).map(x => pvKey(x.r))).size;   // props watched that are still on the board
     pf.rows = show.map(x => x.r);                    // the shared drawer's Log and Watch buttons look rows up here
@@ -897,13 +930,13 @@ window.PBX = (() => {
           <span class="pbx-star${w ? ' on' : ''}" title="${w ? 'Watching' : ''}">${w ? '★' : ''}</span>
           <span class="pbx-prop">${face(x)}<span class="who"><b>${esc(r.name)} ${injTag(r)}<small>${who}</small></b><span>${sideW(x.side)} <b>${r.line}</b> ${esc(SLABEL[r.e.s])}</span></span></span>
           <span class="c">${lineC(x)}</span><span>${odds(x)}</span>
-          <span class="c v">${projC(x)}</span><span class="c v"><b>${pc0(x.fair)}</b></span><span class="c v">${edgeC(x)}</span><span class="c">${sigC(x)}</span>
+          <span class="c v">${projC(x)}</span><span class="c v"><b>${pc0(x.fair)}</b></span><span class="c v">${edgeC(x)}</span><span class="c">${sigC(x)}</span><span class="c">${gradeC(x)}</span>
           <span class="c">${oppC(x)}</span>${WIN.map(([k]) => `<span class="c">${hcell(h[k])}</span>`).join('')}
         </button>
         <button type="button" class="pbx-card press" aria-expanded="${open}">
           <span class="t">${face(x)}<span class="who"><b>${esc(r.name)} ${injTag(r)}</b><small>${who}</small></span></span>
           <span class="m"><span>${sideW(x.side)} <b>${r.line}</b> ${esc(SLABEL[r.e.s])}</span>${odds(x)}</span>
-          <span class="q"><span><small>Proj</small><b>${r.mu == null ? '-' : fmt(r.mu)}</b></span><span><small>Fair</small><b>${pc0(x.fair)}</b></span><span><small>Edge</small><b class="${x.edge > 0 ? 'pos' : x.edge != null ? 'neg' : ''}">${x.edge == null ? '-' : sgn(x.edge * 100) + '%'}</b></span><span><small>Signals</small>${sigC(x)}</span><span><small>Opp</small><b>${x.orank ? ord(x.orank[0]) : '-'}</b></span></span>
+          <span class="q"><span><small>Proj</small><b>${r.mu == null ? '-' : fmt(r.mu)}</b></span><span><small>Fair</small><b>${pc0(x.fair)}</b></span><span><small>Edge</small><b class="${x.edge > 0 ? 'pos' : x.edge != null ? 'neg' : ''}">${x.edge == null ? '-' : sgn(x.edge * 100) + '%'}</b></span><span><small>Signals</small>${sigC(x)}</span><span><small>Grade</small>${gradeC(x)}</span><span><small>Opp</small><b>${x.orank ? ord(x.orank[0]) : '-'}</b></span></span>
           <span class="hh">${WIN.map(([k, l]) => `<span><small>${l}</small>${hcell(h[k])}</span>`).join('')}</span>
         </button>
         </article>`; };
@@ -924,7 +957,7 @@ window.PBX = (() => {
       ${act.length ? `<div class="pbx-chips">${act.map(([k, l]) => `<span>${esc(l)}<button type="button" data-fclear="${k}" aria-label="Remove ${esc(l)}">×</button></span>`).join('')}</div>` : ''}
       <p class="pbx-key"><span class="v">Vault model columns</span><span>Hit rates: share of games over (or under) tonight's line</span><span>Opp rank: 1st allows the fewest to his position, 30th the most</span></p>
       <div class="pbx-tbl"><div class="pbx-scroll">
-        <div class="pbx-th"><span></span>${th('prop', 'Proposition')}${th('line', 'Line', 1)}${th('odds', 'Best odds')}${th('proj', 'Vault proj', 1, 1)}${th('fair', 'Fair', 1, 1)}${th('edge', 'Edge', 1, 1)}${th('sig', 'Signals', 1)}${th('opp', 'Opp rank', 1)}${WIN.map(([k, l]) => th(k, l, 1)).join('')}</div>
+        <div class="pbx-th"><span></span>${th('prop', 'Proposition')}${th('line', 'Line', 1)}${th('odds', 'Best odds')}${th('proj', 'Vault proj', 1, 1)}${th('fair', 'Fair', 1, 1)}${th('edge', 'Edge', 1, 1)}${th('sig', 'Signals', 1)}${th('grade', 'Grade', 1)}${th('opp', 'Opp rank', 1)}${WIN.map(([k, l]) => th(k, l, 1)).join('')}</div>
         ${show.map(row).join('') || `<p class="empty" style="padding:24px">${!all.length ? 'Nothing on the board yet.' : S.f.watch && !nWatch ? 'Nothing on your watch list. Open a prop and tap Watch to add it here.' : `No props match these filters.<br><small style="color:var(--fg3)">${all.length} on the board, ${all.filter(x => x.best || x.pk).length} with a price. Stat ${esc(S.stat)}, side ${esc(S.side)}, game ${esc(S.game)}, search "${esc(S.q)}", venues ${esc(Object.entries(S.f.ven).filter(([, v]) => v).map(([k]) => k).join('+') || 'none')}.</small><br><button type="button" class="pbx-alt" style="margin-top:12px" data-pbreset="1">Reset all filters</button>`}</p>`}
       </div></div>
       ${rows.length > S.limit ? `<div class="pbx-more"><button type="button" class="btn" data-more="1">Show ${Math.min(60, rows.length - S.limit)} more</button></div>` : ''}`;
@@ -1016,7 +1049,7 @@ window.PBX = (() => {
 .pbx-key .v{color:var(--pbx-v);font-weight:600}
 .pbx-tbl{border-radius:16px;background:var(--surface);border:1px solid rgb(var(--ink) / .06);overflow:hidden}
 .pbx-scroll{overflow-x:auto}
-.pbx-th,.pbx-tr{display:grid;grid-template-columns:28px minmax(240px,1fr) 92px 118px 74px 56px 74px 76px 64px repeat(6,52px);align-items:center;min-width:1174px}
+.pbx-th,.pbx-tr{display:grid;grid-template-columns:28px minmax(240px,1fr) 92px 118px 74px 56px 74px 76px 60px 64px repeat(6,52px);align-items:center;min-width:1234px}
 .pbx-th{background:var(--surface2);height:38px;position:sticky;top:0;z-index:1}
 .pbx-th button{display:flex;align-items:center;gap:4px;height:100%;padding:0 8px;background:none;border:0;color:var(--fg3);font-size:11px;font-weight:600;white-space:nowrap}
 .pbx-th button.c{justify-content:center}
@@ -1203,6 +1236,13 @@ window.PBX = (() => {
 .pbx-rest-v{margin:0 0 6px;font-size:13px}.pbx-rest-v b{color:var(--fg)}.pbx-rest-b .note{margin:0;padding:0;font-size:11.5px;color:var(--fg3)}
 .pbx-sigc{display:inline-flex;align-items:baseline;gap:1px;padding:2px 7px;border-radius:999px;background:rgb(var(--ink) / .06);color:var(--fg2);font:600 12px var(--font-mono)}
 .pbx-sigc small{font-size:10px;color:var(--fg3)}
+.pbx-gr{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:2px 7px;border-radius:999px;background:rgb(var(--ink) / .06);color:var(--fg3);font:600 12px var(--font-mono)}
+.pbx-gr.am,.pbx-gr.a,.pbx-gr.ap{color:var(--pbx-g)}
+.pbx-gr.am{background:color-mix(in srgb,var(--pbx-g) 12%,transparent)}
+.pbx-gr.a{background:color-mix(in srgb,var(--pbx-g) 20%,transparent)}
+.pbx-gr.ap{background:var(--pbx-g);color:var(--bg)}
+.pbx-gr.bp,.pbx-gr.b{color:var(--fg2)}
+.pbx-gr.d{color:var(--fg3);opacity:.7}
 .pbx-sigc.strong{background:color-mix(in srgb,var(--pbx-g) 18%,transparent);color:var(--pbx-g)}
 .pbx-sigc.lean{color:color-mix(in srgb,var(--pbx-g) 70%,var(--fg))}
 .pbx-sigc.against{background:color-mix(in srgb,var(--pbx-r) 14%,transparent);color:var(--pbx-r)}
@@ -1344,7 +1384,7 @@ window.PBX = (() => {
   .pbx-card .who b{display:flex;gap:6px;align-items:center;font-weight:600}
   .pbx-card .who small{color:var(--fg3);font-size:11.5px}
   .pbx-card .m{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:9px;background:var(--surface2);font-size:12.5px}
-  .pbx-card .q{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .pbx-card .q{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .pbx-card .q > span{display:flex;flex-direction:column;padding:6px 8px;border-radius:8px;background:var(--surface2)}
   .pbx-card .q small,.pbx-card .hh small{font-size:10px;color:var(--fg3)}
   .pbx-card .q b{font-weight:600;font-variant-numeric:tabular-nums}
