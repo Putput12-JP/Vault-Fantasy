@@ -17,6 +17,8 @@
 var OPT = {}, UI = {}, SHOWN = {};
 /* sports whose suggested play carries a size: flat 1u. CFB and CBB plays are tracked (shadow) but not shown. */
 var FLAT_SP = {nba: 1, nfl: 1};
+/* a play row from the record files or the live file: keep the ladder size as units_ladder; the shown size is flat 1u (NBA, NFL) or none (college) */
+function flatRow(x){ if (x && x.play === 'sf' && x.units_ladder == null && x.units != null){ x.units_ladder = x.units; x.units = FLAT_SP[x.sport] ? 1 : 0; } }
 function flatSize(g){
   Object.keys(g.markets || {}).forEach(function(k){ var sf = g.markets[k].sf; if (!sf) return;
     Object.keys(sf).forEach(function(v){ var x = sf[v]; if (!x || !x.side || !(x.units > 0) || x.units_ladder != null) return;
@@ -562,7 +564,7 @@ function load(force){
     .then(function(j){
       STORE.busy = false;
       var changed = !STORE.d || !j || j.built !== STORE.d.built || STORE.state === 'loading';
-      if (j && j.games){ j.games.forEach(flatSize); STORE.d = j; }
+      if (j && j.games){ j.games.forEach(flatSize); (j.locked || []).forEach(flatRow); STORE.d = j; }
       STORE.state = STORE.d ? 'ok' : 'none';
       STORE.hosts = STORE.hosts.filter(function(h){ return document.contains(h.el); });
       if (changed) STORE.hosts.forEach(function(h){ h.render(); });
@@ -671,6 +673,7 @@ function recLoad(done, force){
     /* flat 1u on shown sports: the stored flat result replaces the ladder's units; college plays are not shown plays */
     cards.forEach(function(x){ if (x.play === 'sf' && x.units_ladder == null && x.units != null){ x.units_ladder = x.units;
       if (FLAT_SP[x.sport]){ x.units = 1; if (x.flat != null && x.res) x.units_pl = x.flat; } else x.college = true; } });
+    if (r[0]) ((r[0].open) || []).forEach(flatRow);
     REC.d = r[0] ? {cards: r[0], cardRows: cards} : null;
     REC.state = REC.d ? 'ok' : 'none'; REC.at = Date.now();
     var w = REC.wait || []; REC.wait = [];
@@ -719,7 +722,7 @@ function scoreTile(name, sub, s, other){
 function cell(s){ return s && s.n ? '<span class="num">' + wl(s) + '</span><em class="num ' + (s.units_pl > 0 ? 'up' : s.units_pl < 0 ? 'dn' : '') + '">' + u2(s.units_pl) + '</em>' : '<span class="vr-none">—</span>'; }
 var REC_SP = null, REC_ALL = false, REC_RULE = null;     /* REC_RULE: the shadow rule picked in the table, which filters Open plays and Recent games to it */
 /* who a play belongs to, with its definition on hover; the full definitions sit behind the "?" button in each list's header */
-var WHO_DEF = {Vault: 'Suggested size: the play the card shows. Every one counts in the record.',
+var WHO_DEF = {Shadow: 'Tracked beside the record at one unit. No size is shown on college games, and it never counts in the record above.', Vault: 'Suggested size: the play the card shows. Every one counts in the record.',
   Lock: 'Forward-test play: a stricter, pre-registered rule on the same card, counted toward the 300 on the Forward test card.'};
 function whoTag(who){ return '<span class="vr-who ' + who.toLowerCase() + '" title="' + esc(WHO_DEF[who] || '') + '">' + who + '</span>'; }
 var REC_HELP = false;
@@ -734,6 +737,8 @@ function recSport(sp, D){
   var ALL = sp === 'all', SPS = ALL ? REC_SPORTS : [sp], inSp = function(s){ return SPS.indexOf(s) >= 0; };
   var cs = function(s){ return ((D.cards || {}).sports || {})[s] || {}; }, c = ALL ? {} : cs(sp);
   var G = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']];
+  /* a CFB or CBB tab with no rule picked: the plays carry no size, but they are listed (as tracked shadows) so nothing seems to vanish */
+  var COLL = !ALL && !FLAT_SP[sp] && !REC_RULE;
   var rawg = function(s, g){ return ((((cs(s).sf || {}).all || {})[g] || {}).all_cards); };
   var flatOf = function(x){ return x && x.n ? Object.assign({}, x, {units_pl: x.flat_roi != null ? x.flat_roi * x.n : 0}) : x; };
   /* the shown size is flat 1u, on NBA and NFL only: the stored flat ROI times the play count (every history row, none dropped) */
@@ -764,8 +769,8 @@ function recSport(sp, D){
   var hero = '<div class="vr-tile rec"><div class="vr-th"><b>Record</b></div>' +
     (V.n ? '<div class="vr-big num ' + (V.units_pl > 0 ? 'up' : V.units_pl < 0 ? 'dn' : '') + '">' + u2(V.units_pl) + '</div>' +
       '<p class="vr-ts num">' + wl(V) + (V.flat_roi != null ? ' · ' + roi(V.flat_roi) + ' ROI' : '') + ' · ' + V.n + (V.n === 1 ? ' play' : ' plays') + '</p>'
-      : '<div class="vr-big num dim">—</div><p class="vr-ts">No graded plays yet</p>') +
-    '<p class="vr-tsub">Every suggested play (NBA and NFL, flat 1u), graded at its lock price. Small samples swing hard.</p>' +
+      : '<div class="vr-big num dim">—</div><p class="vr-ts">' + (COLL ? 'No size on college plays' : 'No graded plays yet') + '</p>') +
+    '<p class="vr-tsub">' + (COLL ? 'The headline counts NBA and NFL plays only. College plays are still tracked and graded at one unit: see "College at 1u" below, and the open and completed plays. Small samples swing hard.' : 'Every suggested play (NBA and NFL, flat 1u), graded at its lock price. Small samples swing hard.') + '</p>' +
     shRows([['Stricter rule', P, 'Skips plays where the wallets against outweigh the wallets for, and markets where both sides qualify.', null, 'pub'],
       ['One-wallet cap', Q, 'The same plays at 1u when one hot wallet is on the side, or when it bet under its usual stake.', null, 'solo'],
       ['Sharps only', rgs('only', 'all_cards'), 'Only plays with a hot wallet on the side and none against.', rgs('only', 'forward').n || 0, 'only'],
@@ -824,15 +829,15 @@ function recSport(sp, D){
   var RULE = RULE_NAME[REC_RULE] ? REC_RULE : null, RULE_SHADOW = RULE && RULE !== 'ladder' && RULE !== 'college';
   var addO = function(ev, gst, row){ (og[ev] = og[ev] || {gst: gst, rows: [], live: false, sp: row.sp}).rows.push(row); };
   ((STORE.d || {}).games || []).filter(function(g){ return !RULE && inSp(g.sport) && !g.frozen; }).forEach(function(g){
-    Object.keys(g.markets).forEach(function(k){ var x = ((g.markets[k].sf || {}).all) || {};
-      if (x.side && x.units > 0){ addO(g.ev, g.gst, {sp: g.sport, who: 'Vault', side: x.side, group: k, label: playLabel(x.side, k, x.line, x.outs), units: x.units}); og[g.ev].live = true; og[g.ev].cut = g.cut; } }); });
+    Object.keys(g.markets).forEach(function(k){ var x = ((g.markets[k].sf || {}).all) || {}, fl = FLAT_SP[g.sport], uu = fl ? x.units : COLL ? x.units_ladder : 0;
+      if (x.side && uu > 0){ addO(g.ev, g.gst, {sp: g.sport, who: fl ? 'Vault' : 'Shadow', side: x.side, group: k, label: playLabel(x.side, k, x.line, x.outs), units: fl ? x.units : null}); og[g.ev].live = true; og[g.ev].cut = g.cut; } }); });
   /* just locked: plays on cards frozen in the last 12 hours (published with the live cards at every lock), until their row is graded */
   var graded = {}; D.cardRows.forEach(function(r){ graded[r.key] = 1; });
   var seen = {}, addOnce = function(ev, gst, row){ var k = ev + '|' + row.who + '|' + row.label; if (seen[k]) return; seen[k] = 1; addO(ev, gst, row); };
-  ((STORE.d || {}).locked || []).filter(function(r){ return !RULE && inSp(r.sport) && FLAT_SP[r.sport] && r.play === 'sf' && !graded[r.key]; }).forEach(function(r){
-    addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units}); });
-  (((D.cards || {}).open) || []).filter(function(r){ return !RULE && inSp(r.sport) && FLAT_SP[r.sport] && r.play === 'sf' && r.gst > nowS - 7 * 86400; }).forEach(function(r){
-    addOnce(r.ev, r.gst, {sp: r.sport, who: r.play === 'lock' ? 'Lock' : 'Vault', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units});
+  ((STORE.d || {}).locked || []).filter(function(r){ return !RULE && inSp(r.sport) && (FLAT_SP[r.sport] || COLL) && r.play === 'sf' && !graded[r.key]; }).forEach(function(r){
+    addOnce(r.ev, r.gst, {sp: r.sport, who: FLAT_SP[r.sport] ? 'Vault' : 'Shadow', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: FLAT_SP[r.sport] ? r.units : null}); });
+  (((D.cards || {}).open) || []).filter(function(r){ return !RULE && inSp(r.sport) && (FLAT_SP[r.sport] || COLL) && r.play === 'sf' && r.gst > nowS - 7 * 86400; }).forEach(function(r){
+    addOnce(r.ev, r.gst, {sp: r.sport, who: FLAT_SP[r.sport] ? 'Vault' : 'Shadow', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: FLAT_SP[r.sport] ? r.units : null});
     if (r.postponed && og[r.ev]) og[r.ev].pp = true; });
   if (RULE_SHADOW) (((D.cards || {}).open_shadow) || []).filter(function(r){ return inSp(r.sport) && r.play === RULE && r.gst > nowS - 7 * 86400; }).forEach(function(r){
     addOnce(r.ev, r.gst, {sp: r.sport, who: 'Shadow', side: r.side, group: r.group, label: playLabel(r.side, r.group, r.line, r.outs), units: r.units});
@@ -843,7 +848,7 @@ function recSport(sp, D){
   if (RULE && !oev.length) openHtml = '<section class="vr-card"><div class="vr-fh"><h3>Open plays</h3></div><p class="vr-fn">' + (RULE_SHADOW ? ((D.cards || {}).open_shadow ? 'No locked play under this rule is waiting for a result right now.' : 'Open plays under a rule show here after the next record build.') : 'Open plays are not tracked for this view; its completed plays are listed next.') + '</p></section>';
   if (oev.length){
     openHtml = '<section class="vr-card"><div class="vr-fh"><h3>Open plays</h3><span class="num">' + oev.reduce(function(t, e){ return og[e].pp ? t : t + og[e].rows.length; }, 0) + ' pending' + (oev.some(function(e){ return og[e].pp; }) ? ' · ' + oev.reduce(function(t, e){ return og[e].pp ? t + og[e].rows.length : t; }, 0) + ' postponed' : '') + '</span>' + helpBtn() + '</div>' + defsHtml() +
-      '<p class="vr-fn">' + (RULE ? 'Shadow plays: they grade after their games settle and never count in the record above.' : 'They count in the record above once their games settle.') + '</p><div class="vr-games">' + oev.map(function(ev){ var x = og[ev], gn = gameName(ev); if (ALL && x.sp) gn.d = x.sp.toUpperCase() + ' · ' + gn.d;
+      '<p class="vr-fn">' + (RULE || COLL ? 'Shadow plays: they grade after their games settle and never count in the record above.' : 'They count in the record above once their games settle.') + '</p><div class="vr-games">' + oev.map(function(ev){ var x = og[ev], gn = gameName(ev); if (ALL && x.sp) gn.d = x.sp.toUpperCase() + ' · ' + gn.d;
       var chip = x.pp ? '<span class="vr-st" title="ESPN lists this game as postponed. The play stays open and grades if it is played.">Postponed</span>' : !x.locked ? '<span class="vr-st live">Locks ' + ct(x.cut || x.gst - 900) + '</span>' : nowS < x.gst ? '<span class="vr-st lock">' + ICON.lock + 'Locked · starts ' + ct(x.gst) + '</span>' : '<span class="vr-st wait">' + ICON.lock + 'Locked · awaiting result</span>';
       return '<div class="vr-g"><div class="vr-gn"><b>' + gn.t + '</b><span>' + gn.d + '</span>' + chip + '</div><div class="vr-gp">' + x.rows.map(function(r){
         return '<div class="vr-pl">' + whoTag(r.who) + '<span class="vr-lbl">' + recLogo(r.sp || sp, ev, r.side, r.group) + '<b>' + esc(r.label) + '</b></span><span class="num vr-u">' + (r.units != null ? r.units + 'u' : '') + '</span>' + (x.locked ? '<span class="vr-res locked" title="Locked" aria-label="locked">' + ICON.lock + '</span>' : '<span class="vr-res open" aria-label="pending"></span>') + '</div>'; }).join('') + '</div></div>'; }).join('') + '</div></section>';
@@ -853,15 +858,15 @@ function recSport(sp, D){
   /* the old ladder shows each play at the size the card used to show: the stored ladder units, and its result at that size (units x the stored flat result) */
   var lad = function(r){ var u = r.units_ladder != null ? r.units_ladder : r.units; return Object.assign({}, r, {units: u, units_pl: r.res && r.flat != null && r.units_ladder != null ? u * r.flat : r.units_pl}); };
   D.cardRows.filter(function(r){ if (!inSp(r.sport) || r.kind === 'close' || !r.side || r.variant !== 'all') return false;
-      if (!RULE) return FLAT_SP[r.sport] && r.play === 'sf';
+      if (!RULE) return (FLAT_SP[r.sport] || COLL) && r.play === 'sf';
       return RULE === 'ladder' ? r.play === 'sf' : RULE === 'college' ? r.play === 'sf' && r.college : r.play === RULE; })
-    .forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: [], sp: r.sport}).v.push(RULE === 'ladder' ? lad(r) : r); });
+    .forEach(function(r){ (by[r.ev] = by[r.ev] || {gst: r.gst, v: [], s: [], sp: r.sport}).v.push(RULE === 'ladder' ? lad(r) : COLL ? Object.assign({}, r, {units: null, units_pl: r.res && r.flat != null ? r.flat : null}) : r); });
   var evs = Object.keys(by).sort(function(a, b){ return by[b].gst - by[a].gst; }), shown = REC_ALL ? evs : evs.slice(0, 8);
   if (evs.length){
     var pl = function(who, r, label, res, side, ev){ return '<div class="vr-pl">' + whoTag(who) + '<span class="vr-lbl">' + recLogo(r.sport || sp, ev, side, r.group) + '<b>' + esc(label) + '</b></span><span class="num vr-u">' + (r.units != null ? r.units + 'u' : '') + '</span>' + resTag(res, res ? r.units_pl : null, r.status === 'unpriced') + '</div>'; };
-    recentHtml = '<section class="vr-card"><div class="vr-fh"><h3>' + (RULE ? 'Completed plays' : 'Recent games') + '</h3>' + helpBtn() + '</div>' + defsHtml() + '<div class="vr-games">' + shown.map(function(ev){ var x = by[ev], gn = gameName(ev); if (ALL && x.sp) gn.d = x.sp.toUpperCase() + ' · ' + gn.d;
+    recentHtml = '<section class="vr-card"><div class="vr-fh"><h3>' + (RULE || COLL ? 'Completed plays' : 'Recent games') + '</h3>' + helpBtn() + '</div>' + defsHtml() + '<div class="vr-games">' + shown.map(function(ev){ var x = by[ev], gn = gameName(ev); if (ALL && x.sp) gn.d = x.sp.toUpperCase() + ' · ' + gn.d;
       return '<div class="vr-g"><div class="vr-gn"><b>' + gn.t + '</b><span>' + gn.d + '</span></div><div class="vr-gp">' +
-        x.v.map(function(r){ return pl(RULE ? 'Shadow' : 'Vault', r, playLabel(r.side, r.group, r.line, r.outs), r.res, r.side, ev); }).join('') +
+        x.v.map(function(r){ return pl(RULE || COLL ? 'Shadow' : 'Vault', r, playLabel(r.side, r.group, r.line, r.outs), r.res, r.side, ev); }).join('') +
         '</div></div>'; }).join('') + '</div>' +
       (evs.length > 8 ? '<button type="button" class="vr-more press press-btn">' + (REC_ALL ? 'Show fewer' : 'Show all ' + evs.length + ' games') + '</button>' : '') + '</section>';
   }
