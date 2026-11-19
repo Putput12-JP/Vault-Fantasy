@@ -59,7 +59,13 @@ def psig():
         d = json.load(open(os.path.join(DATA, 'prop_signals.json')))
     except (OSError, ValueError):
         return None
-    return {k: d.get(k) for k in ('first', 'through', 'n', 'half', 'sig', 'level', 'tier', 'tier_days', 'agree')}
+    o = {k: d.get(k) for k in ('first', 'through', 'n', 'half', 'sig', 'level', 'tier', 'tier_days', 'agree')}
+    try:                                                   # prop grades (build_prop_grades.py): the record behind each A+ to D grade
+        g = json.load(open(os.path.join(DATA, 'prop_grades.json')))
+        o['grade'] = {k: g.get(k) for k in ('first', 'through', 'n', 'half', 'grade', 'side', 'h1', 'h2', 'grade_days')}
+    except (OSError, ValueError):
+        o['grade'] = None
+    return o
 
 
 def copula():

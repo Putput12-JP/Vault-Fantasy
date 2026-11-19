@@ -177,6 +177,11 @@ def main():
         build_prop_signals.write()
     except Exception as e:
         print('prop signals not rebuilt (the page keeps the last one):', e)
+    try:                                                   # prop grades: A+ to D from matchup, projection and situation, with each grade's record (build_prop_grades.py)
+        import build_prop_grades
+        build_prop_grades.write()
+    except Exception as e:
+        print('prop grades not rebuilt (the page keeps the last one):', e)
     try:                                                   # prop detail chart filters: each team's score and pre-game spread per game (build_game_ctx.py)
         import build_game_ctx
         build_game_ctx.write()
