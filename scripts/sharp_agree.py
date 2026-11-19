@@ -299,6 +299,13 @@ def do_report(a):
                                 "no_verdict_data": bool(data_fail), "no_read_why": dict(why), "cells": cells,
                                 "tests": res if not data_fail else "no verdict, data",
                                 "note": "plays-only counts are in cells[*].plays and carry no verdict"}
+    try:                                           # leave the file alone when only the timestamp would change (the job commits on a diff)
+        old = json.load(open(a.out))
+        if {k: v for k, v in old.items() if k != "generated"} == {k: v for k, v in out.items() if k != "generated"}:
+            print(json.dumps(old, indent=1))
+            return
+    except (OSError, ValueError):
+        pass
     json.dump(out, open(a.out, "w"), indent=1)
     print(json.dumps(out, indent=1))
 
