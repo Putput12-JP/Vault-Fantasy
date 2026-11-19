@@ -561,12 +561,46 @@ window.PBX = (() => {
       <p class="note">This season, ${PSIG.n.toLocaleString()} props${PSIG.through ? ` through ${PSIG.through.slice(5).replace('-', '/')}` : ''}. "vs market" is how much more often that side won than the no-vig price expected. ROI is after the book's cut. Rebuilt in-sample; forward test from ${SIG_FWD.slice(5).replace('-', '/')}. <a href="#track" data-go="track">Full record</a></p>
     </section>`;
   }
+  const recRow = (lbl, rc) => { const d = recDiff(rc), roi = recRoi(rc); return `<tr><td class="l">${lbl}</td><td class="num">${rc && rc[0] ? rc[0].toLocaleString() : 0}</td><td class="num">${recHit(rc)}</td><td class="num">${rc && rc[0] ? Math.round(rc[2] / rc[0] * 1000) / 10 + '%' : '-'}</td><td class="num"><span class="${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}">${sgnPt(d)}</span></td><td class="num"><span class="${roi > 0 ? 'pos' : roi < 0 ? 'neg' : ''}">${roi == null ? '-' : sgnPt(roi) + '%'}</span>${rc && rc[4] ? ` <small>${rc[4].toLocaleString()}</small>` : ''}</td></tr>`; };
+  const REC_TH = '<thead><tr><th class="l"></th><th>Props</th><th>Won-lost</th><th>Market</th><th>vs market</th><th>ROI · priced</th></tr></thead>';
+  // Track Record card for the A+ to D grades (data/prop_grades.json): forward, rebuilt, both sides, by Signals agreement, by stat, and the two halves
+  function gradeCard(el, stat){
+    if (!el) return;
+    const G = PSIG && PSIG.grade; if (!G || !G.grade){ el.innerHTML = '<p class="hint">Grade records are not in this build.</p>'; return; }
+    const GS = ['A+', 'A', 'A-', 'B+', 'B', 'C', 'D'], GD = {'A+': '7+ points', 'A': '6 points', 'A-': '5 points', 'B+': '4 points', 'B': '3 points', 'C': '2 points', 'D': '0 or 1 point'};
+    const fwd = g => sumRec(Object.entries(G.grade_days || {}).filter(([d]) => d >= GR_FWD).map(([, o]) => o[g])), has = GS.some(g => fwd(g)[0]);
+    const wl = rc => rc && rc[0] ? `${rc[1]}-${rc[0] - rc[1]}` : '-';
+    const cell = rc => { if (!rc || !rc[0]) return '<td class="num muted">-</td>'; const roi = recRoi(rc);
+      return `<td class="num">${wl(rc)}<small> ${Math.round(rc[1] / rc[0] * 100)}%${roi == null ? '' : ` · <span class="${roi > 0 ? 'pos' : 'neg'}">${sgnPt(roi)}%</span>`}</small></td>`; };
+    const a = G.grade.A, ap = G.grade['A+'];
+    if (stat) stat.textContent = `A+: ${wl(ap)}${recRoi(ap) != null ? `, ROI ${sgnPt(recRoi(ap))}%` : ''} · A: ${wl(a)}${recRoi(a) != null ? `, ROI ${sgnPt(recRoi(a))}%` : ''} (rebuilt, in-sample)`;
+    const grid = (cols, rowsK, get, head) => `<div class="tablewrap"><table class="ht tsim"><thead><tr><th class="l">${head}</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${rowsK.map(g => `<tr><td class="l">${g[1]}</td>${cols.map(c => cell(get(g[0], c[0]))).join('')}</tr>`).join('')}</tbody></table></div>`;
+    const gl = GS.map(g => [g, g]);
+    const stats = [...new Set(Object.keys(G.stat || {}).map(k => k.split('|')[1]))].sort((x, y) => sumRec(GS.map(g => G.stat[`${g}|${y}`])).at(0) - sumRec(GS.map(g => G.stat[`${g}|${x}`])).at(0));
+    const a3 = Object.entries(G.a3 || {}).sort((x, y) => y[1][0] - x[1][0]), a3t = sumRec(a3.map(z => z[1]));
+    el.innerHTML = `<p class="hint tplain">Every prop gets one grade from three parts, as points for the over or the under: matchup (the opponent's rank against his position), projection (Props Sim level) and situation (projected minutes against his last 5, and a rotation teammate being out, which counts for the over only). The grade is the size of the total, on the side the points favour. The cuts were set by how often each grade should appear, never tuned on results. Records use the graded side at the last look before tip, against the no-vig market's chance, and ROI is at the best stored price when the graded side is also the model's side. They were rebuilt on ${G.first.slice(5).replace('-', '/')} to ${G.through.slice(5).replace('-', '/')} (${G.n.toLocaleString()} props), so they are in-sample. The forward test started ${GR_FWD.slice(5).replace('-', '/')}. The rebuild counts a teammate as out when he had no game that night, which flatters that part a little; the live column reads the board's out tags.</p>
+      <h3 class="sim-h">Forward, from ${GR_FWD.slice(5).replace('-', '/')} (the real test)</h3>
+      ${has ? `<div class="tablewrap"><table class="ht tsim">${REC_TH}<tbody>${GS.map(g => recRow(`${g}<small>${GD[g]}</small>`, fwd(g))).join('')}</tbody></table></div>` : '<p class="hint">No settled props since the freeze yet. The first night lands after tonight\'s games settle.</p>'}
+      <h3 class="sim-h">Rebuilt, by grade (in-sample)</h3>
+      <div class="tablewrap"><table class="ht tsim">${REC_TH}<tbody>${GS.map(g => recRow(`${g}<small>${GD[g]}</small>`, G.grade[g])).join('')}</tbody></table></div>
+      <h3 class="sim-h">By side the grade points to</h3>
+      ${grid([['o', 'Over'], ['u', 'Under']], gl, (g, s) => G.side[`${g}|${s}`], 'Grade')}
+      <h3 class="sim-h">By how many Signals checks agree with the model</h3>
+      ${grid([0, 1, 2, 3, 4, 5].map(k => [k, `${k} agree`]), gl, (g, k) => G.agree[`${g}|${k}`], 'Grade')}
+      <h3 class="sim-h">A+ and A with exactly 3 agreeing, by stat</h3>
+      <div class="tablewrap"><table class="ht tsim">${REC_TH}<tbody>${a3.map(([s, rc]) => recRow(esc(SLABEL[s] || s), rc)).join('')}${recRow('<b>All</b>', a3t)}</tbody></table></div>
+      <h3 class="sim-h">By stat, top three grades</h3>
+      ${grid(['A+', 'A', 'A-'].map(g => [g, g]), stats.map(s => [s, esc(SLABEL[s] || s)]), (s, g) => G.stat[`${g}|${s}`], 'Stat')}
+      <h3 class="sim-h">First half and second half of the season</h3>
+      ${grid([['h1', `Before ${G.half ? G.half.slice(5).replace('-', '/') : 'mid'}`], ['h2', `From ${G.half ? G.half.slice(5).replace('-', '/') : 'mid'}`]], gl, (g, h) => G[h] && G[h][g], 'Grade')}
+      <p class="hint">Each cell is won-lost, then hit rate, then ROI. vs market: the side's win rate minus the no-vig market's average chance for it, in points. ROI: 1 unit at the best stored price; the count beside it is how many props had a stored price. Pushes are left out. A+ and A are small samples, and the cells split by stat or agreement are smaller still, so one or two results move a row a long way.</p>`;
+  }
   // Track Record card: each tier rebuilt (before the freeze) and forward, plus every check's record by side
   function trackCard(el, stat){
     if (!el) return;
     if (!PSIG){ el.innerHTML = '<p class="hint">Signal records are not in this build.</p>'; return; }
-    const row = (lbl, rc) => { const d = recDiff(rc), roi = recRoi(rc); return `<tr><td class="l">${lbl}</td><td class="num">${rc && rc[0] ? rc[0].toLocaleString() : 0}</td><td class="num">${recHit(rc)}</td><td class="num">${rc && rc[0] ? Math.round(rc[2] / rc[0] * 1000) / 10 + '%' : '-'}</td><td class="num"><span class="${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}">${sgnPt(d)}</span></td><td class="num"><span class="${roi > 0 ? 'pos' : roi < 0 ? 'neg' : ''}">${roi == null ? '-' : sgnPt(roi) + '%'}</span>${rc && rc[4] ? ` <small>${rc[4].toLocaleString()}</small>` : ''}</td></tr>`; };
-    const th = '<thead><tr><th class="l"></th><th>Props</th><th>Won-lost</th><th>Market</th><th>vs market</th><th>ROI · priced</th></tr></thead>';
+    const row = recRow;
+    const th = REC_TH;
     const tiers = ['strong', 'lean', 'split', 'against'];
     const fw = tiers.map(t => tierRec(t, true)), any = fw.some(rc => rc && rc[0]);
     const st = tierRec('strong', true);
@@ -1400,5 +1434,6 @@ window.PBX = (() => {
   return {
     render(B){ if (!wired){ wire(); wired = true; } render(B); },
     trackCard,
+    gradeCard,
   };
 })();
