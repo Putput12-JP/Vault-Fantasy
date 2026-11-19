@@ -453,7 +453,7 @@ function detail(g, key, v){
     (px != null ? '<div class="vd-px num"><b>' + cents(px) + '</b><span>' + (american(px) || '') + '</span>' + (mv != null ? '<em class="' + (mv > 0 ? 'up' : mv < 0 ? 'dn' : '') + '">' + (mv > 0 ? '+' : '') + mv.toFixed(1) + ' pts</em>' : '') + '</div>' +
       (fl ? '<span class="vd-sub num">flagged at ' + cents(fl.price) + ', ' + ct(fl.t) + ' CT</span>' : '') : '<span class="vd-sub">No suggested size on this market. Showing the side with the most hot money.</span>') +
     '</div><button type="button" class="vd-x press press-btn" aria-label="Close">' + XX + '</button></div>';
-  h += '<div class="vd-hero"><div><b class="num">' + usd(tot) + '</b><span class="vd-op ' + (against ? 'no' : 'ok') + '">' + (against ? against + ' hot against' : 'Unopposed') + '</span></div>' +
+  h += '<div class="vd-hero"><div><b class="num">' + usd(tot) + '</b><span class="vd-op ' + (against ? 'no' : 'ok') + '">' + (against ? against + ' hot against' : 'No hot wallet against') + '</span></div>' +
     (ls ? '<div class="vd-u"><b class="num">' + units(ls) + 'u</b><span class="vc-tag">untested rule</span></div>' : '') + '</div>' +
     (tot ? '<div class="vd-mix"><i class="sharp" style="width:' + (proven / tot * 100).toFixed(1) + '%"></i><i class="unp" style="width:' + (S.unproven_usd / tot * 100).toFixed(1) + '%"></i><i class="loser" style="width:' + (S.loser_usd / tot * 100).toFixed(1) + '%"></i></div>' +
       '<div class="vd-mixl num"><span>Hot ' + Math.round(proven / tot * 100) + '%</span><span>Other ' + Math.round(S.unproven_usd / tot * 100) + '%</span>' + (S.loser_usd ? '<span>Losers ' + Math.round(S.loser_usd / tot * 100) + '%</span>' : '') + '</div>' : '');
@@ -1052,7 +1052,7 @@ var PLAY_CSS = [
 var PV = {sort: 'lock', all: false, seen: null, plays: [], rows: [], f: null, fopen: false};
 /* ---------- filters for the plays list (Plays view only). Chips in one group are "any of"; the Sharps chips and the other groups each narrow it further. ---------- */
 var FTIERS = [['ELITE', 'Elite'], ['PREMIUM', 'Prem'], ['LOCK', 'Lock'], ['LEAN', 'Lean'], ['WEAK', 'Weak'], ['NONE', 'No tier']];
-var FSHARPS = [['win60', 'Win 60%+'], ['pro2', '2+ hot'], ['up', 'Sized up'], ['unopp', 'Unopposed'], ['steam', 'Steam']];
+var FSHARPS = [['win60', 'Win 60%+'], ['pro2', '2+ hot'], ['up', 'Sized up'], ['unopp', 'No hot wallet against'], ['steam', 'Steam']];
 var FMKT = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']];
 var WIN_MIN = 60, WIN_MIN_N = 20;     /* pooled win rate of the hot wallets, over at least this many recorded bets (AGS gives a record full credit at 20) */
 function fLoad(){
@@ -1081,7 +1081,7 @@ var FDEFS = [
   ['Win 60%+', 'The hot wallets on the side have won 60% or more of their recorded bets, over at least 20 bets together. A win rate is not an edge: at -150 a bet needs 60% just to break even.'],
   ['2+ hot', 'Two or more hot wallets hold $250 or more on the side.'],
   ['Sized up', 'A hot wallet bet at least 1.5 times its usual stake on this side.'],
-  ['Unopposed', 'No hot wallet holds $250 or more on the other side.'],
+  ['No hot wallet against', 'No hot wallet holds $250 or more on the other side. Tracked Polymarket wallets only; sportsbook money is a separate number.'],
   ['Steam', 'Pinnacle\'s price is moving toward the side (a 3% shortening, or half a point on a line), read from Vault\'s own tape. Games with no tape are not counted.'],
   ['Hot wallet', 'A wallet with at least 6 recorded bets in the sport, a 55% or better win rate and a dollar ROI above 3% in Vault\'s own ledger. It is a record, not proof of skill: going forward these wallets have not beaten the market.'],
   ['Price-sharp wallet', 'A wallet with 30 or more games in the sport whose entry prices have beaten the closing line by more than luck explains (95% chance its price skill is above zero), counting only games played before this lock. Price-dull is the reverse. In testing this tier kept beating the close the next week; that is a better price, not a promise of winning picks.'],
