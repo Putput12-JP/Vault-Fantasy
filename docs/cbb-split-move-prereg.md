@@ -1,6 +1,6 @@
 # CBB money vs bets, with the line moving their way: forward test (registration)
 
-**Status: PROPOSED** on 2026-11-19. The commit that changes this line to REGISTERED is the registration: its hash and time are the proof that
+**Status: Registered.** Proposed on 2026-11-19 and approved by the user as written the same day, with every decision below taken as proposed. The commit that changes this line from PROPOSED is the registration: its hash and time are the proof that
 the rule came first. Nothing below may change after the first counted game is graded. A change means a new registration with its own date.
 
 Sharp money is context only (CLAUDE.md). This is a measurement. It is not a bet signal, not a size, and it never feeds Top Reads, SM_GATE or an
