@@ -171,7 +171,7 @@ def diff(a, b):
 
 def main():
     now, res = time.time(), {}
-    for sp in ('nfl', 'cfb', 'nba'):
+    for sp in ('nfl', 'cfb', 'nba', 'cbb'):
         if not os.path.isdir(os.path.join(TAPE, sp)):
             continue
         treat, ctrl = run(sp, now)
