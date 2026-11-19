@@ -938,13 +938,14 @@ window.PBX = (() => {
       if (pbClick(e, rerender)) return;                                   // Watch (and Log in any shared drawer)
       if (detailClick(e)) return;
       const t = e.target, b = t.closest('[data-game],[data-stat],[data-side],[data-sort],[data-f],[data-fclear],[data-fopen],[data-pbreset],[data-freset],[data-fdone],[data-more],[data-w],[data-lab]');
-      if (b){
+      // closest() keeps climbing past #pbx-root: with the sidebar collapsed the page's own <html data-side="1"> matched and set the Over/Under filter to "1", which hid every prop
+      if (b && root.contains(b)){
         const d = b.dataset;
         if (d.w){ pwin = d.w; rerender(); return; }
         if (d.lab){ history.replaceState(null, '', '#' + d.lab.toLowerCase()); goTeam(d.lab); return; }
         if (d.game){ S.game = d.game; S.limit = 60; }
         else if (d.stat){ S.stat = d.stat; S.limit = 60; }
-        else if (d.side){ S.side = d.side; }
+        else if (d.side){ if (d.side === 'all' || d.side === 'o' || d.side === 'u') S.side = d.side; }
         else if (d.sort){ if (S.sort === d.sort) S.dir = -S.dir; else { S.sort = d.sort; S.dir = d.sort === 'prop' ? 1 : -1; } }
         else if (d.pbreset){ S.stat = 'all'; S.side = 'all'; S.game = 'all'; S.q = ''; S.limit = 60; S.f = JSON.parse(JSON.stringify(FDEF)); save(); }
         else if (d.fopen){ S.fOpen = !S.fOpen; }
