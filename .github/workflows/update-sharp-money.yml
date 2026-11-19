@@ -186,7 +186,8 @@ jobs:
             python3 scripts/steam_record.py || true      # Pinnacle steam replay, context only
             python3 scripts/stale_number_replay.py > /dev/null || true      # stale-number replay (docs/stale-number-prereg.md), context only
             python3 scripts/build_lead_lag.py --data sharp-out/data.json || true      # lead-lag clock and stale-quote ages from the book tape, context only
-            git add data/steam_record.json data/stale_number_record.json data/lead_lag.json data/book_age.json data/book_tape/cfb data/book_tape/cbb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
+            python3 scripts/cbb_split_move.py log --data sharp-out/data.json || true; python3 scripts/cbb_split_move.py settle --data sharp-out/data.json || true; python3 scripts/cbb_split_move.py report > /dev/null || true      # CBB money-vs-bets + line-move forward test (docs/cbb-split-move-prereg.md), context only
+            git add data/cbb_split_move.json data/cbb_split_move_record.json data/steam_record.json data/stale_number_record.json data/lead_lag.json data/book_age.json data/book_tape/cfb data/book_tape/cbb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
             if git diff --staged --quiet; then echo "No line changes."; break; fi
             git commit -q -m "data: CFB and NBA line tape [skip ci]"
             if git push origin HEAD:main; then break; fi
