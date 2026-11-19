@@ -57,6 +57,7 @@ def favor(mk, dirn, stale, ref):
 
 
 def run(sport, now):
+    cal = []
     games = defaultdict(list)
     for r in load(sport):
         k = game_key(r, sport)
@@ -73,12 +74,13 @@ def run(sport, now):
             if len(pin) < 2:
                 continue
             close = line(pin[-1], mk)
+            cal.append((k, mk, close))
             books = defaultdict(list)
             for r in rs:
                 if r['book'] not in ('Consensus', 'Open', 'Pinnacle') and r['t'] <= start:
                     ln = line(r, mk)
                     if ln is not None:
-                        books[r['book']].append((r['t'], ln))
+                        books[r['book']].append((r['t'], ln, r.get(mk)))
             for bk, seq in books.items():
                 BOOKSEQ[(k, mk, bk)] = seq
             fired = set()
@@ -93,12 +95,12 @@ def run(sport, now):
                     continue
                 mv = cur - base
                 # latest fresh line, and earliest in-window line, per other book
-                now_l, old_l = {}, {}
+                now_l, old_l, q_l = {}, {}, {}
                 for bk, seq in books.items():
                     late = [x for x in seq if t - FRESH <= x[0] <= t]
                     early = [x for x in seq if t - WIN <= x[0] < t]
                     if late and early:
-                        now_l[bk], old_l[bk] = late[-1][1], early[0][1]
+                        now_l[bk], old_l[bk], q_l[bk] = late[-1][1], early[0][1], late[-1][2]
                 lims = [(x['t'], x['lim'][li]) for x in pin if x.get('lim') and x['t'] <= t and x['lim'][li]]
                 known = len(lims) >= 2 and lims[-1][0] - lims[0][0] >= 3 * 3600
                 lim_up = bool(known and lims[-1][1] >= lims[0][1] * 1.5)
@@ -121,7 +123,7 @@ def run(sport, now):
                                 best = (gap, bk, now_l[bk], ag)
                         if best:
                             fired.add((d, T))
-                            treat.append(mkrow(k, sport, mk, d, T, t, mv, best, close, known, lim_up))
+                            treat.append(mkrow(k, sport, mk, d, T, t, mv, best, close, known, lim_up, price_of(q_l.get(best[1]), mk, d)))
                 # control: Pinnacle quiet
                 elif abs(mv) < 0.5:
                     for bk in now_l:
@@ -131,19 +133,27 @@ def run(sport, now):
                             gap = favor(mk, d, now_l[bk], cur)
                             if gap >= 1.0 and (bk, d) not in cfired:
                                 cfired.add((bk, d))
-                                ctrl.append(mkrow(k, sport, mk, d, 0, t, mv, (gap, bk, now_l[bk], 0), close, known, lim_up))
-    return treat, ctrl
+                                ctrl.append(mkrow(k, sport, mk, d, 0, t, mv, (gap, bk, now_l[bk], 0), close, known, lim_up, price_of(q_l.get(bk), mk, d)))
+    return treat, ctrl, cal
 
 
 BOOKSEQ = {}
 
 
-def mkrow(k, sport, mk, d, T, t, mv, best, close, known, lim_up):
+def price_of(q, mk, d):
+    """Stored American price of the side taken: spread [line, home, away] (dir>0 takes away), total [line, over, under] (dir>0 takes over)."""
+    if not q or len(q) < 3:
+        return None
+    i = (2 if d > 0 else 1) if mk == 'sp' else (1 if d > 0 else 2)
+    return q[i]
+
+
+def mkrow(k, sport, mk, d, T, t, mv, best, close, known, lim_up, price=None):
     gap, bk, stale, ag = best
     seq = BOOKSEQ.get((k, mk, bk), [])
     age = next((round((t - x[0]) / 60) for x in reversed(seq) if x[0] <= t), None)
     held = next((round((x[0] - t) / 60) for x in seq if x[0] > t and x[1] != stale), None)
-    return {'age': age, 'held': held, 't': t, 'game': '|'.join(str(v) for v in k), 'sport': sport, 'mk': mk, 'dir': d, 'thr': T, 'move': round(mv, 2), 'book': bk, 'stale': stale,
+    return {'price': price, 'close': close, 'age': age, 'held': held, 't': t, 'game': '|'.join(str(v) for v in k), 'sport': sport, 'mk': mk, 'dir': d, 'thr': T, 'move': round(mv, 2), 'book': bk, 'stale': stale,
             'edge': round(gap, 2), 'agree': ag, 'clv': round(favor(mk, d, stale, close), 2), 'limit_known': known, 'limit_up': lim_up}
 
 
@@ -169,21 +179,93 @@ def diff(a, b):
     return {'delta': round(a['mean'] - b['mean'], 3), 'ci95': round(1.96 * se, 3)}
 
 
+FINALS = os.environ.get('STALE_FINALS') or os.path.join(ROOT, 'data', 'exchange_edge_results.json')
+
+
+def payout(a):
+    return a / 100 if a > 0 else 100 / -a
+
+
+def finals():
+    try:
+        return json.load(open(FINALS))
+    except (OSError, ValueError):
+        return {}
+
+
+def residuals(cal, F):
+    """Per market, the closing-line residuals e (both orientations) from every game with a stored final: spread = home margin plus the home closing
+    number (and its negative), total = points minus the closing total (and its negative). docs/stale-number-price-prereg.md."""
+    E = {'sp': [], 'tot': []}
+    for k, mk, close in cal:
+        f = F.get(k[0])
+        if not f or f.get('home') is None or f.get('away') is None:
+            continue
+        e = (f['home'] - f['away'] + close) if mk == 'sp' else (f['home'] + f['away'] - close)
+        E[mk] += [round(e, 6), round(-e, 6)]
+    return E
+
+
+def grade(row, F):
+    """Realized profit per unit at the stored price, or None (no final, no stored price). Push returns the stake."""
+    f = F.get(row['game'].split('|')[0])
+    if not f or f.get('home') is None or row.get('price') is None:
+        return None
+    L = row['stale']
+    if row['mk'] == 'sp':
+        v = (f['home'] - f['away'] + L) * (-1 if row['dir'] > 0 else 1)    # dir>0 takes away; home covers when margin + line > 0
+    else:
+        v = (f['home'] + f['away'] - L) * (1 if row['dir'] > 0 else -1)    # dir>0 takes over
+    return 0.0 if abs(v) < 1e-9 else payout(row['price']) if v > 0 else -1.0
+
+
+def expected(row, E):
+    es = E.get(row['mk']) or []
+    if len(es) < 100 or row.get('price') is None:
+        return None
+    c, n = row['clv'], len(es)
+    pw = sum(1 for e in es if e > -c + 1e-9) / n
+    pl = sum(1 for e in es if e < -c - 1e-9) / n
+    return pw * payout(row['price']) - pl
+
+
+def clust2(rows, key):
+    by = defaultdict(list)
+    for r in rows:
+        if r.get(key) is not None:
+            by[r['game']].append(r[key])
+    g = [sum(v) / len(v) for v in by.values()]
+    n = len(g)
+    if n == 0:
+        return {'games': 0}
+    m = sum(g) / n
+    se = math.sqrt(sum((x - m) ** 2 for x in g) / (n - 1) / n) if n > 1 else None
+    return {'games': n, 'rows': sum(len(v) for v in by.values()), 'mean': round(m, 4), 'ci95': round(1.96 * se, 4) if se is not None else None}
+
+
 def main():
     now, res = time.time(), {}
     for sp in ('nfl', 'cfb', 'nba', 'cbb'):
         if not os.path.isdir(os.path.join(TAPE, sp)):
             continue
-        treat, ctrl = run(sp, now)
+        treat, ctrl, cal = run(sp, now)
+        F, E = finals(), None
+        E = residuals(cal, F)
+        for r in treat + ctrl:
+            r['real'], r['exp'] = grade(r, F), expected(r, E)
         c = clustered(ctrl)
-        out = {'control': c, 'cut': []}
+        out = {'control': c, 'cut': [], 'resid_n': {k: len(v) // 2 for k, v in E.items()},
+               'priced_control': {'real': clust2(ctrl, 'real'), 'exp': clust2(ctrl, 'exp'), 'price_mean': round(sum(r['price'] for r in ctrl if r['price'] is not None) / max(1, sum(1 for r in ctrl if r['price'] is not None)), 1)}}
         for T in THRS:
             tt = [r for r in treat if r['thr'] == T]
             for tag, f in (('all', lambda r: True), ('market_sp', lambda r: r['mk'] == 'sp'), ('market_tot', lambda r: r['mk'] == 'tot'),
                            ('limit_up', lambda r: r['limit_up']), ('limit_known_flat', lambda r: r['limit_known'] and not r['limit_up'])):
                 g = [r for r in tt if f(r)]
                 s = clustered(g) if g else {'games': 0, 'rows': 0}
-                out['cut'].append({'thr': T, 'tag': tag, **s, 'vs_control': diff(s, c) if g else None})
+                pr = {'real': clust2(g, 'real'), 'exp': clust2(g, 'exp'), 'price_mean': round(sum(r['price'] for r in g if r['price'] is not None) / max(1, sum(1 for r in g if r['price'] is not None)), 1)}
+                pr['real_vs_control'] = diff(pr['real'], out['priced_control']['real']) if g else None
+                pr['exp_vs_control'] = diff(pr['exp'], out['priced_control']['exp']) if g else None
+                out['cut'].append({'thr': T, 'tag': tag, **s, 'vs_control': diff(s, c) if g else None, 'priced': pr})
         for nm, rows in (('treat', [r for r in treat if r['thr'] == 2.0]), ('control', ctrl)):
             ages = sorted(r['age'] for r in rows if r['age'] is not None)
             held = sorted(r['held'] for r in rows if r['held'] is not None)
@@ -197,6 +279,8 @@ def main():
         for s in v['cut']:
             if s['tag'] in ('all', 'limit_up') or s['thr'] == 2.0:
                 print('  ', s['thr'], s['tag'], {k: s.get(k) for k in ('games', 'rows', 'mean', 'ci95', 'beat', 'edge_mean', 'vs_control')})
+                if s['tag'] in ('all', 'limit_up') and s['thr'] in (1.0, 2.0):
+                    print('      priced', json.dumps(s['priced']))
 
 
 if __name__ == '__main__':
