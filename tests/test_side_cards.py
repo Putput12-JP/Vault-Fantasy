@@ -505,7 +505,7 @@ class WalletPositions(unittest.TestCase):
         pos, _ = C.wallet_positions(k, self.led, "nba")
         self.assertEqual(sorted(pos), ["0xp"])                                    # 0xq is under the floor, 0xu is not proven
         self.assertEqual([(p["g"], p["side"], p["line"], p["usd"], p["px"]) for p in pos["0xp"]],
-                         [("ml", "A", None, 900, 0.6), ("spread", "A", -3.5, 400, 0.5), ("spread", "A", -4.5, 300, 0.55)])
+                         [("ml", "A", None, 900, 0.6), ("spread", "A", 3.5, 400, 0.5), ("spread", "A", 4.5, 300, 0.55)])
         self.assertEqual(pos["0xp"][0]["press"], 9.0)                             # usual stake 100
         self.assertFalse(any(p["two_way"] for p in pos["0xp"]))
 
