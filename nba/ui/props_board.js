@@ -626,7 +626,22 @@ window.PBX = (() => {
             return `<button type="button" class="pbx-tm${on ? ' on' : ''}" data-mate="${z.m.id}" aria-pressed="${on}" title="${esc(z.m.name)}: ${z.nwo} game${z.nwo === 1 ? '' : 's'} without, ${z.nw} with"><span class="pbx-tmh"><b>${esc(initials(z.m.name))}</b><img src="${phSrc(z.m.id)}" alt="" loading="lazy" onerror="this.remove()"></span>
               ${st ? `<span class="pbx-otag${/quest/i.test(st) ? ' q' : ''}">${/quest/i.test(st) ? 'QUES' : /doubt/i.test(st) ? 'DOUBT' : 'OUT'}</span>` : '<span class="pbx-otag-gap"></span>'}<span class="nm">${esc(nm[0][0] + '. ' + nm.slice(1).join(' '))}</span>
               <b class="d${big ? (fav ? ' pos' : ' neg') : ''}">${d == null ? '-' : sgn(d)}</b><small>${z.nwo} game${z.nwo === 1 ? '' : 's'} without</small></button>`; }).join('')}</div>` : '';
+    // Suggested: only the situations that describe TONIGHT's game (his opponent sits in the top or bottom ten on a ranking, tonight's venue, rest, line, a teammate ruled out),
+    // each with the hit rate it would have had for the viewed side over all his games. Ordered by sample size, never by how good the hit rate looks, and a thin sample is greyed.
+    const base = all0.length ? all0.filter(okS).length / all0.length : null, sugg = [];
+    const sgAdd = (key, label, a, on) => { if (a.length >= 3) sugg.push({key, label, n: a.length, hit: a.filter(okS).length / a.length, on}); };
+    if (x.opp) for (const [k, l] of rkMeta){
+      const n = rankOf(x.opp, k, grpP, s); if (n == null || (n > 10 && n < 21)) continue;
+      const c = n <= 10 ? [1, 10] : [21, 30], cur = DS.rf[k];
+      sgAdd(`rf|${k}|${c[0]}|${c[1]}`, `${l} #${n}`, all0.filter(z => rfIn(z, k, c)), !!cur && cur[0] === c[0] && cur[1] === c[1]);
+    }
+    for (const z of gfN) if (z.now && z.n != null) sgAdd(`gf|${z.f[0]}`, z.f[2] + ' tonight', logs0.length === all0.length ? all0.filter(gfOk(z.f)) : all0.filter(gfOk(z.f)), DS.gf === z.f[0]);
+    for (const z of mrows) if (z.m.st && /out|doubt|inactive/i.test(z.m.st) && z.m.mpg >= 15) sgAdd(`mate|${z.m.id}`, `${z.m.name.split(' ')[0][0]}. ${z.m.name.split(' ').slice(1).join(' ')} out`, mateSplit(all0, z.m.id, true).wo, !!DS.mate && DS.mate.id === z.m.id && DS.mate.mode === 'wo');
+    sugg.sort((a, b) => (b.n >= 8) - (a.n >= 8) || b.n - a.n);
+    const sgHtml = sugg.length ? `<div class="pbx-fh"><h5>Suggested <small>matched to tonight's game · ${esc(SLABEL[s])} ${side === 'o' ? 'over' : 'under'} ${r.line} · all games: ${base == null ? '-' : Math.round(base * 100) + '%'}</small></h5></div>
+          <div class="pbx-rkc">${sugg.map(z => `<button type="button" data-sg="${z.key}" aria-pressed="${z.on}" class="${z.n < 8 ? 'thin' : ''}" title="${z.n} game${z.n === 1 ? '' : 's'}${z.n < 8 ? ', a small sample' : ''}">${esc(z.label)} <b class="${z.n < 8 ? '' : z.hit > .5 ? 'pos' : z.hit < .5 ? 'neg' : ''}">${Math.round(z.hit * 100)}%</b><i>${z.n}g</i></button>`).join('')}</div>` : '';
     const fpanel = !DS.fo ? '' : `<div class="pbx-fp">
+          ${sgHtml}
           ${tmCards}
           <div class="pbx-fh"><h5>Opponent rankings${x.opp ? ` <small>tonight: ${esc(x.opp)}</small>` : ''}</h5><span class="seg">${['all', 'L5', 'L10', 'L15'].map(k => `<button type="button" data-rw="${k}" aria-pressed="${DS.rw === k}">${k === 'all' ? 'All' : k}</button>`).join('')}</span></div>
           ${trk || !rkMeta.length ? '' : '<p class="note">Loading team rankings…</p>'}
@@ -785,7 +800,7 @@ window.PBX = (() => {
   }
   function trkUpdate(){ const rt = routeOf(); if (!rt) return; const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (x && $('pbx-tro')) $('pbx-tro').innerHTML = trkReadout(x); }
   function detailClick(e){
-    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-sim],[data-sp],[data-spclear],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
+    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-sg],[data-sim],[data-sp],[data-spclear],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
     const d = b.dataset, rt = routeOf(); if (!rt && !d.back) return false;
     if (d.back){ history.length > 1 && /#propboard\//.test(location.hash) ? (location.hash = '#propboard') : goView('propboard'); return true; }
     if (d.totrk){ $('pbx-trk').scrollIntoView({behavior: 'smooth', block: 'center'}); return true; }
@@ -799,6 +814,11 @@ window.PBX = (() => {
     if (d.rset){ const [k, lo, hi] = d.rset.split('|'); DS.rf[k] = [+lo, +hi]; rerender(); return true; }
     if (d.rclear){ delete DS.rf[d.rclear]; rerender(); return true; }
     if (d.rngclear){ delete DS.rng[d.rngclear]; rerender(); return true; }
+    if (d.sg){ const [k, a, b, c] = d.sg.split('|');
+      if (k === 'rf'){ if (DS.rf[a] && DS.rf[a][0] === +b && DS.rf[a][1] === +c) delete DS.rf[a]; else DS.rf[a] = [+b, +c]; }
+      else if (k === 'gf') DS.gf = DS.gf === a ? null : a;
+      else DS.mate = DS.mate && DS.mate.id === +a && DS.mate.mode === 'wo' ? null : {mode: 'wo', id: +a};
+      rerender(); return true; }
     if (d.sim){ DS.sim = d.sim; rerender(); return true; }
     if (d.sp){ const [k, v] = d.sp.split('|'), val = k === 'mo' ? +v : v; DS.sp[k] = DS.sp[k] === val ? null : val; rerender(); return true; }
     if (d.spclear){ DS.sp[d.spclear] = null; rerender(); return true; }
@@ -1242,6 +1262,7 @@ window.PBX = (() => {
 .pbx-simt th:nth-child(-n+3),.pbx-simt td:nth-child(-n+3){text-align:left}
 .pbx-dp{display:inline-block;min-width:44px;text-align:center;padding:2px 8px;border-radius:6px;font-weight:700;font-size:12px}
 .pbx-dp.g{background:color-mix(in srgb,var(--pbx-g) 22%,transparent);color:var(--pbx-g)}.pbx-dp.r{background:color-mix(in srgb,var(--pbx-r) 22%,transparent);color:var(--pbx-r)}
+.pbx-rkc button i{font-style:normal;font-size:10.5px;color:var(--fg3);margin-left:5px}.pbx-rkc button.thin{opacity:.6}
 .pbx-tm small{font-size:10.5px;color:var(--fg3)}
 .pbx-fp .note{margin:0;font-size:11.5px;color:var(--fg3);line-height:1.5}
 .pbx-st td small{color:var(--fg3);font-weight:500}
