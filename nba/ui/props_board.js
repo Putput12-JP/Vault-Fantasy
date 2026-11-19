@@ -925,7 +925,7 @@ window.PBX = (() => {
       <p class="pbx-key"><span class="v">Vault model columns</span><span>Hit rates: share of games over (or under) tonight's line</span><span>Opp rank: 1st allows the fewest to his position, 30th the most</span></p>
       <div class="pbx-tbl"><div class="pbx-scroll">
         <div class="pbx-th"><span></span>${th('prop', 'Proposition')}${th('line', 'Line', 1)}${th('odds', 'Best odds')}${th('proj', 'Vault proj', 1, 1)}${th('fair', 'Fair', 1, 1)}${th('edge', 'Edge', 1, 1)}${th('sig', 'Signals', 1)}${th('opp', 'Opp rank', 1)}${WIN.map(([k, l]) => th(k, l, 1)).join('')}</div>
-        ${show.map(row).join('') || `<p class="empty" style="padding:24px">${!all.length ? 'Nothing on the board yet.' : S.f.watch && !nWatch ? 'Nothing on your watch list. Open a prop and tap Watch to add it here.' : 'No props match these filters.'}</p>`}
+        ${show.map(row).join('') || `<p class="empty" style="padding:24px">${!all.length ? 'Nothing on the board yet.' : S.f.watch && !nWatch ? 'Nothing on your watch list. Open a prop and tap Watch to add it here.' : `No props match these filters.<br><small style="color:var(--fg3)">${all.length} on the board, ${all.filter(x => x.best || x.pk).length} with a price. Stat ${esc(S.stat)}, side ${esc(S.side)}, game ${esc(S.game)}, search "${esc(S.q)}", venues ${esc(Object.entries(S.f.ven).filter(([, v]) => v).map(([k]) => k).join('+') || 'none')}.</small><br><button type="button" class="pbx-alt" style="margin-top:12px" data-pbreset="1">Reset all filters</button>`}</p>`}
       </div></div>
       ${rows.length > S.limit ? `<div class="pbx-more"><button type="button" class="btn" data-more="1">Show ${Math.min(60, rows.length - S.limit)} more</button></div>` : ''}`;
     root._show = show;
@@ -937,7 +937,7 @@ window.PBX = (() => {
     root.addEventListener('click', e => {
       if (pbClick(e, rerender)) return;                                   // Watch (and Log in any shared drawer)
       if (detailClick(e)) return;
-      const t = e.target, b = t.closest('[data-game],[data-stat],[data-side],[data-sort],[data-f],[data-fclear],[data-fopen],[data-freset],[data-fdone],[data-more],[data-w],[data-lab]');
+      const t = e.target, b = t.closest('[data-game],[data-stat],[data-side],[data-sort],[data-f],[data-fclear],[data-fopen],[data-pbreset],[data-freset],[data-fdone],[data-more],[data-w],[data-lab]');
       if (b){
         const d = b.dataset;
         if (d.w){ pwin = d.w; rerender(); return; }
@@ -946,6 +946,7 @@ window.PBX = (() => {
         else if (d.stat){ S.stat = d.stat; S.limit = 60; }
         else if (d.side){ S.side = d.side; }
         else if (d.sort){ if (S.sort === d.sort) S.dir = -S.dir; else { S.sort = d.sort; S.dir = d.sort === 'prop' ? 1 : -1; } }
+        else if (d.pbreset){ S.stat = 'all'; S.side = 'all'; S.game = 'all'; S.q = ''; S.limit = 60; S.f = JSON.parse(JSON.stringify(FDEF)); save(); }
         else if (d.fopen){ S.fOpen = !S.fOpen; }
         else if (d.fdone){ S.fOpen = false; }
         else if (d.freset){ S.f = JSON.parse(JSON.stringify(FDEF)); save(); }
