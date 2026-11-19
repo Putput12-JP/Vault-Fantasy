@@ -432,8 +432,11 @@ def churn(snap):
 
 # ---------- cards ----------
 
-def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
-    """One game's card from a keyframe (step 2) and the ledger as of its cut."""
+def holder_groups(kf, ledger):
+    """The holders of one keyframe, per market group, exactly as the card builds them: every position of $FLOOR_USD or more, a two-way
+    wallet collapsed to its larger side, balanced dust dropped, each holder carrying its ledger book `s` and CLV tier `rk` as of the cut.
+    -> (groups {ml|spread|total: [{w, side, usd, cid, two_way, s, rk}]}, dust count, best {(group, wallet, side): (usd, cid)}).
+    Shared by card() and scripts/sharp_agree.py so the two can never disagree on who holds a side."""
     cut = kf["cut"]
     ix = {c: i for i, c in enumerate(kf["cols"])}
     best = {}                                        # (group, wallet, side) -> (usd, cid): the wallet's largest single rung
@@ -474,6 +477,14 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
     for ws_ in groups.values():
         for x in ws_:
             x["rk"] = rk.get(x["w"])
+    return groups, dust, best
+
+
+def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
+    """One game's card from a keyframe (step 2) and the ledger as of its cut."""
+    groups, dust, best = holder_groups(kf, ledger)
+    cut = kf["cut"]
+    rk = ledger.clv_tiers(cut)                       # cached per cut; the tier plays below read it
     built = int(time.time())
     out = {"v": VERSION, "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "cut": cut, "frozen": frozen, "sf_excluded_n": len(ledger.sf_excluded), "pop": len(ledger.population("all", cut)),
            "built": built, "keyframe_written": kf.get("written"), "ledger_run_at": ledger.run_at,
