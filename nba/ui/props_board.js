@@ -185,7 +185,7 @@ window.PBX = (() => {
   }
 
   // ── prop detail page (#propboard/<player id>/<stat>/<o|u>) ──
-  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null};
+  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null, n: 15, fo: false, rw: 'all', rf: {}, rng: {}};
   const MIN_I = 5;
   const routeOf = () => { const m = /^#propboard\/(\d+)\/([a-z0-9]+)\/([ou])$/i.exec(location.hash); return m ? {pid: +m[1], s: m[2].toLowerCase(), side: m[3].toLowerCase()} : null; };
   const goProp = (pid, s, side) => { location.hash = `#propboard/${pid}/${s}/${side}`; };
@@ -194,9 +194,30 @@ window.PBX = (() => {
   const f1 = v => v == null ? '-' : fmt(v);
   function winGl(all, w, opp){
     const SEA = GL.current_season;
+    if (w === 'ALL') return all;
+    if (w === 'N') return all.slice(0, DS.n);
     return w === 'L5' ? all.slice(0, 5) : w === 'L10' ? all.slice(0, 10) : w === 'L20' ? all.slice(0, 20) : w === 'H2H' ? all.filter(g => GL.teams[g[2]] === opp)
       : w === 'S0' ? all.filter(g => g[1] === SEA) : all.filter(g => g[1] === SEA - 1);
   }
+  // ── opponent rankings (data/team_ranks.json, build_team_ranks.py) and the game-stat ranges of the data-dive Filters panel ──
+  // Rank 30 is always the friendliest side for an over (fastest pace, the most allowed, the worst defense). Ranks are as of today, not as of each game.
+  let TRK;                                            // undefined = not asked yet, 'loading', null = unavailable, else the file
+  function trGet(){
+    if (TRK !== undefined) return TRK === 'loading' ? null : TRK;
+    TRK = 'loading';
+    const raw = `https://raw.githubusercontent.com/${typeof H0 !== 'undefined' && H0 && H0.repo ? H0.repo : 'Putput12-JP/Vault-Fantasy'}/main/nba/data/team_ranks.json`;
+    fetch('data/team_ranks.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject()).catch(() => fetch(raw, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null))
+      .then(j => { TRK = j && j.teams ? j : null; if (routeOf()) rerender(); });
+    return null;
+  }
+  // [key, label, game-log column] for the ranges on what the player did in the game (known only after the game)
+  const RNG = [['min', 'Minutes', 5], ['fga', 'FGA', 14], ['tpa', '3PA', 17], ['fta', 'FTA', 16]];   // columns of the game-log row (GI.min / fga / tpa / fta)
+  // the opponent's rank on one chip: the team files for the measured ones, the position table for Position (this stat, this player's position group)
+  const rankOf = (t, m, grp, s) => {
+    if (m === 'pos'){ const rk = ranks(), z = rk && grp ? rk[`${t}|${grp}|${s}`] : null; return z ? z[0] : null; }
+    const T = TRK && TRK !== 'loading' && TRK.teams[t], z = T && (T[DS.rw] || T.all)[m]; return z ? z[0] : null;
+  };
+  const rkCls = n => n == null ? '' : n >= 21 ? 'pos' : n <= 10 ? 'neg' : '';
   // Made-vs-attempted stats get a ghost outline for the attempts (same unit, so it shares the axis).
   const GHOST = {'3pm': 'tpa', fgm: 'fga', ftm: 'fta'};
   // Short names for the numbers printed inside stacked segments.
@@ -531,7 +552,12 @@ window.PBX = (() => {
     const restD = new Map(all0.map((z, i) => { const n = all0[i + 1]; return [z, n && n[1] === z[1] ? z[0] - n[0] - 1 : null]; }));
     const cx = ctxGet(), gfDef = DS.gf && GF.find(f => f[0] === DS.gf), gfOk = f => z => !!f[3](z, ctxOf(z), restD.get(z));
     const logs0 = DS.mate ? mateSplit(all0, DS.mate.id, true)[DS.mate.mode] : all0;
-    const logs = gfDef ? logs0.filter(gfOk(gfDef)) : logs0, h = hitsFrom(logs, s, r.line, side, x.opp);
+    const trk = trGet(), grpP = X && X.p && (X.p.grp || X.p.pos), tmOf = z => GL.teams[z[2]];
+    // the Filters panel: games where the opponent's rank sits in a range, and games where he played within a range of minutes or shots
+    const rfIn = (z, k, c) => { const n = rankOf(tmOf(z), k, grpP, s); return n != null && n >= c[0] && n <= c[1]; };
+    const rfOk = z => Object.entries(DS.rf).every(([k, c]) => k === 'pos' || trk ? rfIn(z, k, c) : true);
+    const rngOk = z => RNG.every(([k, , i]) => { const c = DS.rng[k]; if (!c) return true; const v = z[i]; return v != null && (c[0] == null || v >= c[0]) && (c[1] == null || v <= c[1]); });
+    const logs1 = gfDef ? logs0.filter(gfOk(gfDef)) : logs0, logs = logs1.filter(z => rfOk(z) && rngOk(z)), h = hitsFrom(logs, s, r.line, side, x.opp);
     const mrows = ms.map(m => { const sp = mateSplit(all0, m.id, true), ok = g2 => side === 'o' ? gval(g2, s) > r.line : gval(g2, s) < r.line, rt2 = a => a.length ? a.filter(ok).length / a.length : null;
       return {m, nw: sp.w.length, nwo: sp.wo.length, aw: avg(sp.w.map(z => gval(z, s))), awo: avg(sp.wo.map(z => gval(z, s))), hw: rt2(sp.w), hwo: rt2(sp.wo), mw: avg(sp.w.map(z => z[MIN_I])), mwo: avg(sp.wo.map(z => z[MIN_I]))}; })
       .filter(z => z.nwo > 0 || /out|doubt|inactive/i.test(z.m.st || ''));
@@ -549,7 +575,24 @@ window.PBX = (() => {
     const stats = STATS.map(z => z[0]).filter(k => all.some(z => z.r.e.p === r.e.p && z.r.e.s === k));
     const wg = winGl(logs, DS.win, x.opp), sv = i => { const a = wg.map(z => z[i]); return DS.med ? med(a) : avg(a); };
     const fgp = (() => { const m = wg.reduce((a, z) => a + z[GI.fgm], 0), A = wg.reduce((a, z) => a + z[GI.fga], 0); return A ? m / A : null; })();
-    const hw = h[DS.win], wl = Object.fromEntries(WIN);
+    const wl = Object.fromEntries(WIN.concat([['ALL', 'Max'], ['N', `L${DS.n}`]]));
+    const hw = DS.win === 'ALL' || DS.win === 'N' ? (a => a.length ? {n: a.length, h: a.filter(okS).length, pct: a.filter(okS).length / a.length} : null)(winGl(logs, DS.win, x.opp)) : h[DS.win];
+    const rkMeta = (trk ? trk.metrics.map(m => [m.k, m.l, m.h]) : []).concat(grpP ? [['pos', `Position (${SLABEL[s]})`, 'Allowed to his position group this season. 30th = most']] : []), rkName = Object.fromEntries(rkMeta.map(m => [m[0], m[1]]));
+    const nAct = Object.keys(DS.rf).length + Object.keys(DS.rng).length;
+    const actChips = Object.entries(DS.rf).map(([k, c]) => `<span class="pbx-mf">${esc(rkName[k] || k)} #${c[0]} to #${c[1]}<button type="button" data-rclear="${k}" aria-label="Clear filter">×</button></span>`).join('')
+      + Object.entries(DS.rng).map(([k, c]) => `<span class="pbx-mf">${RNG.find(z => z[0] === k)[1]} ${c[0] == null ? '' : c[0]}${c[1] == null ? '+' : c[0] == null ? ' up to ' + c[1] : ' to ' + c[1]}<button type="button" data-rngclear="${k}" aria-label="Clear filter">×</button></span>`).join('')
+      + (nAct && wg.length < 8 ? `<span class="pbx-lo">small sample: ${wg.length} game${wg.length === 1 ? '' : 's'}</span>` : '');
+    const fpanel = !DS.fo ? '' : `<div class="pbx-fp">
+          <div class="pbx-fh"><h5>Opponent rankings${x.opp ? ` <small>tonight: ${esc(x.opp)}</small>` : ''}</h5><span class="seg">${['all', 'L5', 'L10', 'L15'].map(k => `<button type="button" data-rw="${k}" aria-pressed="${DS.rw === k}">${k === 'all' ? 'All' : k}</button>`).join('')}</span></div>
+          ${trk || !rkMeta.length ? '' : '<p class="note">Loading team rankings…</p>'}
+          <div class="pbx-rkc">${rkMeta.map(([k, l, hint]) => { const n = x.opp ? rankOf(x.opp, k, grpP, s) : null, lo = n == null ? 1 : Math.max(1, n - 5), hi = n == null ? 30 : Math.min(30, n + 5);
+            return `<button type="button" data-rf="${k}" data-rdef="${lo}|${hi}" title="${esc(hint)}" aria-pressed="${!!DS.rf[k]}">${esc(l)}${n == null ? '' : ` <b class="${rkCls(n)}">#${n}</b>`}</button>`; }).join('')}</div>
+          ${Object.entries(DS.rf).map(([k, c]) => `<div class="pbx-rr"><span>${esc(rkName[k] || k)}</span><label>from #<input type="number" inputmode="numeric" min="1" max="30" value="${c[0]}" data-rlo="${k}"></label><label>to #<input type="number" inputmode="numeric" min="1" max="30" value="${c[1]}" data-rhi="${k}"></label><button type="button" data-rset="${k}|1|10">Challenging</button><button type="button" data-rset="${k}|21|30">Favorable</button><small>${logs0.filter(z => rfIn(z, k, c)).length} games</small></div>`).join('')}
+          <div class="pbx-fh"><h5>What he did in the game <small>known only after the game</small></h5></div>
+          <div class="pbx-rng">${RNG.map(([k, l]) => { const c = DS.rng[k] || [null, null]; return `<label><span>${l}</span><input type="number" inputmode="decimal" min="0" placeholder="min" value="${c[0] == null ? '' : c[0]}" data-rmin="${k}"><i>to</i><input type="number" inputmode="decimal" min="0" placeholder="max" value="${c[1] == null ? '' : c[1]}" data-rmax="${k}"></label>`; }).join('')}</div>
+          <p class="note">30th is always the friendliest for an over: fastest pace, the most allowed, the worst defense. Ranks are today's, over ${trk ? `${trk.season - 1}-${String(trk.season).slice(2)} regular-season games through ${trk.through}` : 'this season'}, so an old game is matched on how its opponent looks now. This is context, not a bet signal.${nAct ? ' Every filter shrinks the sample, so check the game count.' : ''}</p>
+          ${nAct ? '<button type="button" class="pbx-alt" data-fclear="1">Clear panel filters</button>' : ''}
+        </div>`;
     const pmS = r.pm == null ? null : side === 'o' ? r.pm : 1 - r.pm, mkS = r.mkt == null ? null : side === 'o' ? r.mkt : 1 - r.mkt;
     const other = all.find(z => z.r === r && z.side !== side);
     const best = x.best, bestTxt = best ? `${PKN[best.bk] || best.bk} ${priceTxt(best)}` : x.pk ? `${PKN[x.pk.bk] || x.pk.bk} ${priceTxt(x.pk)}` : null;
@@ -582,10 +625,13 @@ window.PBX = (() => {
             <button type="button" class="btn primary" data-totrk="1">Track a bet ↓</button>
           </div></div>
         <div class="pbx-tabs" id="pbx-stabs">${stats.map(k => `<button type="button" data-ds="${k}" class="${k === s ? 'on' : ''}">${esc(SLABEL[k])}</button>`).join('')}<span class="pbx-ul"></span></div>
-        <div class="pbx-wins"><span class="seg">${WIN.map(([k, l]) => `<button type="button" data-win="${k}" aria-pressed="${DS.win === k}">${l}</button>`).join('')}</span>
+        <div class="pbx-wins"><span class="seg">${WIN.map(([k, l]) => `<button type="button" data-win="${k}" aria-pressed="${DS.win === k}">${l}</button>`).join('')}<button type="button" data-win="ALL" aria-pressed="${DS.win === 'ALL'}">Max</button></span>
+          <span class="pbx-step" aria-label="Last N games" data-on="${DS.win === 'N'}"><button type="button" data-nstep="-1" aria-label="Fewer games">−</button><b>L${DS.n}</b><button type="button" data-nstep="1" aria-label="More games">+</button></span>
+          <button type="button" class="pbx-alt pbx-fbtn" data-fo="1" aria-expanded="${DS.fo}">Filters${nAct ? ` · ${nAct}` : ''}</button>
           <select id="pbx-mate" class="pbx-alt" aria-label="Teammate filter"><option value="">All teammates</option>${ms.map(m => `<option value="w|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'w' ? ' selected' : ''}>With ${esc(m.name)}</option><option value="wo|${m.id}"${DS.mate && DS.mate.id === m.id && DS.mate.mode === 'wo' ? ' selected' : ''}>Without ${esc(m.name)}${m.st ? ` (${esc(m.st.toLowerCase())} tonight)` : ''}</option>`).join('')}</select>
           <select id="pbx-gf" class="pbx-alt" aria-label="Game filter"><option value="">Any game</option>${[...new Set(GF.map(f => f[1]))].map(grp => `<optgroup label="${grp}">${gfN.filter(z => z.f[1] === grp).map(z => `<option value="${z.f[0]}"${DS.gf === z.f[0] ? ' selected' : ''}${z.n === 0 ? ' disabled' : ''}>${z.f[2]}${z.n != null ? ` (${z.n})` : ''}${z.now ? ' · tonight' : ''}</option>`).join('')}</optgroup>`).join('')}</select></div>
-        <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}${DS.mate ? `<span class="pbx-mf">${DS.mate.mode === 'w' ? 'With' : 'Without'} ${esc((ms.find(m => m.id === DS.mate.id) || {}).name || '')}<button type="button" data-mclear="1" aria-label="Clear teammate filter">×</button></span>` : ''}${gfDef ? `<span class="pbx-mf">${gfDef[2]}${gfDef[4] && !cx ? ' (loading)' : ''}<button type="button" data-gclear="1" aria-label="Clear game filter">×</button></span>` : ''}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
+        ${fpanel}
+        <div class="pbx-hs"><div><small>${wl[DS.win]} · ${side === 'o' ? 'over' : 'under'} ${r.line}${DS.mate ? `<span class="pbx-mf">${DS.mate.mode === 'w' ? 'With' : 'Without'} ${esc((ms.find(m => m.id === DS.mate.id) || {}).name || '')}<button type="button" data-mclear="1" aria-label="Clear teammate filter">×</button></span>` : ''}${gfDef ? `<span class="pbx-mf">${gfDef[2]}${gfDef[4] && !cx ? ' (loading)' : ''}<button type="button" data-gclear="1" aria-label="Clear game filter">×</button></span>` : ''}${actChips}</small><b class="${hw && hw.pct > .5 ? 'pos' : hw && hw.pct < .5 ? 'neg' : ''}">${hw ? Math.round(hw.pct * 100) + '%' : '-'}<i>${hw ? `${hw.h} of ${hw.n}` : ''}</i></b></div>
           ${WIN.filter(w => w[0] !== DS.win).map(([k, l]) => `<div class="w"><small>${l}</small><b class="${h[k] && h[k].pct > .5 ? 'pos' : h[k] && h[k].pct < .5 ? 'neg' : ''}">${h[k] ? Math.round(h[k].pct * 100) + '%' : '-'}</b></div>`).join('')}</div>
         <div class="pbx-chart">${chart(wg, s, r.line, r.mu)}</div>
         <div class="pbx-ck"><span><i class="ln"></i>Tonight's line ${r.line}</span>${r.mu != null ? `<span><i class="vl"></i>Vault projection ${fmt(r.mu)}</span>` : ''}<span><i class="sq o"></i>Over</span><span><i class="sq u"></i>Under</span>${chartKey(s)}</div>
@@ -690,13 +736,21 @@ window.PBX = (() => {
   }
   function trkUpdate(){ const rt = routeOf(); if (!rt) return; const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (x && $('pbx-tro')) $('pbx-tro').innerHTML = trkReadout(x); }
   function detailClick(e){
-    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
+    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
     const d = b.dataset, rt = routeOf(); if (!rt && !d.back) return false;
     if (d.back){ history.length > 1 && /#propboard\//.test(location.hash) ? (location.hash = '#propboard') : goView('propboard'); return true; }
     if (d.totrk){ $('pbx-trk').scrollIntoView({behavior: 'smooth', block: 'center'}); return true; }
     if (d.dside || d.tside){ DS.T = null; goProp(rt.pid, rt.s, d.dside || d.tside); return true; }
     if (d.ds){ const bar = document.querySelector('#pbx-stabs .pbx-ul'); DS.bar = bar ? [bar.style.left, bar.style.width] : null; DS.T = null; goProp(rt.pid, d.ds, rt.side); return true; }
     if (d.win){ DS.win = d.win; rerender(); return true; }
+    if (d.nstep){ DS.n = Math.max(1, Math.min(100, DS.n + +d.nstep)); DS.win = 'N'; rerender(); return true; }
+    if (d.fo){ DS.fo = !DS.fo; rerender(); return true; }
+    if (d.rw){ DS.rw = d.rw; rerender(); return true; }
+    if (d.rf){ if (DS.rf[d.rf]) delete DS.rf[d.rf]; else DS.rf[d.rf] = d.rdef.split('|').map(Number); rerender(); return true; }
+    if (d.rset){ const [k, lo, hi] = d.rset.split('|'); DS.rf[k] = [+lo, +hi]; rerender(); return true; }
+    if (d.rclear){ delete DS.rf[d.rclear]; rerender(); return true; }
+    if (d.rngclear){ delete DS.rng[d.rngclear]; rerender(); return true; }
+    if (d.fclear){ DS.rf = {}; DS.rng = {}; rerender(); return true; }
     if (d.mate){ const id = +d.mate; DS.mate = DS.mate && DS.mate.id === id ? null : {mode: 'wo', id}; rerender(); window.scrollTo({top: 0, behavior: 'smooth'}); return true; }
     if (d.mclear){ DS.mate = null; rerender(); return true; }
     if (d.gclear){ DS.gf = null; rerender(); return true; }
@@ -711,6 +765,21 @@ window.PBX = (() => {
       pvBets.unshift(bet); pvSave(); pvSettle(); DS.T = null; rerender(); pvToast(bet.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.'); return true; }
     return true;
   }
+  // the number boxes of the Filters panel: a rank range per chip, a minutes / shots range per stat; applied when the box loses focus or Enter is pressed
+  function detailRange(e){
+    const t = e.target, d = t.dataset; if (!d || !(d.rlo || d.rhi || d.rmin || d.rmax)) return false;
+    const v = t.value === '' || !isFinite(+t.value) ? null : +t.value;
+    if (d.rlo || d.rhi){
+      const k = d.rlo || d.rhi, c = DS.rf[k]; if (!c) return true;
+      let lo = d.rlo ? v : c[0], hi = d.rhi ? v : c[1];
+      lo = Math.max(1, Math.min(30, lo == null ? 1 : lo)); hi = Math.max(1, Math.min(30, hi == null ? 30 : hi)); if (lo > hi) [lo, hi] = [hi, lo];
+      DS.rf[k] = [lo, hi];
+    } else {
+      const k = d.rmin || d.rmax, c = (DS.rng[k] || [null, null]).slice(); if (d.rmin) c[0] = v; else c[1] = v;
+      if (c[0] == null && c[1] == null) delete DS.rng[k]; else DS.rng[k] = c;
+    }
+    rerender(); return true;
+  }
   function detailInput(e){
     const t = e.target; if (!DS.T) return;
     if (t.id === 'pbx-tprice'){ DS.T.price = t.value; trkUpdate(); }
@@ -723,7 +792,7 @@ window.PBX = (() => {
     css();
     WIN[4][1] = szn(GL.current_season); WIN[5][1] = szn(GL.current_season - 1);
     const rt = routeOf(), rk = rt ? `${rt.pid}|${rt.s}|${rt.side}` : null;
-    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = DS.gf = null; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
+    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = DS.gf = null, DS.rf = {}, DS.rng = {}; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
     if (DS.at){ DS.at = null; const y = S.scroll || 0; setTimeout(() => window.scrollTo(0, y), 0); }
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
@@ -805,7 +874,7 @@ window.PBX = (() => {
       if (tr){ const x = root._show[+tr.closest('.pbx-row').dataset.i]; DS.T = null; S.scroll = scrollY; goProp(x.r.e.p, x.r.e.s, x.side); }
     });
     root.addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, rerender); });
-    root.addEventListener('change', e => { if (e.target.id === 'pbx-tven'){ detailInput(e); return; } if (e.target.id === 'pbx-gf'){ DS.gf = e.target.value || null; rerender(); return; } if (e.target.id === 'pbx-mate'){ const v = e.target.value; DS.mate = v ? {mode: v.split('|')[0], id: +v.split('|')[1]} : null; rerender(); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
+    root.addEventListener('change', e => { if (detailRange(e)) return; if (e.target.id === 'pbx-tven'){ detailInput(e); return; } if (e.target.id === 'pbx-gf'){ DS.gf = e.target.value || null; rerender(); return; } if (e.target.id === 'pbx-mate'){ const v = e.target.value; DS.mate = v ? {mode: v.split('|')[0], id: +v.split('|')[1]} : null; rerender(); return; } const i = e.target.closest('[data-fodds]'); if (i){ S.f[i.dataset.fodds] = i.value.trim(); save(); rerender(); } });
     let qT = null;
     root.addEventListener('input', e => { if (e.target.id === 'pbx-tprice' || e.target.id === 'pbx-tstake'){ detailInput(e); return; } if (e.target.id !== 'pbx-q') return; S.q = e.target.value; clearTimeout(qT);
       qT = setTimeout(() => { const at = e.target.selectionStart; rerender(); const n = $('pbx-q'); if (n){ n.focus(); n.setSelectionRange(at, at); } }, 150); });
@@ -1085,6 +1154,26 @@ window.PBX = (() => {
 .pbx-wins .pbx-alt{max-width:260px}.pbx-wins #pbx-mate{margin-left:auto}
 .pbx-mf{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:1px 4px 1px 9px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);font-weight:700}
 .pbx-mf button{background:none;border:0;color:inherit;font-size:13px;padding:0 3px}
+.pbx-lo{margin-left:12px;color:var(--warn);font-weight:700}
+.pbx-step{display:inline-flex;align-items:center;height:34px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);overflow:hidden}
+.pbx-step[data-on="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.pbx-step button{background:none;border:0;color:var(--fg);width:30px;height:100%;font-size:15px;cursor:pointer}
+.pbx-step b{font:600 12.5px var(--font-sans);min-width:30px;text-align:center;font-variant-numeric:tabular-nums}
+.pbx-fbtn{cursor:pointer}.pbx-fbtn[aria-expanded="true"]{border-color:var(--accent)}
+.pbx-fp{margin:10px 16px 6px;padding:12px 14px;border-radius:12px;background:var(--surface2);display:grid;gap:10px}
+.pbx-fh{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pbx-fh h5{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg2)}.pbx-fh h5 small{text-transform:none;letter-spacing:0;color:var(--fg3);font-weight:500;margin-left:6px}
+.pbx-rkc{display:flex;flex-wrap:wrap;gap:8px}
+.pbx-rkc button{height:34px;padding:0 12px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);font:500 12.5px var(--font-sans);cursor:pointer}
+.pbx-rkc button b{margin-left:3px;font-weight:700}.pbx-rkc button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.pbx-rkc b.pos{color:var(--pbx-g)}.pbx-rkc b.neg{color:var(--pbx-r)}
+.pbx-rr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:12.5px}.pbx-rr > span{font-weight:600;min-width:120px}
+.pbx-rr label,.pbx-rng label{display:inline-flex;align-items:center;gap:6px;color:var(--fg2)}
+.pbx-rr input,.pbx-rng input{width:64px;height:32px;border-radius:8px;border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);padding:0 8px;font:500 12.5px var(--font-sans)}
+.pbx-rr button,.pbx-fp > button{height:30px;padding:0 11px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);font:500 12px var(--font-sans);cursor:pointer;justify-self:start}
+.pbx-rr small{color:var(--fg3);margin-left:auto}
+.pbx-rng{display:flex;flex-wrap:wrap;gap:10px 18px}.pbx-rng label > span{min-width:54px;font-weight:600;color:var(--fg)}.pbx-rng i{font-style:normal;color:var(--fg3)}
+.pbx-fp .note{margin:0;font-size:11.5px;color:var(--fg3);line-height:1.5}
 .pbx-st td small{color:var(--fg3);font-weight:500}
 .pbx-st tr.cl{cursor:pointer}.pbx-st tr.cl:hover td{background:var(--surface2)}
 .pbx-st .pbx-hc{height:24px}

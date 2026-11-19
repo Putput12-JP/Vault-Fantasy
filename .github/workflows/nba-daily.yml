@@ -80,6 +80,7 @@ jobs:
 
       - name: Projections, game logs, model state
         run: |
+          python3 nba/scripts/build_team_ranks.py || echo "team ranks not rebuilt; keeping the last file"
           python3 nba/scripts/build_player_projections.py
           python3 nba/scripts/build_gamelogs.py
           python3 nba/scripts/build_matchups.py
