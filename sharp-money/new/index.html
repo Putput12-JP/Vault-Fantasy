@@ -885,7 +885,6 @@ function sigCards(){
   out.push({t:'Vault line vs Kalshi',id:'vk',sg:'vk',scope:'NFL props only: Vault and Kalshi only list NFL props',v:vk.won+' of '+vk.n,d:"Kalshi's side won; the prices said about "+Math.round(vk.said)+' should.'+(vk.verdict.startsWith('no edge')?' It has not beaten its price.':''),n:vk.n,k:Sk(vk.verdict),st:stt(Sk(vk.verdict),vk.won,vk.said),rows:vk.rows});
  }
  if(D.alerts)out.push(evRec(D.alerts,AUX.ev||null));
- const jp=jpCard(AUX.jp);if(jp)out.push(jp);
  return out.sort((a,b)=>TSO[a.st]-TSO[b.st]).filter((y,i,r)=>y.sg!=='pin'||r.findIndex(w=>w.sg==='pin')===i);
 }
 
