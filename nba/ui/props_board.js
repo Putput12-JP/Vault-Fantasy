@@ -587,7 +587,13 @@ window.PBX = (() => {
       + (DS.sp.mo != null ? `<span class="pbx-mf">${MON[DS.sp.mo]}<button type="button" data-spclear="mo" aria-label="Clear filter">×</button></span>` : '')
       + (nAct && wg.length < 8 ? `<span class="pbx-lo">small sample: ${wg.length} game${wg.length === 1 ? '' : 's'}</span>` : '');
     const hasStart = all0.some(z => z[START_I] != null), months = [...new Set(all0.map(monOf))].sort((a, b) => (a + 3) % 12 - (b + 3) % 12);   // season order: Oct first
+    const tmCards = mrows.length ? `<div class="pbx-fh"><h5>Teammates <small>${esc(SLABEL[s])} average without him in the lineup, against with</small></h5></div>
+          <div class="pbx-tms">${mrows.map(z => { const d = z.awo != null && z.aw != null ? z.awo - z.aw : null, big = d != null && z.nwo >= 3, fav = d != null && (side === 'o' ? d > 0 : d < 0), on = DS.mate && DS.mate.id === z.m.id && DS.mate.mode === 'wo', nm = z.m.name.split(' '), st = z.m.st && /out|doubt|quest|inactive/i.test(z.m.st) ? z.m.st : null;
+            return `<button type="button" class="pbx-tm${on ? ' on' : ''}" data-mate="${z.m.id}" aria-pressed="${on}" title="${esc(z.m.name)}: ${z.nwo} game${z.nwo === 1 ? '' : 's'} without, ${z.nw} with"><span class="pbx-tmh"><b>${esc(initials(z.m.name))}</b><img src="${phSrc(z.m.id)}" alt="" loading="lazy" onerror="this.remove()"></span>
+              ${st ? `<span class="pbx-otag${/quest/i.test(st) ? ' q' : ''}">${/quest/i.test(st) ? 'QUES' : /doubt/i.test(st) ? 'DOUBT' : 'OUT'}</span>` : '<span class="pbx-otag-gap"></span>'}<span class="nm">${esc(nm[0][0] + '. ' + nm.slice(1).join(' '))}</span>
+              <b class="d${big ? (fav ? ' pos' : ' neg') : ''}">${d == null ? '-' : sgn(d)}</b><small>${z.nwo} game${z.nwo === 1 ? '' : 's'} without</small></button>`; }).join('')}</div>` : '';
     const fpanel = !DS.fo ? '' : `<div class="pbx-fp">
+          ${tmCards}
           <div class="pbx-fh"><h5>Opponent rankings${x.opp ? ` <small>tonight: ${esc(x.opp)}</small>` : ''}</h5><span class="seg">${['all', 'L5', 'L10', 'L15'].map(k => `<button type="button" data-rw="${k}" aria-pressed="${DS.rw === k}">${k === 'all' ? 'All' : k}</button>`).join('')}</span></div>
           ${trk || !rkMeta.length ? '' : '<p class="note">Loading team rankings…</p>'}
           <div class="pbx-rkc">${rkMeta.map(([k, l, hint]) => { const n = x.opp ? rankOf(x.opp, k, grpP, s) : null, lo = n == null ? 1 : Math.max(1, n - 5), hi = n == null ? 30 : Math.min(30, n + 5);
@@ -1182,6 +1188,15 @@ window.PBX = (() => {
 .pbx-rr button,.pbx-fp > button{height:30px;padding:0 11px;border-radius:var(--r-pill);border:1px solid rgb(var(--ink) / .12);background:var(--ctl);color:var(--fg);font:500 12px var(--font-sans);cursor:pointer;justify-self:start}
 .pbx-rr small{color:var(--fg3);margin-left:auto}
 .pbx-rng{display:flex;flex-wrap:wrap;gap:10px 18px}.pbx-rng label > span{min-width:54px;font-weight:600;color:var(--fg)}.pbx-rng i{font-style:normal;color:var(--fg3)}
+.pbx-tms{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.pbx-tm{flex:0 0 auto;width:104px;display:grid;justify-items:center;gap:3px;padding:10px 6px 8px;border-radius:12px;border:1px solid rgb(var(--ink) / .1);background:var(--ctl);color:var(--fg);cursor:pointer}
+.pbx-tm.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.pbx-tmh{position:relative;width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--surface2);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--fg3)}
+.pbx-tmh img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 12%}
+.pbx-tm .pbx-otag{margin:0}.pbx-otag-gap{height:15px}
+.pbx-tm .nm{font-size:12px;font-weight:600;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbx-tm .d{font:700 14px var(--font-mono);color:var(--fg3)}.pbx-tm .d.pos{color:var(--pbx-g)}.pbx-tm .d.neg{color:var(--pbx-r)}
+.pbx-tm small{font-size:10.5px;color:var(--fg3)}
 .pbx-fp .note{margin:0;font-size:11.5px;color:var(--fg3);line-height:1.5}
 .pbx-st td small{color:var(--fg3);font-weight:500}
 .pbx-st tr.cl{cursor:pointer}.pbx-st tr.cl:hover td{background:var(--surface2)}
