@@ -35,7 +35,9 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .num{font-size:28px;font-weight:600;min-width:64px;text-align:right}
 .badge{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 8px;white-space:nowrap;display:inline-block}
 .badge.live{color:#fff;background:#d4351c;border-color:transparent;font-weight:700}
-.badge.good{color:var(--good);border-color:rgba(50,213,131,.35)}.badge.bad{color:var(--bad);border-color:rgba(255,107,107,.35)}.badge.warn{color:var(--warn);border-color:rgba(245,184,74,.35)}.badge.acc{color:var(--acc);border-color:rgba(108,156,255,.35)}
+.badge.good{color:var(--good);border-color:rgba(50,213,131,.35)}.badge.bad{color:var(--bad);border-color:rgba(255,107,107,.35)}.badge.gold{color:var(--warn);background:rgba(245,184,74,.14);border-color:rgba(245,184,74,.65);font-weight:600}
+.platter.gold{border:1px solid rgba(245,184,74,.55);background:linear-gradient(180deg,rgba(245,184,74,.12),rgba(44,44,46,.72) 70%)}
+.badge.warn{color:var(--warn);border-color:rgba(245,184,74,.35)}.badge.acc{color:var(--acc);border-color:rgba(108,156,255,.35)}
 .fl{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .fll{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-bottom:6px}
 .fbar{display:flex;height:8px;border-radius:8px;overflow:hidden;gap:2px;background:#2a2a2d}.fbar i{display:block;height:100%}
@@ -173,7 +175,7 @@ a.btn{text-decoration:none}
 <script src="../line-chart.js?v=2"></script>
 <script src="../edge-board.js"></script>
 <script src="../v2/gates.js?v=side1"></script>
-<script src="../v2-pages.js?v=side1"></script>
+<script src="../v2-pages.js?v=stale1"></script>
 <script src="../side-cards.js?v=57"></script>
 <script src="../following.js?v=7"></script>
 <script>
@@ -200,6 +202,7 @@ const SPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA',cbb:'CBB'};
    after the Nov 9 Top Reads freeze, so it never becomes a Top Read or a V2 play (the poller and build_topreads_ledger.py drop it too). */
 const TRS=new Set(['nfl','cfb','nba']),TRSPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA'};
 const TYPES={steam:['Pinnacle move','acc',"Pinnacle, the book that takes the biggest limits and moves first, shifted a line past the sport's threshold within about 30 minutes. This is the market reacting to real money."],
+ stale:['Stale number','gold','The market moved a line and a US book still hangs the old number. Pinnacle moved the number 2+ points in 90 minutes, at least 2 other US books moved with it, and this book is still 1+ point better for the side Pinnacle moved toward. UNTESTED: the replay (docs/stale-number-results.md) did not prove it. Context only, not a bet signal.'],
  behind:['Book behind','good',"A US book (DraftKings, FanDuel, BetMGM, BetRivers, bet365) still hangs a price that is +EV against Pinnacle's fair price at the same number. Priced from Pinnacle's own alternate ladder, so it only counts when the book is genuinely behind."],
  sharp:['Sharp accounts','warn','Polymarket accounts whose past $1k+ bets beat the closing price (t-stat 2+, 10+ bets, 5+ games) just bought. Their edge fades within about 30 minutes, so the age matters.'],
  whale:['Big ticket','',"A single large ticket on Polymarket or Kalshi. Size alone is not skill: $100k+ tickets lose to the close on average. Shown for context."],
@@ -252,7 +255,7 @@ function gameCard(g){
  <div class="tr">${logo(g.away,'',g.sport)}<div class="tn">${esc(g.away.short)}</div><div class="num cond">${sl==null?'-':fl(-sl)}</div></div>
  <div class="tr">${logo(g.home,'',g.sport)}<div class="tn">${esc(g.home.short)}</div><div class="num cond">${sl==null?'-':fl(sl)}</div></div>
  <div class="fl"><div class="fll"><span>Sharp money on the spread</span><span class="badge">context</span></div>${b.html}</div>
- <div class="tags">${tot}${mv}${n?`<span class="badge">${n} alert${n>1?'s':''} today</span>`:''}${(g.behind||[]).length?`<span class="badge good">+EV at ${esc(g.behind[0].book)}</span>`:''}${!P?'<span class="badge">no Pinnacle line yet</span>':''}</div></div>`;
+ <div class="tags">${tot}${mv}${n?`<span class="badge">${n} alert${n>1?'s':''} today</span>`:''}${(g.stale||[]).length?`<span class="badge gold" title="Untested rule, context only">Stale number at ${esc(g.stale[0].book)}</span>`:''}${(g.behind||[]).length?`<span class="badge good">+EV at ${esc(g.behind[0].book)}</span>`:''}${!P?'<span class="badge">no Pinnacle line yet</span>':''}</div></div>`;
 }
 function board(){
  const up=upcoming(),cnt={all:up.length,nfl:0,cfb:0,nba:0,cbb:0};up.forEach(g=>cnt[g.sport]=(cnt[g.sport]||0)+1);
@@ -303,6 +306,18 @@ function gamePage(key){
  ${row('Money '+esc(g.away.abbr),o.ml?am(o.ml.away):'-',c.ml?am(c.ml.away):'-',p.ml?am(p.ml.away):'-')}
  ${row('Money '+esc(g.home.abbr),o.ml?am(o.ml.home):'-',c.ml?am(c.ml.home):'-',p.ml?am(p.ml.home):'-')}</table>
  ${p.lim?`<div class="foot">Pinnacle limits: money ${money(p.lim.ml)}, spread ${money(p.lim.sp)}, total ${money(p.lim.tot)}</div>`:''}</div>`;
+ // stale number: the market moved a line and a book still hangs the old one (untested rule, context only)
+ for(const x of g.stale||[]){
+  const tm=x.m==='tot'?(x.side==='over'?'Over':'Under'):esc(g[x.side].short||g[x.side].abbr),num=x.m==='tot'?x.line:fl(x.line),pl=x.m==='sp'?g.home.abbr+' ':'',mk=x.m==='tot'?'Total':'Spread';
+  h+=`<div class="platter gold"><div class="ph"><span>Stale number</span><span><span class="badge gold">untested rule</span> <span class="badge">context only</span></span></div>
+  <div class="cond" style="font-size:26px;font-weight:600;margin:2px 0 8px">${esc(x.book)} ${tm} ${num} ${x.price==null?'':am(x.price)}</div>
+  <div class="kv"><span>Pinnacle ${mk.toLowerCase()} moved</span><em class="cond">${pl}${x.m==='tot'?x.pin.from:fl(x.pin.from)} to ${x.m==='tot'?x.pin.to:fl(x.pin.to)}</em></div>
+  <div class="kv"><span>Other US books that moved with it</span><em class="cond">${x.agree}</em></div>
+  <div class="kv"><span>This number vs Pinnacle now</span><em class="cond">${x.gap} pts better</em></div>
+  <div class="kv"><span>Pinnacle limit</span><em class="cond">${x.limit.from==null?'-':money(x.limit.from)+' to '+money(x.limit.to)}${x.limit.up?' <span class="badge good">limit up</span>':''}</em></div>
+  <div class="kv"><span>EV at this number</span><em class="cond">${x.ev==null?'n/a':(x.ev>0?'+':'')+(x.ev*100).toFixed(1)+'%'}</em></div>
+  <div class="foot">Seen ${ago(x.since)}. This number tends to close toward Pinnacle, but a stale line is not proven to beat the price you pay: in the replay (NBA 38 games, CFB 18) the rule did not pass its test. Not a bet signal; it is not in Top Reads and not in any agree total.</div></div>`;
+ }
  // line movement, from the book tape (NFL, college football, NBA)
  if(/^(nfl|cfb|nba)$/.test(g.sport))h+=`<div class="platter"><div class="ph"><span>Line movement</span><span class="badge">context only</span></div><div class="vlm-host" data-vlm-key="${esc(g.key)}"></div></div>`;
  // sharp money
