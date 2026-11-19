@@ -22,6 +22,8 @@ knows a late scratch and an in-game exit, so the rebuild is slightly generous to
 
 Writes data/prop_grades.json:
   {"t", "first", "through", "n", "half", "cuts", "grade": {G: rec}, "side": {"G|o": rec, "G|u": rec}, "h1": {G: rec}, "h2": {G: rec},
+   "agree": {"G|k": rec}   grade by how many of the 5 Signals checks agree with the model (when the graded side is the model's side),
+   "stat": {"G|stat": rec} grade by stat, "a3": {stat: rec} A+ and A with exactly 3 agreeing, by stat,
    "grade_days": {day: {G: rec}}}
   rec = [n, wins, market-expected wins, clustered standard error of (win - expected) per prop, priced n, units]
   units are only counted when the graded side is also the model's side (the stored price is the model's side). Pushes and voids are left out.
@@ -66,6 +68,7 @@ def build():
     played = {pid: {g[0] for g in rows} for pid, rows in logs.p.items()}
     T = lambda: defaultdict(S.Rec)
     allr, side, h1, h2, by_day = T(), defaultdict(S.Rec), T(), T(), defaultdict(T)
+    agree, bystat, a3 = defaultdict(S.Rec), defaultdict(S.Rec), defaultdict(S.Rec)
     nights = sorted(days)
     half = nights[len(nights) // 2] if nights else None
     n_rows = 0
@@ -111,14 +114,24 @@ def build():
             pm_ = row['p_mkt']
             exp = pm_ if over_side else 1 - pm_
             night = (row['game'], pid)
-            u = S.units(row.get('price'), win) if over_side == (row['p'] > 0.5) else None
+            same = over_side == (row['p'] > 0.5)
+            u = S.units(row.get('price'), win) if same else None
+            row['_day'] = day
+            sg = S.signals(row, None, logs, opp, None)
+            ms = sg['model']
+            kf = sum(sg[c] == ms for c in S.COUNTED)
+            if same:
+                agree[f'{gr}|{kf}'].add(win, exp, night, u)
+            bystat[f'{gr}|{s_}'].add(win, exp, night, u)
+            if gr in ('A+', 'A') and kf == 3:
+                a3[s_].add(win, exp, night, u)
             for rec in (allr[gr], side[f'{gr}|{"o" if over_side else "u"}'], (h1 if day_s < half else h2)[gr], by_day[day_s][gr]):
                 rec.add(win, exp, night, u)
             n_rows += 1
     out = lambda dd: {k: v.out() for k, v in sorted(dd.items())}
     return {'t': int(time.time()), 'first': nights[0] if nights else None, 'through': nights[-1] if nights else None, 'n': n_rows, 'half': half,
             'cuts': {'matchup': [5, 10, 21, 26], 'level': LEVEL_PTS, 'minutes': [2, 5], 'mate': [MATE_MPG, MATE_BIG], 'grades': list(GRADES)},
-            'grade': out(allr), 'side': out(side), 'h1': out(h1), 'h2': out(h2),
+            'grade': out(allr), 'side': out(side), 'agree': out(agree), 'stat': out(bystat), 'a3': out(a3), 'h1': out(h1), 'h2': out(h2),
             'grade_days': {dd: out(a) for dd, a in sorted(by_day.items())}}
 
 
