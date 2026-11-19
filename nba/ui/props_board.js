@@ -185,7 +185,7 @@ window.PBX = (() => {
   }
 
   // ── prop detail page (#propboard/<player id>/<stat>/<o|u>) ──
-  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null, n: 15, fo: false, rw: 'all', rf: {}, rng: {}, sp: {}};
+  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null, n: 15, fo: false, rw: 'all', rf: {}, rng: {}, sp: {}, sim: 'role'};
   const MIN_I = 5, START_I = 21;                     // START_I: 1 when he started (game-log column 21; rows built before it existed have none)
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], monOf = z => new Date(z[0] * 864e5).getUTCMonth();
   const routeOf = () => { const m = /^#propboard\/(\d+)\/([a-z0-9]+)\/([ou])$/i.exec(location.hash); return m ? {pid: +m[1], s: m[2].toLowerCase(), side: m[3].toLowerCase()} : null; };
@@ -209,6 +209,16 @@ window.PBX = (() => {
     const raw = `https://raw.githubusercontent.com/${typeof H0 !== 'undefined' && H0 && H0.repo ? H0.repo : 'Putput12-JP/Vault-Fantasy'}/main/nba/data/team_ranks.json`;
     fetch('data/team_ranks.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject()).catch(() => fetch(raw, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null))
       .then(j => { TRK = j && j.teams ? j : null; if (routeOf()) rerender(); });
+    return null;
+  }
+  // closing prop lines of every player (data/similar_closes.json, build_similar_closes.py): the only per-game lines stored for players other than the one on screen
+  let SCL;
+  function sclGet(){
+    if (SCL !== undefined) return SCL === 'loading' ? null : SCL;
+    SCL = 'loading';
+    const raw = `https://raw.githubusercontent.com/${typeof H0 !== 'undefined' && H0 && H0.repo ? H0.repo : 'Putput12-JP/Vault-Fantasy'}/main/nba/data/similar_closes.json`;
+    fetch('data/similar_closes.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject()).catch(() => fetch(raw, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null))
+      .then(j => { SCL = j && j.p ? j : null; if (routeOf()) rerender(); });
     return null;
   }
   // [key, label, game-log column] for the ranges on what the player did in the game (known only after the game)
@@ -587,6 +597,30 @@ window.PBX = (() => {
       + (DS.sp.mo != null ? `<span class="pbx-mf">${MON[DS.sp.mo]}<button type="button" data-spclear="mo" aria-label="Clear filter">×</button></span>` : '')
       + (nAct && wg.length < 8 ? `<span class="pbx-lo">small sample: ${wg.length} game${wg.length === 1 ? '' : 's'}</span>` : '');
     const hasStart = all0.some(z => z[START_I] != null), months = [...new Set(all0.map(monOf))].sort((a, b) => (a + 3) % 12 - (b + 3) % 12);   // season order: Oct first
+    // Similar players against tonight's opponent this season, each game against the closing line the recorder stored. "By role": same position group, minutes within 5 and
+    // a season average of this stat within 25%. "By position": the whole position group. A game with no stored closing line is not shown.
+    const scl = sclGet(); let sim = null;
+    if (scl && x.opp && grpP){
+      const SEA = GL.current_season, cur0 = all0.filter(z => z[1] === SEA), myA = avg(cur0.map(z => gval(z, s))), myM = avg(cur0.map(z => z[MIN_I])), rows = [];
+      for (const [pid, plog] of Object.entries(GL.players)){
+        if (+pid === r.e.p) continue;
+        const info = PIDX[pid], gp = info && info.p && (info.p.grp || info.p.pos), q = scl.p[`${pid}|${s}`]; if (!gp || gp !== grpP || !q) continue;
+        const cur = plog.filter(z => z[1] === SEA && !z[4]);
+        if (DS.sim === 'role'){ const a = avg(cur.map(z => gval(z, s))), m = avg(cur.map(z => z[MIN_I])); if (a == null || m == null || myA == null || myM == null || Math.abs(m - myM) > 5 || Math.abs(a - myA) > Math.max(1, .25 * myA)) continue; }
+        for (const z of cur){ if (GL.teams[z[2]] !== x.opp) continue; const c = q.find(k => k[2] === x.opp && Math.abs(k[0] - z[0]) <= 1); if (c) rows.push({day: z[0], team: info.t, pid, name: info.p.name, line: c[1], res: gval(z, s)}); }
+      }
+      rows.sort((a, b) => b.day - a.day);
+      const dp = rows.filter(z => z.line > 0), fav = d => d != null && (side === 'o' ? d > 0 : d < 0), dec = rows.filter(z => z.res !== z.line), hit = dec.filter(z => side === 'o' ? z.res > z.line : z.res < z.line).length;
+      sim = {rows, ad: avg(rows.map(z => z.res - z.line)), ap: avg(dp.map(z => (z.res - z.line) / z.line)), hit, n: dec.length, fav};
+    }
+    const simHtml = `<section class="pbx-card2"><header><h3>Similar players vs ${esc(x.opp || 'tonight\'s opponent')}</h3><small>${esc(SLABEL[s])} against the closing line, this season${scl ? `, lines recorded since ${mdShort(Math.floor(Date.parse(scl.first + 'T00:00Z') / 864e5))}` : ''}</small></header>
+        <div class="pbx-wins"><span class="seg"><button type="button" data-sim="role" aria-pressed="${DS.sim === 'role'}" title="Same position, minutes within 5, ${esc(SLABEL[s])} average within 25%">By role</button><button type="button" data-sim="pos" aria-pressed="${DS.sim === 'pos'}">By position</button></span></div>
+        ${!scl ? '<p class="note">Loading closing lines…</p>' : !sim ? '<p class="note">No opponent for this prop yet.</p>' : !sim.rows.length ? `<p class="note">No similar player has a recorded closing line against ${esc(x.opp)} this season yet.</p>` : `
+        <div class="pbx-sim3"><div><small>Avg diff</small><b class="${sim.ad == null ? '' : sim.fav(sim.ad) ? 'pos' : 'neg'}">${sim.ad == null ? '-' : sgn(sim.ad, 2)}</b></div><div><small>Avg diff %</small><b class="${sim.ap == null ? '' : sim.fav(sim.ap) ? 'pos' : 'neg'}">${sim.ap == null ? '-' : sgn(sim.ap * 100, 0) + '%'}</b></div><div><small>Hit rate · ${side === 'o' ? 'over' : 'under'}</small><b class="${sim.n && sim.hit / sim.n > .5 ? 'pos' : sim.n && sim.hit / sim.n < .5 ? 'neg' : ''}">${sim.n ? Math.round(sim.hit / sim.n * 100) + '%' : '-'}<i>${sim.hit} of ${sim.n}</i></b></div></div>
+        <div class="pbx-scroll"><table class="pbx-pt pbx-st pbx-simt"><thead><tr><th>Date</th><th>Team</th><th>Player</th><th>Line</th><th>Result</th><th>Diff %</th></tr></thead><tbody>
+          ${sim.rows.slice(0, 40).map(z => { const d = z.line > 0 ? (z.res - z.line) / z.line : null; return `<tr><td>${mdShort(z.day)}</td><td>${esc(z.team || '')}</td><td><span class="pbx-tmh sm"><b>${esc(initials(z.name))}</b><img src="${phSrc(z.pid)}" alt="" loading="lazy" onerror="this.remove()"></span>${esc(z.name.split(' ')[0][0] + '. ' + z.name.split(' ').slice(1).join(' '))}</td><td>${z.line}</td><td>${fmt(z.res)}</td><td>${d == null ? '-' : `<span class="pbx-dp ${sim.fav(d) ? 'g' : 'r'}">${sgn(d * 100, 0)}%</span>`}</td></tr>`; }).join('')}
+        </tbody></table></div><p class="note">${sim.rows.length} game${sim.rows.length === 1 ? '' : 's'}. Lines are the closing lines our recorder stored, so games before it started are missing, and a small count swings hard. Context, not a bet signal.</p>`}
+      </section>`;
     const tmCards = mrows.length ? `<div class="pbx-fh"><h5>Teammates <small>${esc(SLABEL[s])} average without him in the lineup, against with</small></h5></div>
           <div class="pbx-tms">${mrows.map(z => { const d = z.awo != null && z.aw != null ? z.awo - z.aw : null, big = d != null && z.nwo >= 3, fav = d != null && (side === 'o' ? d > 0 : d < 0), on = DS.mate && DS.mate.id === z.m.id && DS.mate.mode === 'wo', nm = z.m.name.split(' '), st = z.m.st && /out|doubt|quest|inactive/i.test(z.m.st) ? z.m.st : null;
             return `<button type="button" class="pbx-tm${on ? ' on' : ''}" data-mate="${z.m.id}" aria-pressed="${on}" title="${esc(z.m.name)}: ${z.nwo} game${z.nwo === 1 ? '' : 's'} without, ${z.nw} with"><span class="pbx-tmh"><b>${esc(initials(z.m.name))}</b><img src="${phSrc(z.m.id)}" alt="" loading="lazy" onerror="this.remove()"></span>
@@ -684,6 +718,8 @@ window.PBX = (() => {
         </tbody></table></div><p class="note">Last two seasons, only games where both were on the same team. Small samples swing hard; check the game count.</p>` : '<p class="note">No teammate has missed a game alongside him yet.</p>'}
       </section>
 
+      ${simHtml}
+
       <section class="pbx-card2"><header><h3>Alt lines</h3><small>Hit rate at every line, the best price there and Vault's fair where it prices one</small></header>
         <div class="pbx-scroll"><table class="pbx-pt pbx-st"><thead><tr><th>${side === 'o' ? 'Over' : 'Under'}</th><th>L10</th><th>L20</th><th>${WIN[4][1]}</th><th>2 seasons</th><th>Best price</th><th>Vault fair</th><th>Edge</th></tr></thead><tbody>
           ${lad.map(z => `<tr class="${z.L === r.line ? 'main' : ''}"><td><b>${z.L}</b>${z.L === r.line ? ' <small>main</small>' : ''}</td><td>${pcell(z.l10)}</td><td>${pcell(z.l20)}</td><td>${pcell(z.s0)}</td><td>${pcell(z.both)}</td>
@@ -749,7 +785,7 @@ window.PBX = (() => {
   }
   function trkUpdate(){ const rt = routeOf(); if (!rt) return; const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (x && $('pbx-tro')) $('pbx-tro').innerHTML = trkReadout(x); }
   function detailClick(e){
-    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-sp],[data-spclear],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
+    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-sim],[data-sp],[data-spclear],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
     const d = b.dataset, rt = routeOf(); if (!rt && !d.back) return false;
     if (d.back){ history.length > 1 && /#propboard\//.test(location.hash) ? (location.hash = '#propboard') : goView('propboard'); return true; }
     if (d.totrk){ $('pbx-trk').scrollIntoView({behavior: 'smooth', block: 'center'}); return true; }
@@ -763,6 +799,7 @@ window.PBX = (() => {
     if (d.rset){ const [k, lo, hi] = d.rset.split('|'); DS.rf[k] = [+lo, +hi]; rerender(); return true; }
     if (d.rclear){ delete DS.rf[d.rclear]; rerender(); return true; }
     if (d.rngclear){ delete DS.rng[d.rngclear]; rerender(); return true; }
+    if (d.sim){ DS.sim = d.sim; rerender(); return true; }
     if (d.sp){ const [k, v] = d.sp.split('|'), val = k === 'mo' ? +v : v; DS.sp[k] = DS.sp[k] === val ? null : val; rerender(); return true; }
     if (d.spclear){ DS.sp[d.spclear] = null; rerender(); return true; }
     if (d.fclear){ DS.rf = {}; DS.rng = {}; DS.sp = {}; rerender(); return true; }
@@ -1196,6 +1233,15 @@ window.PBX = (() => {
 .pbx-tm .pbx-otag{margin:0}.pbx-otag-gap{height:15px}
 .pbx-tm .nm{font-size:12px;font-weight:600;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pbx-tm .d{font:700 14px var(--font-mono);color:var(--fg3)}.pbx-tm .d.pos{color:var(--pbx-g)}.pbx-tm .d.neg{color:var(--pbx-r)}
+.pbx-sim3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:6px 16px 10px}
+.pbx-sim3 > div{background:var(--surface2);border-radius:10px;padding:9px 10px;text-align:center}
+.pbx-sim3 small{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3)}
+.pbx-sim3 b{display:block;font:700 20px var(--font-mono);margin-top:2px}.pbx-sim3 b i{font:500 11px var(--font-sans);font-style:normal;color:var(--fg3);margin-left:6px}
+.pbx-sim3 b.pos{color:var(--pbx-g)}.pbx-sim3 b.neg{color:var(--pbx-r)}
+.pbx-tmh.sm{display:inline-grid;width:24px;height:24px;font-size:9px;vertical-align:middle;margin-right:8px}
+.pbx-simt th:nth-child(-n+3),.pbx-simt td:nth-child(-n+3){text-align:left}
+.pbx-dp{display:inline-block;min-width:44px;text-align:center;padding:2px 8px;border-radius:6px;font-weight:700;font-size:12px}
+.pbx-dp.g{background:color-mix(in srgb,var(--pbx-g) 22%,transparent);color:var(--pbx-g)}.pbx-dp.r{background:color-mix(in srgb,var(--pbx-r) 22%,transparent);color:var(--pbx-r)}
 .pbx-tm small{font-size:10.5px;color:var(--fg3)}
 .pbx-fp .note{margin:0;font-size:11.5px;color:var(--fg3);line-height:1.5}
 .pbx-st td small{color:var(--fg3);font-weight:500}
