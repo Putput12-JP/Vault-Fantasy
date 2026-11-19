@@ -1,7 +1,7 @@
 # Sharp agreement on Vault's own game prices: pre-registered forward test (Step 4)
 
-**Status: PROPOSED** on 2026-11-19. The commit that changes this line to Registered is the registration: its hash and time are the proof that
-the rule came first. Nothing below may change after the first row is graded. A change is a new registration with its own date.
+**Status: Registered.** Proposed on 2026-11-19 and approved by the user as written the same day, with every decision below taken as proposed.
+The commit that changes this line from PROPOSED is the registration: its hash and time are the proof that the rule came first. Nothing below may change after the first row is graded. A change is a new registration with its own date.
 
 Step 4 of `docs/sharps-audit-2026-11-18.md`. Steps 1 to 3 are `docs/pm-clv-tiers.md`, `docs/sharp-tier-prereg.md` and `docs/sharp-speed-prereg.md`.
 Sharp money is context only (CLAUDE.md). This is a measurement. It never feeds Top Reads, SM_GATE, a Play or an agree total. A pass only lets the
