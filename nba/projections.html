@@ -3308,6 +3308,10 @@ rd-x.go>rd-n{opacity:1;transform:none}
         <div class="card-h"><div><h2>Signal record</h2><p>Graded against Pinnacle's close and the final score, this season.</p></div></div>
         <div class="card-b"><div class="nt-tw"><table class="nt" id="xrecord"></table></div></div>
       </section>
+      <section class="card">
+        <div class="card-h"><div><h2>Agree-count record</h2><p>How often 3, 4 or 5 of the five board signals pointed to one team, and how that team did. Context, not a bet.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="xagree"></table></div><p class="sx-note" id="xagreen"></p></div>
+      </section>
     </main>
     <footer id="xfoot" hidden></footer>
     <main id="v-follow" hidden>
@@ -10483,6 +10487,23 @@ function xGame(g, o){
     ${beh ? `<div><p class="sx-lab">Priced better than Pinnacle's fair at the same number</p><div class="sx-chips">${beh}</div></div>` : ''}
     ${flowH}${tk ? `<details class="sl-lines"><summary>Big and sharp tickets · ${(o.tickets || []).length}</summary><div class="nt-tw"><table class="nt sx-tk"><tbody>${tk}</tbody></table></div></details>` : ''}</article>`;
 }
+// Agree-count record (scripts/build_agree_record.py, docs/agree-record.md): rebuilt from the stored alerts, since the board itself is not saved.
+let AGREE;
+function xAgree(){
+  const t = $('xagree'); if (!t) return;
+  if (AGREE === undefined){
+    AGREE = null; const raw = `https://raw.githubusercontent.com/${PB ? PB.repo : H0.repo}/main/nba/data/agree_record.json`;
+    fetch('data/agree_record.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject()).catch(() => fetch(raw, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null))
+      .then(j => { AGREE = j || false; xAgree(); });
+  }
+  if (!AGREE){ t.innerHTML = `<tbody><tr><td class="muted">${AGREE === false ? 'The agree-count record is not published yet.' : 'Loading.'}</td></tr></tbody>`; return; }
+  const sg = x => x == null ? '' : (x >= 0 ? '+' : '') + (x * 100).toFixed(1);
+  const rows = ['3', '4', '5'].map(k => { const r = AGREE.levels[k] || {};
+    return `<tr><td class="l"><b>${k} of 5 agree</b></td><td>${r.events || 0}</td><td>${r.graded || 0}</td><td>${r.graded ? `${r.wins}-${r.losses}` : ''}</td><td>${r.win_pct != null ? pc(r.win_pct) : ''} <small>vs ${r.expected_pct != null ? pc(r.expected_pct) : ''}</small></td>
+      <td>${r.clv_n ? `<span class="${r.clv_pts > 0 ? 'pos' : r.clv_pts < 0 ? 'neg' : ''}">${sg(r.clv_pts)}</span>${r.clv_se ? ` <small>± ${(r.clv_se * 100).toFixed(1)}</small>` : ''}` : ''}</td><td>${r.clv_n ? `${pc(r.beat_close)} <small>${r.clv_n}</small>` : ''}</td></tr>`; }).join('');
+  t.innerHTML = `<thead><tr><th class="l">Signals pointing one way</th><th>Games</th><th title="Games final, with Pinnacle's closing moneyline stored">Graded</th><th title="Did the team win the game outright">Team W-L</th><th title="Win rate against the average chance Pinnacle's closing price gave those teams. The gap is the edge, if there is one">Won vs close</th><th title="Pinnacle's closing no-vig chance for the team minus its chance when the agree count was reached, in points. Only where a moneyline alert stood within 2 hours">Avg CLV, pts</th><th>Beat the close</th></tr></thead><tbody>${rows}</tbody>`;
+  $('xagreen').textContent = `Rebuilt from stored alerts, ${AGREE.from} to ${AGREE.through}. Counts are nested (a 5 is also a 4 and a 3). Small samples: a few games either way moves every rate here. A different cut from the live board, so a game the board called 4 of 5 may count as 3. Pre-written rule: docs/agree-record.md.`;
+}
 function xRecord(){
   const S = TR && TR.data && TR.data.signals, T = {};
   for (const by of Object.values((S && S.days) || {})) for (const [t, r] of Object.entries(by)){
@@ -10515,6 +10536,7 @@ function renderSharp(){
   $('xbanner').innerHTML = !games.length ? `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span>`
     : `<b>Sharp Price needs the recorder's new board.</b><span>It fills on the next poll after this build ships.</span>`;
   const [gN, gS] = xRecord();
+  xAgree();
   if (!SH){ $('xkpis').innerHTML = $('xfeed').innerHTML = $('xgames').innerHTML = ''; $('xfilters').innerHTML = ''; $('xstripbar').hidden = true; xFoot(null); return; }
   const A = (SH.alerts || []).filter(a => byId[a.g]);
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
