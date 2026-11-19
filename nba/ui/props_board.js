@@ -600,7 +600,7 @@ window.PBX = (() => {
     // Similar players against tonight's opponent this season, each game against the closing line the recorder stored. "By role": same position group, minutes within 5 and
     // a season average of this stat within 25%. "By position": the whole position group. A game with no stored closing line is not shown.
     const scl = sclGet(); let sim = null;
-    if (scl && x.opp && grpP){
+    try{ if (scl && x.opp && grpP){
       const SEA = GL.current_season, cur0 = all0.filter(z => z[1] === SEA), myA = avg(cur0.map(z => gval(z, s))), myM = avg(cur0.map(z => z[MIN_I])), rows = [];
       for (const [pid, plog] of Object.entries(GL.players)){
         if (+pid === r.e.p) continue;
@@ -613,6 +613,7 @@ window.PBX = (() => {
       const dp = rows.filter(z => z.line > 0), fav = d => d != null && (side === 'o' ? d > 0 : d < 0), dec = rows.filter(z => z.res !== z.line), hit = dec.filter(z => side === 'o' ? z.res > z.line : z.res < z.line).length;
       sim = {rows, ad: avg(rows.map(z => z.res - z.line)), ap: avg(dp.map(z => (z.res - z.line) / z.line)), hit, n: dec.length, fav};
     }
+    }catch(err){ sim = null; console.error('similar players', err); }
     const simHtml = `<section class="pbx-card2"><header><h3>Similar players vs ${esc(x.opp || 'tonight\'s opponent')}</h3><small>${esc(SLABEL[s])} against the closing line, this season${scl ? `, lines recorded since ${mdShort(Math.floor(Date.parse(scl.first + 'T00:00Z') / 864e5))}` : ''}</small></header>
         <div class="pbx-wins"><span class="seg"><button type="button" data-sim="role" aria-pressed="${DS.sim === 'role'}" title="Same position, minutes within 5, ${esc(SLABEL[s])} average within 25%">By role</button><button type="button" data-sim="pos" aria-pressed="${DS.sim === 'pos'}">By position</button></span></div>
         ${!scl ? '<p class="note">Loading closing lines…</p>' : !sim ? '<p class="note">No opponent for this prop yet.</p>' : !sim.rows.length ? `<p class="note">No similar player has a recorded closing line against ${esc(x.opp)} this season yet.</p>` : `
@@ -630,6 +631,7 @@ window.PBX = (() => {
     // each with the hit rate it would have had for the viewed side over all his games. Ordered by sample size, never by how good the hit rate looks, and a thin sample is greyed.
     const base = all0.length ? all0.filter(okS).length / all0.length : null, sugg = [];
     const sgAdd = (key, label, a, on) => { if (a.length >= 3) sugg.push({key, label, n: a.length, hit: a.filter(okS).length / a.length, on}); };
+    try{
     if (x.opp) for (const [k, l] of rkMeta){
       const n = rankOf(x.opp, k, grpP, s); if (n == null || (n > 10 && n < 21)) continue;
       const c = n <= 10 ? [1, 10] : [21, 30], cur = DS.rf[k];
@@ -637,6 +639,7 @@ window.PBX = (() => {
     }
     for (const z of gfN) if (z.now && z.n != null) sgAdd(`gf|${z.f[0]}`, z.f[2] + ' tonight', logs0.length === all0.length ? all0.filter(gfOk(z.f)) : all0.filter(gfOk(z.f)), DS.gf === z.f[0]);
     for (const z of mrows) if (z.m.st && /out|doubt|inactive/i.test(z.m.st) && z.m.mpg >= 15) sgAdd(`mate|${z.m.id}`, `${z.m.name.split(' ')[0][0]}. ${z.m.name.split(' ').slice(1).join(' ')} out`, mateSplit(all0, z.m.id, true).wo, !!DS.mate && DS.mate.id === z.m.id && DS.mate.mode === 'wo');
+    }catch(err){ console.error('suggested', err); }
     sugg.sort((a, b) => (b.n >= 8) - (a.n >= 8) || b.n - a.n);
     const sgHtml = sugg.length ? `<div class="pbx-fh"><h5>Suggested <small>matched to tonight's game · ${esc(SLABEL[s])} ${side === 'o' ? 'over' : 'under'} ${r.line} · all games: ${base == null ? '-' : Math.round(base * 100) + '%'}</small></h5></div>
           <div class="pbx-rkc">${sugg.map(z => `<button type="button" data-sg="${z.key}" aria-pressed="${z.on}" class="${z.n < 8 ? 'thin' : ''}" title="${z.n} game${z.n === 1 ? '' : 's'}${z.n < 8 ? ', a small sample' : ''}">${esc(z.label)} <b class="${z.n < 8 ? '' : z.hit > .5 ? 'pos' : z.hit < .5 ? 'neg' : ''}">${Math.round(z.hit * 100)}%</b><i>${z.n}g</i></button>`).join('')}</div>` : '';
@@ -864,7 +867,10 @@ window.PBX = (() => {
     css();
     WIN[4][1] = szn(GL.current_season); WIN[5][1] = szn(GL.current_season - 1);
     const rt = routeOf(), rk = rt ? `${rt.pid}|${rt.s}|${rt.side}` : null;
-    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = DS.gf = null, DS.rf = {}, DS.rng = {}, DS.sp = {}; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
+    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = DS.gf = null, DS.rf = {}, DS.rng = {}, DS.sp = {}; DS.at = rk;
+      try{ detail(B, rt); }
+      catch(err){ console.error('prop page', err); const rootEl = $('pbx-root'); if (rootEl) rootEl.innerHTML = `<button type="button" class="pbx-back" data-back="1">← Props</button><section class="pbx-card2"><p class="empty" style="padding:24px">This prop page hit an error and could not draw. Send this line along: <b>${esc(String(err && err.message || err))}</b> (${esc(location.hash)})</p></section>`; }
+      if (fresh) window.scrollTo(0, 0); return; }
     if (DS.at){ DS.at = null; const y = S.scroll || 0; setTimeout(() => window.scrollTo(0, y), 0); }
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';
