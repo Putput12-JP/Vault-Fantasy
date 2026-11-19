@@ -1116,7 +1116,6 @@ function topPage(){
  h+=cards.map(y=>{const pcn=Math.min(100,y.n/50*100),on=st.tsg===y.id;return `<div class="card tap ${on?'picked':''}" data-tsg="${y.id}"><div class="gtop" style="margin:0 0 4px"><span>${esc(y.nm||SGD[y.sg].n)}</span><span class="badge ${TS[y.st][1]}">${TS[y.st][0]}</span></div><div class="cond" style="font-size:30px;font-weight:600">${y.both||y.v}</div>${y.ctx?`<div class="foot" style="margin:2px 0 0">all sports context track: ${y.ctx.w} of ${y.ctx.n}</div>`:''}${(()=>{let ln=null;try{if(Date.now()/1e3-D.ts<3600)ln=y.sg==='pm'?lvPm(d).length:y.sg==='pin'?lvPin(d,y.id==='pin-to'?'tot':'sp').length:y.sg==='kb'||y.sg==='vk'?(AUX.sl?lvProp(d,y.sg).length:null):y.sg==='ev'?lvEv(d).length:null}catch(e){}const act=y.st==='ignore'?'Skip it. It has won less often than its own price says.':y.st==='ctx'?'Context only. Never a bet on its own.':y.st==='trust'?'Bet it at the listed price.':y.sg==='kb'?"Lean Kalshi's side at the book's price. Small stakes.":y.sg==='ev'?'Bet that side at that book while the price lasts. Small stakes.':y.sg==='pin'?"Lean Pinnacle's number over the slow books. Small stakes.":'Small stakes only.';return `<div class="foot" style="margin:2px 0 0;font-size:15px;font-weight:600;color:${ln>0?'var(--acc)':'#fff'}">${ln==null?'Live count unavailable':ln>0?ln+' live now':'None live now'}</div><div class="foot" style="margin:2px 0 0;color:var(--mut);font-size:13px">${act}</div>`})()}${(()=>{const ao=y.asof||(y.sg==='ev'?null:SB&&SB.generated?Date.parse(SB.generated)/1e3:null);if(!ao)return '';const old=Date.now()/1e3-ao>3*86400;return `<div class="foot" style="margin:2px 0 0;${old?'color:#f5a524':''}">${old?'STALE \u00b7 ':'As of '}${new Date(ao*1e3).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} CT</div>`})()}<div class="brr" style="margin-top:8px"><i style="width:${pcn}%;background:var(--acc)"></i></div><div class="foot" style="margin:4px 0 0">${y.n>=50?y.n+' games, enough to judge':y.n+' of 50 games to count'} · ${on?'Hide':'Tap for what qualifies right now'}</div></div>`}).join('');
  h+=sigPanel(cards,d);
  // sharp accounts (context)
- h+=acctBlock();
  return h;
 }
 
@@ -1125,7 +1124,7 @@ function topPage(){
 const V2P={key:'',built:null};
 const v2c=()=>window.VaultV2&&window.V2Gates?VaultV2.core:null;
 const v2pct=(x,d=1)=>V2Gates.pct(x,d),v2spct=(x,d=1)=>V2Gates.spct(x,d);
-const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],['vrecord','Play record'],['sharps','Sharps'],['following','Following']].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-v2nav="${v}">${l}</button>`).join('')}</div>`;
+const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],['vrecord','Play record'],['sharps','Sharps'],['following','Sharp Accounts']].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-v2nav="${v}">${l}</button>`).join('')}</div>`;
 function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){const b=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,N:F.nba,L:F.plays,now:Date.now()/1000});V2P.built={all:c.stance(b.all),cand:c.stance(b.cand)};V2P.key=k}return V2P.built}
 const v2wait=(t,s,cur)=>head(t,s)+v2nav(cur)+'<div class="skel"></div><div class="skel"></div>';
 function v2when(ts){return v2c().when(ts)}
@@ -1200,10 +1199,10 @@ function v2Record(){
 
 function skeleton(){return '<div class="title">Sharp Money</div><p class="ctx">Loading the latest numbers</p>'+'<div class="skel"></div>'.repeat(3)}
 function route(){
- const r=(location.hash||'#plays').slice(1),sc=$('scr');let html,tab;
+ const r0=(location.hash||'#plays').slice(1),r=r0==='accounts'||r0.startsWith('acct/')?'following':r0,sc=$('scr');let html,tab;
  if(!D){sc.innerHTML=loadErr?'<div class="title">Sharp Money</div><div class="card"><b>Could not load the data</b><div style="color:var(--mut);font-size:13px;margin-top:6px">The data file did not load. Check your connection and try again.</div><button class="btn" data-retry style="margin:10px 0 0">Try again</button></div>':skeleton();return}
  if(r==='plays'||r==='signals'||r==='vrecord'){tab='plays';html=r==='plays'?v2Plays():r==='signals'?v2Signals():v2Record()}
- else if(r==='following'){tab='plays';html=head('Following','Open bets from the wallets you follow. Context only')+v2nav('following')+'<div data-following></div>'}
+ else if(r==='following'){tab='plays';html=head('Sharp Accounts','Every bet the sharp accounts have open. Star one to follow it. Context only')+v2nav('following')+'<div data-following></div>'}
  else if(r==='sharps'){tab='plays';html=head('Sharps','Who holds each side on Polymarket. Context, with a suggested size from an untested rule')+v2nav('sharps')+'<div data-side-cards></div>'}
  else if(r.startsWith('game/')){const gk=decodeURIComponent(r.slice(5));html=gamePage(gk)+(GM[gk]?'<div data-side-card="'+gk.replace(/"/g,'&quot;')+'"></div>':'');tab='board'}
  else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='reads'}
