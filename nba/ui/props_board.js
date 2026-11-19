@@ -185,8 +185,9 @@ window.PBX = (() => {
   }
 
   // ── prop detail page (#propboard/<player id>/<stat>/<o|u>) ──
-  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null, n: 15, fo: false, rw: 'all', rf: {}, rng: {}};
-  const MIN_I = 5;
+  const DS = {win: 'L10', med: false, rtab: 'matchup', T: null, bar: null, n: 15, fo: false, rw: 'all', rf: {}, rng: {}, sp: {}};
+  const MIN_I = 5, START_I = 21;                     // START_I: 1 when he started (game-log column 21; rows built before it existed have none)
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], monOf = z => new Date(z[0] * 864e5).getUTCMonth();
   const routeOf = () => { const m = /^#propboard\/(\d+)\/([a-z0-9]+)\/([ou])$/i.exec(location.hash); return m ? {pid: +m[1], s: m[2].toLowerCase(), side: m[3].toLowerCase()} : null; };
   const goProp = (pid, s, side) => { location.hash = `#propboard/${pid}/${s}/${side}`; };
   const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
@@ -557,7 +558,8 @@ window.PBX = (() => {
     const rfIn = (z, k, c) => { const n = rankOf(tmOf(z), k, grpP, s); return n != null && n >= c[0] && n <= c[1]; };
     const rfOk = z => Object.entries(DS.rf).every(([k, c]) => k === 'pos' || trk ? rfIn(z, k, c) : true);
     const rngOk = z => RNG.every(([k, , i]) => { const c = DS.rng[k]; if (!c) return true; const v = z[i]; return v != null && (c[0] == null || v >= c[0]) && (c[1] == null || v <= c[1]); });
-    const logs1 = gfDef ? logs0.filter(gfOk(gfDef)) : logs0, logs = logs1.filter(z => rfOk(z) && rngOk(z)), h = hitsFrom(logs, s, r.line, side, x.opp);
+    const logs1 = gfDef ? logs0.filter(gfOk(gfDef)) : logs0, spOk = z => (!DS.sp.role || (z[START_I] != null && (DS.sp.role === 'start' ? z[START_I] === 1 : z[START_I] === 0))) && (DS.sp.mo == null || monOf(z) === DS.sp.mo),
+      logs = logs1.filter(z => rfOk(z) && rngOk(z) && spOk(z)), h = hitsFrom(logs, s, r.line, side, x.opp);
     const mrows = ms.map(m => { const sp = mateSplit(all0, m.id, true), ok = g2 => side === 'o' ? gval(g2, s) > r.line : gval(g2, s) < r.line, rt2 = a => a.length ? a.filter(ok).length / a.length : null;
       return {m, nw: sp.w.length, nwo: sp.wo.length, aw: avg(sp.w.map(z => gval(z, s))), awo: avg(sp.wo.map(z => gval(z, s))), hw: rt2(sp.w), hwo: rt2(sp.wo), mw: avg(sp.w.map(z => z[MIN_I])), mwo: avg(sp.wo.map(z => z[MIN_I]))}; })
       .filter(z => z.nwo > 0 || /out|doubt|inactive/i.test(z.m.st || ''));
@@ -578,16 +580,21 @@ window.PBX = (() => {
     const wl = Object.fromEntries(WIN.concat([['ALL', 'Max'], ['N', `L${DS.n}`]]));
     const hw = DS.win === 'ALL' || DS.win === 'N' ? (a => a.length ? {n: a.length, h: a.filter(okS).length, pct: a.filter(okS).length / a.length} : null)(winGl(logs, DS.win, x.opp)) : h[DS.win];
     const rkMeta = (trk ? trk.metrics.map(m => [m.k, m.l, m.h]) : []).concat(grpP ? [['pos', `Position (${SLABEL[s]})`, 'Allowed to his position group this season. 30th = most']] : []), rkName = Object.fromEntries(rkMeta.map(m => [m[0], m[1]]));
-    const nAct = Object.keys(DS.rf).length + Object.keys(DS.rng).length;
+    const nAct = Object.keys(DS.rf).length + Object.keys(DS.rng).length + (DS.sp.role ? 1 : 0) + (DS.sp.mo != null ? 1 : 0);
     const actChips = Object.entries(DS.rf).map(([k, c]) => `<span class="pbx-mf">${esc(rkName[k] || k)} #${c[0]} to #${c[1]}<button type="button" data-rclear="${k}" aria-label="Clear filter">×</button></span>`).join('')
       + Object.entries(DS.rng).map(([k, c]) => `<span class="pbx-mf">${RNG.find(z => z[0] === k)[1]} ${c[0] == null ? '' : c[0]}${c[1] == null ? '+' : c[0] == null ? ' up to ' + c[1] : ' to ' + c[1]}<button type="button" data-rngclear="${k}" aria-label="Clear filter">×</button></span>`).join('')
+      + (DS.sp.role ? `<span class="pbx-mf">${DS.sp.role === 'start' ? 'Starting' : 'Off the bench'}<button type="button" data-spclear="role" aria-label="Clear filter">×</button></span>` : '')
+      + (DS.sp.mo != null ? `<span class="pbx-mf">${MON[DS.sp.mo]}<button type="button" data-spclear="mo" aria-label="Clear filter">×</button></span>` : '')
       + (nAct && wg.length < 8 ? `<span class="pbx-lo">small sample: ${wg.length} game${wg.length === 1 ? '' : 's'}</span>` : '');
+    const hasStart = all0.some(z => z[START_I] != null), months = [...new Set(all0.map(monOf))].sort((a, b) => (a + 3) % 12 - (b + 3) % 12);   // season order: Oct first
     const fpanel = !DS.fo ? '' : `<div class="pbx-fp">
           <div class="pbx-fh"><h5>Opponent rankings${x.opp ? ` <small>tonight: ${esc(x.opp)}</small>` : ''}</h5><span class="seg">${['all', 'L5', 'L10', 'L15'].map(k => `<button type="button" data-rw="${k}" aria-pressed="${DS.rw === k}">${k === 'all' ? 'All' : k}</button>`).join('')}</span></div>
           ${trk || !rkMeta.length ? '' : '<p class="note">Loading team rankings…</p>'}
           <div class="pbx-rkc">${rkMeta.map(([k, l, hint]) => { const n = x.opp ? rankOf(x.opp, k, grpP, s) : null, lo = n == null ? 1 : Math.max(1, n - 5), hi = n == null ? 30 : Math.min(30, n + 5);
             return `<button type="button" data-rf="${k}" data-rdef="${lo}|${hi}" title="${esc(hint)}" aria-pressed="${!!DS.rf[k]}">${esc(l)}${n == null ? '' : ` <b class="${rkCls(n)}">#${n}</b>`}</button>`; }).join('')}</div>
           ${Object.entries(DS.rf).map(([k, c]) => `<div class="pbx-rr"><span>${esc(rkName[k] || k)}</span><label>from #<input type="number" inputmode="numeric" min="1" max="30" value="${c[0]}" data-rlo="${k}"></label><label>to #<input type="number" inputmode="numeric" min="1" max="30" value="${c[1]}" data-rhi="${k}"></label><button type="button" data-rset="${k}|1|10">Challenging</button><button type="button" data-rset="${k}|21|30">Favorable</button><small>${logs0.filter(z => rfIn(z, k, c)).length} games</small></div>`).join('')}
+          <div class="pbx-fh"><h5>Splits <small>${hasStart ? 'started or came off the bench, and the month' : 'the month'}</small></h5></div>
+          <div class="pbx-rkc">${hasStart ? [['start', 'Starter'], ['bench', 'Bench']].map(([k, l]) => { const n = logs0.filter(z => z[START_I] === (k === 'start' ? 1 : 0)).length; return `<button type="button" data-sp="role|${k}" aria-pressed="${DS.sp.role === k}"${n ? '' : ' disabled'}>${l} <b>${n}</b></button>`; }).join('') : ''}${months.map(m => { const n = logs0.filter(z => monOf(z) === m).length; return `<button type="button" data-sp="mo|${m}" aria-pressed="${DS.sp.mo === m}">${MON[m]} <b>${n}</b></button>`; }).join('')}</div>
           <div class="pbx-fh"><h5>What he did in the game <small>known only after the game</small></h5></div>
           <div class="pbx-rng">${RNG.map(([k, l]) => { const c = DS.rng[k] || [null, null]; return `<label><span>${l}</span><input type="number" inputmode="decimal" min="0" placeholder="min" value="${c[0] == null ? '' : c[0]}" data-rmin="${k}"><i>to</i><input type="number" inputmode="decimal" min="0" placeholder="max" value="${c[1] == null ? '' : c[1]}" data-rmax="${k}"></label>`; }).join('')}</div>
           <p class="note">30th is always the friendliest for an over: fastest pace, the most allowed, the worst defense. Ranks are today's, over ${trk ? `${trk.season - 1}-${String(trk.season).slice(2)} regular-season games through ${trk.through}` : 'this season'}, so an old game is matched on how its opponent looks now. This is context, not a bet signal.${nAct ? ' Every filter shrinks the sample, so check the game count.' : ''}</p>
@@ -736,7 +743,7 @@ window.PBX = (() => {
   }
   function trkUpdate(){ const rt = routeOf(); if (!rt) return; const x = build(PS.board).find(z => z.r.e.p === rt.pid && z.r.e.s === rt.s && z.side === rt.side); if (x && $('pbx-tro')) $('pbx-tro').innerHTML = trkReadout(x); }
   function detailClick(e){
-    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
+    const t = e.target, b = t.closest('[data-back],[data-mate],[data-mclear],[data-dside],[data-ds],[data-win],[data-nstep],[data-fo],[data-rw],[data-rf],[data-sp],[data-spclear],[data-rset],[data-rclear],[data-rngclear],[data-fclear],[data-med],[data-rtab],[data-totrk],[data-tside],[data-tunit],[data-tsave]'); if (!b) return false;
     const d = b.dataset, rt = routeOf(); if (!rt && !d.back) return false;
     if (d.back){ history.length > 1 && /#propboard\//.test(location.hash) ? (location.hash = '#propboard') : goView('propboard'); return true; }
     if (d.totrk){ $('pbx-trk').scrollIntoView({behavior: 'smooth', block: 'center'}); return true; }
@@ -750,7 +757,9 @@ window.PBX = (() => {
     if (d.rset){ const [k, lo, hi] = d.rset.split('|'); DS.rf[k] = [+lo, +hi]; rerender(); return true; }
     if (d.rclear){ delete DS.rf[d.rclear]; rerender(); return true; }
     if (d.rngclear){ delete DS.rng[d.rngclear]; rerender(); return true; }
-    if (d.fclear){ DS.rf = {}; DS.rng = {}; rerender(); return true; }
+    if (d.sp){ const [k, v] = d.sp.split('|'), val = k === 'mo' ? +v : v; DS.sp[k] = DS.sp[k] === val ? null : val; rerender(); return true; }
+    if (d.spclear){ DS.sp[d.spclear] = null; rerender(); return true; }
+    if (d.fclear){ DS.rf = {}; DS.rng = {}; DS.sp = {}; rerender(); return true; }
     if (d.mate){ const id = +d.mate; DS.mate = DS.mate && DS.mate.id === id ? null : {mode: 'wo', id}; rerender(); window.scrollTo({top: 0, behavior: 'smooth'}); return true; }
     if (d.mclear){ DS.mate = null; rerender(); return true; }
     if (d.gclear){ DS.gf = null; rerender(); return true; }
@@ -792,7 +801,7 @@ window.PBX = (() => {
     css();
     WIN[4][1] = szn(GL.current_season); WIN[5][1] = szn(GL.current_season - 1);
     const rt = routeOf(), rk = rt ? `${rt.pid}|${rt.s}|${rt.side}` : null;
-    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = DS.gf = null, DS.rf = {}, DS.rng = {}; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
+    if (rt){ const fresh = DS.at !== rk; if (fresh && (!DS.at || DS.at.split('|')[0] !== String(rt.pid))) DS.mate = DS.gf = null, DS.rf = {}, DS.rng = {}, DS.sp = {}; DS.at = rk; detail(B, rt); if (fresh) window.scrollTo(0, 0); return; }
     if (DS.at){ DS.at = null; const y = S.scroll || 0; setTimeout(() => window.scrollTo(0, y), 0); }
     const root = $('pbx-root'), games = (B.games || []).filter(g => g.tip > Date.now() / 1000).sort((a, b) => a.tip - b.tip);
     if (S.game !== 'all' && !games.some(g => String(g.id) === S.game)) S.game = 'all';

@@ -8,8 +8,9 @@ Reads raw/hoopr/player_box_<season>.csv (fetch_hoopr.py; the season is the year 
 Writes data/gamelogs.json and re-renders the page. Also writes data/season_totals.json: every rostered player's totals by season
 and regular season / playoffs for the Player profile's season table (the page fetches it on that view only).
 
-Row: [day, season, opp, home, playoff, min, pts, reb, ast, 3pm, stl, blk, tov, fgm, fga, ftm, fta, tpa, oreb, dreb, pf]
+Row: [day, season, opp, home, playoff, min, pts, reb, ast, 3pm, stl, blk, tov, fgm, fga, ftm, fta, tpa, oreb, dreb, pf, start]
   day      days since 1970-01-01 (the game date)      opp  index into `teams`
+  start    1 when he started the game (box score `starter`)
   playoff  1 for play-in / playoffs                   only games he played (minutes > 0)
 Newest first, capped at MAX_GAMES per player.
 """
@@ -83,7 +84,7 @@ def main(argv):
             logs.setdefault(int(r['athlete_id']), []).append(
                 [day, s, tix[opp], 1 if r['home_away'] == 'home' else 0, 0 if r['season_type'] == '2' else 1,
                  round(float(r['minutes']), 1), f('points'), f('rebounds'), f('assists'), f('three_point_field_goals_made'), f('steals'), f('blocks'), f('turnovers'), f('field_goals_made'), f('field_goals_attempted'), f('free_throws_made'),
-                 f('free_throws_attempted'), f('three_point_field_goals_attempted'), f('offensive_rebounds'), f('defensive_rebounds'), f('fouls')])
+                 f('free_throws_attempted'), f('three_point_field_goals_attempted'), f('offensive_rebounds'), f('defensive_rebounds'), f('fouls'), 1 if r['starter'] == 'true' else 0])
             n += 1
         print(f'{s}: {n:,} player games')
     for pid in logs:
@@ -91,7 +92,7 @@ def main(argv):
     last = max((g[0] for gs in logs.values() for g in gs), default=None)
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'current_season': cur,
            'through': (EPOCH + dt.timedelta(days=last)).isoformat() if last else None,
-           'cols': ['day', 'season', 'opp', 'home', 'playoff', 'min', 'pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'tov', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf'],
+           'cols': ['day', 'season', 'opp', 'home', 'playoff', 'min', 'pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'tov', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf', 'start'],
            'teams': teams, 'players': logs}
     season_totals(keep, cur)
     path = os.path.join(DATA, 'gamelogs.json')
