@@ -28,3 +28,7 @@ Primary cut, T = 2, line CLV in points, treatment against the pack-reversion con
 ## Next
 
 Forward test only, not new thresholds on this data: add a CBB tape, convert the line gap to a price with the stored trade market or a fitted points-to-probability map, and re-read when the pass rule's 100 games exist.
+
+## Live flag (2026-11-19)
+
+The same registered rule now runs live in `scripts/fetch-sharp-money.mjs` (`G.stale`, alert type `stale`) and shows as a gold "Stale number at <book>" tag on the slate and a gold card on the game page. It is labelled "untested rule" and "context only", is not in `EF_KIND` or `BET_KINDS`, and never feeds Top Reads, SM_GATE or an agree total. Differences from the replay, stated so the two are not confused: the base line is the value in effect at the start of the 90 minutes (the replay used the earliest stored row in the window), and history for each soft book starts when this code first runs, so the first signals appear about 90 minutes after deploy. The EV shown is Pinnacle's fair at that number from its alternate ladder, null when it has none.
