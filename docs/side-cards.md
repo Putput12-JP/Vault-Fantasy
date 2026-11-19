@@ -82,7 +82,7 @@ group narrows further. All are read from the stored card for the suggested side:
 - **Tier:** the AGS label of the side (`ags.tier`, only when `ags.score` > 0), or "No tier" when the side did not score above 0.
 - **Win 60%+:** `proven.win_pct` >= 60 over at least 20 recorded bets (`proven.w + proven.l`; AGS gives a record full credit at 20).
 - **2+ proven:** `counts.hc + counts.sharp` >= 2 on the side. **Sized up:** `counts.hc` >= 1 (a proven wallet at 1.5x or more of
-  its usual stake). **Unopposed:** no proven wallet on the other side. **Steam:** the stored steam read is on (Pinnacle toward the
+  its usual stake). **No hot wallet against** (formerly "Unopposed"): no proven wallet holds $250 or more on the other side. Tracked Polymarket wallets only; it says nothing about sportsbook money. **Steam:** the stored steam read is on (Pinnacle toward the
   side; unknown counts as off). **2u+:** the shown size is 2 units or more.
 - **Market:** moneyline, spread or total.
 The choice is kept in `localStorage` (`vsc-filters`) on the device. A "What these mean" panel under the chips defines each label.
