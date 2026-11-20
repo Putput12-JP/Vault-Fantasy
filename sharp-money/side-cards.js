@@ -856,8 +856,10 @@ function recSport(sp, D){
   if (tierRows) out += tierAny ? '<section class="vr-card"><h3>Price-tier tests</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">ROI</span><span class="vr-col">CLV</span>' + tierRows + '</div>' +
     '<p class="vr-fn">Registered Nov 18. Shadows, not picks: flat 1u from cards cut Nov 19 on. Only the final read gives a verdict.</p></section>'
     : '<section class="vr-card"><h3>Price-tier tests</h3><p class="vr-fn">No plays yet. Shadows, not picks: they start counting with cards cut Nov 19. Only the final read gives a verdict.</p></section>';
-  out += '<section class="vr-card"><h3>By market</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">Units</span><span class="vr-col">ROI</span>' +
-    G.map(function(g){ var x = vg(g[0]);
+  /* a CFB or CBB tab has no suggested size, so vg() is empty there: show its plays at flat 1u from the stored flat ROI, the same numbers the By sport table and College at 1u use */
+  var vm = function(g){ return COLL ? flatOf(rawg(sp, g)) : vg(g); };
+  out += '<section class="vr-card"><h3>By market' + (COLL ? '<em class="vr-tsub"> 1u</em>' : '') + '</h3><div class="vr-grid m"><span></span><span class="vr-col">Record</span><span class="vr-col">Units</span><span class="vr-col">ROI</span>' +
+    G.map(function(g){ var x = vm(g[0]);
       return '<span class="vr-mk">' + g[1] + '</span>' + (x && x.n ? '<span class="vr-c num">' + wl(x) + '</span><span class="vr-c num ' + (x.units_pl > 0 ? 'up' : x.units_pl < 0 ? 'dn' : '') + '">' + u2(x.units_pl) + '</span><span class="vr-c num">' + roi(x.flat_roi) + '</span>'
         : '<span class="vr-none">—</span><span class="vr-none">—</span><span class="vr-none">—</span>'); }).join('') + '</div></section>' + sigHtml + '</div>';
   var openHtml = '', recentHtml = '';
