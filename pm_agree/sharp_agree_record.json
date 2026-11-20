@@ -1,16 +1,16 @@
 {
- "generated": 1795114600,
+ "generated": 1795197629,
  "prereg": "docs/sharp-agree-prereg.md",
  "sports": {
   "nba": {
-   "derived": 0,
+   "derived": 9,
    "pending": 0,
-   "read_share": null,
+   "read_share": 1.0,
    "no_verdict_data": false,
    "no_read_why": {},
    "cells": {
     "agree": {
-     "rows": 0,
+     "rows": 2,
      "plays": 0,
      "rows_clv": 0,
      "games_clv": 0,
@@ -19,7 +19,7 @@
      "roi": null
     },
     "against": {
-     "rows": 0,
+     "rows": 1,
      "plays": 0,
      "rows_clv": 0,
      "games_clv": 0,
@@ -28,7 +28,7 @@
      "roi": null
     },
     "mixed": {
-     "rows": 0,
+     "rows": 1,
      "plays": 0,
      "rows_clv": 0,
      "games_clv": 0,
@@ -37,7 +37,7 @@
      "roi": null
     },
     "none": {
-     "rows": 0,
+     "rows": 5,
      "plays": 0,
      "rows_clv": 0,
      "games_clv": 0,
@@ -77,11 +77,13 @@
    "note": "plays-only counts are in cells[*].plays and carry no verdict"
   },
   "nfl": {
-   "derived": 0,
+   "derived": 2,
    "pending": 0,
-   "read_share": null,
+   "read_share": 0.0,
    "no_verdict_data": false,
-   "no_read_why": {},
+   "no_read_why": {
+    "read_too_old": 2
+   },
    "cells": {
     "agree": {
      "rows": 0,
