@@ -8,15 +8,17 @@
    untested rule, and it never feeds Top Reads, SM_GATE or an agree total. The rule is the pre-registered lock of
    docs/sharp-card-prereg.md. Every number on the card is a stored field; a null prints "n/a".
 
-   Size (changed 2026-11-18, docs/sharps-audit-2026-11-18.md): the card shows a flat 1u on NBA and NFL plays, and no size on CFB and CBB.
+   Size (changed 2026-11-18, docs/sharps-audit-2026-11-18.md; CBB added back 2026-11-20 at the user's request): the card shows a flat 1u on NBA, NFL and CBB plays, and no size on CFB.
    The builder still stores the benchmark's press ladder (3u base, 2u at 2x to 3x, 5u at 3x or more, 1u under 50 cents) as `sf.units`;
    the page keeps that as `units_ladder` and tracks it beside the record as a shadow. "Hot" wallets are a record (6+ bets, 55% wins, 3%+ ROI),
    not proof of skill: forward, they have not beaten the market. */
 (function(){
 'use strict';
 var OPT = {}, UI = {}, SHOWN = {};
-/* sports whose suggested play carries a size: flat 1u. CFB and CBB plays are tracked (shadow) but not shown. */
-var FLAT_SP = {nba: 1, nfl: 1};
+/* sports whose suggested play carries a size: flat 1u. CFB plays are tracked (shadow) but not shown. CBB was shown again on 2026-11-20; its audit read was negative forward (CBB -8.0%), so it stays an untested rule. */
+var FLAT_SP = {nba: 1, nfl: 1, cbb: 1};
+/* the CLV tier chip is built for NBA and NFL wallets only (scripts/pm_clv_tiers.py) */
+var RK_SP = {nba: 1, nfl: 1};
 /* a play row from the record files or the live file: keep the ladder size as units_ladder; the shown size is flat 1u (NBA, NFL) or none (college) */
 function flatRow(x){ if (x && x.play === 'sf' && x.units_ladder == null && x.units != null){ x.units_ladder = x.units; x.units = FLAT_SP[x.sport] ? 1 : 0; } }
 function flatSize(g){
@@ -326,7 +328,7 @@ function body(g, st){
   if (!g.vault) bits.push('This game is on Polymarket but not yet in Vault\'s schedule, so team names come from its listing.');
   if (g.test) bits.push(g.test.counts ? 'Counts for the forward test.' : 'Does not count for the forward test: ' + g.test.why_not.join(', ') + '.');
   return h + '<details class="vc-mod vc-dt" data-d="n"' + (st.open.n ? ' open' : '') + '><summary>Data notes</summary><div class="vc-dtb"><p>' + bits.join(' ') + '</p></div></details>' +
-    '<p class="vc-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. College games carry no size.</p>';
+    '<p class="vc-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. CFB games carry no size.</p>';
 }
 
 /* ---------- play detail: one market, every wallet on it, opened from the verdict ("See who's on it") ----------
@@ -723,7 +725,7 @@ function scoreTile(name, sub, s, other){
 function cell(s){ return s && s.n ? '<span class="num">' + wl(s) + '</span><em class="num ' + (s.units_pl > 0 ? 'up' : s.units_pl < 0 ? 'dn' : '') + '">' + u2(s.units_pl) + '</em>' : '<span class="vr-none">—</span>'; }
 var REC_SP = null, REC_ALL = false, REC_RULE = null;     /* REC_RULE: the shadow rule picked in the table, which filters Open plays and Recent games to it */
 /* who a play belongs to, with its definition on hover; the full definitions sit behind the "?" button in each list's header */
-var WHO_DEF = {Shadow: 'Tracked beside the record at one unit. No size is shown on college games, and it never counts in the record above.', Vault: 'Suggested size: the play the card shows. Every one counts in the record.',
+var WHO_DEF = {Shadow: 'Tracked beside the record at one unit. No size is shown on CFB games, and it never counts in the record above.', Vault: 'Suggested size: the play the card shows. Every one counts in the record.',
   Lock: 'Forward-test play: a stricter, pre-registered rule on the same card, counted toward the 300 on the Forward test card.'};
 function whoTag(who){ return '<span class="vr-who ' + who.toLowerCase() + '" title="' + esc(WHO_DEF[who] || '') + '">' + who + '</span>'; }
 var REC_HELP = false;
@@ -771,14 +773,14 @@ function recSport(sp, D){
     (V.n ? '<div class="vr-big num ' + (V.units_pl > 0 ? 'up' : V.units_pl < 0 ? 'dn' : '') + '">' + u2(V.units_pl) + '</div>' +
       '<p class="vr-ts num">' + wl(V) + (V.flat_roi != null ? ' · ' + roi(V.flat_roi) + ' ROI' : '') + ' · ' + V.n + (V.n === 1 ? ' play' : ' plays') + '</p>'
       : '<div class="vr-big num dim">—</div><p class="vr-ts">' + (COLL ? 'No size on college plays' : 'No graded plays yet') + '</p>') +
-    '<p class="vr-tsub">' + (COLL ? 'The headline counts NBA and NFL plays only. College plays are still tracked and graded at one unit: see "College at 1u" below, and the open and completed plays. Small samples swing hard.' : 'Every suggested play (NBA and NFL, flat 1u), graded at its lock price. Small samples swing hard.') + '</p>' +
+    '<p class="vr-tsub">' + (COLL ? 'The headline counts NBA, NFL and CBB plays only. CFB plays are still tracked and graded at one unit: see "College at 1u" below, and the open and completed plays. Small samples swing hard.' : 'Every suggested play (NBA, NFL and CBB, flat 1u), graded at its lock price. Small samples swing hard.') + '</p>' +
     shRows([['Stricter rule', P, 'Skips plays where the wallets against outweigh the wallets for, and markets where both sides qualify.', null, 'pub'],
       ['One-wallet cap', Q, 'The same plays at 1u when one hot wallet is on the side, or when it bet under its usual stake.', null, 'solo'],
       ['Sharps only', rgs('only', 'all_cards'), 'Only plays with a hot wallet on the side and none against.', rgs('only', 'forward').n || 0, 'only'],
       ['Two sharps', rgs('two', 'all_cards'), 'Only plays with two or more hot wallets on the side and none against.', rgs('two', 'forward').n || 0, 'two'],
       ['Seasoned wallets', rgs('seas', 'all_cards'), 'Sharps only, counting a wallet as hot only with 20 or more graded bets.', rgs('seas', 'forward').n || 0, 'seas'],
       ['Old size ladder', LAD, 'Every play, all sports, at the old 1u to 5u sizes the card showed until Nov 18. Kept to check whether the sizing ever added anything.', null, 'ladder'],
-      ['College at 1u', COL, 'CFB and CBB plays at one unit. The card shows no size on college games.', null, 'college']]) + '</div>';
+      ['College at 1u', COL, 'CFB plays at one unit. The card shows no size on CFB games.', null, 'college']]) + '</div>';
   /* the pre-registered forward test: counted moneyline locks toward 300, and the lock record over every market */
   var ml = ((((c.lock || {}).all || {}).ml || {}).counted) || {}, L = sumRec(G.map(function(g){ return ((((c.lock || {}).all || {})[g[0]] || {}).counted); }));
   var clvN = G.reduce(function(t, g){ var x = ((((c.lock || {}).all || {})[g[0]] || {}).counted) || {}; return t + (x.clv_n || 0); }, 0);
@@ -1146,7 +1148,7 @@ function ticketP(p, i){
     combinedP(ls.side, me.proven, me.counts) +
     '<div class="vp-ft">' + (ag && ag.score > 0 && TIER[ag.tier] ? '<span class="vc-tier ' + ag.tier + '">' + TIER[ag.tier] + '</span><span>score <span class="num">+' + ag.score.toFixed(2) + '</span></span>' : '') +
       (st ? '<span class="' + st + '">' + (st === 'on' ? 'Pinnacle steam toward ' + esc(ls.side) : st === 'off' ? 'No Pinnacle steam' : 'Pinnacle steam unknown') + '</span>' : '') + (bits[0] ? '<span>' + bits[0] + '</span>' : '') +
-      (FLAT_SP[g.sport] ? rkP(me.rk, m.sides[nm[0] === ls.side ? nm[1] : nm[0]].all.rk) : '') + '<span class="sp"></span><button type="button" class="vp-who" data-p="' + i + '">See who\'s on it</button></div></div></article>';
+      (RK_SP[g.sport] ? rkP(me.rk, m.sides[nm[0] === ls.side ? nm[1] : nm[0]].all.rk) : '') + '<span class="sp"></span><button type="button" class="vp-who" data-p="' + i + '">See who\'s on it</button></div></div></article>';
 }
 function leadSide(g){ var x = null; Object.keys(g.markets).forEach(function(k){ var m = g.markets[k]; Object.keys(m.sides).forEach(function(n){ var v = m.sides[n].all.sharp_usd; if (v > 0 && (!x || v > x.v)) x = {k: k, n: n, v: v}; }); }); return x; }
 function railRowP(g, i, showSport){
@@ -1196,7 +1198,7 @@ function renderFeed(el, o, games, sp){
       '<section class="vp-rsec"><h2>Building</h2><p>Hot money on a side, no play yet.</p>' + rows.map(function(g, i){ return railRowP(g, i, !sp); }).join('') +
       (bld.length > rows.length ? '<div class="vp-quiet">' + (bld.length - rows.length) + ' more building, under All games</div>' : '') +
       (bld.length ? '' : '<div class="vp-quiet">Nothing building.</div>') + '<div class="vp-quiet">' + sl.cl.quiet + ' quiet ' + (sl.cl.quiet === 1 ? 'game' : 'games') + ' with no hot money</div></section></aside></div>' +
-      '<p class="vp-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. College games carry no size.</p>';
+      '<p class="vp-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. CFB games carry no size.</p>';
   }
   box.addEventListener('click', function(e){
     var fc = e.target.closest('.vf-chip'), ft = e.target.closest('.vf-toggle'), fx = e.target.closest('.vf-clear');
