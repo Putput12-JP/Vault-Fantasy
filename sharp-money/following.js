@@ -11,7 +11,7 @@
    followed" counts a wallet's settled games dated after its follow time, from the 20 most recent the file carries.
 
    A bet in the feed opens a detail panel: the position, how the wallet has done on bets like it, and who else holds the game (read
-   from the Sharps cards, live.json). The panel names the side of the card's suggested play, flat 1u on NBA and NFL and none on college (the same rule as side-cards.js). */
+   from the Sharps cards, live.json). The panel names the side of the card's suggested play, flat 1u on NBA, NFL and CBB and none on CFB (the same rule as side-cards.js). */
 (function(){
 'use strict';
 var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -19,7 +19,7 @@ var DEV = LOCAL && (location.search.match(/[?&]wallets=([^&]+)/) || [])[1];     
 var SRC = DEV ? decodeURIComponent(DEV) : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/wallets.json';
 var DEVC = LOCAL && (location.search.match(/[?&]cards=([^&]+)/) || [])[1];        /* localhost only: ?cards=/path/to/live.json */
 var CARDS_SRC = DEVC ? decodeURIComponent(DEVC) : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/live.json';
-var FLAT_SP = {nba: 1, nfl: 1};      /* the Sharps card shows a flat 1u on these only (side-cards.js) */
+var FLAT_SP = {nba: 1, nfl: 1, cbb: 1};      /* the Sharps card shows a flat 1u on these only (side-cards.js) */
 var KEY = 'vault-sharps-following', SEASONED = 20, PRESS = 1.5, PAGE = 12;
 var GROUPS = {ml: 'Moneyline', spread: 'Spread', total: 'Total'};
 var SPORTS = [['all', 'All'], ['nfl', 'NFL'], ['cfb', 'CFB'], ['nba', 'NBA'], ['cbb', 'CBB']];
@@ -208,7 +208,7 @@ function whoElse(g, p){
   var sf = (m.sf || {}).all, key = (c.vault || {}).key;
   return names.map(function(n){ return whoSide(c, m, n, n === p.side, g.sport); }).join('') +
     '<p class="fw-det-n">' + (sf && sf.side && sf.units > 0 && FLAT_SP[g.sport] ? 'The Sharps card has a suggested play on ' + esc(sf.side) + ' in this market. Its size is a flat 1u from an untested rule.'
-      : sf && sf.side && sf.units > 0 ? 'The Sharps card shows no size on college games.' : 'The Sharps card has no suggested play in this market.') + '</p>' +
+      : sf && sf.side && sf.units > 0 ? 'The Sharps card shows no size on CFB games.' : 'The Sharps card has no suggested play in this market.') + '</p>' +
     '<div class="fw-det-l"><a href="#sharps">Open the Sharps cards</a>' + (key ? '<a href="#game/' + encodeURIComponent(key) + '">Open this game</a>' : '') + '</div>';
 }
 /* one bet, opened from the feed: the position, how this wallet has done on bets like it, and who else holds the game */

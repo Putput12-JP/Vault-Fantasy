@@ -8,8 +8,9 @@
 - Flag any record that improves for close monitoring, and include its sample size.
 - Sharp money is context only. It is not a bet signal and it does not count toward an agree total.
   - One exception, by the user's decision on 2026-11-11, narrowed on 2026-11-18: the proven-sharps side card (`sharp-money/side-cards.js`)
-    shows a suggested size. It is a flat 1u on NBA and NFL plays and nothing on CFB and CBB (`docs/sharps-audit-2026-11-18.md`: the old
-    1u to 5u ladder and the "proven" label did not predict results forward). It must always carry the "untested rule" label while the
+    shows a suggested size. It is a flat 1u on NBA, NFL and CBB plays and nothing on CFB (`docs/sharps-audit-2026-11-18.md`: the old
+    1u to 5u ladder and the "proven" label did not predict results forward; CBB was shown again on 2026-11-20 at the user's request,
+    against that audit's read of CBB -8.0% forward, so it is an untested rule like the rest). It must always carry the "untested rule" label while the
     forward test in `docs/sharp-card-prereg.md` is running, it is still SharpFlow's staking rules for which side (`scripts/sf_rungs.py`
     with its listed gaps), and it never feeds Top Reads, SM_GATE or an agree total. The page calls wallets "hot" (a record, not proof of
     skill). The old ladder is tracked as a shadow beside the record.
