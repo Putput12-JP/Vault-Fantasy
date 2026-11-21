@@ -13,6 +13,14 @@ limit is the binding one, so do not start the items below before Monday 9:59 AM.
 
 ## What was cut, in the order to do it
 
+0. **Embed V2 inside the Sharp Money Sharps and Following tabs (the user's requirement, 2026-11-21).** V2 must render inside the existing
+   shell where the old tabs render, not as a separate page and not by redirect (a redirect was tried in PR 542 and reverted).
+   The host calls `window.VaultFollowing` (mountPage, Page, openSheet) and the side-cards mount; V2 needs an embed adapter that
+   implements those entry points, mounts only the page content (no second header or nav; keep the freshness line, refresh and info
+   inside the tab), scopes its CSS under one root class so it cannot leak into the host (tokens off `body.sv2` and `:root` must move
+   to the root element), and keeps the open-sheet hook the Sharps cards use. Both shells (index.html and new/index.html) load it, and
+   the old files stay for rollback behind a switch. Test with no dev params, in both shells, light and dark, phone and desktop.
+
 1. **Plays data (largest piece).** Opus writes `docs/sharps-v2-plays-spec.md`, Sonnet implements it in
    `scripts/build_side_cards.py`, then three Opus reviewers (point in time, frozen-test integrity, honesty and records).
    - Publish additively in `live.json`: the evidence tier, the conflict block (who holds the other side by account tier),
