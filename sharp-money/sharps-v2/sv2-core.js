@@ -393,8 +393,11 @@
 
   /* ------------------------------------------------------------------ router */
   var PAGES = ['sharps', 'following'];
+  /* embedded in a host page (embed.js) the route lives in this variable, never in the host's location */
+  var EH = null;
+  function curHash() { return EH != null ? EH : loc().hash; }
   function parseHash(h) {
-    var s = String(h == null ? loc().hash : h).replace(/^#\/?/, '');
+    var s = String(h == null ? curHash() : h).replace(/^#\/?/, '');
     var parts = s.split('/').filter(Boolean).map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } });
     var known = PAGES.indexOf(parts[0]) >= 0;
     return { page: known ? parts[0] : 'sharps', sub: known ? parts.slice(1) : [], known: known, hash: '#' + (known ? parts.join('/') : 'sharps') };
@@ -405,7 +408,8 @@
      Boot installs SV2._route, which applies the route and emits 'route' (pushState does not fire hashchange). */
   SV2.go = function (h, o) {
     var next = '#' + String(h).replace(/^#\/?/, '');
-    if (loc().hash !== next) {
+    if (EH != null) EH = next;
+    else if (loc().hash !== next) {
       if (o && o.replace) root.history.replaceState(null, '', next); else root.history.pushState({ sv2: 1 }, '', next);
     }
     if (SV2._route) SV2._route(); else SV2.emit('route', parseHash(next));
@@ -808,7 +812,8 @@
         if (reduce) done(); else closeTimer = setTimeout(done, 440);
         /* the sheet was opened from a route (#following/acct/...): step back to its parent */
         if (!fromRoute && o.route) {
-          if (root.history.state && root.history.state.sv2) root.history.back();
+          if (EH != null) { EH = '#' + parseHash().page; if (SV2._route) SV2._route(); }
+          else if (root.history.state && root.history.state.sv2) root.history.back();
           else { root.history.replaceState(null, '', '#' + parseHash().page); if (SV2._route) SV2._route(); }
         }
       }
@@ -1010,8 +1015,18 @@
     return r;
   }
 
-  function boot() {
+  var mainObs = null;
+  function observeMain() {
+    if (typeof MutationObserver === 'undefined') return;
+    var m = document.getElementById('sv2-main'); if (!m) return;
+    if (mainObs) mainObs.disconnect();
+    mainObs = new MutationObserver(function () { rail.scan(document); }); mainObs.observe(m, { childList: true, subtree: true });
+  }
+  /* boot() starts the standalone page; boot('sharps' | 'following') mounts one page inside a host (embed.js), as often as the host re-renders the tab */
+  function boot(embedPage) {
     if (!document.getElementById('sv2-main')) return;
+    var embedded = typeof embedPage === 'string';
+    if (embedded) { EH = '#' + embedPage; mounted = {}; }
     /* nav + theme + skin state */
     var themeStrip = document.getElementById('sv2-theme-seg'), skinStrip = document.getElementById('sv2-skin-seg');
     if (themeStrip) { seg.set(themeStrip, SV2.theme.get() || 'system'); seg.bind(themeStrip, function (v) { SV2.theme.set(v); }); }
@@ -1025,9 +1040,12 @@
       lastPage = r.page;
       SV2.emit('route', r);
     }
-    root.addEventListener('hashchange', onRoute);
+    if (!embedded) root.addEventListener('hashchange', onRoute);
     SV2._route = onRoute;
     applyRoute(true); lastPage = SV2.route().page;
+    if (SV2.wired) { observeMain(); load.cards(); load.wallets(); load.splits(); return; }   /* a later mount: the document level wiring below is already in place */
+    SV2.wired = true;
+
 
     document.addEventListener('click', function (e) {
       var t = e.target; if (!t.closest) return;
@@ -1074,9 +1092,7 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(rail.catchUp);   /* trap 5: a webfont swap widens the text after first paint */
 
     /* document-level observer wires any strip a page renders later (microtask based, fires without painting) */
-    if (typeof MutationObserver !== 'undefined') {
-      new MutationObserver(function () { rail.scan(document); }).observe(document.getElementById('sv2-main'), { childList: true, subtree: true });
-    }
+    observeMain();
 
     /* data: cards first (the Sharps route), wallets and splits beside it */
     load.cards(); load.wallets(); load.splits();

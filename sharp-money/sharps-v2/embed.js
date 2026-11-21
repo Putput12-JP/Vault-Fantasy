@@ -1,36 +1,74 @@
-/* Puts the V2 Sharps and Following pages inside the Sharp Money Sharps and Following tabs.
+/* Puts the V2 Sharps and Following pages inside the Sharp Money Sharps and Following tabs, in the page itself (no frame), so they
+   share the page's scroll, theme and layout like every other tab.
    Loaded by both shells (sharp-money/index.html and sharp-money/new/index.html) after side-cards.js and following.js. It replaces the
-   two page mounts those files expose (mountPage and the React Page wrapper) with a frame that holds sharps-v2/index.html in embed mode,
-   so V2 keeps its own styles and sheets and cannot leak into the shell. Everything else on those globals (the game section, the NBA
-   page) is left alone. ?legacy=1 keeps the old pages for the tab (remembered as sessionStorage sm-legacy). */
+   two tab mounts those files expose (mountPage and the React Page wrapper) and leaves everything else on those globals (the game
+   section, the NBA page) alone. V2's own header, route tabs and menu are not used here: the shell supplies the title and the tabs.
+   The markup is taken from sharps-v2/index.html so the two stay the same page. ?legacy=1 keeps the old tabs for the browser tab
+   (sessionStorage sm-legacy). */
 (function () {
   'use strict';
   try {
     if (/[?&]legacy=1/.test(location.search)) sessionStorage.setItem('sm-legacy', '1');
     if (sessionStorage.getItem('sm-legacy') === '1') return;
   } catch (e) {}
-  var me = document.currentScript, SRC = me && me.src ? new URL('index.html', me.src).href : 'sharps-v2/index.html';
-  var LABEL = { sharps: 'Sharps', following: 'Following' };
-  function theme() { try { var t = document.documentElement.dataset.theme; return t === 'light' || t === 'dark' ? t : ''; } catch (e) { return ''; } }
-  function frame(el, route) {
-    el.textContent = '';
-    var f = document.createElement('iframe');
-    f.src = SRC + '?embed=1#' + route;
-    f.title = LABEL[route] + ' (V2)';
-    f.style.cssText = 'display:block;width:100%;border:0;background:transparent;height:max(640px,calc(100vh - 170px))';
-    f.addEventListener('load', function () {
-      var t = theme();
-      try { if (t) f.contentDocument.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
+  var V = { css: 6, core: 2, sharps: 1, following: 1 };
+  var tpl = null, assets = null;
+
+  function loadTemplate() {
+    if (tpl) return Promise.resolve(tpl);
+    return fetch(BASE + 'index.html').then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      var d = new DOMParser().parseFromString(t, 'text/html');
+      var hd = d.getElementById('sv2-hd'), main = d.getElementById('sv2-main');
+      if (!hd || !main) throw new Error('V2 template missing');
+      ['sv2-title', 'sv2-routes', 'sv2-menu-btn', 'sv2-menu'].forEach(function (id) { var n = hd.querySelector('#' + id); if (n) n.remove(); });
+      var wrap = main.querySelector('.sv2-wrap');
+      tpl = { hd: hd.outerHTML, pages: wrap ? wrap.innerHTML.replace(/<noscript>[\s\S]*?<\/noscript>/g, '') : main.innerHTML };
+      return tpl;
     });
-    el.appendChild(f);
+  }
+  function script(src) {
+    return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+  }
+  function loadAssets() {
+    if (assets) return assets;
+    if (!document.getElementById('sv2-css')) {
+      var l = document.createElement('link'); l.id = 'sv2-css'; l.rel = 'stylesheet'; l.href = BASE + 'sv2.css?v=' + V.css; document.head.appendChild(l);
+    }
+    assets = script(BASE + 'sv2-core.js?v=' + V.core).then(function () { return script(BASE + 'sv2-sharps.js?v=' + V.sharps); })
+      .then(function () { return script(BASE + 'sv2-following.js?v=' + V.following); });
+    assets.catch(function () { assets = null; });
+    return assets;
+  }
+  /* the sheet host is shared and lives on the body, so a position:fixed sheet is never trapped inside a host container */
+  function sheetHost() {
+    if (document.getElementById('sv2-sheet-host')) return;
+    var w = document.createElement('div'); w.className = 'sv2-root sv2'; w.innerHTML = '<div class="sv2-sheet-host" id="sv2-sheet-host"></div>';
+    document.body.appendChild(w);
+  }
+  function mount(el, route) {
+    el.textContent = '';
+    var root = document.createElement('div'); root.className = 'sv2-root sv2'; root.innerHTML = '<p class="sv2-empty-line" style="padding:16px 0;color:var(--sv2-mut)">Loading</p>';
+    el.appendChild(root);
+    Promise.all([loadTemplate(), loadAssets()]).then(function (r) {
+      if (!document.contains(root)) return;                              /* the shell moved on to another tab while this loaded */
+      var t = r[0];
+      /* the shell's phone layout (new/) takes the Apple style; the desktop layout takes the default one. Not stored: V2's own page keeps its setting. */
+      document.documentElement.setAttribute('data-sv2-skin', /\/new\//.test(location.pathname) ? 'apple' : 'default');
+      root.innerHTML = t.hd + '<main id="sv2-main" tabindex="-1">' + t.pages + '</main><div class="sv2-sr" id="sv2-live" aria-live="polite" role="status"></div>';
+      sheetHost();
+      window.SV2.boot(route);
+    }).catch(function () {
+      root.innerHTML = '<p class="sv2-empty-line" style="padding:16px 0">Could not load this page. <a href="?legacy=1">Open the previous version</a></p>';
+    });
   }
   function swap(name, route) {
     var o = window[name]; if (!o) return;
-    o.mountPage = function (el) { frame(el, route); };
+    o.mountPage = function (el) { mount(el, route); };
     if (o.Page) {   /* __smKit is defined later by the shell bundle, so it is read when the page renders */
       o.Page = function () {
         var U = window.__smKit().U, ref = U.useRef(null);
-        U.useEffect(function () { if (ref.current) frame(ref.current, route); }, []);
+        U.useEffect(function () { if (ref.current) mount(ref.current, route); }, []);
         return U.createElement('div', { ref: ref });
       };
     }
