@@ -1054,10 +1054,10 @@
     mainObs = new MutationObserver(function () { rail.scan(document); }); mainObs.observe(m, { childList: true, subtree: true });
   }
   /* boot() starts the standalone page; boot('sharps' | 'following') mounts one page inside a host (embed.js), as often as the host re-renders the tab */
-  function boot(embedPage) {
+  function boot(embedPage, startHash) {
     if (!document.getElementById('sv2-main')) return;
     var embedded = typeof embedPage === 'string';
-    if (embedded) { EH = '#' + embedPage; mounted = {}; }
+    if (embedded) { EH = typeof startHash === 'string' && startHash.indexOf('#' + embedPage) === 0 ? startHash : '#' + embedPage; mounted = {}; }
     /* nav + theme + skin state */
     var themeStrip = document.getElementById('sv2-theme-seg'), skinStrip = document.getElementById('sv2-skin-seg');
     if (themeStrip) { seg.set(themeStrip, SV2.theme.get() || 'system'); seg.bind(themeStrip, function (v) { SV2.theme.set(v); }); }
