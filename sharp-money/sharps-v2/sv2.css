@@ -867,3 +867,6 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
   .sv2-embedded .sv2-fw-search { flex: 0 1 280px; }
   .sv2-embedded .sv2-fw-sortw { justify-content: flex-end; }
 }
+
+/* an empty (hidden) rail must not reserve its column: Following with nobody followed uses the whole width */
+.sv2-embedded .sv2-cols:has(> .sv2-col-rail[hidden]), .sv2-cols:has(> .sv2-col-rail[hidden]) { grid-template-columns: minmax(0, 1fr); }
