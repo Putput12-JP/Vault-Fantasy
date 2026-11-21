@@ -558,6 +558,15 @@ class WalletPositions(unittest.TestCase):
         f = C.wallets_file({"nba": {"0xp": dict(b, positions=[])}}, CUT)
         self.assertTrue(f["context_only"] and f["floor_usd"] == 250)
 
+    def test_sheet_block_is_only_added_on_request_and_adds_up(self):
+        s = self.led.stats("0xp", CUT)
+        self.assertNotIn("curve", C.wallet_book(s, "Name"))
+        b = C.wallet_book(s, "Name", sheet=True)
+        self.assertEqual(set(b) >= {"l30", "d30", "odds", "curve"}, True)
+        self.assertLessEqual(abs(sum(c[1] for c in b["curve"]) - b["l30"]["pnl"]), 1)      # the curve adds up to the 30-day profit
+        self.assertEqual(sorted(b["odds"]), sorted(k for k, *_ in C.ODDS_BANDS))
+        self.assertNotIn("odds", b["dive"])         # cards and live.json do not carry the bands
+
 
 class FollowOnly(unittest.TestCase):
     """Follow-only wallets (CBB specialists on the Following page) never reach a card ledger; only the wallets file's ledger has them."""

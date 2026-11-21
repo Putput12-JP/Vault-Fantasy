@@ -111,6 +111,45 @@ var CSS = [
 '.vfw .fw-more{display:block;margin:10px auto 6px}',
 '.vfw .fw-note{margin:20px 0 0;font-size:11.5px;line-height:1.55;color:var(--c-dim);max-width:90ch}.vfw .fw-note b{color:var(--c-mut);font-weight:600}',
 '.vfw .fw-row>.c-meta{display:none}',
+/* the account sheet: opened from a bet in the feed (centered on desktop, a bottom sheet on a phone) */
+'.vfw .fw-sh-scrim{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}',
+'.vfw .fw-sh{position:relative;width:min(900px,100%);max-height:calc(100vh - 32px);overflow-y:auto;overscroll-behavior:contain;background:var(--c-card);color:var(--c-ink);border-radius:var(--c-r);padding:22px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.5);border:1px solid var(--c-line)}',
+'.vfw .fw-sh.fw-in{animation:fw-sh-in 450ms var(--fw-spring)}.vfw .fw-sh-scrim.fw-in{animation:fw-sh-fade 220ms ease-out}',
+'@keyframes fw-sh-in{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}@keyframes fw-sh-fade{from{opacity:0}to{opacity:1}}',
+'.vfw .fw-sh-top{display:flex;align-items:center;gap:12px}.vfw .fw-sh-top h2{margin:0;font-size:18px;font-weight:600}.vfw .fw-sh-top p{margin:2px 0 0;font-size:12.5px;color:var(--c-mut)}',
+'.vfw .fw-sh-av{flex:none;width:42px;height:42px;border-radius:50%;background:var(--c-box);display:grid;place-items:center;font-weight:700;font-size:16px}',
+'.vfw .fw-sh-top .sp{flex:1}.vfw .fw-sh-fol{border:1px solid var(--c-line2);background:none;color:var(--c-gold);border-radius:999px;padding:7px 14px;font-weight:600;font-size:12.5px;cursor:pointer;min-height:36px;--fw-ps:.94}.vfw .fw-sh-fol.on{background:rgba(240,207,122,.14)}',
+'.vfw .fw-sh-x{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:var(--c-box);color:var(--c-mut);font-size:18px;cursor:pointer;line-height:1;--fw-ps:.88}',
+'.vfw .fw-sh-ban{margin:16px 0 0;background:var(--c-box);border-radius:18px;padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:2px 16px;align-items:center}',
+'.vfw .fw-sh-ban .m,.vfw .fw-sh-ban .g{font-size:12.5px;color:var(--c-mut)}.vfw .fw-sh-ban .s{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.15}',
+'.vfw .fw-sh-ban .px{grid-row:1/4;grid-column:2;text-align:right}.vfw .fw-sh-ban .px b{display:block;font-size:38px;line-height:1;font-weight:500}.vfw .fw-sh-ban .px span{font-size:11.5px;color:var(--c-mut)}',
+'.vfw .fw-sh-k{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 0}',
+'.vfw .fw-sh-k>div{background:var(--c-box);border-radius:16px;padding:12px 14px;min-width:0}.vfw .fw-sh-k b{display:block;font-size:28px;line-height:1.1;font-weight:500}.vfw .fw-sh-k span{display:block;font-size:12px;color:var(--c-mut);margin-top:3px}.vfw .fw-sh-k i{display:block;font-style:normal;font-size:11.5px;color:var(--c-dim);margin-top:1px}',
+'.vfw .fw-sh-tabs{display:flex;gap:2px;margin:16px 0 14px;border-bottom:1px solid var(--c-line)}.vfw .fw-sh-tabs button{border:0;background:none;color:var(--c-mut);font-size:13px;font-weight:600;padding:10px 14px;cursor:pointer;position:relative;min-height:40px}',
+'.vfw .fw-sh-tabs button.on{color:var(--c-ink)}.vfw .fw-sh-tabs button.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--c-ink)}',
+'.vfw .fw-sh-pan{min-height:300px}',
+'.vfw .fw-sh-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.vfw .fw-sh h5{margin:0 0 8px;font-size:11px;font-weight:600;color:var(--c-mut);letter-spacing:.04em;text-transform:uppercase}',
+'.vfw .fw-sh .fw-kv{margin:0}.vfw .fw-sh .fw-det-n{margin:8px 0 0}',
+'.vfw .fw-sh-ctx{margin:16px 0 0;background:var(--c-box);border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--c-mut)}.vfw .fw-sh-ctx b{color:var(--c-ink);font-weight:600}',
+'.vfw .fw-sh-cuts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}',
+'.vfw .fw-sh-cut{all:unset;box-sizing:border-box;cursor:pointer;background:var(--c-box);border-radius:16px;padding:12px;border:1.5px solid transparent;min-width:0;--fw-ps:.975;transition:transform 500ms var(--fw-spring),border-color 150ms ease}',
+'.vfw .fw-sh-cut:active{transform:scale(var(--fw-ps));transition:transform 80ms ease-out}.vfw .fw-sh-cut:focus-visible{outline:2px solid var(--c-mut)}.vfw .fw-sh-cut.on{border-color:var(--c-gold);background:rgba(240,207,122,.07)}',
+'.vfw .fw-sh-cut .t{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--c-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+'.vfw .fw-sh-cut .pl{display:block;font-size:11.5px;color:var(--c-ink);margin:5px 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+'.vfw .fw-sh-cut .r{display:flex;justify-content:space-between;align-items:baseline;font-size:20px;gap:6px}.vfw .fw-sh-cut .r b{font-weight:500}',
+'.vfw .fw-sh-cut .s{display:block;font-size:11.5px;color:var(--c-mut);margin-top:1px}.vfw .fw-sh-cut .a{display:block;border-top:1px solid var(--c-line);margin-top:8px;padding-top:7px;font-size:11.5px;color:var(--c-mut)}.vfw .fw-sh-cut .a b{font-weight:500;color:var(--c-ink)}',
+'.vfw .fw-sh-ch{margin-top:14px;background:var(--c-box);border-radius:16px;padding:12px 14px}',
+'.vfw .fw-sh-ch-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}.vfw .fw-sh-ch-h h5{margin:0}.vfw .fw-sh-ch-h .sp{flex:1}.vfw .fw-sh-ch-v{font-size:22px}',
+'.vfw .fw-sh-ch .fw-seg{background:var(--c-card)}.vfw .fw-sh-ch .fw-seg>button{min-height:28px;padding:0 10px;font-size:12px}',
+'.vfw .fw-sh-ch svg{display:block;width:100%;height:auto;overflow:visible}',
+'.vfw .fw-sh-n{margin:8px 0 0;font-size:11.5px;color:var(--c-dim)}.vfw .fw-sh-n b{color:var(--c-mut);font-weight:600}',
+'.vfw button.fw-bet[aria-haspopup]{--fw-ps:.99}',
+'@media (max-width:767px){',
+'.vfw .fw-sh-scrim{place-items:end center;padding:0}.vfw .fw-sh{width:100%;max-height:92vh;border-radius:24px 24px 0 0;padding:18px 16px 16px}',
+'.vfw .fw-sh-ban .s{font-size:20px}.vfw .fw-sh-ban .px b{font-size:30px}.vfw .fw-sh-k b{font-size:22px}.vfw .fw-sh-k>div{padding:10px}',
+'.vfw .fw-sh-3{grid-template-columns:1fr;gap:16px}.vfw .fw-sh-cuts{grid-template-columns:repeat(2,minmax(0,1fr))}.vfw .fw-sh-cuts .fw-sh-cut:last-child:nth-child(odd){grid-column:1/-1}',
+'.vfw .fw-sh-fol{padding:7px 11px}',
+'}',
 '@media (max-width:767px){',
 '.vfw .fw-sum{gap:14px;margin:10px 0;font-size:12px}.vfw .fw-sum b{font-size:24px}',
 '.vfw .fw-feed{grid-template-columns:minmax(0,1fr);gap:10px}.vfw .fw-h{margin-top:24px}.vfw .fw-h p{flex-basis:100%;order:3}',
@@ -127,7 +166,7 @@ var CSS = [
 '.vfw .fw-obr .px{grid-area:px;color:var(--c-mut);font-size:13px}.vfw .fw-obr .sn{grid-area:sn;text-align:left!important}',
 '.vfw .fw-obr .px::before{content:"now "}.vfw .fw-obr .sn::before{content:"held since "}',
 '}',
-'@media (prefers-reduced-motion:reduce){.vfw .fw-press,.vfw .fw-seg .fw-pill,.vfw .fw-chev{transition:none}}'
+'@media (prefers-reduced-motion:reduce){.vfw .fw-press,.vfw .fw-seg .fw-pill,.vfw .fw-chev,.vfw .fw-sh-cut{transition:none}.vfw .fw-sh.fw-in,.vfw .fw-sh-scrim.fw-in{animation:none}}'
 ].join('\n');
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -150,7 +189,7 @@ function index(d){
   Object.keys(d.sports || {}).forEach(function(sport){ var ws = d.sports[sport];
     Object.keys(ws).forEach(function(w){ var e = ws[w], dv = e.dive || {}, k = sport + '|' + w;
       var x = {k: k, w: w, sport: sport, name: shortName(w, e.name), wl: [e.w_, e.l_], roi: e.roi, n: e.n, usual: e.usual, pnl: e.pnl,
-        rk: e.rk || null, sc: !!e.sc, clv: e.clv || {}, lane: dv.lane || {}, fav: dv.fav, dog: dv.dog, size: dv.size || {}, legs: e.legs || [], pos: e.positions || []};
+        rk: e.rk || null, sc: !!e.sc, clv: e.clv || {}, l30roi: e.l30_roi, l30: e.l30 || null, d30: e.d30 || null, odds: e.odds || null, curve: e.curve || null, lane: dv.lane || {}, fav: dv.fav, dog: dv.dog, size: dv.size || {}, legs: e.legs || [], pos: e.positions || []};
       W.push(x); BOOK[k] = x; if (x.pos.length) OPEN[k] = x.pos.length;
       x.pos.forEach(function(p){ var id = p.ev + '@' + p.gst;
         (gm[id] = gm[id] || {id: id, sport: sport, ev: p.ev, gst: p.gst, pos: []}).pos.push({k: k, p: p}); }); }); });
@@ -211,26 +250,114 @@ function whoElse(g, p){
       : sf && sf.side && sf.units > 0 ? 'The Sharps card shows no size on CFB games.' : 'The Sharps card has no suggested play in this market.') + '</p>' +
     '<div class="fw-det-l"><a href="#sharps">Open the Sharps cards</a>' + (key ? '<a href="#game/' + encodeURIComponent(key) + '">Open this game</a>' : '') + '</div>';
 }
-/* one bet, opened from the feed: the position, how this wallet has done on bets like it, and who else holds the game */
-function detail(g, x){
-  var p = x.p, w = BOOK[x.k], band = p.press == null ? null : p.press < 0.75 ? ['small', 'Under its usual stake'] : p.press < PRESS ? ['usual', 'Around its usual stake'] : ['big', 'At 1.5x its usual stake or more'];
-  var fav = p.px == null ? null : p.px >= 0.5, legs = w.legs.slice(0, 20), lw = legs.filter(function(l){ return l[1] === 'win'; }).length, ll = legs.filter(function(l){ return l[1] === 'loss'; }).length;
-  return '<div class="fw-det"><h5>This bet</h5><dl class="fw-kv">' +
-      '<dt>Bet</dt><dd>' + GROUPS[p.g] + ' · ' + esc(p.side) + '<span class="fw-num">' + lineTxt(p.g, p.line) + '</span></dd>' +
-      '<dt>Price now</dt><dd class="fw-num">' + (cents(p.px) || 'n/a') + '</dd>' +
-      '<dt>Worth now</dt><dd class="fw-num">' + usd(p.usd) + (p.shares != null ? ' · ' + Math.round(p.shares).toLocaleString('en-US') + ' shares' : '') + '</dd>' +
-      '<dt>Size</dt><dd class="fw-num">' + (p.press != null ? p.press.toFixed(1) + 'x its usual ' + usd(w.usual) : 'no usual stake yet') + '</dd>' +
+/* ---------- the account sheet ----------
+   Opened from a bet in the feed. A banner for the bet, three headline reads, then three tabs: This bet, Their record, Who else.
+   Every number is a stored field (wallets.json, live.json). The record tab's last-30-day cuts and profit curve come from the wallet's
+   settled positions (build_side_cards.py wallet_sheet); a wallet file built before that shipped simply shows no 30-day lines. */
+var MKT_G = {ml: 'moneyline', spread: 'spread', total: 'total'};
+function sgn(v){ return v == null ? '' : (v < 0 ? '-' : '+') + usd(Math.abs(v)); }
+function findBet(id){
+  for (var i = 0; i < GAMES.length; i++){ var g = GAMES[i];
+    for (var j = 0; j < g.pos.length; j++){ var x = g.pos[j]; if (betId(g, x) === id) return {g: g, x: x}; } }
+  return null;
+}
+/* entry-price bands, the same cut points as ODDS_BANDS in build_side_cards.py */
+var ODDS = [['dd', '+200 or longer', 0, 1 / 3], ['d2', '+150 to +199', 1 / 3, 0.4], ['d1', '+100 to +149', 0.4, 0.5], ['f1', '-100 to -149', 0.5, 0.6], ['f2', '-150 to -199', 0.6, 2 / 3], ['ff', '-200 or shorter', 2 / 3, 1.01]];
+function oddsBand(px){ if (px == null) return null; for (var i = 0; i < ODDS.length; i++) if (px >= ODDS[i][2] && px < ODDS[i][3]) return ODDS[i]; return null; }
+function sizeBand(r){ return r == null ? null : r < 0.75 ? 'small' : r < PRESS ? 'usual' : 'big'; }
+var SIZE_LBL = {small: 'Under its usual stake', usual: 'Around its usual stake', big: '1.5x its usual or more'};
+/* the five cuts of a wallet around one position: [key, title, pill, all-time cell, last-30-day cell, matcher over a curve row] */
+function cuts(w, p){
+  var fav = p.px == null ? null : p.px >= 0.5, ob = oddsBand(p.px), sb = sizeBand(p.press), d30 = w.d30 || {};
+  return [
+    ['all', w.sport.toUpperCase(), 'All bets', [w.wl[0], w.wl[1], w.roi], w.d30 ? d30.all : undefined, function(){ return true; }],
+    ['mkt', w.sport.toUpperCase() + ' ' + GROUPS[p.g], 'This bet type', w.lane[p.g], w.d30 ? (d30.lane || {})[p.g] : undefined, function(r){ return r[3] === p.g; }],
+    ['side', fav == null ? 'Price' : fav ? 'Favorites' : 'Underdogs', fav == null ? 'No price' : (fav ? 'Favorite' : 'Underdog') + ' · ' + cents(p.px), fav ? w.fav : w.dog, w.d30 ? (fav ? d30.fav : d30.dog) : undefined,
+      function(r){ return r[4] != null && (r[4] >= 0.5) === fav; }],
+    ['size', 'At this size', sb ? SIZE_LBL[sb] : 'No usual stake yet', sb ? w.size[sb] : null, w.d30 && sb ? (d30.size || {})[sb] : undefined,
+      function(r){ return w.usual && r[2] > 0 && sizeBand(r[2] / w.usual) === sb; }],
+    ['odds', 'At these odds', ob ? ob[1] : 'No price', ob && w.odds ? w.odds[ob[0]] : null, w.d30 && ob ? ((d30.odds || {})[ob[0]]) : undefined,
+      function(r){ var b = oddsBand(r[4]); return !!(b && ob && b[0] === ob[0]); }]
+  ];
+}
+function cutCard(c, on){
+  var a = c[3], m = c[4];
+  return '<button type="button" class="fw-sh-cut' + (on ? ' on' : '') + '" data-sh-cut="' + c[0] + '" aria-pressed="' + on + '"><span class="t">' + esc(c[1]) + '</span><span class="pl">' + esc(c[2]) + '</span>' +
+    (a ? '<span class="r fw-num"><b>' + a[0] + '-' + a[1] + '</b><b class="' + cls(a[2]) + '">' + pct(a[2]) + '</b></span><span class="s">' + Math.round(a[0] / ((a[0] + a[1]) || 1) * 100) + '% wins, all-time' + (a[0] + a[1] < SEASONED ? ' · small sample' : '') + '</span>'
+      : '<span class="s" style="margin-top:6px">No bets yet</span>') +
+    '<span class="a">' + (m === undefined ? 'Last 30 days: not in this file yet' : m ? 'Last 30 days <b class="fw-num">' + m[0] + '-' + m[1] + '</b> <b class="fw-num ' + cls(m[2]) + '">' + pct(m[2]) + '</b>' : 'Last 30 days: no bets') + '</span></button>';
+}
+/* last 30 days of settled bets as a running total. Actual = dollars; Flat = every bet one unit (profit / stake), so a big stake does not hide the pattern. */
+function curveSvg(w, S, match){
+  var rows = w.curve; if (!rows) return '';
+  var flat = S.cm === 'flat', hl = S.hm, end = STORE.d.built, t0 = end - 30 * 86400;
+  var pts = rows.filter(function(r){ return r[0] >= t0 && (hl !== 'only' || match(r)); });
+  if (!pts.length) return '<p class="fw-det-n">' + (hl === 'only' ? 'None of their last-30-day bets match this cut.' : 'No settled bets in the last 30 days.') + '</p>';
+  var c = 0, xy = [[t0, 0]].concat(pts.map(function(r){ c += flat ? (r[2] > 0 ? r[1] / r[2] : 0) : r[1]; return [r[0], c]; })); xy.push([end, c]);
+  var mn = Math.min.apply(null, xy.map(function(p){ return p[1]; }).concat(0)), mx = Math.max.apply(null, xy.map(function(p){ return p[1]; }).concat(0)), rg = (mx - mn) || 1;
+  var W_ = 640, H_ = 150, X = function(t){ return (t - t0) / (end - t0) * W_; }, Y = function(v){ return H_ - 10 - (v - mn) / rg * (H_ - 24); };
+  var d = xy.map(function(p, i){ return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join(' '), col = c >= 0 ? 'var(--c-good)' : 'var(--c-bad)';
+  var dots = hl === 'off' ? '' : pts.map(function(r, i){ return match(r) && hl === 'hl' && S.cut !== 'all' ? '<circle cx="' + X(r[0]).toFixed(1) + '" cy="' + Y(xy[i + 1][1]).toFixed(1) + '" r="4.5" fill="var(--c-gold)" stroke="var(--c-box)" stroke-width="2"/>' : ''; }).join('');
+  return '<svg viewBox="0 0 ' + W_ + ' ' + H_ + '" role="img" aria-label="Running ' + (flat ? 'flat-stake' : 'dollar') + ' profit over the last 30 days, ending ' + (flat ? c.toFixed(1) + ' units' : sgn(c)) + '">' +
+    '<line x1="0" x2="' + W_ + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" stroke="var(--c-line2)" stroke-dasharray="3 5"/>' +
+    '<path d="' + d + ' L' + W_ + ' ' + H_ + ' L0 ' + H_ + 'Z" fill="' + col + '" opacity=".13"/><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' + dots + '</svg>' +
+    '<p class="fw-sh-n"><b>' + pts.length + ' settled ' + (pts.length === 1 ? 'bet' : 'bets') + '</b>' + (hl === 'only' ? ' matching this cut' : hl === 'hl' && S.cut !== 'all' ? ', ' + pts.filter(match).length + ' matching this cut (gold dots)' : '') + '. Shown by the day each one settled.</p>';
+}
+function chartHead(w, S, match){
+  var rows = w.curve; if (!rows) return '';
+  var flat = S.cm === 'flat', t0 = STORE.d.built - 30 * 86400, tot = 0;
+  rows.forEach(function(r){ if (r[0] >= t0 && (S.hm !== 'only' || match(r))) tot += flat ? (r[2] > 0 ? r[1] / r[2] : 0) : r[1]; });
+  return '<div class="fw-sh-ch-h"><h5>Profit, last 30 days</h5><span class="fw-sh-ch-v fw-num ' + cls(tot) + '">' + (flat ? (tot >= 0 ? '+' : '') + tot.toFixed(1) + ' units' : sgn(tot)) + '</span><span class="sp"></span>' +
+    seg('cm', [['actual', 'Actual'], ['flat', 'Flat']], S.cm) + seg('hm', [['hl', 'Highlight'], ['only', 'Only these']], S.hm === 'off' ? 'hl' : S.hm) + '</div>';
+}
+function contested(g, p){
+  if (CARDS.state === 'idle' || CARDS.state === 'busy') return null;
+  var c = CARDS.by[g.id], m = c && c.markets && c.markets[p.g]; if (!m) return {none: true};
+  var o = 0, n = 0; Object.keys(m.sides).forEach(function(s){ if (s === p.side) return; var a = (m.sides[s] || {}).all; if (a){ o += a.sharp_usd || 0; n += ((a.counts || {}).hc || 0) + ((a.counts || {}).sharp || 0); } });
+  return {usd: o, n: n};
+}
+function sheetBody(S, g, x, w, p){
+  var cs = cuts(w, p), cur = cs.filter(function(c){ return c[0] === S.cut; })[0] || cs[1], tab = S.tab;
+  if (tab === 'rec'){
+    var a = cur[3], m = cur[4];
+    return '<div class="fw-sh-cuts">' + cs.map(function(c){ return cutCard(c, c[0] === cur[0]); }).join('') + '</div>' +
+      '<div class="fw-sh-ch">' + chartHead(w, S, cur[5]) + (w.curve ? curveSvg(w, S, cur[5]) : '<p class="fw-det-n">The 30-day profit curve appears once the wallet file carries it (after the next card build).</p>') + '</div>' +
+      '<div class="fw-strip" style="margin-top:14px" role="img" aria-label="Last games">' + w.legs.slice(0, 20).map(function(l){ return '<i class="' + (l[1] === 'win' ? 'w' : l[1] === 'loss' ? 'l' : '') + '"></i>'; }).join('') +
+        '<span>last ' + Math.min(20, w.legs.length) + ' games, newest first</span></div>' +
+      (w.clv.n ? '<p class="fw-det-n">Bought below the closing price on ' + w.clv.beat + ' of ' + w.clv.n + ' bets (' + Math.round(w.clv.beat / w.clv.n * 100) + '%).</p>' : '') +
+      '<p class="fw-det-n">Record and dollar ROI in ' + w.sport.toUpperCase() + ' as of the last ledger run. Lifetime profit ' + sgn(w.pnl) + '.' + (w.n < SEASONED ? ' <b class="fw-dn">Only ' + w.n + ' graded bets: treat this record as thin.</b>' : '') + '</p>';
+  }
+  if (tab === 'who') return whoElse(g, p);
+  var mv = p.px != null && p.px_first != null ? Math.round((p.px - p.px_first) * 100) : null, h = (p.hist || []).filter(function(y){ return y[1] > 0; });
+  var plays = cur[3] ? GROUPS[p.g] + ' ' + cur[3][0] + '-' + cur[3][1] + ', ' + pct(cur[3][2]) : '';
+  var lane = w.lane[p.g], sb = sizeBand(p.press), sz = sb ? w.size[sb] : null;
+  return '<div class="fw-sh-3"><div><h5>Position</h5><dl class="fw-kv"><dt>Worth now</dt><dd class="fw-num">' + usd(p.usd) + '</dd>' +
+      '<dt>Shares</dt><dd class="fw-num">' + (p.shares != null ? Math.round(p.shares).toLocaleString('en-US') : 'n/a') + '</dd>' +
       '<dt>Held since</dt><dd class="fw-num">' + (ct(p.since, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}) || 'n/a') + '</dd>' +
-      firstSeen(p) +
-      (p.two_way ? '<dt>Note</dt><dd class="fw-two">also holds the other side of this market</dd>' : '') + '</dl>' + sizeOverTime(p) +
-    '<h5>How ' + esc(w.name) + ' has done on bets like this (' + w.sport.toUpperCase() + ')</h5><dl class="fw-like">' +
-      recRow(GROUPS[p.g] + ' bets', w.lane[p.g]) +
-      (fav == null ? '' : recRow(fav ? 'Favorites (this one is ' + cents(p.px) + ' now)' : 'Underdogs (this one is ' + cents(p.px) + ' now)', fav ? w.fav : w.dog)) +
-      (band ? recRow(band[1], w.size[band[0]]) : '') + recRow('All bets', [w.wl[0], w.wl[1], w.roi]) + '</dl>' +
-      (w.clv.n ? '<p class="fw-det-n">Bought below the closing price on ' + w.clv.beat + ' of ' + w.clv.n + ' bets.</p>' : '') +
-      (legs.length ? '<div class="fw-strip" role="img" aria-label="Last ' + legs.length + ' games: ' + lw + ' wins, ' + ll + ' losses">' +
-        legs.map(function(l){ return '<i class="' + (l[1] === 'win' ? 'w' : l[1] === 'loss' ? 'l' : '') + '"></i>'; }).join('') + '<span>last ' + legs.length + ' games, newest first: ' + lw + '-' + ll + '</span></div>' : '') +
-    '<h5>Who else is on this game</h5>' + whoElse(g, p) + '</div>';
+      (p.two_way ? '<dt>Note</dt><dd class="fw-two">also holds the other side</dd>' : '') + '</dl></div>' +
+    '<div><h5>Market since first seen</h5><dl class="fw-kv"><dt>First seen at</dt><dd class="fw-num">' + (cents(p.px_first) || 'n/a') + '</dd><dt>Now</dt><dd class="fw-num">' + (cents(p.px) || 'n/a') + '</dd>' +
+      (mv == null ? '' : '<dt>Move</dt><dd class="fw-num ' + cls(mv) + '">' + (mv === 0 ? 'none' : (mv > 0 ? '+' : '') + mv + '¢ ' + (mv > 0 ? 'toward' : 'against')) + '</dd>') + '</dl>' +
+      '<p class="fw-det-n">The price they paid is not stored. This is the market at the first scan that saw them holding it.</p></div>' +
+    '<div>' + (h.length ? sizeOverTime(p) : '<h5>Size over time</h5><p class="fw-det-n">No size history yet.</p>') + '</div></div>' +
+    '<div class="fw-sh-ctx"><b>Plays like this:</b> ' + (lane ? GROUPS[p.g] + ' ' + lane[0] + '-' + lane[1] + ', ' + pct(lane[2]) : 'no graded bets in this market') +
+      (sz ? ' · ' + SIZE_LBL[sb].toLowerCase() + ' ' + sz[0] + '-' + sz[1] + ', ' + pct(sz[2]) : '') + (w.clv.n ? ' · beat the close on ' + Math.round(w.clv.beat / w.clv.n * 100) + '% (' + w.clv.n + ' bets)' : '') + '</div>';
+}
+function sheet(S, anim){
+  var f = findBet(S.bet); if (!f) return '';
+  var g = f.g, x = f.x, p = x.p, w = BOOK[x.k], c = contested(g, p), fol = !!FOLLOWS[x.k];
+  var l30 = w.l30 && (w.l30.w + w.l30.l) ? w.l30 : null, roi30 = l30 ? l30.roi : w.l30roi;
+  var K = '<div class="fw-sh-k"><div><b class="fw-num' + (p.press >= PRESS ? ' fw-up' : '') + '">' + (p.press != null ? p.press.toFixed(1) + '×' : 'n/a') + '</b><span>Their usual size</span><i class="fw-num">' + (w.usual ? 'usual ' + usd(w.usual) + ' · this ' + usd(p.usd) : 'no usual stake yet') + '</i></div>' +
+    '<div><b class="fw-num ' + cls(l30 ? l30.pnl : roi30) + '">' + (l30 ? sgn(l30.pnl) : pct(roi30) || 'n/a') + '</b><span>Last 30 days' + (l30 ? '' : ' ROI') + '</span><i class="fw-num">' + (l30 ? pct(roi30) + ' ROI · ' + l30.w + '-' + l30.l : roi30 == null ? 'under 2 graded bets' : 'dollars not in this file yet') + '</i></div>' +
+    '<div><b' + (c && c.usd ? ' style="color:var(--c-warn)"' : '') + '>' + (!c ? '…' : c.none ? 'No card' : c.usd ? 'Contested' : 'Uncontested') + '</b><span>The other side</span><i class="fw-num">' + (!c ? 'loading the Sharps card' : c.none ? 'no Sharps card for this market' : c.usd ? usd(c.usd) + ' hot money · ' + c.n + (c.n === 1 ? ' wallet' : ' wallets') : 'no hot money against it') + '</i></div></div>';
+  var T = [['bet', 'This bet'], ['rec', 'Their record'], ['who', 'Who else']];
+  return '<div class="fw-sh-scrim' + (anim ? ' fw-in' : '') + '" data-sh-scrim><div class="fw-sh' + (anim ? ' fw-in' : '') + '" role="dialog" aria-modal="true" aria-label="' + esc(w.name) + ', ' + esc(p.side) + '">' +
+    '<div class="fw-sh-top"><div class="fw-sh-av" aria-hidden="true">' + esc(String(w.name).charAt(0).toUpperCase()) + '</div><div><h2>' + esc(w.name) + '</h2><p>' + w.sport.toUpperCase() + (w.rk && w.rk.tier !== 'thin' ? ' · price-' + w.rk.tier : '') + ' · ' + w.n + ' graded bets · ' + sgn(w.pnl) + ' lifetime</p></div><span class="sp"></span>' +
+      '<button type="button" class="fw-sh-fol fw-press' + (fol ? ' on' : '') + '" data-sh-fol="' + x.k + '" aria-pressed="' + fol + '">' + (fol ? '★ Following' : '☆ Follow') + '</button><button type="button" class="fw-sh-x fw-press" data-sh-close aria-label="Close">×</button></div>' +
+    '<div class="fw-sh-ban"><span class="m">' + GROUPS[p.g] + ' · ' + esc(teams(g.ev)) + ' · ' + gameWhen(g.gst) + '</span><span class="s">' + esc(p.side) + '<span class="fw-num">' + lineTxt(p.g, p.line) + '</span></span>' +
+      '<span class="g fw-num">' + usd(p.usd) + ' now · held since ' + (ct(p.since, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}) || 'n/a') + ' CT</span><span class="px"><b class="fw-num">' + (cents(p.px) || 'n/a') + '</b><span>price now</span></span></div>' +
+    K + '<div class="fw-sh-tabs" role="tablist">' + T.map(function(t){ return '<button type="button" role="tab" aria-selected="' + (S.tab === t[0]) + '" class="' + (S.tab === t[0] ? 'on' : '') + '" data-sh-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+    '<div class="fw-sh-pan" role="tabpanel">' + sheetBody(S, g, x, w, p) + '</div>' +
+    '<p class="fw-sh-n">Context only, no suggested size. Price is the market now, not what they paid: no entry price is stored.' + (CARDS.state === 'ok' ? ' <a href="#sharps" style="color:inherit">Open the Sharps cards</a>' : '') + '</p></div></div>';
 }
 /* price when first seen and size over time (wallets.json px_first / hist, from the holders scan's own reads). Never an entry price. */
 function firstSeen(p){
@@ -267,10 +394,10 @@ function feed(S){
       ['ml', 'spread', 'total'].filter(function(k){ return by[k]; }).map(function(k){ return Object.keys(by[k]).map(function(side){
         return '<div class="fw-side"><div class="fw-side-h"><span>' + GROUPS[k] + '</span><b>' + esc(side) + '</b></div>' +
           by[k][side].sort(function(a, b){ return b.p.usd - a.p.usd; }).map(function(x){ var w = BOOK[x.k], p = x.p;
-            var id = betId(g, x), on = S.bet === id;
-            return '<button type="button" class="fw-bet fw-press" data-bet="' + esc(id) + '" aria-expanded="' + on + '"><span class="fw-chev" aria-hidden="true">›</span><span class="fw-nm">' + esc(w.name) + '</span><span class="fw-rec fw-num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
+            var id = betId(g, x);
+            return '<button type="button" class="fw-bet fw-press" data-bet="' + esc(id) + '" aria-haspopup="dialog"><span class="fw-chev" aria-hidden="true">›</span><span class="fw-nm">' + esc(w.name) + '</span><span class="fw-rec fw-num">' + w.wl[0] + '-' + w.wl[1] + '</span>' +
               (p.line != null ? '<span class="fw-rec fw-num">' + lineTxt(p.g, p.line).trim() + '</span>' : '') +
-              '<span class="fw-usd fw-num">' + usd(p.usd) + '</span>' + xUsual(p) + '</button>' + (on ? detail(g, x) : ''); }).join('') + '</div>'; }).join(''); }).join('') + '</article>'); });
+              '<span class="fw-usd fw-num">' + usd(p.usd) + '</span>' + xUsual(p) + '</button>'; }).join('') + '</div>'; }).join(''); }).join('') + '</article>'); });
   return {html: out.join(''), later: lat.join(''), nl: lat.length, nt: out.length, bets: bets, agree: agree};
 }
 /* results since each follow: settled games dated after the follow time, from the wallet's 20 most recent */
@@ -381,6 +508,7 @@ function draw(el){
   var was = S.sport;
   if (o.sport != null) S.sport = !o.sport || /^all$/i.test(o.sport) ? 'all' : String(o.sport).toLowerCase();
   if (S.sport !== was && S.sport === 'cbb'){ S.sort = 'roi'; S.seasoned = true; }   /* CBB markets are thin: open on ROI over 20+ bets; the bettor can undo either */
+  var anim = S.anim; S.anim = false;
   var F = feed(S), D = dir(S), nf = Object.keys(FOLLOWS).filter(function(k){ return BOOK[k] && (S.sport === 'all' || k.split('|')[0] === S.sport); }).length;
   var y = window.scrollY;
   el.innerHTML =
@@ -401,18 +529,24 @@ function draw(el){
     '<p class="fw-note"><b>How to read this.</b> Hot means 6 or more graded bets, a 55% or better win rate and a dollar ROI above 3% in that sport. That is a record, not proof of skill: in testing, hot wallets have not beaten the market going forward. ' +
       '<b>Price-sharp</b> (NBA and NFL) means the wallet\'s entry prices have beaten the closing line by more than luck explains, judged only on earlier games; price-dull is the reverse. That skill held up week to week in testing, but it is a better price, not a promise of winning picks, and these markets only show a wallet\'s buy a few minutes later. College wallets (CFB, CBB) carry no price tier: their price data is too thin to test, and in our tests college wallets did not beat the market. "Thin" marks a record under 20 bets. ' +
       'Stake is what the position is worth at the last scan, and "x usual" compares it with the wallet\'s usual stake. Price is the market\'s price now, not what the wallet paid: no entry price is stored. ' +
-      '"Held since" is the first scan that saw the position, and "price when first seen" is the market\'s price at that scan. Follows are saved in this browser only. This page shows who holds what and never suggests a size.</p>';
+      '"Held since" is the first scan that saw the position, and "price when first seen" is the market\'s price at that scan. Follows are saved in this browser only. This page shows who holds what and never suggests a size.</p>' + (S.bet ? sheet(S, anim) : '');
+  try { document.body.style.overflow = S.bet ? 'hidden' : ''; } catch (e) {}
   rails(el, S); window.scrollTo(0, y);
+  if (anim){ var cb = el.querySelector('[data-sh-close]'); if (cb) cb.focus({preventScroll: true}); }
 }
 function css(){ if (document.getElementById('vfw-css')) return; var s = document.createElement('style'); s.id = 'vfw-css'; s.textContent = CSS; document.head.appendChild(s); }
 function mountPage(el, o){
   o = o || {}; css();
   el.className = 'vfw' + (o.skin === 'new' ? ' vfw-new' : '');
   if (!el._fw){
-    el._fw = {o: o, sport: 'all', sort: 'tier', dir: null, mkt: 'all', later: false, seasoned: false, open: null, bet: null, shown: PAGE, geom: {}};
+    el._fw = {o: o, sport: 'all', sort: 'tier', dir: null, mkt: 'all', later: false, seasoned: false, open: null, bet: null, tab: 'bet', cut: 'mkt', cm: 'actual', hm: 'hl', anim: false, shown: PAGE, geom: {}};
     el.addEventListener('click', function(e){
       var S = el._fw, t = e.target, b;
-      if ((b = t.closest('[data-bet]'))){ S.bet = S.bet === b.dataset.bet ? null : b.dataset.bet; if (S.bet && CARDS.state === 'idle') loadCards(); draw(el); return; }
+      if ((b = t.closest('[data-bet]'))){ S.bet = b.dataset.bet; S.tab = 'bet'; S.cut = 'mkt'; S.anim = true; if (CARDS.state === 'idle') loadCards(); draw(el); return; }
+      if (t.closest('[data-sh-close]') || t.matches('[data-sh-scrim]')){ S.bet = null; draw(el); return; }
+      if ((b = t.closest('[data-sh-tab]'))){ S.tab = b.dataset.shTab; draw(el); return; }
+      if ((b = t.closest('[data-sh-cut]'))){ S.cut = b.dataset.shCut; draw(el); return; }
+      if ((b = t.closest('[data-sh-fol]'))){ var fk = b.dataset.shFol; if (FOLLOWS[fk]) delete FOLLOWS[fk]; else FOLLOWS[fk] = Math.floor(Date.now() / 1000); save(); draw(el); return; }
       if ((b = t.closest('[data-star]'))){ var k = b.dataset.star; if (FOLLOWS[k]) delete FOLLOWS[k]; else FOLLOWS[k] = Math.floor(Date.now() / 1000); save(); draw(el); return; }
       if ((b = t.closest('[data-sort]'))){ var k2 = b.dataset.sort; if (S.sort === k2) S.dir = (S.dir || SORT_DIR[k2] || 'desc') === 'asc' ? 'desc' : 'asc'; else { S.sort = k2; S.dir = null; } S.shown = PAGE; draw(el); return; }
       if (t.closest('[data-later]')){ S.later = !S.later; draw(el); return; }
@@ -421,7 +555,7 @@ function mountPage(el, o){
       if ((b = t.closest('.fw-row'))){ S.open = S.open === b.dataset.k ? null : b.dataset.k; draw(el); }
     });
     el.addEventListener('change', function(e){ if (e.target.matches('[data-seas]')){ el._fw.seasoned = e.target.checked; el._fw.shown = PAGE; draw(el); } });
-    el.addEventListener('keydown', function(e){ var r = e.target.closest('.fw-row'); if (r && e.target === r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); r.click(); } });
+    el.addEventListener('keydown', function(e){ if (e.key === 'Escape' && el._fw.bet){ el._fw.bet = null; draw(el); return; } var r = e.target.closest('.fw-row'); if (r && e.target === r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); r.click(); } });
   }
   el._fw.o = o;
   STORE.hosts = STORE.hosts.filter(function(h){ return h.el !== el && document.contains(h.el); });

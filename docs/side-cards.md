@@ -193,3 +193,20 @@ NBA and NFL only (`null` elsewhere). In NBA and NFL a **price-sharp wallet is li
 positions, so the Following page can show price skill. The "hot" rule (6+ bets, 55%, 3% ROI) is unchanged and is a record, not proof of skill.
 The Following page tags price-sharp and price-dull wallets, sorts by price skill by default, shows no size on college plays, and no longer
 calls wallets "proven" (`following.js?v=6`). Context only: no size, pick or agree total comes from it.
+
+### Change on 2026-11-21: the account sheet fields in the wallets file
+
+A bet in the Following feed now opens a sheet (centered on desktop, a bottom sheet on a phone) with the bet, three headline reads
+(size against usual, last-30-day profit, the other side) and three tabs: This bet, Their record, Who else. Wallets with at least one open
+position carry four more fields (the directory-only wallets do not, to keep the file small: 696 KB to 891 KB on the Nov 21 build, 48 wallets):
+
+- **`l30`:** last 30 days, `{w, l, pnl, roi}`: wins, losses, dollar profit, dollar ROI. Same positions and cash rule as `l30_roi`.
+- **`d30`:** the dive's cuts (market, favorite or underdog, size, odds band) over those 30 days only. Same cell shape as `dive`.
+- **`odds`:** all-time cuts by entry-price band (`dd` +200 or longer, `d2` +150 to +199, `d1` +100 to +149, `f1` -100 to -149,
+  `f2` -150 to -199, `ff` -200 or shorter). The bands are `ODDS_BANDS` in `build_side_cards.py` and the same cut points are in `following.js`.
+- **`curve`:** every settled cash position of the last 30 days, `[settled_at, dollar profit, stake, market group, entry price]`. The
+  sheet draws a running total (Actual, or Flat: every bet one unit, profit over stake) and gold-dots the bets matching the selected cut.
+
+Entry price in `curve` and `odds` is the stake-weighted price of a settled ledger position, a stored field. The open position's own
+entry price is still not stored; the sheet says so. `dive` on cards and `live.json` is unchanged (no `odds` there). Context only: no size,
+pick or agree total comes from any of it. Page: `following.js?v=10` (both Sharp Money layouts load the same file).
