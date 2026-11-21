@@ -19,9 +19,11 @@ import urllib.request
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 REC = os.path.join(ROOT, 'data', 'exchange_edge_record.json')
 RES = os.path.join(ROOT, 'data', 'exchange_edge_results.json')
-SCORE = {'nfl': 'football/nfl/scoreboard', 'cfb': 'football/college-football/scoreboard?groups=80&limit=400', 'nba': 'basketball/nba/scoreboard'}
+SCORE = {'nfl': 'football/nfl/scoreboard', 'cfb': 'football/college-football/scoreboard?groups=80&limit=400', 'nba': 'basketball/nba/scoreboard',
+         'cbb': 'basketball/mens-college-basketball/scoreboard?groups=50&limit=400'}   # cbb added 2026-11-21: CBB plays had no fallback and sat open (groups=50 is all of Division I)
 ALIAS = {'WSH': 'WAS', 'LA': 'LAR', 'JAC': 'JAX', 'LVR': 'LV', 'OAK': 'LV'}
 SPORT_ALIAS = {'cfb': {'CHA': 'CLT'},
+               'cbb': {'NCSU': 'NCST'},
                'nba': {'SA': 'SAS', 'GS': 'GSW', 'NY': 'NYK', 'NO': 'NOP', 'UTAH': 'UTA'}}   # ESPN's short NBA codes -> the feed's      # the feed's college abbreviation where it differs from ESPN's (CHA is the Hornets in the NBA, so this is per sport)
 n = lambda x, sp=None: SPORT_ALIAS.get(sp, {}).get(x) or ALIAS.get(x, x)
 
@@ -92,9 +94,17 @@ def main(argv=None):
                 if 'home' not in t or 'away' not in t:
                     continue
                 st = dt.datetime.strptime(e['date'], '%Y-%m-%dT%H:%MZ').replace(tzinfo=dt.timezone.utc).timestamp()
-                if n(t['away']['team']['abbreviation'], sport) == n(away, sport) and n(t['home']['team']['abbreviation'], sport) == n(home, sport) and abs(st - start) < 6 * 3600:
+                ea, eh = n(t['away']['team']['abbreviation'], sport), n(t['home']['team']['abbreviation'], sport)
+                fa, fh = n(away, sport), n(home, sport)
+                # College games: the feed and ESPN disagree on which side is home (KU/HOU and NCST/HALL of Nov 19-20 were both reversed), so a college
+                # game matches the same two teams either way round and the score is stored on the feed's own sides, which is how a play is graded.
+                flip = sport == 'cbb' and ea == fh and eh == fa
+                if ((ea == fa and eh == fh) or flip) and abs(st - start) < 6 * 3600:
                     try:
-                        res[gk] = {'home': int(t['home']['score']), 'away': int(t['away']['score']), 'sport': sport, 'start': start, 'ah': away, 'hh': home, 'src': 'espn'}
+                        hs, as_ = int(t['home']['score']), int(t['away']['score'])
+                        if flip:
+                            hs, as_ = as_, hs
+                        res[gk] = {'home': hs, 'away': as_, 'sport': sport, 'start': start, 'ah': away, 'hh': home, 'src': 'espn'}
                     except (TypeError, ValueError):
                         continue
                     added += 1
