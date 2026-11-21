@@ -61,14 +61,14 @@ _Does fresh role news beat what the market already priced? Pre-game info only: a
 
 ```
 trigger                   OPEN: over hit vs market said     CLOSE: over hit vs market said
-mixed                     n= 269  45.7% vs  49.2%           n= 314  44.9% vs  49.2%
-no news                   n=2277  49.1% vs  49.4%           n=2496  49.3% vs  49.4%
-usage down                n= 742  49.5% vs  49.3%           n= 843  49.5% vs  49.0%
-usage up / teammate out   n=3127  48.9% vs  49.6%           n=3356  48.5% vs  49.5%
+mixed                     n= 276  46.4% vs  49.2%           n= 320  45.3% vs  49.2%
+no news                   n=2269  49.1% vs  49.4%           n=2488  49.3% vs  49.4%
+usage down                n= 735  49.2% vs  49.3%           n= 837  49.3% vs  49.0%
+usage up / teammate out   n=3135  48.9% vs  49.6%           n=3364  48.5% vs  49.5%
 
 Vault vs market disagreements of 8+ pts (close):
   against the news         n= 931  Vault's side won 467-464  skill -0.064 z -4.1
-  agrees with the news     n= 536  Vault's side won 292-244  skill +0.002 z +0.1
+  agrees with the news     n= 535  Vault's side won 292-243  skill +0.003 z +0.2
   no news                  n= 851  Vault's side won 438-413  skill -0.039 z -2.4
 ```
 
@@ -83,7 +83,7 @@ spread  FanDuel     n= 83  toward  49 / away  23  avg move toward +0.24 pts ±0.
 total   Pinnacle    n= 46  toward  27 / away  16  avg move toward +0.21 pts ±0.15
 total   FanDuel     n= 54  toward  33 / away  15  avg move toward +0.26 pts ±0.14
         -> too few games (46 of 50)
-props   Pinnacle    n=288  toward 153 / away  21  net share toward +0.46 ±0.05
+props   Pinnacle    n=288  toward 154 / away  21  net share toward +0.46 ±0.05
 props   FanDuel     n= 89  toward  45 / away  11  net share toward +0.38 ±0.10
 props   DraftKings  n= 42  toward  15 / away   7  net share toward +0.19 ±0.15
         -> NO-GO: not ahead of the controls (+0.08, z +0.7)
