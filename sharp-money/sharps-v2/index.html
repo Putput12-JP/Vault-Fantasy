@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-sv2-skin="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sharps | Vault Fantasy</title>
+<meta name="description" content="Sharps and Following: wallet money on Polymarket, as context only.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#1A1A1A" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Geist+Mono:wght@500;600&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sv2.css?v=1">
+<script>
+/* first paint: theme and skin before the body renders. Every storage access is guarded; the page works without storage.
+   Theme: sv2-theme (dark, light, system), else the app's vault-appearance (light maps to light, anything else to dark),
+   else no override, so prefers-color-scheme decides. Skin: sv2-skin (default or apple). */
+(function () {
+  var d = document.documentElement;
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  var t = get('sv2-theme'), a = get('vault-appearance');
+  if (t !== 'dark' && t !== 'light' && t !== 'system') t = a ? (a === 'light' ? 'light' : 'dark') : 'system';
+  if (t !== 'system') d.setAttribute('data-theme', t);
+  if (get('sv2-skin') === 'apple') d.setAttribute('data-sv2-skin', 'apple');
+})();
+</script>
+</head>
+<body class="sv2">
+<a class="sv2-skip" href="#sv2-main">Skip to content</a>
+
+<header class="sv2-hd" id="sv2-hd" data-info="closed">
+  <div class="sv2-wrap">
+    <div class="sv2-hd-row">
+      <h1 id="sv2-title">Sharps</h1>
+      <nav class="sv2-routes sv2-seg sv2-seg--fill" id="sv2-routes" aria-label="Pages" data-rail-id="routes">
+        <a href="#sharps" data-route="sharps">Sharps</a>
+        <a href="#following" data-route="following">Following</a>
+      </nav>
+      <div class="sv2-hd-actions">
+        <button type="button" class="sv2-ibtn sv2-press sv2-press-btn" id="sv2-info-btn" aria-expanded="false" aria-controls="sv2-info" aria-label="How to read this">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5.5M12 7.6v.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" class="sv2-ibtn sv2-rf sv2-press sv2-press-btn" id="sv2-refresh" data-state="idle" aria-label="Refresh">
+          <svg class="sv2-rf-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="sv2-spinner xs" aria-hidden="true"></span>
+          <span class="sv2-rf-t">Refresh</span>
+        </button>
+        <button type="button" class="sv2-ibtn sv2-press sv2-press-btn" id="sv2-menu-btn" aria-expanded="false" aria-controls="sv2-menu" aria-label="Theme and style">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h16M4 16h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="8" r="2.4" fill="var(--sv2-page)" stroke="currentColor" stroke-width="2"/><circle cx="15" cy="16" r="2.4" fill="var(--sv2-page)" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="sv2-sub">
+      <p class="sv2-fresh" id="sv2-fresh" aria-label="Data freshness"><span class="sv2-sr">Loading</span></p>
+      <p class="sv2-context" id="sv2-context">Context only. The size is a flat 1u from an untested rule.</p>
+      <p class="sv2-guard" id="sv2-guard" role="status" hidden></p>
+    </div>
+    <div class="sv2-info" id="sv2-info" role="region" aria-label="How to read this" hidden></div>
+  </div>
+  <div class="sv2-menu" id="sv2-menu" role="group" aria-label="Theme and style" hidden>
+    <div>
+      <h2 class="sv2-h2">Theme</h2>
+      <div class="sv2-seg sv2-seg--fill sm fluid" id="sv2-theme-seg" role="group" aria-label="Theme" data-rail-id="theme">
+        <button type="button" data-v="system" aria-pressed="false">System</button>
+        <button type="button" data-v="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-v="light" aria-pressed="false">Light</button>
+      </div>
+    </div>
+    <div>
+      <h2 class="sv2-h2">Style</h2>
+      <div class="sv2-seg sv2-seg--fill sm fluid" id="sv2-skin-seg" role="group" aria-label="Style" data-rail-id="skin">
+        <button type="button" data-v="default" aria-pressed="false">Default</button>
+        <button type="button" data-v="apple" aria-pressed="false">Apple</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="sv2-main" tabindex="-1">
+  <div class="sv2-wrap">
+    <section class="sv2-page" id="sv2-page-sharps" data-sv2-page="sharps" aria-labelledby="sv2-title" hidden></section>
+    <section class="sv2-page" id="sv2-page-following" data-sv2-page="following" aria-labelledby="sv2-title" hidden></section>
+    <noscript><p class="sv2-empty-line">This page needs JavaScript.</p></noscript>
+  </div>
+</main>
+
+<nav class="sv2-tabbar" id="sv2-tabbar" aria-label="Pages">
+  <div class="sv2-seg sv2-seg--soft" id="sv2-tabs" data-rail-id="tabs">
+    <a href="#sharps" data-route="sharps"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 18V9M10 18V5M16 18v-6M21 18H3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Sharps</a>
+    <a href="#following" data-route="following"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8.5" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 20c.6-3.6 3.4-5.5 7-5.5s6.4 1.9 7 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Following</a>
+  </div>
+</nav>
+
+<div class="sv2-sheet-host" id="sv2-sheet-host"></div>
+<div class="sv2-sr" id="sv2-live" aria-live="polite" role="status"></div>
+
+<!-- one version number, bumped together -->
+<script src="sv2-core.js?v=1"></script>
+<script src="sv2-sharps.js?v=1"></script>
+<script src="sv2-following.js?v=1"></script>
+</body>
+</html>
