@@ -112,7 +112,7 @@ var CSS = [
 '.vfw .fw-note{margin:20px 0 0;font-size:11.5px;line-height:1.55;color:var(--c-dim);max-width:90ch}.vfw .fw-note b{color:var(--c-mut);font-weight:600}',
 '.vfw .fw-row>.c-meta{display:none}',
 /* the account sheet: opened from a bet in the feed (centered on desktop, a bottom sheet on a phone) */
-'.vfw .fw-sh-scrim{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}',
+'.vfw .fw-sh-scrim{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}',
 '.vfw .fw-sh{position:relative;width:min(900px,100%);max-height:calc(100vh - 32px);overflow-y:auto;overscroll-behavior:contain;background:var(--c-card);color:var(--c-ink);border-radius:var(--c-r);padding:22px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.5);border:1px solid var(--c-line)}',
 '.vfw .fw-sh.fw-in{animation:fw-sh-in 450ms var(--fw-spring)}.vfw .fw-sh-scrim.fw-in{animation:fw-sh-fade 220ms ease-out}',
 '@keyframes fw-sh-in{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}@keyframes fw-sh-fade{from{opacity:0}to{opacity:1}}',
@@ -182,7 +182,7 @@ function shortName(w, n){ return !n || /^0x[0-9a-fA-F]{20,}/.test(n) ? w.slice(0
 function teams(ev){ var m = /^[a-z]+-([a-z0-9]+)-([a-z0-9]+)-\d{4}/.exec(ev || ''); return m ? m[1].toUpperCase() + ' at ' + m[2].toUpperCase() : ev; }   /* slug: away, then home */
 
 /* ---------- data ---------- */
-var STORE = {d: null, state: 'loading', busy: false, hosts: [], timer: null};
+var STORE = {d: null, state: 'loading', busy: false, hosts: [], timer: null, waiters: []};
 var W = [], BOOK = {}, GAMES = [], OPEN = {};
 function index(d){
   W = []; BOOK = {}; OPEN = {}; var gm = {};
@@ -205,6 +205,7 @@ function load(){
       STORE.state = STORE.d ? 'ok' : 'none';
       STORE.hosts = STORE.hosts.filter(function(h){ return document.contains(h.el); });
       if (changed) STORE.hosts.forEach(function(h){ h.render(); });
+      STORE.waiters.splice(0).forEach(function(f){ f(); });
     });
 }
 var FOLLOWS = {};
@@ -503,6 +504,10 @@ function rails(el, S){
 }
 function draw(el){
   var S = el._fw, o = S.o;
+  if (el._sheetOnly){
+    var an = S.anim; S.anim = false; el.innerHTML = sheet(S, an); try { document.body.style.overflow = 'hidden'; } catch (e) {}
+    rails(el, S); if (an){ var c0 = el.querySelector('[data-sh-close]'); if (c0) c0.focus({preventScroll: true}); } return;
+  }
   if (STORE.state === 'loading'){ el.innerHTML = '<div class="fw-card fw-empty">Loading the wallets…</div>'; return; }
   if (STORE.state === 'none'){ el.innerHTML = '<div class="fw-card fw-empty"><b>The wallet file is not published yet</b>It appears after the next card build. Nothing is wrong with your follows.</div>'; return; }
   var was = S.sport;
@@ -564,6 +569,44 @@ function mountPage(el, o){
   if (STORE.state === 'loading') load();
   draw(el);
 }
+/* The sheet on its own, for the Sharps cards: a wallet row there names the wallet, the game, the market and the side, and this finds
+   that bet in wallets.json (the wallet's largest rung of it) and opens the same sheet over the page. Resolves false when the wallet or
+   the bet is not in the file (an unproven or excluded wallet), and nothing opens. */
+function openSheet(q){
+  css(); load();
+  return new Promise(function(done){
+    var go = function(){
+      if (!STORE.d){ done(false); return; }
+      var hit = null;
+      GAMES.forEach(function(g){ if (g.ev !== q.ev || +g.gst !== +q.gst) return;
+        g.pos.forEach(function(x){ if (x.k === q.sport + '|' + q.w && x.p.g === q.g && x.p.side === q.side && (!hit || x.p.usd > hit.x.p.usd)) hit = {g: g, x: x}; }); });
+      if (!hit){ done(false); return; }
+      closeSheet();
+      var el = document.createElement('div'); el.id = 'vfw-sheet-host'; el.className = 'vfw' + (/\/new\//.test(location.pathname) ? ' vfw-new' : ''); el.style.margin = '0';
+      el._sheetOnly = true; el._fw = {o: {}, bet: betId(hit.g, hit.x), tab: 'bet', cut: 'mkt', cm: 'actual', hm: 'hl', anim: true, geom: {}, sport: 'all'};
+      el.addEventListener('click', function(e){
+        var S = el._fw, t = e.target, b;
+        if (t.closest('[data-sh-close]') || t.matches('[data-sh-scrim]')){ closeSheet(); return; }
+        if ((b = t.closest('[data-sh-tab]'))){ S.tab = b.dataset.shTab; draw(el); return; }
+        if ((b = t.closest('[data-sh-cut]'))){ S.cut = b.dataset.shCut; draw(el); return; }
+        if ((b = t.closest('[data-sh-fol]'))){ var fk = b.dataset.shFol; if (FOLLOWS[fk]) delete FOLLOWS[fk]; else FOLLOWS[fk] = Math.floor(Date.now() / 1000); save(); draw(el); STORE.hosts.forEach(function(h){ if (h.el !== el && document.contains(h.el)) h.render(); }); return; }
+        if ((b = t.closest('.fw-seg>button'))){ S[b.parentNode.dataset.seg] = b.dataset.v; draw(el); }
+      });
+      document.addEventListener('keydown', escClose);
+      document.body.appendChild(el);
+      STORE.hosts.push({el: el, render: function(){ draw(el); }});
+      if (CARDS.state === 'idle') loadCards();
+      draw(el); done(true);
+    };
+    if (STORE.state === 'loading' || STORE.busy) STORE.waiters.push(go); else go();
+  });
+}
+function escClose(e){ if (e.key === 'Escape') closeSheet(); }
+function closeSheet(){
+  var el = document.getElementById('vfw-sheet-host'); if (!el) return;
+  document.removeEventListener('keydown', escClose); STORE.hosts = STORE.hosts.filter(function(h){ return h.el !== el; });
+  el.remove(); try { document.body.style.overflow = ''; } catch (e) {}
+}
 function wrap(fn, keys){
   return function(props){
     var U = window.__smKit().U, ref = U.useRef(null);
@@ -572,7 +615,7 @@ function wrap(fn, keys){
   };
 }
 window.VaultFollowing = {
-  mountPage: mountPage,
+  mountPage: mountPage, openSheet: openSheet, closeSheet: closeSheet,
   Page: wrap(function(el, p){ mountPage(el, {sport: p.sport || 'all'}); }, ['sport'])
 };
 })();
