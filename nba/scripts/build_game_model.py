@@ -61,6 +61,7 @@ class Model:
         self.status_counts = defaultdict(lambda: [1, 1])  # status -> [sat, played], Laplace prior
         self.pts = [0.0, 0]                 # this regular season's points scored, team-games (season-start option T)
         self.moves = {}                     # team -> {'in': [(aid, value)], 'out': [...]} at the last season start
+        self.gp = defaultdict(int)          # team -> regular-season games played this season (round 2 option E)
 
     # ── state helpers ──
     def new_season(self, s, roster=None):
@@ -80,6 +81,7 @@ class Model:
                     for t in d:
                         d[t] -= mu
             self.pts = [0.0, 0]
+            self.gp = defaultdict(int)
             if roster is not None:
                 self.apply_roster(roster)
         self.season = s
@@ -107,6 +109,14 @@ class Model:
 
     def value(self, p):
         return max(0.0, p['gs'] - self.P['REP'] * p['mpg'])
+
+    def k_team(self, team):
+        """Rating step for a team. Round 2 option E (docs/game-model-round2.md), off unless EK_B is set in P: the step is
+        K x (1 + EK_B x max(0, 1 - n / EK_N)), n = the team's regular-season games already played this season."""
+        b = self.P.get('EK_B') or 0.0
+        if not b:
+            return self.P['K']
+        return self.P['K'] * (1 + b * max(0.0, 1 - self.gp[team] / (self.P.get('EK_N') or 20)))
 
     def rotation(self, team, when):
         lim = when - dt.timedelta(days=self.P['ROT_DAYS'])
@@ -150,18 +160,33 @@ class Model:
         mh, ma = self.missing(g['home'], g['tip'], oracle), self.missing(g['away'], g['tip'], oracle)
         margin, total, ph, pa = self.predict(g, mh, ma)
         err = (g['hs'] - g['as']) - margin
-        self.R[g['home']] += P['K'] * err
-        self.R[g['away']] -= P['K'] * err
+        cap = P.get('ERR_CAP')                               # round 2 option M: a blowout moves the ratings no more than a cap-point miss
+        rerr = max(-cap, min(cap, err)) if cap else err
+        kh, ka = self.k_team(g['home']), self.k_team(g['away'])
+        mk = g.get('mk') if P.get('MK_W') else None          # round 3 option L (docs/game-model-round3.md), off unless MK_W is set:
+        if mk is not None:                                   # the ratings also learn from this game's closing line, known once it has tipped
+            rerr = P['MK_W'] * (mk - margin) + (1 - P['MK_W']) * err
+            kh = ka = P.get('MK_K') or P['K']
+        self.R[g['home']] += kh * rerr
+        self.R[g['away']] -= ka * rerr
         eh, ea = g['hs'] - ph, g['as'] - pa
+        kp, mt = P['KP'], (g.get('mt') if P.get('MT_W') else None)
+        if mt is not None:                                   # round 5 option LT (docs/game-model-round5.md), off unless MT_W is set: scoring
+            sm = g['mk'] if g.get('mk') is not None else margin   # also learns from the closing total, split by the closing margin
+            eh = P['MT_W'] * ((mt + sm) / 2 - ph) + (1 - P['MT_W']) * eh
+            ea = P['MT_W'] * ((mt - sm) / 2 - pa) + (1 - P['MT_W']) * ea
+            kp = P.get('MT_K') or P['KP']
         if not (P.get('TOT_RESET') and g['playoff']):       # option T: playoff games do not move scoring
-            self.O[g['home']] += P['KP'] * eh
-            self.D[g['away']] -= P['KP'] * eh
-            self.O[g['away']] += P['KP'] * ea
-            self.D[g['home']] -= P['KP'] * ea
+            self.O[g['home']] += kp * eh
+            self.D[g['away']] -= kp * eh
+            self.O[g['away']] += kp * ea
+            self.D[g['home']] -= kp * ea
             self.base += 0.002 * (eh + ea) / 2
         if not g['playoff']:
             self.pts[0] += g['hs'] + g['as']
             self.pts[1] += 2
+            self.gp[g['home']] += 1
+            self.gp[g['away']] += 1
         if not g['neutral'] and not g['playoff']:
             self.hfa_n += 1
             self.hfa += (g['hs'] - g['as'] - (margin - self.hfa) - self.hfa) / min(self.hfa_n, 1500)
@@ -198,6 +223,10 @@ def run(P, seasons, box, lines=None, inj=None, record_from=None):
         rows = box.get(g['game_id'], [])
         if not rows:
             continue
+        if (P.get('MK_W') or P.get('MT_W')) and lines:        # options L / LT: the closing home margin and total, read only by update(), after the game
+            ln = lines.get(g['game_id']) or {}
+            g['mk'] = -ln['spread_close'] if ln.get('spread_close') is not None else None
+            g['mt'] = ln.get('total_close')
         if record_from and g['season'] >= record_from:
             day = g['tip_et'].strftime('%Y-%m-%d')
             rec = {'g': g, 'actual_margin': g['hs'] - g['as'], 'actual_total': g['hs'] + g['as']}
