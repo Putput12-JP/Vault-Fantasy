@@ -764,3 +764,8 @@ body.sv2.sv2-lock { overflow: hidden; }
 body.sv2 { --sv2-pad: 24px; --sv2-gutter: 24px; line-height: 1.55; }
 body.sv2 .sv2-card { padding: calc(var(--sv2-pad) + 2px); }
 @media (max-width: 767px) { body.sv2 { --sv2-pad: 20px; --sv2-gutter: 18px; } }
+
+/* embedded inside the Sharp Money tabs (sharps-v2/embed.js): the shell supplies the page title and the Sharps / Following tabs */
+html.sv2-embed #sv2-title, html.sv2-embed .sv2-routes, html.sv2-embed .sv2-tabbar { display: none; }
+html.sv2-embed .sv2-hd-row { justify-content: flex-end; }
+html.sv2-embed body { padding-bottom: 0; }
