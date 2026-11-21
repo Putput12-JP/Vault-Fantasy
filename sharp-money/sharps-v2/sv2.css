@@ -754,3 +754,13 @@ body.sv2.sv2-lock { overflow: hidden; }
 .sv2 .sv2-fw-also { display: inline-flex; align-items: center; min-height: 24px; font: 500 12px/1.2 var(--sv2-sans); color: var(--sv2-faint); }
 .sv2 .sv2-fw-hc0 { display: inline-flex; align-items: center; min-height: 44px; font: 600 12px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
 .sv2 .sv2-fw-row > .sv2-star { flex: none; }
+
+/* ---- roomier layout (2026-11-21: everything was too compact) ----
+   Desktop scales the whole page together (type, spacing, tap targets) so proportions hold; phones keep their width
+   and get more padding and breathing room instead. */
+.sv2-wrap { max-width: 1320px; }
+@media (min-width: 768px) { body.sv2 { zoom: 1.1; } }
+@media (min-width: 1100px) { body.sv2 { zoom: 1.18; } }
+body.sv2 { --sv2-pad: 24px; --sv2-gutter: 24px; line-height: 1.55; }
+body.sv2 .sv2-card { padding: calc(var(--sv2-pad) + 2px); }
+@media (max-width: 767px) { body.sv2 { --sv2-pad: 20px; --sv2-gutter: 18px; } }
