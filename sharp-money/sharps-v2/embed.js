@@ -12,7 +12,7 @@
     if (sessionStorage.getItem('sm-legacy') === '1') return;
   } catch (e) {}
   var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
-  var V = { css: 8, core: 3, sharps: 2, following: 2 };
+  var V = { css: 9, core: 3, sharps: 2, following: 2 };
   var tpl = null, assets = null;
   /* the one slim line inside a tab: freshness on the left, info and refresh on the right. Same ids as the standalone header, so core drives it unchanged. */
   var ICON_INFO = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5.5M12 7.6v.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
