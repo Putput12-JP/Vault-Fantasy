@@ -1,8 +1,9 @@
 # Proven-sharps side cards (scripts/build_side_cards.py, docs/side-cards.md). Started by the holders scan (pm-holders.yml) right
 # after it pushes new T-15 keyframes, and every 10 minutes as a backstop:
 #   - frozen cards: one per new T-15 keyframe, committed once to pm_cards/ on `pm-holders-data` (never force-pushed)
-#   - live cards: every upcoming game, published as ONE parentless commit holding live.json and wallets.json on `pm-cards-live` (force-pushed,
-#     like nba-live), so a file rewritten every 10 minutes never grows any history
+#   - live cards: every upcoming game, published as ONE parentless commit holding live.json, wallets.json and since.json on `pm-cards-live`
+#     (force-pushed, like nba-live), so a file rewritten every 10 minutes never grows any history. wallets.json is held to its size budget
+#     (docs/sharps-v2-accounts-spec.md section 2): an over-budget file stops the run before the publish step and the last good file stays live.
 # Sharp money is context only: the cards never feed Top Reads, SM_GATE or an agree total. lock_shadow is the pre-registered
 # forward test of docs/sharp-card-prereg.md.
 name: Proven-sharps side cards
@@ -28,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit tests
-        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs
+        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets
       - name: Inputs (holders, ledger, Vault games)
         run: |
           if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then
@@ -42,8 +43,11 @@ jobs:
           git worktree add -q --detach hist origin/sharp-history
           git show origin/sharp-data:data.json > sharp_data.json || echo '{"games":[]}' > sharp_data.json
           # the last published live cards: each shown size keeps the price it was first flagged at while the side stays the same
-          git fetch -q --depth=1 origin +pm-cards-live:refs/remotes/origin/pm-cards-live 2>/dev/null \
-            && git show origin/pm-cards-live:live.json > prev_live.json || echo '{"games":[]}' > prev_live.json
+          git fetch -q --depth=1 origin +pm-cards-live:refs/remotes/origin/pm-cards-live 2>/dev/null || true
+          git show origin/pm-cards-live:live.json > prev_live.json 2>/dev/null || echo '{"games":[]}' > prev_live.json
+          # the last published wallets file: `retained` (wallets that left the list) carries forward from it. A file without V2 keys, or none,
+          # makes the build seed `retained` from a 60 day replay (a one-time step)
+          git show origin/pm-cards-live:wallets.json > prev_wallets.json 2>/dev/null || echo '{}' > prev_wallets.json
           # The benchmark's published exclusion list (market makers and traders), for the `sfx` shadow variant; on a failed fetch the
           # variant is simply left out of this run, never built on an empty list
           curl -sf --max-time 30 https://raw.githubusercontent.com/dpk1212/nhl-savant/main/public/sharp_intel_excluded_wallets.json \
@@ -55,7 +59,8 @@ jobs:
         run: |
           python3 scripts/build_side_cards.py --holders pmdata/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
             --frozen-out pmdata/pm_cards --live-out live/live.json --closes data/pm_closes.json --prev-live prev_live.json \
-            --sf-excluded sf_excluded.json --scorecard-dir data --wallets-out live/wallets.json
+            --sf-excluded sf_excluded.json --scorecard-dir data --wallets-out live/wallets.json --prev-wallets prev_wallets.json \
+            --no-budget-exit     # the size gate is its own step below, after the frozen cards are committed
       - name: Commit frozen cards (append-only)
         if: env.SKIP != '1'
         run: |
@@ -68,6 +73,9 @@ jobs:
           ok = H.commit_push("pmdata", "pm_cards", sports, "pm cards: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
           sys.exit(0 if ok and H.remote_has_head("pmdata") else 1)
           PY
+      - name: Wallets file size gate
+        if: env.SKIP != '1'
+        run: python3 -I scripts/sharps_v2/check_size.py live/wallets.json
       - name: Publish live cards (single commit, force-pushed)
         if: env.SKIP != '1'
         run: |
@@ -75,6 +83,7 @@ jobs:
           git config user.email "vault-bot@users.noreply.github.com"
           blob=$(git hash-object -w live/live.json)
           wblob=$(git hash-object -w live/wallets.json)      # every proven wallet's book and open positions, for a follow page
-          tree=$(printf '100644 blob %s\tlive.json\n100644 blob %s\twallets.json\n' "$blob" "$wblob" | git mktree)
+          sblob=$(git hash-object -w live/since.json)        # each wallet's dated settled list, for "Since you followed" (not read by the classic page)
+          tree=$(printf '100644 blob %s\tlive.json\n100644 blob %s\twallets.json\n100644 blob %s\tsince.json\n' "$blob" "$wblob" "$sblob" | git mktree)
           c=$(git commit-tree "$tree" -m "pm cards live $(date -u +%FT%TZ)")
           git push -q --force origin "$c:refs/heads/pm-cards-live"

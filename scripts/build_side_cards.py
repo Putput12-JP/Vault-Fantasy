@@ -55,9 +55,14 @@ The `sf` size (scripts/sf_rungs.py) also reads Pinnacle's moves from Vault's boo
 only rows at or before the cut, and ledger-wide 30-day market books (TOP3-PICK ranks, GAP-LEAD) and season tier-5 reads.
 
 usage: build_side_cards.py --holders DIR --ledger DIR [--sharp-data data.json] --frozen-out DIR --live-out FILE [--sports nba,nfl,cfb]
-       [--book-tape DIR]
+       [--book-tape DIR] [--prev-wallets FILE] [--now EPOCH] [--wallets-only]
+
+Wallets file V2 (docs/sharps-v2-accounts-spec.md, docs/side-cards.md "Wallets file"): additive fields only, every V1 key keeps its name, shape and
+value. `--prev-wallets` is the last published wallets.json (carries `retained` forward); `--now` pins the build time (reproducible runs);
+`--wallets-only` skips the frozen and live cards (a local wallets run).
 """
-import argparse, bisect, datetime as dt, glob, json, math, os, re, sys, time
+import argparse, bisect, datetime as dt, glob, json, math, os, re, statistics, sys, time
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pm_ledger import CUTOFF_SEC, FULL_GAME  # noqa: E402
@@ -88,6 +93,20 @@ EVENT_RE = re.compile(r"^(.*?-\d{4}-\d{2}-\d{2})")
 DATE_RE = re.compile(r"-(\d{4}-\d{2}-\d{2})$")
 START_GAP_FLAG = 10 * 60                  # Polymarket and Vault start times more than 10 min apart (prereg "known limits")
 VERSION = 1
+WALLETS_VERSION = 2                        # the wallets file only (docs/sharps-v2-accounts-spec.md); cards keep VERSION
+SINCE_DAYS, RETAIN_DAYS = 60, 60           # window of the since.json lists; days a wallet that left the list stays under `retained`
+WALLETS_MAX_KB, WALLETS_NEW_MAX_KB = 1350, 400   # size budget (thousands of bytes, as the spec counts the old 946 KB file) of the wallets file and of the V2 fields in it (spec section 2)
+SINCE_FILE = "since.json"                  # the dated settled list per wallet, published beside wallets.json (kept out of it for the size budget, spec section 2 K)
+BUDGET_EXIT = 3                            # exit code of a build whose wallets file is over its size budget
+CT_ZONE = "America/Chicago"
+HEX_NAME = re.compile(r"^0x[0-9a-fA-F]{20,}")     # following.js shortName: a name that is only a wallet address
+V2_TIER = {"sharp": "beats", "mid": "even", "dull": "loses", "thin": "few"}     # pm_clv_tiers tier -> V2 tier (no new threshold)
+# every key V2 adds, so a reader (and the back-compat test) can strip them and get the V1 file
+V2_TOP_KEYS = ("v2_fields", "since_from", "since_file", "retained")
+V2_WALLET_KEYS = ("flat_roi", "fwd", "first_seen", "last_settled", "n30_games", "usual_med", "sc_sport", "sc_n", "name_disp", "name_src",
+                  "exp_w", "luck_p", "v2")
+V2_POSITION_KEYS = ("side_usd", "side_rungs", "side_press", "px_age_min")
+V2_RK_KEYS = ("post", "sd")
 VARIANTS = ("all", "fwd")                  # plus "sfx" when the benchmark's exclusion list is given (--sf-excluded)
 SIZE_BANDS = (0.0, 0.75, 1.5, 3.0)        # size vs usual stake bands for the "at this size" record (below 0.75x, 0.75 to 1.5x, ...)
 CLOSE_STALE = 30 * 60                     # a keyframe price older than this at the cut is not a close (prereg "unpriced" rule)
@@ -146,7 +165,7 @@ def load_closes(holders, sport, markets, pm_closes):
 # ---------- ledger: per-wallet books as of a time ----------
 
 class Ledger:
-    def __init__(self, rows, markets, first_seen, user_stats, run_at=None, closes=None):
+    def __init__(self, rows, markets, first_seen, user_stats, run_at=None, closes=None, first_seen_pub=None):
         self.by_w = {}
         for r in rows:
             self.by_w.setdefault(r["w"], []).append(r)
@@ -155,6 +174,7 @@ class Ledger:
         self.keys = {w: [r["settled_at"] for r in rs] for w, rs in self.by_w.items()}
         self.markets = markets
         self.first_seen = first_seen
+        self.first_seen_pub = first_seen if first_seen_pub is None else first_seen_pub   # the date the wallets file shows (see load)
         self.us = {}
         for s in user_stats:
             self.us.setdefault(s["w"], []).append(s)
@@ -187,12 +207,19 @@ class Ledger:
                 us += [json.loads(l) for l in f if l.strip()]
         markets = j(os.path.join(root, "markets", sport + ".json"), {})
         fs = j(os.path.join(root, "first_seen.json"), {})
+        pub = None
         if follow:
-            fs = {**j(os.path.join(root, "follow_only.json"), {}), **fs}
+            fo = j(os.path.join(root, "follow_only.json"), {})
+            # The date the wallets file publishes is the EARLIEST of the two files for a wallet in both: build_pm_ledger stamped `src`
+            # forward from the follow-only date it had at the time, so a later first_seen.json date would put forward rows before the
+            # published date. `first_seen` itself (what stats() and the cuts read) keeps the registered date winning, so no V1 number moves.
+            pub = {**fo, **{w: min(fo.get(w, t), t) for w, t in fs.items()}}
+            fs = {**fo, **fs}
         else:                                        # a follow-only wallet's rows never reach a card ledger
             rows = [r for r in rows if r["w"] in fs]
         return cls(rows, markets, fs, us,
-                   (j(os.path.join(root, "summary.json"), {}) or {}).get("run_at"), load_closes(holders, sport, markets, pm_closes))
+                   (j(os.path.join(root, "summary.json"), {}) or {}).get("run_at"), load_closes(holders, sport, markets, pm_closes),
+                   first_seen_pub=pub)
 
     def clv_tiers(self, asof):
         """{wallet: {n, mean, post, sd, p, tier}} as of `asof`: games that started before it, stored closes only (docs/pm-clv-tiers.md).
@@ -308,7 +335,9 @@ def positions(rows, markets, closes=None):
         side = outs[r["oi"]] if r["oi"] < len(outs) else r["oi"]
         key = (event_of(mk.get("slug")) or r["cid"], r.get("mt"), side)
         p = pos.setdefault(key, {"ev": key[0], "stake": 0.0, "pnl": 0.0, "settled_at": 0, "split": False, "pxs": 0.0, "mt": r.get("mt"),
-                                 "clv_s": 0.0, "clv_st": 0.0})
+                                 "clv_s": 0.0, "clv_st": 0.0, "first": None})
+        if r.get("first") is not None:               # the position's first fill: the earliest `first` over its rungs (V2 since.json)
+            p["first"] = r["first"] if p["first"] is None else min(p["first"], r["first"])
         close = closes.get((r["cid"], r["oi"])) if closes else None
         if close is not None and r.get("avg") is not None and r["stake"] > 0 and not r.get("split"):   # a SPLIT's 0.5 is booked, not paid
             p["clv_s"] += (close - r["avg"]) * r["stake"]
@@ -1011,14 +1040,300 @@ def wallet_positions(kf, ledger, sport, st=None, rk=None, extra=None):
     return out, stats
 
 
-def wallets_file(per_sport, now):
-    """The wallets file: per sport, every proven wallet (variant `all`, not excluded) with its book and its open positions."""
-    return {"built": now, "v": VERSION, "context_only": True, "floor_usd": FLOOR_USD, "floor_usd_by_sport": FOLLOW_FLOOR,
+def wallets_file(per_sport, now, retained=None, since_from=None):
+    """The wallets file: per sport, every proven wallet (variant `all`, not excluded) with its book and its open positions.
+    V2 (docs/sharps-v2-accounts-spec.md) only adds: `v` 2, `v2_fields`, `since_from`, `retained` (wallets that left the list, never under
+    `sports`) and the per-wallet fields built by apply_v2. Every V1 top-level key is unchanged."""
+    return {"built": now, "v": WALLETS_VERSION, "context_only": True, "floor_usd": FLOOR_USD, "floor_usd_by_sport": FOLLOW_FLOOR,
             "tier_rule": "rk: the wallet's CLV tier now (scripts/pm_clv_tiers.py, NBA and NFL only): sharp, mid, dull or thin. Price skill, not a record.",
             "proven_rule": "sport book n >= %d, win rate >= %d%%, dollar ROI > %d%%, not excluded (hedger, churn)" % (PROVEN_N, PROVEN_WR * 100, PROVEN_ROI * 100),
             "note": "Who holds what, as of the last holders scan. Money is shares x market price, not what the wallet paid. No entry price "
                     "is stored. Context only: never a pick, a size or an agree total.",
-            "sports": per_sport}
+            "sports": per_sport,
+            "v2_fields": ("per wallet: flat_roi fwd first_seen last_settled n30_games usual_med sc_sport sc_n name_disp name_src exp_w luck_p v2 "
+                          "(rk.post rk.sd); per position: side_usd side_rungs side_press px_age_min; top level: since_from since_file retained. "
+                          "fwd = rows with src forward, settled at or after the wallet's first_seen (a bet may have been placed before it); "
+                          "first_seen = the earliest date for the wallet in first_seen.json and follow_only.json. "
+                          "since_file names the file with each wallet's dated settled list (docs/sharps-v2-accounts-spec.md K). "
+                          "All stored fields or arithmetic on them; null when not computable."),
+            "since_from": since_from if since_from is not None else now - SINCE_DAYS * 86400,
+            "since_file": SINCE_FILE,
+            "retained": retained or {}}
+
+
+def strip_v2(doc):
+    """The V1 view of a V2 wallets file: every key V2 adds removed (a copy). A V2 build must equal its V1 build under this, except the
+    30-day window fields of wallets that were open (spec section 3, audit bug 14) and `v`."""
+    out = {k: v for k, v in doc.items() if k not in V2_TOP_KEYS}
+    out["sports"] = {}
+    for sport, ws in (doc.get("sports") or {}).items():
+        out["sports"][sport] = {}
+        for w, e in ws.items():
+            x = {k: v for k, v in e.items() if k not in V2_WALLET_KEYS}
+            if x.get("rk"):
+                x["rk"] = {k: v for k, v in x["rk"].items() if k not in V2_RK_KEYS}
+            x["positions"] = [{k: v for k, v in p.items() if k not in V2_POSITION_KEYS} for p in e.get("positions") or []]
+            out["sports"][sport][w] = x
+    return out
+
+
+def wallets_sizes(doc):
+    """(whole file KB, V2 fields KB) in thousands of bytes, as the spec counts them: the compact JSON as published, and its difference
+    from the same file with every V2 key stripped."""
+    whole = len(json.dumps(doc, separators=(",", ":")))
+    return whole / 1000, (whole - len(json.dumps(strip_v2(doc), separators=(",", ":")))) / 1000
+
+
+def over_budget(kb, new_kb):
+    """"" when the wallets file is inside both budgets (spec section 2), else a sentence naming which one is broken."""
+    bad = []
+    if kb > WALLETS_MAX_KB:
+        bad.append("whole file %.0f KB over %d" % (kb, WALLETS_MAX_KB))
+    if new_kb > WALLETS_NEW_MAX_KB:
+        bad.append("V2 fields %.0f KB over %d" % (new_kb, WALLETS_NEW_MAX_KB))
+    return "; ".join(bad)
+
+
+def since_file(per_sport, retained, now):
+    """since.json: each wallet's dated settled list (since_list items), listed wallets under `sports` and leavers under `retained`. A
+    wallet with no item in the window is left out (the file's presence says the list is carried: absent means none). Kept out of the
+    wallets file because it alone was 364 KB of the 660 KB the V2 fields took (docs/sharps-v2-accounts-spec.md section 2 K)."""
+    def keep(d):
+        return {sp: {w: x for w, x in ws.items() if x} for sp, ws in d.items()}
+    return {"built": now, "v": 1, "context_only": True, "since_from": now - SINCE_DAYS * 86400, "days": SINCE_DAYS,
+            "item": "[settled_at, first_fill, r, flat, ev, stake]",
+            "note": "Per position: r 1 win, 0 loss, 2 push; flat = profit / stake (null for a SPLIT-funded position); ev = the game; stake in "
+                    "whole dollars. A page drops items with first_fill before the follow. Context only: never a pick, a size or an agree total.",
+            "sports": keep(per_sport), "retained": keep(retained)}
+
+
+# ---------- wallets file V2: stored fields only (docs/sharps-v2-accounts-spec.md) ----------
+
+def _r(x, nd):
+    return round(x, nd) if x is not None else None
+
+
+def rk_entry(t):
+    """The wallet's CLV tier fields: the V1 four (tier, n, mean, p) plus the shrunk estimate `post` and its sd (price units, x100 = cents),
+    both already computed by pm_clv_tiers.fit(). `mean` stays the raw mean. None when the wallet has no tier row."""
+    return {"tier": t["tier"], "n": t["n"], "mean": t["mean"], "p": t["p"], "post": t.get("post"), "sd": t.get("sd")} if t else None
+
+
+def v2_tier(rk):
+    """beats / even / loses / few from rk.tier (sharp / mid / dull / thin); no rk (no CLV game, a fit with no params, CFB, CBB) is few."""
+    return V2_TIER.get((rk or {}).get("tier"), "few")
+
+
+def is_hex_name(n):
+    return not n or bool(HEX_NAME.match(n))
+
+
+def name_history(ledger_root, holders):
+    """{wallet: (time, name, source)}: the newest name that is not hex-like, over every universe snapshot and every keyframe's `names`."""
+    best = {}
+
+    def see(w, n, t, src):
+        if is_hex_name(n) or not isinstance(w, str):
+            return
+        if w not in best or t >= best[w][0]:
+            best[w] = (t, n, src)
+    for fn in sorted(glob.glob(os.path.join(ledger_root or "", "universe", "*.json"))):
+        try:
+            with open(fn) as f:
+                j = json.load(f)
+        except (OSError, ValueError):
+            continue
+        t = j.get("selected_at") or 0
+        for w, x in (j.get("wallets") or {}).items():
+            see(w, (x or {}).get("name"), t, "universe")
+    for fn in sorted(glob.glob(os.path.join(holders or "", "*", "frozen", "*", "*.json"))):
+        try:
+            with open(fn) as f:
+                kf = json.load(f)
+        except (OSError, ValueError):
+            continue
+        t = kf.get("written") or kf.get("cut") or 0
+        for w, n in (kf.get("names") or {}).items():
+            see(w, n, t, "keyframe")
+    return best
+
+
+def name_fields(w, name, origin, hist):
+    """(name_disp, name_src). The listed name when it is real; else the newest real name stored anywhere; else "Unnamed 0xabcd...1234"."""
+    if not is_hex_name(name):
+        return name, origin or "universe"
+    h = (hist or {}).get(w)
+    if h:
+        return h[1], h[2]
+    return "Unnamed " + w[:6] + "..." + w[-4:], "none"
+
+
+def scorecard_games(data_dir):
+    """{sport: {wallet: games}}: the account scorecard's own game count per wallet (data/pm_wallets*.json, wallets[w][0])."""
+    out = {}
+    for sport, fn in SCORECARD_FILES.items():
+        try:
+            with open(os.path.join(data_dir, fn)) as f:
+                out[sport] = {str(w).lower(): v[0] for w, v in (json.load(f).get("wallets") or {}).items() if v}
+        except (OSError, ValueError, TypeError, IndexError):
+            out[sport] = {}
+    return out
+
+
+def stake_median(ps, floor):
+    """Median cost of the wallet's cash positions (not split) at or above the sport floor; None when there are none."""
+    xs = [p["stake"] for p in ps if not p["split"] and p["stake"] > 0 and p["stake"] >= floor]
+    return round(statistics.median(xs)) if xs else None
+
+
+def fwd_book(b):
+    """The forward-only book (ledger rows with src forward, not hedged), same formulas as the all-rows book."""
+    return {"w": b["w"], "l": b["l"], "p": b["p"], "n": b["n"], "pnl": b["pnl"], "roi": _r(b["roi"], 4), "flat_roi": _r(b["flat_roi"], 4),
+            "clv_n": b["clv_n"], "clv_mean": _r(b["clv_mean"], 4)}
+
+
+def settled_reads(ps, now):
+    """(latest settled_at over every position, distinct games with a decided position settled in [now - 30 d, now))."""
+    lo = now - L30_DAYS * 86400
+    return (max((p["settled_at"] for p in ps), default=None),
+            len({p["ev"] for p in ps if p["res"] in ("win", "loss") and lo <= p["settled_at"] < now}))
+
+
+def since_list(ps, floor, built, days=SINCE_DAYS):
+    """Dated settled positions for "Since you followed": every non-hedged position at or above the sport floor settled in
+    [built - days, built), newest first, each [settled_at, first_fill, r, flat, ev, stake]. r: 1 win, 0 loss, 2 push. first_fill is the
+    earliest ledger `first` over the position's rungs (a page drops bets placed before the follow). flat = pnl / stake rounded to 3, None
+    for a SPLIT-funded position (no real dollars). The unit is a POSITION (a spread and a moneyline on one game are two items), so `ev`
+    (the game) and `stake` (whole dollars) ride along: a page can say "n bets on m games" and tally games the way `legs` does (one per game,
+    the biggest position). Published in since.json, not in the wallets file."""
+    lo = built - days * 86400
+    out = []
+    for p in ps:
+        if p["stake"] < floor or p["stake"] <= 0 or not lo <= p["settled_at"] < built:
+            continue
+        out.append([p["settled_at"], p["first"], {"win": 1, "loss": 0}.get(p["res"], 2),
+                    None if p["split"] else round(p["pnl"] / p["stake"], 3), p["ev"], round(p["stake"])])
+    out.sort(key=lambda x: (-x[0], -(x[1] or 0), x[2], x[4]))
+    return out
+
+
+def games_tally(items):
+    """Per-game W-L from since_list items: one result per game, that of its biggest position (the `legs` rule). -> (w, l, games)."""
+    best = {}
+    for it in items:
+        if it[4] not in best or it[5] > best[it[4]][5]:
+            best[it[4]] = it
+    return (sum(1 for x in best.values() if x[2] == 1), sum(1 for x in best.values() if x[2] == 0), len(best))
+
+
+def side_fields(positions, med):
+    """On every open position: the wallet's whole side of that market group (all listed rungs): side_usd (sum of the rungs' usd),
+    side_rungs, side_press = side_usd / usual_med (None when usual_med is None). Same value on each rung of the side."""
+    by = {}
+    for p in positions:
+        a = by.setdefault((p["ev"], p["gst"], p["g"], p["side"]), [0, 0])
+        a[0] += p["usd"]
+        a[1] += 1
+    for p in positions:
+        u, n = by[(p["ev"], p["gst"], p["g"], p["side"])]
+        p["side_usd"], p["side_rungs"] = u, n
+        p["side_press"] = round(u / med, 2) if med else None
+
+
+def px_age(positions, built):
+    """Minutes since the price shown on each position was logged (None when no price time is stored). Never negative: a price logged
+    after `built` (a pinned --now older than the holders scan) reads 0."""
+    for p in positions:
+        p["px_age_min"] = max(0, int(round((built - p["px_t"]) / 60))) if p.get("px_t") is not None else None
+
+
+def wallet_v2_core(s, now, first_seen, rk_t):
+    """The V2 fields every listed or retained wallet carries, from fl.stats(w, now): never from a game's cut."""
+    ps = (s["all"].get("_ps")) or []
+    last, n30 = settled_reads(ps, now)
+    return {"first_seen": first_seen, "fwd": fwd_book(s["fwd"]), "last_settled": last, "n30_games": n30, "v2": {"tier": v2_tier(rk_t)}}
+
+
+def apply_v2(sport, listed, fl, now, rk, sc, sc_games, names, name_origin, name_hist, since=None):
+    """Add the V2 fields to every listed wallet of one sport (`listed` is wallets[sport], already carrying V1 fields). Additive, except
+    that an open wallet's book is now read at `now` instead of its first game's cut (spec section 3, audit bug 14). `since`, when given,
+    collects {wallet: since_list items} for since.json (they are not part of the wallets file)."""
+    floor = FOLLOW_FLOOR.get(sport, FLOOR_USD)
+    for w, e in listed.items():
+        s = fl.stats(w, now)
+        if e.get("positions"):                       # the book of a wallet with open positions was read at that game's cut
+            e.update(wallet_book(s, name=e.get("name"), sheet=True))
+        core = wallet_v2_core(s, now, fl.first_seen_pub.get(w), rk.get(w))
+        ps = s["all"].get("_ps") or []
+        if since is not None:
+            since[w] = since_list(ps, floor, now)
+        dv = e.get("dive") or {}
+        e.update(core)
+        e["flat_roi"] = _r(s["all"]["flat_roi"], 4)
+        e["usual_med"] = stake_median(ps, floor)
+        e["sc_sport"] = w in sc.get(sport, ())
+        e["sc_n"] = (sc_games.get(sport) or {}).get(w) if e["sc_sport"] else None
+        e["name_disp"], e["name_src"] = name_fields(w, names.get(w), name_origin.get(w), name_hist)
+        e["exp_w"] = dv.get("exp_w")
+        e["luck_p"] = (dv.get("all") or [None] * 6)[5]
+        side_fields(e["positions"], e["usual_med"])
+        px_age(e["positions"], now)
+
+
+# ---- wallets that left the list ----
+
+def daily_cuts(now, days=RETAIN_DAYS):
+    """12:00 AM Central of each of the last `days` Central calendar days (today included), oldest first: always exactly `days` cuts,
+    whether or not the window crosses a daylight saving change (a seconds offset gave 60 or 61)."""
+    tz = ZoneInfo(CT_ZONE)
+    today = dt.datetime.fromtimestamp(now, tz).date()
+    out = []
+    for i in range(days - 1, -1, -1):
+        d = today - dt.timedelta(days=i)
+        out.append(int(dt.datetime(d.year, d.month, d.day, tzinfo=tz).timestamp()))
+    return out
+
+
+def seed_retained(fl, sport, now, listed, days=RETAIN_DAYS):
+    """One-time backfill of who left the list. Replays the listing rule (proven, or CLV tier sharp, and not excluded) at each daily
+    12:00 AM Central cut over the prior `days` days, point in time (fl.stats(w, cut), fl.clv_tiers(cut)): rows settled before the cut,
+    closes of games started before it, wallets in the universe at the cut. A wallet listed at some cut and not now gets left_at = the
+    first cut after its last listed cut (now when that was the last cut). -> {wallet: left_at}. The account scorecard list is NOT replayed:
+    no earlier copy of it is stored and today's list would be look-ahead, so a wallet that was listed only through it is not seeded
+    (after the first build `retained` carries forward from the published file and nothing is missed)."""
+    cuts = daily_cuts(now, days)
+    last = {}
+    for i, c in enumerate(cuts):
+        rk = fl.clv_tiers(c) if sport in TIERS.TIER_SPORTS else {}
+        for w in fl.population("all", c):
+            if w in listed:
+                continue
+            sx = fl.stats(w, c)
+            if not sx["excluded"] and (sx["all"]["proven"] or (rk.get(w) or {}).get("tier") == "sharp"):
+                last[w] = i
+    return {w: (cuts[i + 1] if i + 1 < len(cuts) else now) for w, i in last.items()}
+
+
+def retained_left(sport, listed, prev, now, seed, days=RETAIN_DAYS):
+    """{wallet: left_at} for the wallets that left `sports.<sport>` in the last `days` days. After the first V2 build `left_at` carries
+    forward from the previous published file; a wallet in its `sports` and no longer listed leaves at `now`. `seed` is a callable
+    (seed_retained) used only when `prev` has no V2 keys. A listed wallet is never retained; one older than `days` from left_at is dropped."""
+    pv = prev or {}
+    v2 = (pv.get("v") or 0) >= 2
+    was = (pv.get("sports") or {}).get(sport) or {}
+    if v2:
+        out = {w: x.get("left_at") for w, x in ((pv.get("retained") or {}).get(sport) or {}).items()}
+    else:
+        out = dict(seed())
+    for w in was:
+        if w not in out:
+            out[w] = now
+    return {w: t for w, t in out.items() if w not in listed and isinstance(t, int) and 0 <= now - t <= days * 86400}
+
+
+def retained_entry(w, left_at, s, now, first_seen, rk_t, name, name_disp):
+    return {"retained": True, "left_at": left_at, "name": name, "name_disp": name_disp,
+            **wallet_v2_core(s, now, first_seen, rk_t), "rk": rk_entry(rk_t)}
 
 
 def ladder_units(top_press, price):
@@ -1136,13 +1451,21 @@ def main():
     ap.add_argument("--prev-live", help="the last published live.json, to carry the price each shown size was first flagged at")
     ap.add_argument("--sf-excluded", help="The benchmark's public sharp_intel_excluded_wallets.json, for the `sfx` variant")
     ap.add_argument("--book-tape", default="data/book_tape", help="Vault's book tape (Pinnacle rows), for the steam read of the `sf` size")
+    ap.add_argument("--prev-wallets", help="the last published wallets.json: `retained` (wallets that left the list) carries forward from it; "
+                                           "without V2 keys in it the first V2 build seeds `retained` from a 60 day replay")
+    ap.add_argument("--now", type=int, help="pin the build time (epoch seconds) for a reproducible local run; default the clock")
+    ap.add_argument("--since-out", help="the since.json path (each wallet's dated settled list); default: beside --wallets-out")
+    ap.add_argument("--no-budget-exit", action="store_true",
+                    help="write everything and exit 0 even when the wallets file is over its size budget (the workflow then runs "
+                         "scripts/sharps_v2/check_size.py before it publishes, so the frozen cards still commit)")
+    ap.add_argument("--wallets-only", action="store_true", help="skip the frozen and live cards (a local run that only needs the wallets file)")
     a = ap.parse_args()
     import scan_pm_holders as H
     games = []
     if a.sharp_data and os.path.exists(a.sharp_data):
         with open(a.sharp_data) as f:
             games = json.load(f).get("games") or []
-    now = int(time.time())
+    now = int(a.now or time.time())
     live, wrote = {"built": now, "context_only": True, "games": []}, []
     pm_closes = {}
     if a.closes and os.path.exists(a.closes):
@@ -1165,15 +1488,27 @@ def main():
                 prev = {(g["ev"], g["gst"]): g for g in (json.load(f).get("games") or [])}
         except (OSError, ValueError, KeyError):
             prev = {}
-    names, wallets = {}, {}
+    names, wallets, retained, name_origin, name_hist = {}, {}, {}, {}, {}
+    since, since_ret = {}, {}
     SC = scorecard_sharp(a.scorecard_dir) if a.scorecard_dir else {}
+    SCG = scorecard_games(a.scorecard_dir) if a.scorecard_dir else {}
+    prev_wallets = {}
+    if a.prev_wallets and os.path.exists(a.prev_wallets):
+        try:
+            with open(a.prev_wallets) as f:
+                prev_wallets = json.load(f)
+        except (OSError, ValueError):
+            prev_wallets = {}
     uni = sorted(glob.glob(os.path.join(a.ledger, "universe", "*.json")))
     if a.wallets_out and uni:
         try:
             with open(uni[-1]) as f:
                 names = {w: (x or {}).get("name") for w, x in (json.load(f).get("wallets") or {}).items()}
+            name_origin = {w: "universe" for w in names}
         except (OSError, ValueError):
             names = {}
+    if a.wallets_out:
+        name_hist = name_history(a.ledger, a.holders)
     tape = BookTape(a.book_tape)
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
         ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
@@ -1183,7 +1518,7 @@ def main():
             fl = Ledger.load(a.ledger, sport, a.holders, pm_closes, follow=True)
             fl.sf_excluded = sf_ex
         # frozen: one card per keyframe that has none yet
-        for kpath in sorted(glob.glob(os.path.join(a.holders, sport, "frozen", "*", "*.json"))):
+        for kpath in ([] if a.wallets_only else sorted(glob.glob(os.path.join(a.holders, sport, "frozen", "*", "*.json")))):
             rel = os.path.relpath(kpath, os.path.join(a.holders, sport, "frozen"))
             out = os.path.join(a.frozen_out, sport, "frozen", rel)
             if os.path.exists(out):
@@ -1212,12 +1547,14 @@ def main():
         for ev, gst in sorted(evs, key=lambda x: x[1]):
             kf = H.keyframe(st, ev, gst, now)
             if kf:
-                c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape)
-                carry_flagged(c, prev.get((ev, gst)), now)
-                live["games"].append(c)
+                if not a.wallets_only:
+                    c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape)
+                    carry_flagged(c, prev.get((ev, gst)), now)
+                    live["games"].append(c)
                 if a.wallets_out:
                     pos, sts = wallet_positions(kf, fl, sport, st, rk, scx)
                     names.update({w: n for w, n in (kf.get("names") or {}).items() if n})
+                    name_origin.update({w: "keyframe" for w, n in (kf.get("names") or {}).items() if n})
                     for w, ps in pos.items():
                         e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w], sheet=True), positions=[]))
                         e["positions"] += ps
@@ -1231,9 +1568,18 @@ def main():
             for w, e in wallets.get(sport, {}).items():
                 e["name"] = names.get(w)
                 e["sc"] = any(w in v for v in SC.values())      # on the account scorecard's price-sharp list (the Accounts page set)
-                t = rk.get(w)
-                e["rk"] = {"tier": t["tier"], "n": t["n"], "mean": t["mean"], "p": t["p"]} if t else None     # CLV tier now; NBA and NFL only
+                e["rk"] = rk_entry(rk.get(w))               # CLV tier now; NBA and NFL only (V2 adds post and sd)
                 e["positions"].sort(key=lambda p: (p["gst"], -p["usd"]))
+            listed = wallets.get(sport, {})
+            sl = since.setdefault(sport, {})
+            apply_v2(sport, listed, fl, now, rk, SC, SCG, names, name_origin, name_hist, since=sl)     # V2 fields, every wallet read at `now`
+            floor = FOLLOW_FLOOR.get(sport, FLOOR_USD)
+            left = retained_left(sport, listed, prev_wallets, now, lambda: seed_retained(fl, sport, now, listed))
+            for w, left_at in sorted(left.items()):
+                nd, _ = name_fields(w, names.get(w), name_origin.get(w), name_hist)
+                st = fl.stats(w, now)
+                retained.setdefault(sport, {})[w] = retained_entry(w, left_at, st, now, fl.first_seen_pub.get(w), rk.get(w), names.get(w), nd)
+                since_ret.setdefault(sport, {})[w] = since_list(st["all"].get("_ps") or [], floor, now)
     live["locked"] = locked_plays(a.frozen_out, now)
     os.makedirs(os.path.dirname(os.path.abspath(a.live_out)), exist_ok=True)
     with open(a.live_out + ".tmp", "w") as f:
@@ -1241,11 +1587,24 @@ def main():
     os.replace(a.live_out + ".tmp", a.live_out)
     if a.wallets_out:
         os.makedirs(os.path.dirname(os.path.abspath(a.wallets_out)), exist_ok=True)
+        doc = wallets_file(wallets, now, retained)
+        payload = json.dumps(doc, separators=(",", ":"))
         with open(a.wallets_out + ".tmp", "w") as f:
-            json.dump(wallets_file(wallets, now), f, separators=(",", ":"))
+            f.write(payload)
         os.replace(a.wallets_out + ".tmp", a.wallets_out)
-    print(json.dumps({"frozen_written": wrote, "live_games": len(live["games"])}))
-    return 0
+        kb, new_kb = wallets_sizes(doc)
+        spath = a.since_out or os.path.join(os.path.dirname(os.path.abspath(a.wallets_out)), SINCE_FILE)
+        spayload = json.dumps(since_file(since, since_ret, now), separators=(",", ":"))
+        with open(spath + ".tmp", "w") as f:
+            f.write(spayload)
+        os.replace(spath + ".tmp", spath)
+        print("wallets file %.0f KB, V2 fields %.0f KB (budget %d and %d); since file %.0f KB" % (kb, new_kb, WALLETS_MAX_KB, WALLETS_NEW_MAX_KB,
+                                                                                         len(spayload) / 1000), file=sys.stderr)
+        over = over_budget(kb, new_kb)
+        if over:
+            print("ERROR: wallets file over its size budget: " + over, file=sys.stderr)
+    print(json.dumps({"frozen_written": wrote, "live_games": len(live["games"]), **({"wallets_kb": round(kb)} if a.wallets_out else {})}))
+    return BUDGET_EXIT if a.wallets_out and over and not a.no_budget_exit else 0
 
 
 if __name__ == "__main__":

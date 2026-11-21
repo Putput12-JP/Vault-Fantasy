@@ -218,3 +218,87 @@ account sheet as the Following feed. `side-cards.js` names the wallet, game, mar
 the wallet's largest rung of that bet in `wallets.json` and opens the sheet over the page. A wallet or bet that is not in the file (an old card,
 an unproven or excluded wallet) does not open anything: the row says "No account sheet for this wallet". Losing, other and excluded wallets
 have no link. No new data and no change to any card, size or record. Pages: `side-cards.js?v=60`, `following.js?v=11`.
+
+
+### Change on 2026-11-21: Sharps V2 account fields in the wallets file (`v` 2)
+
+Spec: `docs/sharps-v2-accounts-spec.md`. **Additive only.** Every V1 key keeps its name, shape and value (`following.js?v=13` renders the V2
+file unchanged), `legs` keeps its 20 cap, `sc` keeps its any-sport meaning, `rk.mean` stays the raw mean, `usual` stays the mean. New keys sit
+beside them. `v` is now 2 (cards keep their own `v`). Every new number is a stored field, a count of stored rows or arithmetic on them; a
+value that cannot be computed is `null`, never 0. Context only: none of it is a bet signal, a size, a pick or an input to Top Reads,
+SM_GATE or an agree total.
+
+**One existing number moves (audit bug 14).** A wallet with open positions used to have its book read at its first game's cut (a time in
+the future). Every wallet is now read at the build time. Only the 30-day window can differ (`l30`, `l30_roi`, `d30`, `curve`); `n`, `w_`,
+`l_`, `roi`, `pnl` cannot. On the Nov 21 10:21 AM CT inputs that changed `l30` for 7 of 58 open wallets (all NFL).
+
+Top level, added: `v2_fields` (the list of added keys), `since_from` (the start of every dated list in `since.json`: build time minus 60 days),
+`since_file` (`since.json`) and `retained` (below). Per wallet, added:
+
+- **`rk.post`, `rk.sd`:** the shrunk CLV estimate (posterior mean) and its sd, in price units (x100 = cents). Already computed by
+  `pm_clv_tiers.fit()` and dropped before. `rk.mean` is still the raw mean; show `post` where the page says "shrunk".
+- **`v2.tier`:** `beats` (rk sharp), `even` (mid), `loses` (dull), `few` (thin, or no `rk`: no CLV game, CFB, CBB). No new threshold: the
+  module's own constants (30 games, P 0.95 / 0.05). The scorecard is not folded into the tier.
+- **`flat_roi`:** mean of profit over stake across cash positions, every bet one unit (the all-rows book's `flat_roi`).
+- **`fwd`:** the forward-only book `{w, l, p, n, pnl, roi, flat_roi, clv_n, clv_mean}`, same formulas as the all-rows book, on ledger
+  rows with `src == forward` (not hedged). **Definition:** a row counts when it settled at or after the wallet's `first_seen`; the bet itself
+  may have been placed before it (it was open when Vault began tracking the wallet). That is not look-ahead on a result, but it is not "placed
+  after first_seen" either. On the Nov 21 inputs, listed wallets' forward non-hedged rows with a first fill before `first_seen`: NBA 140 of
+  2,010 (33 wallets), NFL 81 of 517 (16), CFB 23 of 398 (7), CBB 38 of 594 (7). The 2026-11-16 12:00 AM CT line
+  (`docs/sharp-shadow-rules-nov16.md`) is the card-play cutoff, **not** this one: no V2 account field uses it.
+- **`first_seen`:** when the wallet entered the ledger universe (epoch; CBB follow-only wallets from `follow_only.json`). A wallet in both
+  `follow_only.json` and `first_seen.json` publishes the EARLIER date, which is the one `build_pm_ledger` used to stamp `src`, so the date
+  and the forward rows agree (before: the later `first_seen.json` date won and 3 wallets showed forward games settled before it; on the Nov 21
+  inputs `0x280602b4` CBB moves from 2026-11-20 9:19 PM CT to 2026-11-17 5:06 PM CT and `0xd2753130` from 2026-11-19 8:31 AM CT to
+  2026-11-18 12:06 PM CT). The date the stats and the cuts read is unchanged, so no V1 number moves.
+- **`last_settled`, `n30_games`:** latest settlement over the wallet's positions; distinct games with a decided position settled in the
+  30 days before the build (0 means "No bets in 30 days").
+- **`usual_med`:** median cost of its cash positions (not split) at or above the sport floor ($250, CBB $100). `null` when none. `usual`
+  stays the mean.
+- **`sc_sport`, `sc_n`:** on the account scorecard's price-sharp list for **this** sport, and that file's game count for the wallet (`null`
+  when absent). `sc` is unchanged.
+- **`name_disp`, `name_src`:** the display name. `name` when it is real (not null, not a bare address); else the newest real name stored
+  for the wallet in any universe snapshot or keyframe; else `Unnamed 0xabcd...1234`. `name_src` is `universe`, `keyframe` or `none`.
+- **`exp_w`, `luck_p`:** the price-implied expected wins and P(wins at least as many), from `dive` (`dive.exp_w`, `dive.all[5]`).
+- **`since.json` (a separate file, `since_file`):** the dated settled list per wallet, `sports.<sport>.<wallet>` and `retained.<sport>.<wallet>`,
+  items `[settled_at, first_fill, r, flat, ev, stake]` for every non-hedged position at or above the sport floor settled in
+  `[since_from, built)`, newest first. `r`: 1 win, 0 loss, 2 push. `first_fill` is the earliest ledger fill of the position, so a page can
+  drop bets placed before a follow. `flat` is profit over stake (3 places), `null` for a SPLIT-funded position. `ev` is the game and `stake`
+  is whole dollars. **The unit is a position:** a spread and a moneyline on one game are two items. Tally games with `ev` (one result per
+  game, the biggest `stake`, the way `legs` does) and say "bets" for the position count. A wallet with no item is left out. It replaces `legs`
+  for "Since you followed" only. A follow older than `since_from` cannot be tallied. It is a separate file because it alone was 364 KB of
+  the 660 KB the V2 fields first took in the wallets file; the classic page re-reads the wallets file every 2 minutes and never reads
+  `since.json`.
+
+Per open position, added: `side_usd` (sum of `usd` over the wallet's listed rungs of that game, market and side), `side_rungs`,
+`side_press` (`side_usd / usual_med`, `null` without a median; "mark value over median cost") and `px_age_min` (minutes between the price
+time `px_t` and the build, `null` when `px_t` is `null`). The rungs of one side carry the same three side values.
+
+**`retained.<sport>.<wallet>`:** a wallet that was on the list at some build in the last 60 days and no longer is:
+`{retained, left_at, name, name_disp, first_seen, fwd, last_settled, n30_games, v2, rk}`, no `positions` and no list (its dated list is
+under `retained` in `since.json`). A retained wallet is
+never also under `sports`, and it is dropped 60 days after `left_at`. After the first V2 build `left_at` carries forward from the previous
+published file (`--prev-wallets`). The first V2 build (no previous file with V2 keys) seeds it by replaying the listing rule at each daily
+12:00 AM Central cut over the prior 60 days, point in time (`fl.stats(w, cut)`, `fl.clv_tiers(cut)`, wallets in the universe at the cut);
+the scorecard list is NOT replayed (no earlier copy is stored and today's list would be look-ahead), so a wallet listed only through it is not
+seeded; after the first build `retained` carries forward and nothing is missed. Excluded wallets (hedger, churn) are never seeded. The 60 cuts
+are 12:00 AM Central of the last 60 Central calendar days, so there are always 60 of them across a daylight saving change. Follows live in the
+viewer's browser, so every leaver is retained.
+
+Not collected, so not shown (spec "Deferred"): an open position's entry price, a college price tier, a follow tally older than
+`since_from`, per-user follow tombstones.
+
+Run locally: `python3 scripts/build_side_cards.py --holders pm_holders --ledger pm_ledger --frozen-out out/cards --live-out out/live.json
+--wallets-out out/wallets.json --scorecard-dir data --now EPOCH --wallets-only [--prev-wallets last_wallets.json]`. `--now` pins the build
+time, `--wallets-only` skips the cards (about 80 seconds on the Nov 21 inputs including the 60 day seed). The workflow passes
+`--prev-wallets` (the last published `wallets.json` from `pm-cards-live`), so `retained` carries forward there; a local run without it
+re-seeds from the replay. Old and new numbers:
+`python3 -I scripts/sharps_v2/compare_wallets.py --old OLD.json --new NEW.json [--base V1_SAME_INPUTS.json]` (reads `since.json` beside NEW).
+Tests: `python3 -m unittest tests.test_sharps_v2_wallets` (the workflow runs them).
+
+**File size (spec budget: whole wallets file at most 1,350 KB, V2 fields in it at most 400 KB).** Measured on the Nov 21 10:21 AM CT inputs:
+946 KB before. With the dated lists in the wallets file it was 1,607 KB (V2 fields 660 KB, of which `since_list` 364 KB), over both budgets.
+With them in `since.json` it is **1,242 KB, V2 fields 295 KB**, inside both; `since.json` is 711 KB and is not budgeted (the classic page never
+reads it). The budget is enforced, not warned: `build_side_cards.py` exits 3 when the wallets file is over, and the pm-cards workflow runs
+`scripts/sharps_v2/check_size.py` before its publish step, so an over-budget file is never published and the last good file stays live.
+`SHARPS_V2_WALLETS=file python3 -m unittest tests.test_sharps_v2_wallets` runs the same check as a test.
