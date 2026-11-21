@@ -343,10 +343,13 @@ def luck(pairs):
     return {"p": max(0.0, min(1.0, sum(dist[wins:]))), "exp_w": round(sum(px for px, _ in ps), 2), "n": len(ps)}
 
 
+# entry-price bands for the sheet's "at these odds" cut (American odds at the same prices): [key, label, low price, high price)
+ODDS_BANDS = [("dd", "+200 or longer", 0.0, 1 / 3), ("d2", "+150 to +199", 1 / 3, 0.4), ("d1", "+100 to +149", 0.4, 0.5),
+              ("f1", "-100 to -149", 0.5, 0.6), ("f2", "-150 to -199", 0.6, 2 / 3), ("ff", "-200 or shorter", 2 / 3, 1.01)]
 DIVE_COLS = ["w", "l", "roi", "clv_n", "clv_beat", "luck"]   # one dive cell: [wins, losses, dollar ROI, bets with a close, beat it, luck]
 
 
-def dive(ps, usual):
+def dive(ps, usual, odds=False):
     """The wallet deep dive, from its positions settled before the cut: record, dollar ROI, closing-line beat rate and luck, split by
     market group (its lane), by favourite or underdog (entry price at or above 50 cents is a favourite) and by size vs its usual stake.
     Context only: shown in the wallet sheet, never read by the size, the lock or any record."""
@@ -371,6 +374,8 @@ def dive(ps, usual):
         out["size"] = {"small": cell([p for p in sz if p["stake"] / usual < 0.75]),
                        "usual": cell([p for p in sz if 0.75 <= p["stake"] / usual < PRESS]),
                        "big": cell([p for p in sz if p["stake"] / usual >= PRESS])}
+    if odds:                                         # the sheet only: bands by entry price, one cell each (None when no bets)
+        out["odds"] = {k: cell([p for p in dec if p["px"] is not None and lo <= p["px"] < hi]) for k, _, lo, hi in ODDS_BANDS}
     return out
 
 
@@ -406,6 +411,7 @@ def book(rows, asof, markets, closes=None):
          "clv_mean": (sum(p["clv"] for p in ps if p["clv"] is not None) / sum(1 for p in ps if p["clv"] is not None))
          if any(p["clv"] is not None for p in ps) else None,
          "sizes": [[p["stake"], p["res"] == "win"] for p in cash if p["res"] in ("win", "loss") and p["stake"] > 0]}
+    b["asof"] = asof
     b["_ps"] = ps                                    # kept for the deep dive, built only for the wallets a card lists (wallet_line)
     if b["l30_n"] < L30_MIN_N:
         b["l30_roi"] = None
@@ -905,7 +911,7 @@ def scorecard_sharp(data_dir):
     return out
 
 
-def wallet_book(s, name=None):
+def wallet_book(s, name=None, sheet=False):
     """A proven wallet's sport book for the wallets file (variant `all`): the card's wallet line without the position fields, plus the
     wallet's name and its last settled legs ([settled_at, result], newest first), so a page can count results since a follow date."""
     b = s["all"]
@@ -914,7 +920,28 @@ def wallet_book(s, name=None):
             "l30_roi": round(b["l30_roi"], 4) if b["l30_roi"] is not None else None, "pnl": b["pnl"],
             "usual": round(b["usual"]) if b["usual"] else None,
             "clv": {"n": b["clv_n"], "beat": b["clv_beat"], "mean": round(b["clv_mean"], 4) if b["clv_mean"] is not None else None},
-            "dive": wallet_dive(b), "legs": [[t, r] for t, r in b["legs"]]}
+            "dive": wallet_dive(b), "legs": [[t, r] for t, r in b["legs"]], **(wallet_sheet(b) if sheet else {})}
+
+
+def wallet_sheet(b):
+    """What the account sheet adds, for wallets with an open position only (the file stays small). All of it comes from the wallet's
+    settled positions, the same rows the record already uses; nothing is estimated.
+      l30    last 30 days: wins, losses, dollar profit, dollar ROI (the page's 30-day ROI is the same field as l30_roi)
+      d30    the dive's cuts (market, favourite or underdog, size, odds band) over the last 30 days only
+      odds   the all-time odds-band cuts
+      curve  every settled position of the last 30 days: [settled_at, dollar profit, stake, market group, entry price]
+    Entry price here is the stake-weighted price of a settled position, a stored ledger field, not an estimate."""
+    ps = b.get("_ps") or []
+    cut = b["asof"] - L30_DAYS * 86400
+    r = [p for p in ps if p["res"] in ("win", "loss") and p["settled_at"] >= cut]
+    cash = [p for p in r if not p["split"] and p["stake"] > 0]
+    st, pnl = sum(p["stake"] for p in cash), sum(p["pnl"] for p in cash)
+    return {"l30": {"w": sum(p["res"] == "win" for p in r), "l": sum(p["res"] == "loss" for p in r), "pnl": round(pnl),
+                    "roi": round(pnl / st, 4) if st > 0 else None},
+            "d30": dive(r, b["usual"], odds=True) if r else None,
+            "odds": (dive(ps, b["usual"], odds=True) or {}).get("odds"),
+            "curve": [[p["settled_at"], round(p["pnl"], 2), round(p["stake"], 2), GROUP.get(p["mt"]), round(p["px"], 3) if p["px"] else None]
+                      for p in sorted(cash, key=lambda p: p["settled_at"])]}
 
 
 HIST_MAX = 24                              # size changes kept per position in the wallets file: the first one and the latest 23
@@ -1192,7 +1219,7 @@ def main():
                     pos, sts = wallet_positions(kf, fl, sport, st, rk, scx)
                     names.update({w: n for w, n in (kf.get("names") or {}).items() if n})
                     for w, ps in pos.items():
-                        e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w]), positions=[]))
+                        e = wallets.setdefault(sport, {}).setdefault(w, dict(wallet_book(sts[w], sheet=True), positions=[]))
                         e["positions"] += ps
         if a.wallets_out:                            # proven wallets with nothing open: the directory lists them too
             for w in set(fl.population("all", now)) | SC.get(sport, set()):
