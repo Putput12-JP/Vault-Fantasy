@@ -44,10 +44,30 @@ limit is the binding one, so do not start the items below before Monday 9:59 AM.
 5. **Deferred data items:** entry price for open positions (needs the wallet's trades, never inferred from the first-seen
    price), a CLV tier for CFB and CBB (needs a registered walk-forward test), a server-side follow store.
 
+## Monday backlog added 2026-11-21 (user requests, after the V2 tabs went live)
+
+Run these together with the plays data, since the record and the size both depend on the saved tier and shown size.
+
+1. **Record page for all sharps.** One Record view covering the Sharps plays and the Sharp Accounts (the wallets), inside the Sharp Money
+   tabs and matching the V2 look. Recorded plays only, flat-stake units and ROI with n, forward rows apart from in-sample rows (the cut
+   is 2026-11-16 12:00 AM Central), CLV against the close as the lead metric, small samples flagged with their n.
+2. **Tiers record.** The record of each evidence tier (Clear, Mixed, Thin, Contested, and the account tiers Beats / Even / Loses / Too few)
+   with n, from frozen cards point in time. Needs the tier saved at lock (plays data item 1) and the history re-derived from frozen cards.
+3. **Fix the 1u suggestion.** The flat 1u was agreed as an MVP, not as the final rule. Replace it with a real size rule. This changes the
+   documented side-card exception in CLAUDE.md (the user's decision, so ask first which rule), and must be tested on forward data, not
+   on the data that found it. Any change to the shown size is a tracking change: history and the record must be re-derived with old and
+   new numbers in the PR (the audit measured the old ladder at +9.81u versus flat -0.74u over 166 plays, all in-sample). Keep the
+   "untested rule" label until a registered forward test passes. The frozen forward tests stay untouched: ship the new size as a
+   shadow beside the current one first.
+4. **Sharp Account table: bring back ROI, Record and the other old columns.** The old Following directory showed Wallet, Last 10 results,
+   Sport, Record, ROI, Bets, Usual stake, Beat the close and Open now, with market filters and a 20+ bets filter. V2's table dropped Record
+   and ROI. Restore them (with n, the thin-sample flag, and the "past record, picked after the fact" caveat), keeping the closing-line
+   edge as the lead column. The data is already published (`w_`, `l_`, `roi`, `n`, `flat_roi`, `fwd`, `usual`, `legs`).
+
 ## Decisions needed from the user
 
-- Whether a conflicted play should drop its 1u (the audit's Watch tier). This changes CLAUDE.md, so it is the user's call.
-  Until decided, the 1u stays under the "untested rule" label on every tier.
+- Which size rule replaces the MVP flat 1u (backlog item 3), and whether a conflicted play (the audit's Watch tier) keeps a size. This changes
+  CLAUDE.md, so it is the user's call. Until decided, the flat 1u stays under the "untested rule" label on every tier.
 - Whether V2 replaces classic, and when.
 
 ## Model assignment for the remaining work
