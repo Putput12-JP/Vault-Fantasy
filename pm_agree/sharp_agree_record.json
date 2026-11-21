@@ -1,27 +1,27 @@
 {
- "generated": 1795274249,
+ "generated": 1795295214,
  "prereg": "docs/sharp-agree-prereg.md",
  "sports": {
   "nba": {
-   "derived": 27,
+   "derived": 44,
    "pending": 0,
-   "read_share": 0.926,
+   "read_share": 0.955,
    "no_verdict_data": false,
    "no_read_why": {
     "no_market_at_line": 2
    },
    "cells": {
     "agree": {
-     "rows": 4,
+     "rows": 9,
      "plays": 0,
-     "rows_clv": 2,
-     "games_clv": 2,
-     "clv": -0.0191,
-     "rows_roi": 2,
-     "roi": -1.0
+     "rows_clv": 4,
+     "games_clv": 3,
+     "clv": -0.02003,
+     "rows_roi": 5,
+     "roi": -0.2442
     },
     "against": {
-     "rows": 7,
+     "rows": 10,
      "plays": 0,
      "rows_clv": 4,
      "games_clv": 4,
@@ -30,7 +30,7 @@
      "roi": -0.33467
     },
     "mixed": {
-     "rows": 2,
+     "rows": 3,
      "plays": 0,
      "rows_clv": 1,
      "games_clv": 1,
@@ -39,31 +39,31 @@
      "roi": 0.01
     },
     "none": {
-     "rows": 12,
+     "rows": 20,
      "plays": 0,
      "rows_clv": 7,
      "games_clv": 5,
      "clv": -0.01971,
-     "rows_roi": 9,
-     "roi": -0.20856
+     "rows_roi": 11,
+     "roi": -0.18109
     }
    },
    "tests": {
     "boost": {
      "contrast": "agree minus none",
      "ci": {
-      "diff": 0.00061,
-      "lo": -0.02242,
-      "hi": 0.01854,
-      "lo95": -0.01631,
-      "hi95": 0.01464
+      "diff": -0.00031,
+      "lo": -0.02222,
+      "hi": 0.01724,
+      "lo95": -0.01719,
+      "hi95": 0.01274
      },
      "n": [
-      2,
+      4,
       7
      ],
      "games": [
-      2,
+      3,
       5
      ],
      "verdict": "underpowered"
@@ -72,10 +72,10 @@
      "contrast": "against minus none",
      "ci": {
       "diff": -0.01356,
-      "lo": -0.07258,
-      "hi": 0.0538,
-      "lo95": -0.06469,
-      "hi95": 0.04001
+      "lo": -0.07305,
+      "hi": 0.05355,
+      "lo95": -0.06454,
+      "hi95": 0.04022
      },
      "n": [
       4,
@@ -91,12 +91,12 @@
    "note": "plays-only counts are in cells[*].plays and carry no verdict"
   },
   "nfl": {
-   "derived": 5,
+   "derived": 8,
    "pending": 0,
-   "read_share": 0.0,
+   "read_share": 0.125,
    "no_verdict_data": false,
    "no_read_why": {
-    "read_too_old": 4,
+    "read_too_old": 6,
     "no_market_at_line": 1
    },
    "cells": {
@@ -128,7 +128,7 @@
      "roi": null
     },
     "none": {
-     "rows": 0,
+     "rows": 1,
      "plays": 0,
      "rows_clv": 0,
      "games_clv": 0,
