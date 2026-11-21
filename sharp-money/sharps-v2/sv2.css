@@ -123,7 +123,7 @@ html[data-sv2-skin="apple"][data-theme="light"] {
   }
 }
 
-html { background: var(--sv2-page); -webkit-text-size-adjust: 100%; }
+html:has(> body.sv2) { background: var(--sv2-page); -webkit-text-size-adjust: 100%; }   /* standalone page only: never repaint a host page */
 body.sv2 {
   margin: 0;
   background: var(--sv2-page);
@@ -763,7 +763,10 @@ body.sv2 { --sv2-pad: 24px; --sv2-gutter: 24px; line-height: 1.55; }
 body.sv2 .sv2-card { padding: calc(var(--sv2-pad) + 2px); }
 @media (max-width: 767px) { body.sv2 { --sv2-pad: 20px; --sv2-gutter: 18px; } }
 
-/* embedded inside the Sharp Money tabs (sharps-v2/embed.js): the shell supplies the page title and the Sharps / Following tabs */
-html.sv2-embed #sv2-title, html.sv2-embed .sv2-routes, html.sv2-embed .sv2-tabbar { display: none; }
-html.sv2-embed .sv2-hd-row { justify-content: flex-end; }
-html.sv2-embed body { padding-bottom: 0; }
+/* mounted inside the Sharp Money tabs (sharps-v2/embed.js): the host page supplies the background, the tabs and the title.
+   Tokens come from the html theme attributes the host already sets; typography is restated on the root because body.sv2 does not apply there. */
+.sv2-root { margin: 0; color: var(--sv2-ink); font: 400 15px/1.55 var(--sv2-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; --sv2-pad: 24px; --sv2-gutter: 0px; min-width: 0; }
+.sv2-root .sv2-card { padding: calc(var(--sv2-pad) + 2px); }
+@media (max-width: 767px) { .sv2-root { --sv2-pad: 18px; } }
+body.sv2-lock { overflow: hidden; }
+html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone shell inset, the same as the old tab content */
