@@ -428,7 +428,7 @@
     return '<li>' + bits.join(dot()) + '</li>';
   }
   function gameCard(gm) {
-    var head = '<header class="sv2-fw-gh"><span class="sv2-chip sv2-chip--muted">' + esc(sportName(gm.sport)) + '</span><b class="sv2-fw-gt">' + esc(teamsOf(gm.ev)) + '</b>' +
+    var head = '<header class="sv2-fw-gh"><span class="sv2-chip sv2-chip--muted">' + esc(sportName(gm.sport)) + '</span><b class="sv2-fw-gt">' + ui.matchup(cardFor(gm.ev, gm.gst), teamsOf(gm.ev)) + '</b>' +
       (isNum(gm.gst) ? '<span class="sv2-fw-gtime sv2-num">' + esc(ct.time(gm.gst, true)) + '</span>' : '') + '</header>';
     var same = gm.same.map(function (s) { return '<p class="sv2-fw-same">' + s.n + ' wallets you follow are on <b>' + esc(s.side) + '</b>' + (s.g === 'ml' ? '' : ' (' + esc(MKT[s.g] || s.g) + ')') + '</p>'; }).join('');
     return '<article class="sv2-card sv2-fw-game" aria-label="' + esc(teamsOf(gm.ev)) + '">' + head + same + '<ul class="sv2-fw-bets">' + gm.bets.map(function (b) { return betRow(b, gm); }).join('') + '</ul></article>';
@@ -813,7 +813,7 @@
       return '<li class="sv2-fw-wh' + (name === grp.side ? ' is-mine' : '') + '"><b>' + esc(name) + '</b>' + (name === grp.side ? ' <span class="sv2-fw-small">this bet</span>' : '') + '<p>' + line + '.</p></li>';
     }).join('');
     var units = rules.shownUnits(game, grp.g), sf = m.sf && m.sf.all, sport = String(game.sport).toLowerCase(), play;
-    if (sport === 'cfb') play = 'No play on CFB.';
+    if (sport === 'cfb') play = 'No size on CFB.';
     else if (units > 0 && sf && sf.side) play = 'The Sharps page shows a play on <b>' + esc(sf.side) + '</b>: ' + (ui.playPill(units) || '');
     else play = 'The Sharps page has no play in this market.';
     var sharpsHash = '#sharps/play/' + encodeURIComponent(grp.ev) + '/' + encodeURIComponent(grp.g);
@@ -848,7 +848,7 @@
   function buildShell(el) {
     el.innerHTML = '<div class="sv2-fw">' +
       '<p class="sv2-fw-sum" id="fw-sum" tabindex="-1"></p>' +
-      '<div class="sv2-fw-sports" id="fw-sports">' + seg.html({ id: 'fw-sport', label: 'Sport', value: 'all', size: 'sm', scroll: true, items: sportItems() }) + '</div>' +
+      '<div class="sv2-fw-sports" id="fw-sports"' + (SV2.hostSport() != null ? ' hidden' : '') + '>' + seg.html({ id: 'fw-sport', label: 'Sport', value: 'all', size: 'sm', scroll: true, items: sportItems() }) + '</div>' +
       '<div class="sv2-cols sv2-fw-cols">' +
       '<div class="sv2-fw-maincol"><section aria-labelledby="fw-h-next"><h2 class="sv2-h2 sv2-fw-h" id="fw-h-next">Next up</h2><div id="fw-feed">' + ui.skel(2, 'Loading wallets', 'sv2-fw-skel') + '</div><p class="sv2-fw-note" id="fw-floor"></p></section>' +
       '<section id="fw-gone" class="sv2-fw-gone" hidden></section></div>' +
@@ -889,7 +889,8 @@
     var sp = document.getElementById('fw-sports');
     if (sp) {
       var cur = SV2.seg.value($('.sv2-seg', sp));
-      if (sportsPresent().concat(['all']).indexOf(S.sport) < 0) S.sport = 'all';
+      if (SV2.hostSport() == null && sportsPresent().concat(['all']).indexOf(S.sport) < 0) S.sport = 'all';
+      sp.hidden = SV2.hostSport() != null;
       sp.innerHTML = seg.html({ id: 'fw-sport', label: 'Sport', value: S.sport, size: 'sm', scroll: true, items: sportItems() });
       void cur;
     }
@@ -979,8 +980,11 @@
   }
 
   function mount(el) {
-    if (S.mounted) return;
+    if (S.mounted && S.el === el) return;
     S.mounted = true; S.el = el;
+    /* the host (Sharp Money header) supplies the sport; the shell is rebuilt on every tab visit, the listeners are bound once */
+    var on = S.wired ? function () {} : SV2.on;
+    if (SV2.hostSport() != null) S.sport = SV2.hostSport();
     buildShell(el);
     el.addEventListener('click', onClick);
     /* the sport strip is rebuilt on every data load, so delegate on its holder */
@@ -991,26 +995,26 @@
     });
     var q = document.getElementById('fw-q');
     q.addEventListener('input', function () { S.q = q.value; S.shown = PAGE; paintDir(); });
-    var host = document.getElementById('sv2-sheet-host'); if (host) host.addEventListener('click', onSheetClick);
+    var host = document.getElementById('sv2-sheet-host'); if (host && !S.wired) host.addEventListener('click', onSheetClick);
 
-    SV2.on('wallets', function () {
+    on('wallets', function () {
       var f = file();
       /* the 2 minute reload emits even when nothing changed: skip a repaint of the same build so focus and scroll stay put */
       if (f && S.built === f.built && S.lastState === store.state.wallets && S.lastStale === store.stale.wallets) return;
       S.lastState = store.state.wallets; S.lastStale = store.stale.wallets;
       repaintAll();
     });
-    SV2.on('cards', function () {
+    on('cards', function () {
       if (S.sh && S.sh.tab === 'who') repaintPanel();
     });
     /* since.json arrived (or failed): the tallies in the rail, the not-on-the-list rows and the sheet change */
-    SV2.on('since', function () {
+    on('since', function () {
       if (!file()) return;
       var fl = follows.list(); withFocus(function () { paintGone(fl); paintRail(fl); });
       var sec = document.querySelector('[data-fw-since]');
       if (S.sh && sec) { var row = sheetRow(S.sh), at = follows.at(S.sh.sp, S.sh.w); sec.innerHTML = sinceBlock(sinceOf(row, at), at); }
     });
-    SV2.on('follows', function (ev) {
+    on('follows', function (ev) {
       ensureSince();
       paintFeed();
       /* a followed row is never hidden by the inactive or 20+ filters, so the list only needs a repaint when this toggle could change
@@ -1021,8 +1025,8 @@
       }
       paintFollowLabels();
     });
-    SV2.on('tick', function (t) { if (S.nextCut != null && t >= S.nextCut) paintFeed(); });
-    SV2.on('route', function (r) {
+    on('tick', function (t) { if (S.nextCut != null && t >= S.nextCut) paintFeed(); });
+    on('route', function (r) {
       if (r.page !== 'following') return;
       if (r.sub[0] === 'acct') { S.lastOpened = r.hash; openFromRoute(r); } else S.lastOpened = null;
     });
@@ -1030,8 +1034,16 @@
     S.lastState = store.state.wallets; S.lastStale = store.stale.wallets;
     var cr = SV2.route();
     if (cr.page === 'following' && cr.sub[0] === 'acct') { S.lastOpened = cr.hash; S.pendingRoute = cr; }
+    on('sport', function (v) {
+      if (v == null) return;
+      S.sport = v; S.shown = PAGE; if (!S.sortUser) S.sort = defaultSort(v);
+      var sp = document.getElementById('fw-sports'); if (sp) sp.hidden = true;
+      if (file()) { paintFeed(); paintDir(); }
+    });
+    S.wired = true;
     repaintAll();
   }
+
 
   SV2.register('following', mount);
   /* pure functions for the node tests */

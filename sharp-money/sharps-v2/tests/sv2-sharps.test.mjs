@@ -39,7 +39,8 @@ ok('sharpsPage is exported', !!P && typeof P.collectPlays === 'function');
 
 console.log('filters');
 eq('cleanFilters keeps valid values', P.cleanFilters({ sport: 'nfl', tier: 'thin', market: 'total', starts: 'hour' }), { sport: 'nfl', tier: 'thin', market: 'total', starts: 'hour' });
-eq('cleanFilters drops invalid values (cfb has no plays, so no cfb chip)', P.cleanFilters({ sport: 'cfb', tier: 'strong', market: 5, starts: null }), { sport: 'all', tier: 'all', market: 'all', starts: 'all' });
+eq('cleanFilters drops invalid values', P.cleanFilters({ sport: 'mlb', tier: 'strong', market: 5, starts: null }), { sport: 'all', tier: 'all', market: 'all', starts: 'all' });
+eq('cleanFilters keeps cfb (CFB plays show, with no size)', P.cleanFilters({ sport: 'cfb' }).sport, 'cfb');
 eq('cleanFilters on garbage', [P.cleanFilters(null), P.cleanFilters('x')].map((f) => f.sport), ['all', 'all']);
 
 console.log('fixture (10:21 AM CT build)');
@@ -103,7 +104,7 @@ if (!live) { skip('collectPlays'); skip('bands'); skip('reasons'); skip('filters
   const ctx = P.contextRows(live, plays, NOW);
   ok('rows are sorted by past-winner money, largest first', ctx.every((r, i) => i === 0 || ctx[i - 1].usd >= r.usd || ctx[i - 1].cfb || r.cfb));
   ok('a shown play never appears in the context list for the same market', ctx.every((r) => r.cfb || !plays.some((p) => p.game.ev === r.game.ev && p.g === r.best.g)));
-  ok('CFB games where the rule picked a side are flagged cfb (the page prints "No play on CFB" and names no side)', ctx.filter((r) => r.cfb).length === 8, ctx.filter((r) => r.cfb).length);
+  ok('CFB markets where the rule picked a side are plays now (tier, no size), so none is left as a cfb context row', ctx.filter((r) => r.cfb).length === 0, ctx.filter((r) => r.cfb).length);
   eq('with no plays the list is the 48 games from the spec', P.contextRows(live, [], NOW).length, 48);
 
   console.log('clock gates');

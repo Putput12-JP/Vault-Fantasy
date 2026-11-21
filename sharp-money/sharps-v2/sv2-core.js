@@ -32,6 +32,15 @@
     (handlers[name] || []).slice().forEach(function (f) { try { f(arg); } catch (e) { if (root.console) console.error('SV2 handler', name, e); } });
   };
 
+  /* host sport: the Sharp Money page header owns the sport chips. null means no host (V2 shows its own strip); otherwise 'all' or one sport. */
+  var HS = null;
+  SV2.hostSport = function () { return HS; };
+  SV2.setSport = function (sp) {
+    var v = sp == null ? null : (!sp || /^all$/i.test(String(sp))) ? 'all' : String(sp).toLowerCase();
+    if (v === HS) return;
+    HS = v; SV2.emit('sport', v);
+  };
+
   /* ------------------------------------------------------------------ dev hooks (localhost only) */
   function loc() { return root.location || { hostname: '', search: '', hash: '' }; }
   function isLocalHost(h) { h = String(h || ''); return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1' || /\.localhost$/.test(h); }
@@ -276,8 +285,8 @@
 
   /* Clear / Mixed / Thin / Contested for a shown play, 'none' for no shown size. First match wins. A stored tier
      (plays-data v2.tier logged at freeze) wins over the client rule. */
-  rules.tierOf = function (game, g) {
-    if (rules.shownUnits(game, g) <= 0) return 'none';
+  rules.tierOf = function (game, g, o) {
+    if (rules.shownUnits(game, g) <= 0 && !(o && o.noSize)) return 'none';   /* noSize: a CFB play carries a tier but no size */
     var f = rules.factsOf(game, g); if (!f) return 'none';
     var m = mkt(game, g), stored = m && m.v2 && typeof m.v2.tier === 'string' ? lc(m.v2.tier) : null;
     var t;
@@ -610,6 +619,28 @@
   };
   ui.chip = function (text, kind, extra) {
     return '<span class="sv2-chip sv2-chip--' + (kind || 'muted') + (extra ? ' ' + extra : '') + '">' + esc(text) + '</span>';
+  };
+  /* team logo for one side of a card game: the stored vault.logo field first, then the ESPN NFL and NBA abbreviation path (the same
+     fallback the shells use). null for CFB and for anything unknown, so no broken image is ever drawn. */
+  var NFL_AB = { LA: 'lar', WAS: 'wsh', JAC: 'jax' }, NBA_AB = { NOP: 'no', NYK: 'ny', SAS: 'sa', GSW: 'gs', WAS: 'wsh', UTA: 'utah' };
+  SV2.logoUrl = function (game, side) {
+    var v = game && game.vault; if (!v || (side !== 'away' && side !== 'home')) return null;
+    var st = v.logo && v.logo[side]; if (typeof st === 'string' && /^https:\/\/a\.espncdn\.com\//.test(st)) return st;
+    var ab = String(v[side] || '').toUpperCase(), sp = String(game.sport || '').toLowerCase();
+    if (!/^[A-Z]{2,4}$/.test(ab)) return null;
+    if (sp === 'nfl') return 'https://a.espncdn.com/i/teamlogos/nfl/500/' + (NFL_AB[ab] || ab.toLowerCase()) + '.png';
+    if (sp === 'nba') return 'https://a.espncdn.com/i/teamlogos/nba/500/' + (NBA_AB[ab] || ab.toLowerCase()) + '.png';
+    return null;
+  };
+  ui.logo = function (game, side) {
+    var u = SV2.logoUrl(game, side);
+    return u ? '<img class="sv2-logo" src="' + esc(u) + '" alt="" width="22" height="22" loading="lazy" decoding="async" onerror="this.remove()">' : '';
+  };
+  /* "TB at DET" with a logo before each team. game null (not on the cards): the plain text. */
+  ui.matchup = function (game, text) {
+    var m = /^(.+) at (.+)$/.exec(String(text || ''));
+    if (!m || !game) return '<span class="sv2-mu">' + esc(text) + '</span>';
+    return '<span class="sv2-mu"><span class="sv2-mu-t">' + ui.logo(game, 'away') + esc(m[1]) + '</span><span class="sv2-mu-at">at</span><span class="sv2-mu-t">' + ui.logo(game, 'home') + esc(m[2]) + '</span></span>';
   };
   /* play tier: pips (aria-hidden) plus the word, ink only. { why:true } appends the one-line meaning. */
   ui.tier = function (tier, o) {
@@ -1068,12 +1099,16 @@
       if (menuBtn) { setMenu(document.getElementById('sv2-menu').hidden); return; }
       if (!t.closest('#sv2-menu')) { var mm = document.getElementById('sv2-menu'); if (mm && !mm.hidden) setMenu(false); }
       if (t.closest('#sv2-info-btn')) { setInfo(document.getElementById('sv2-hd').getAttribute('data-info') !== 'open'); return; }
+      var hdo = document.getElementById('sv2-hd');
+      if (hdo && hdo.getAttribute('data-info') === 'open' && !t.closest('#sv2-info')) setInfo(false);
       if (t.closest('#sv2-refresh')) { SV2.refresh(); return; }
       /* trap 5: a delegated click re-places every strip after the page has changed */
       setTimeout(rail.catchUp, 0);
     });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+        var hdi = document.getElementById('sv2-hd');
+        if (hdi && hdi.getAttribute('data-info') === 'open') { setInfo(false); var ib = document.getElementById('sv2-info-btn'); if (ib) ib.focus(); }
         var mm = document.getElementById('sv2-menu');
         if (mm && !mm.hidden) { setMenu(false); var b = document.getElementById('sv2-menu-btn'); if (b) b.focus(); }
       }

@@ -770,3 +770,100 @@ body.sv2 .sv2-card { padding: calc(var(--sv2-pad) + 2px); }
 @media (max-width: 767px) { .sv2-root { --sv2-pad: 18px; } }
 body.sv2-lock { overflow: hidden; }
 html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone shell inset, the same as the old tab content */
+
+/* ===== 10. Logos, the Filters control, and the in-tab (embedded) layout. Appended 2026-11-21 (UI pass 2).
+   Tokens only, press primitives only; the popover and sheet reuse section 6, so no new motion and nothing new for the reduced-motion block. ===== */
+/* team logos: 20px, fixed box so a late image never moves the line; a failed image removes itself */
+.sv2 .sv2-logo { flex: none; width: 20px; height: 20px; margin-right: 6px; border-radius: 50%; object-fit: contain; }
+.sv2 .sv2-mu { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; }
+.sv2 .sv2-mu-t { display: inline-flex; align-items: center; min-width: 0; }
+.sv2 .sv2-mu-at { font-weight: 400; color: var(--sv2-faint); }
+.sv2 .sv2-sp-g { display: block; margin: 2px 0 0; }
+.sv2 .sv2-fw-gt .sv2-mu { font-weight: 600; }
+.sv2 .sv2-nosize { font: 500 12px/1.2 var(--sv2-sans); color: var(--sv2-mut); }
+
+/* Filters: one row, one button */
+.sv2 .sv2-sp-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.sv2 .sv2-sp-sum { flex: 1 1 auto; min-width: 0; margin: 0; }
+.sv2 .sv2-sp-acts { flex: none; }
+.sv2 .sv2-sp-fwrap { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+.sv2 .sv2-sp-ftog { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 36px; min-height: 36px; padding: 0 14px; border-radius: 999px; background: var(--sv2-box); color: var(--sv2-ink); font: 500 14px/1 var(--sv2-sans); }
+.sv2 .sv2-sp-ftog svg { width: 16px; height: 16px; }
+.sv2 .sv2-sp-ftog[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--sv2-line); }
+.sv2 .sv2-sp-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--sv2-ink); color: var(--sv2-page); font-size: 12px; font-weight: 600; line-height: 18px; text-align: center; }
+.sv2 .sv2-sp-badge[hidden], .sv2 .sv2-sp-fclr[hidden], .sv2 .sv2-sp-active[hidden], .sv2 .sv2-sp-pop[hidden] { display: none; }
+.sv2 .sv2-sp-fclr { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--sv2-box); color: var(--sv2-mut); }
+.sv2 .sv2-sp-fclr svg { width: 14px; height: 14px; }
+.sv2 .sv2-sp-ftog::after, .sv2 .sv2-sp-fc::after, .sv2 .sv2-sp-fclr::after, .sv2 .sv2-sp-ac::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+.sv2 .sv2-sp-fclr::after { left: -8px; right: -8px; }
+.sv2 .sv2-sp-pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 340px; max-width: calc(100vw - 32px); padding: 14px 16px; border-radius: var(--sv2-r); background: var(--sv2-card); border: 1px solid var(--sv2-line); box-shadow: 0 12px 32px rgb(0 0 0 / .28); }
+.sv2 .sv2-sp-pbody { display: grid; gap: 14px; }
+.sv2 .sv2-sp-fg .sv2-h2 { margin: 0 0 8px; }
+.sv2 .sv2-sp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.sv2 .sv2-sp-fc { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--sv2-box); color: var(--sv2-mut); font: 500 14px/1 var(--sv2-sans); }
+.sv2 .sv2-sp-fc .sv2-cnt { font-size: 12px; opacity: .8; }
+.sv2 .sv2-sp-fc[aria-pressed="true"] { background: var(--sv2-ink); color: var(--sv2-page); }
+.sv2 .sv2-sp-pf { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--sv2-line); }
+.sv2 .sv2-sp-reset { min-height: 44px; }
+.sv2 .sv2-sp-done { min-height: 36px; padding: 0 18px; border-radius: 999px; background: var(--sv2-ink); color: var(--sv2-page); font: 600 14px/1 var(--sv2-sans); }
+.sv2 .sv2-sp-active { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.sv2 .sv2-sp-ac { position: relative; display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 8px 0 11px; border-radius: 999px; background: rgb(var(--sv2-ink-rgb) / .1); color: var(--sv2-ink); font: 500 13px/1 var(--sv2-sans); }
+.sv2 .sv2-sp-ac svg { width: 12px; height: 12px; color: var(--sv2-mut); }
+.sv2 .sv2-sp-sportrow { margin-top: 4px; }
+.sv2 .sv2-sheet .sv2-sp-pbody { padding-bottom: 4px; }
+
+/* embedded in the Sharp Money tabs: one slim line, tight rhythm, a sensible width. The host header owns the title and the sport. */
+.sv2-embedded { --sv2-pad: 16px; max-width: 1120px; }
+.sv2-embedded .sv2-card { padding: var(--sv2-pad); }
+.sv2-embedded .sv2-hd { position: relative; padding-top: 0; }
+.sv2-embedded .sv2-hbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.sv2-embedded .sv2-hbar-t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; min-width: 0; font-size: 13px; line-height: 1.4; color: var(--sv2-faint); }
+.sv2-embedded .sv2-hbar-t p { margin: 0; }
+.sv2-embedded .sv2-context { display: none; color: var(--sv2-mut); }
+@media (min-width: 768px) { .sv2-embedded .sv2-context { display: block; } }
+.sv2-embedded .sv2-hd-actions { flex: none; gap: 0; margin-right: -9px; }
+.sv2-embedded .sv2-ibtn { width: 36px; height: 36px; border-radius: 10px; color: var(--sv2-mut); }
+.sv2-embedded .sv2-ibtn::after { content: ''; position: absolute; inset: -4px; }
+.sv2-embedded .sv2-ibtn svg { width: 18px; height: 18px; }
+.sv2-embedded .sv2-rf { width: auto; min-width: 36px; padding: 0 9px; gap: 6px; font: 500 13px/1 var(--sv2-sans); }
+.sv2-embedded .sv2-rf .sv2-rf-t { display: none; }
+.sv2-embedded .sv2-rf[data-state="busy"] .sv2-rf-t, .sv2-embedded .sv2-rf[data-state="done"] .sv2-rf-t, .sv2-embedded .sv2-rf[data-state="fail"] .sv2-rf-t { display: inline; }
+.sv2-embedded .sv2-info { position: absolute; right: 0; top: calc(100% - 2px); z-index: 30; width: min(420px, 100%); margin: 0; padding: 14px 16px; background: var(--sv2-card); border: 1px solid var(--sv2-line); box-shadow: 0 12px 32px rgb(0 0 0 / .28); }
+.sv2-embedded .sv2-guard { margin: 0 0 8px; }
+.sv2-root #sv2-main { padding-bottom: 0; }
+.sv2-embedded .sv2-cols { gap: 14px; }
+@media (min-width: 1024px) {
+  .sv2-embedded .sv2-cols { grid-template-columns: minmax(0, 1fr) 300px; justify-content: stretch; gap: 20px; }
+  .sv2-embedded .sv2-col-rail { top: 12px; }
+}
+.sv2-embedded .sv2-band { position: static; padding: 6px 0 6px; background: transparent; }
+.sv2-embedded .sv2-sp-band .sv2-band { padding: 2px 0 6px; }
+.sv2-embedded .sv2-sp-band + .sv2-sp-band { margin-top: 10px; }
+.sv2-embedded .sv2-sp-rows { gap: 8px; }
+.sv2-embedded .sv2-sp-row { padding: 10px var(--sv2-pad); }
+.sv2-embedded .sv2-sp-l2 { margin-top: 6px; }
+.sv2-embedded .sv2-sp-l3 { margin-top: 4px; }
+.sv2-embedded .sv2-sp-body { gap: 12px; padding: 2px var(--sv2-pad) 6px; }
+.sv2-embedded .sv2-sp-rb { padding: 12px 14px; }
+.sv2-embedded .sv2-sp-rail { display: grid; gap: 8px; align-content: start; }
+.sv2-embedded .sv2-sp-ctxbtn { min-height: 44px; }
+.sv2-embedded .sv2-fw-sum { padding: 0 0 6px; }
+.sv2-embedded .sv2-fw-h { margin-bottom: 4px; }
+.sv2-embedded .sv2-fw-dayh { margin: 10px 0 6px; }
+.sv2-embedded .sv2-fw-game { margin-bottom: 8px; }
+.sv2-embedded .sv2-fw-gh { padding: 10px var(--sv2-pad) 2px; }
+.sv2-embedded .sv2-fw-bet { min-height: 48px; padding: 8px var(--sv2-pad); }
+.sv2-embedded .sv2-fw-gone { margin-top: 14px; }
+.sv2-embedded .sv2-fw-dir { margin-top: 20px; }
+.sv2-embedded .sv2-fw-row, .sv2-embedded .sv2-fw-main { min-height: 52px; }
+.sv2-embedded .sv2-fw-railcard .sv2-fw-railh { padding-bottom: 2px; }
+/* Following toolbar: search, sort and the two toggles in one tidy row (wraps to two on a phone) */
+.sv2-embedded .sv2-fw-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.sv2-embedded .sv2-fw-search { flex: 1 1 100%; }
+.sv2-embedded .sv2-fw-sortw { flex: 1 1 auto; grid-column: auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.sv2-embedded .sv2-fw-sortw::-webkit-scrollbar { display: none; }
+.sv2-embedded .sv2-fw-togs { flex: none; }
+@media (min-width: 900px) {
+  .sv2-embedded .sv2-fw-search { flex: 0 1 280px; }
+  .sv2-embedded .sv2-fw-sortw { justify-content: flex-end; }
+}
