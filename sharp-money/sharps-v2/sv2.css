@@ -813,7 +813,7 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 .sv2 .sv2-sheet .sv2-sp-pbody { padding-bottom: 4px; }
 
 /* embedded in the Sharp Money tabs: one slim line, tight rhythm, a sensible width. The host header owns the title and the sport. */
-.sv2-embedded { --sv2-pad: 16px; max-width: 1120px; }
+.sv2-embedded { --sv2-pad: 16px; max-width: none; }   /* fill the tab: the shell already sets the page width */
 .sv2-embedded .sv2-card { padding: var(--sv2-pad); }
 .sv2-embedded .sv2-hd { position: relative; padding-top: 0; }
 .sv2-embedded .sv2-hbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
@@ -833,7 +833,7 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 .sv2-root #sv2-main { padding-bottom: 0; }
 .sv2-embedded .sv2-cols { gap: 14px; }
 @media (min-width: 1024px) {
-  .sv2-embedded .sv2-cols { grid-template-columns: minmax(0, 1fr) 300px; justify-content: stretch; gap: 20px; }
+  .sv2-embedded .sv2-cols { grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 400px); justify-content: stretch; gap: 20px; }
   .sv2-embedded .sv2-col-rail { top: 12px; }
 }
 .sv2-embedded .sv2-band { position: static; padding: 6px 0 6px; background: transparent; }
