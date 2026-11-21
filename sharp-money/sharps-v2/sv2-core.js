@@ -453,7 +453,8 @@
   };
   SV2.store = store;
   var inflight = {};
-  function srcFor(kind) { return devParam(kind) || (RAW + kind + '.json'); }
+  /* the cards file is published as live.json; wallets.json and since.json keep their names */
+  function srcFor(kind) { return devParam(kind) || (RAW + (kind === 'cards' ? 'live' : kind) + '.json'); }
   function withKey(url, force) {
     var k = force ? Date.now() : Math.floor(Date.now() / 120000);
     return url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + k;
