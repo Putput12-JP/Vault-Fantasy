@@ -210,3 +210,11 @@ position carry four more fields (the directory-only wallets do not, to keep the 
 Entry price in `curve` and `odds` is the stake-weighted price of a settled ledger position, a stored field. The open position's own
 entry price is still not stored; the sheet says so. `dive` on cards and `live.json` is unchanged (no `odds` there). Context only: no size,
 pick or agree total comes from any of it. Page: `following.js?v=10` (both Sharp Money layouts load the same file).
+
+### Change on 2026-11-21: the account sheet opens from the Sharps cards
+
+A hot wallet's row in a card's Wallets list, and the "Open account sheet" button inside a wallet's deep dive in the play detail, open the same
+account sheet as the Following feed. `side-cards.js` names the wallet, game, market and side; `following.js` (`VaultFollowing.openSheet`) finds
+the wallet's largest rung of that bet in `wallets.json` and opens the sheet over the page. A wallet or bet that is not in the file (an old card,
+an unproven or excluded wallet) does not open anything: the row says "No account sheet for this wallet". Losing, other and excluded wallets
+have no link. No new data and no change to any card, size or record. Pages: `side-cards.js?v=60`, `following.js?v=11`.
