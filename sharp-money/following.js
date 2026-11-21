@@ -113,7 +113,7 @@ var CSS = [
 '.vfw .fw-row>.c-meta{display:none}',
 /* the account sheet: opened from a bet in the feed (centered on desktop, a bottom sheet on a phone) */
 '.vfw .fw-sh-scrim{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:16px}',
-'.vfw .fw-sh{position:relative;width:min(900px,100%);max-height:calc(100vh - 32px);overflow-y:auto;overscroll-behavior:contain;background:var(--c-card);color:var(--c-ink);border-radius:var(--c-r);padding:22px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.5);border:1px solid var(--c-line)}',
+'.vfw .fw-sh{position:relative;width:min(1060px,100%);max-height:calc(100vh - 32px);overflow-y:auto;overscroll-behavior:contain;background:var(--c-card);color:var(--c-ink);border-radius:var(--c-r);padding:22px 24px 20px;box-shadow:0 30px 80px rgba(0,0,0,.5);border:1px solid var(--c-line)}',
 '.vfw .fw-sh.fw-in{animation:fw-sh-in 450ms var(--fw-spring)}.vfw .fw-sh-scrim.fw-in{animation:fw-sh-fade 220ms ease-out}',
 '@keyframes fw-sh-in{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}@keyframes fw-sh-fade{from{opacity:0}to{opacity:1}}',
 '.vfw .fw-sh-top{display:flex;align-items:center;gap:12px}.vfw .fw-sh-top h2{margin:0;font-size:18px;font-weight:600}.vfw .fw-sh-top p{margin:2px 0 0;font-size:12.5px;color:var(--c-mut)}',
@@ -131,7 +131,7 @@ var CSS = [
 '.vfw .fw-sh-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.vfw .fw-sh h5{margin:0 0 8px;font-size:11px;font-weight:600;color:var(--c-mut);letter-spacing:.04em;text-transform:uppercase}',
 '.vfw .fw-sh .fw-kv{margin:0}.vfw .fw-sh .fw-det-n{margin:8px 0 0}',
 '.vfw .fw-sh-ctx{margin:16px 0 0;background:var(--c-box);border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--c-mut)}.vfw .fw-sh-ctx b{color:var(--c-ink);font-weight:600}',
-'.vfw .fw-sh-cuts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}',
+'.vfw .fw-sh-cuts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}',
 '.vfw .fw-sh-cut{all:unset;box-sizing:border-box;cursor:pointer;background:var(--c-box);border-radius:16px;padding:12px 11px;border:1.5px solid transparent;min-width:0;--fw-ps:.975;transition:transform 500ms var(--fw-spring),border-color 150ms ease}',
 '.vfw .fw-sh-cut:active{transform:scale(var(--fw-ps));transition:transform 80ms ease-out}.vfw .fw-sh-cut:focus-visible{outline:2px solid var(--c-mut)}.vfw .fw-sh-cut.on{border-color:var(--c-gold);background:rgba(240,207,122,.07)}',
 '.vfw .fw-sh-cut .t{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--c-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
