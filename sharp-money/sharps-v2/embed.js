@@ -12,8 +12,17 @@
     if (sessionStorage.getItem('sm-legacy') === '1') return;
   } catch (e) {}
   var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
-  var V = { css: 9, core: 3, sharps: 2, following: 2 };
-  var tpl = null, assets = null;
+  var V = { css: 9, core: 4, sharps: 2, following: 2 };
+  var tpl = null, assets = null, pending = null;
+  /* A wallet link on the Sharps tab points at #following/acct/<sport>/<wallet>, an address the Sharp Money shell does not know (it would land
+     on the plays tab). Take the shell to its Following tab and open that wallet's popup there. */
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href^="#following/acct/"]');
+    if (!a || !a.closest('.sv2-root')) return;
+    if (window.SV2 && typeof window.SV2.openAccount === 'function') return;   /* the Following page is mounted and opens it itself */
+    e.preventDefault(); e.stopPropagation();
+    pending = a.getAttribute('href'); location.hash = '#following';
+  }, true);
   /* the one slim line inside a tab: freshness on the left, info and refresh on the right. Same ids as the standalone header, so core drives it unchanged. */
   var ICON_INFO = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5.5M12 7.6v.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
   var ICON_RF = '<svg class="sv2-rf-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -67,7 +76,8 @@
       root.innerHTML = t.hd + '<main id="sv2-main" tabindex="-1">' + t.pages + '</main><div class="sv2-sr" id="sv2-live" aria-live="polite" role="status"></div>';
       sheetHost();
       window.SV2.setSport(sport);            /* before boot, so the page's first paint already follows the host's sport */
-      window.SV2.boot(route);
+      var start = pending; pending = null;
+      window.SV2.boot(route, route === 'following' ? start : undefined);
     }).catch(function () {
       root.innerHTML = '<p class="sv2-empty-line" style="padding:16px 0">Could not load this page. <a href="?legacy=1">Open the previous version</a></p>';
     });
