@@ -52,3 +52,30 @@ class NbaCodes(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class CbbFallback(unittest.TestCase):
+    """CBB plays sat open because the ESPN fallback had no college basketball board, and ESPN lists some games with home and away reversed."""
+    def test_cbb_has_a_board_and_ncsu_alias(self):
+        self.assertIn('cbb', B.SCORE)
+        self.assertEqual(B.n('NCSU', 'cbb'), 'NCST')
+
+    def test_reversed_sides_store_the_score_on_the_feed_sides(self):
+        import datetime as dt, json, tempfile
+        start = 1795147200
+        ev = [{'date': '2026-11-20T04:00Z', 'competitions': [{'status': {'type': {'completed': True}}, 'competitors': [
+            {'homeAway': 'home', 'score': '83', 'team': {'abbreviation': 'KU'}},
+            {'homeAway': 'away', 'score': '92', 'team': {'abbreviation': 'HOU'}}]}]}]
+        with tempfile.TemporaryDirectory() as d:
+            res, plays = os.path.join(d, 'res.json'), os.path.join(d, 'p.json')
+            json.dump({}, open(res, 'w'))
+            json.dump({'plays': {'a': {'status': 'open', 'kind': 'book', 'sport': 'cbb', 'start': start,
+                                       'game': {'gk': 'cbb:1', 'away': 'KU', 'home': 'HOU'}}}}, open(plays, 'w'))
+            old = (B.RES, B.board)
+            B.RES, B.board = res, lambda sport, day: ev
+            try:
+                B.main(['--plays', plays])
+            finally:
+                B.RES, B.board = old
+            r = json.load(open(res))['cbb:1']
+        self.assertEqual((r['home'], r['away']), (92, 83))   # feed home is HOU, who scored 92
