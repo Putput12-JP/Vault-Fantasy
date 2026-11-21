@@ -12,18 +12,27 @@
     if (sessionStorage.getItem('sm-legacy') === '1') return;
   } catch (e) {}
   var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
-  var V = { css: 6, core: 2, sharps: 1, following: 1 };
+  var V = { css: 7, core: 3, sharps: 2, following: 2 };
   var tpl = null, assets = null;
+  /* the one slim line inside a tab: freshness on the left, info and refresh on the right. Same ids as the standalone header, so core drives it unchanged. */
+  var ICON_INFO = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5.5M12 7.6v.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  var ICON_RF = '<svg class="sv2-rf-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var HD = '<header class="sv2-hd sv2-hd--bar" id="sv2-hd" data-info="closed"><div class="sv2-hbar">' +
+    '<div class="sv2-hbar-t"><p class="sv2-fresh" id="sv2-fresh" aria-label="Data freshness"><span class="sv2-sr">Loading</span></p><p class="sv2-context" id="sv2-context"></p></div>' +
+    '<div class="sv2-hd-actions">' +
+    '<button type="button" class="sv2-ibtn sv2-press sv2-press-btn" id="sv2-info-btn" aria-expanded="false" aria-controls="sv2-info" aria-label="How to read this">' + ICON_INFO + '</button>' +
+    '<button type="button" class="sv2-ibtn sv2-rf sv2-press sv2-press-btn" id="sv2-refresh" data-state="idle" aria-label="Refresh">' + ICON_RF + '<span class="sv2-spinner xs" aria-hidden="true"></span><span class="sv2-rf-t">Refresh</span></button>' +
+    '</div></div><p class="sv2-guard" id="sv2-guard" role="status" hidden></p>' +
+    '<div class="sv2-info" id="sv2-info" role="region" aria-label="How to read this" hidden></div></header>';
 
   function loadTemplate() {
     if (tpl) return Promise.resolve(tpl);
     return fetch(BASE + 'index.html').then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
       var d = new DOMParser().parseFromString(t, 'text/html');
-      var hd = d.getElementById('sv2-hd'), main = d.getElementById('sv2-main');
-      if (!hd || !main) throw new Error('V2 template missing');
-      ['sv2-title', 'sv2-routes', 'sv2-menu-btn', 'sv2-menu'].forEach(function (id) { var n = hd.querySelector('#' + id); if (n) n.remove(); });
+      var main = d.getElementById('sv2-main');
+      if (!main) throw new Error('V2 template missing');
       var wrap = main.querySelector('.sv2-wrap');
-      tpl = { hd: hd.outerHTML, pages: wrap ? wrap.innerHTML.replace(/<noscript>[\s\S]*?<\/noscript>/g, '') : main.innerHTML };
+      tpl = { hd: HD, pages: wrap ? wrap.innerHTML.replace(/<noscript>[\s\S]*?<\/noscript>/g, '') : main.innerHTML };
       return tpl;
     });
   }
@@ -46,9 +55,9 @@
     var w = document.createElement('div'); w.className = 'sv2-root sv2'; w.innerHTML = '<div class="sv2-sheet-host" id="sv2-sheet-host"></div>';
     document.body.appendChild(w);
   }
-  function mount(el, route) {
+  function mount(el, route, sport) {
     el.textContent = '';
-    var root = document.createElement('div'); root.className = 'sv2-root sv2'; root.innerHTML = '<p class="sv2-empty-line" style="padding:16px 0;color:var(--sv2-mut)">Loading</p>';
+    var root = document.createElement('div'); root.className = 'sv2-root sv2 sv2-embedded'; root.innerHTML = '<p class="sv2-empty-line" style="padding:16px 0;color:var(--sv2-mut)">Loading</p>';
     el.appendChild(root);
     Promise.all([loadTemplate(), loadAssets()]).then(function (r) {
       if (!document.contains(root)) return;                              /* the shell moved on to another tab while this loaded */
@@ -57,18 +66,23 @@
       document.documentElement.setAttribute('data-sv2-skin', /\/new\//.test(location.pathname) ? 'apple' : 'default');
       root.innerHTML = t.hd + '<main id="sv2-main" tabindex="-1">' + t.pages + '</main><div class="sv2-sr" id="sv2-live" aria-live="polite" role="status"></div>';
       sheetHost();
+      window.SV2.setSport(sport);            /* before boot, so the page's first paint already follows the host's sport */
       window.SV2.boot(route);
     }).catch(function () {
       root.innerHTML = '<p class="sv2-empty-line" style="padding:16px 0">Could not load this page. <a href="?legacy=1">Open the previous version</a></p>';
     });
   }
+  /* The host's sport: the desktop React wrapper gets props.sport, the phone shell passes opts.sport. No sport (null) means the host
+     has no sport chips for this page, so V2 keeps its own strip (the contract side-cards.js and following.js used: o.sport != null hides the strip). */
   function swap(name, route) {
     var o = window[name]; if (!o) return;
-    o.mountPage = function (el) { mount(el, route); };
+    o.mountPage = function (el, opts) { mount(el, route, opts && opts.sport != null ? opts.sport : null); };
     if (o.Page) {   /* __smKit is defined later by the shell bundle, so it is read when the page renders */
-      o.Page = function () {
-        var U = window.__smKit().U, ref = U.useRef(null);
-        U.useEffect(function () { if (ref.current) mount(ref.current, route); }, []);
+      o.Page = function (props) {
+        var U = window.__smKit().U, ref = U.useRef(null), sport = props && props.sport != null ? props.sport : 'all';
+        U.useEffect(function () { if (ref.current) mount(ref.current, route, sport); }, []);
+        /* a chip change updates the mounted page in place (no remount, so scroll and open rows stay) */
+        U.useEffect(function () { if (window.SV2 && window.SV2.setSport) window.SV2.setSport(sport); }, [sport]);
         return U.createElement('div', { ref: ref });
       };
     }

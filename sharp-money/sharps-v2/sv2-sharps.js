@@ -29,10 +29,11 @@
     sameTag: 'same wallet',
     noMatch: 'No plays match these filters.',
     ctxCfb: 'No play on CFB',
+    noSize: 'No size on CFB',
     collegeNoTier: 'No price tier in college (no tested closing-price model)',
     legend: ['Past-winner money', 'Other money', 'Losing-record money (hatched)']
   };
-  var SPORT_ORDER = ['nba', 'nfl', 'cbb'];
+  var SPORT_ORDER = ['nfl', 'cfb', 'nba', 'cbb'];
   var FKEY = 'sv2-filters';
   var CTX_STEP = 12;
 
@@ -63,9 +64,10 @@
       if (!game || game.frozen) return;
       if (isNum(game.gst) && game.gst <= nowT) return;
       Object.keys(game.markets || {}).forEach(function (g) {
-        var units = rules.shownUnits(game, g);
-        if (units <= 0) return;
-        var sf = sfOf(mktOf(game, g)), tier = rules.tierOf(game, g), facts = rules.factsOf(game, g);
+        var units = rules.shownUnits(game, g), sf = sfOf(mktOf(game, g));
+        /* CFB: the play shows with its tier and no size (the rule gives none there) */
+        if (units <= 0 && !(lc(game.sport) === 'cfb' && sf && sf.side)) return;
+        var tier = rules.tierOf(game, g, { noSize: true }), facts = rules.factsOf(game, g);
         if (!sf || !facts || tier === 'none') return;
         out.push({
           key: game.ev + '|' + g, game: game, g: g, sf: sf, units: units, tier: tier, facts: facts,
@@ -195,8 +197,8 @@
       var best = null, cfbPick = false;
       Object.keys(game.markets || {}).forEach(function (g) {
         var m = game.markets[g], sf = sfOf(m);
-        if (lc(game.sport) === 'cfb' && sf && sf.side) cfbPick = true;
         if (played[game.ev + '|' + g]) return;
+        if (lc(game.sport) === 'cfb' && sf && sf.side) cfbPick = true;
         Object.keys(m.sides || {}).forEach(function (name) {
           var a = sideAll(m, name), usd = a && isNum(a.sharp_usd) ? a.sharp_usd : 0;
           if (usd > 0 && (!best || usd > best.usd)) best = { g: g, side: name, usd: usd };
@@ -397,10 +399,10 @@
 
   function rowHtml(p, st, sameKeys) {
     var open = !!st.open[p.key], id = 'sv2-sp-x-' + p.key.replace(/[^a-z0-9]+/gi, '-');
-    var title = playTitle(p.game, p.g, p.sf), c = fmt.cents(p.sf.price), reason = reasonOf(p), pill = ui.playPill(p.units);
+    var title = playTitle(p.game, p.g, p.sf), c = fmt.cents(p.sf.price), reason = reasonOf(p), pill = p.units > 0 ? ui.playPill(p.units) : (p.sport === 'cfb' ? '<span class="sv2-nosize">' + esc(T.noSize) + '</span>' : '');
     var label = title + ', ' + gameLabel(p.game) + ', ' + (copy.tier[p.tier] ? copy.tier[p.tier].word : '') + '. ' + (reason || '');
     var head = '<button type="button" class="sv2-sp-row sv2-press sv2-press-row" aria-expanded="' + open + '" aria-controls="' + id + '" data-sp-row="' + esc(p.key) + '" data-fid="row:' + esc(p.key) + '">' +
-      '<span class="sv2-sp-l1"><span class="sv2-sp-t"><b>' + esc(title) + '</b> <span class="sv2-sp-g">' + esc(gameLabel(p.game)) + '</span></span>' +
+      '<span class="sv2-sp-l1"><span class="sv2-sp-t"><b>' + esc(title) + '</b> <span class="sv2-sp-g">' + ui.matchup(p.game, gameLabel(p.game)) + '</span></span>' +
       (c ? '<span class="sv2-sp-px sv2-num">' + esc(c) + '</span>' : '') + ui.icon('chevron', 'sv2-chev') + '</span>' +
       '<span class="sv2-sp-l2">' + ui.chip(SV2.sportName(p.sport), 'muted') + ui.tier(p.tier) + pill + (sameKeys[p.key] ? ui.chip(T.sameTag, 'muted') : '') + '</span>' +
       '<span class="sv2-sp-l3"><span class="sv2-sp-why">' + esc(reason) + '</span><span class="sv2-sp-time">' + esc(timeText(p)) + '</span></span>' +
@@ -439,6 +441,7 @@
   SV2.register('sharps', function mount(el) {
     var st = { f: loadFilters(), wallet: null, open: {}, more: {}, ctxOpen: null, ctxN: CTX_STEP, panel: false, deep: null, shell: false, sig: '', lastBands: '' };
     var refs = {}, model = null;
+    function on(name, fn) { SV2.on(name, function (a) { if (document.contains(el)) fn(a); }); }   /* a re-mounted tab leaves the old closures behind: they stay quiet */
 
     function nowT() { return SV2.now(); }
 
@@ -449,42 +452,45 @@
       var same = rules.sameWallet(all.map(function (p) { return { game: p.game, g: p.g }; })), sameMap = {}, sameKeys = {};
       same.forEach(function (r) { sameMap[r.w] = r; r.keys.forEach(function (k) { sameKeys[k] = 1; }); });
       if (st.wallet && !sameMap[st.wallet]) st.wallet = null;
-      var vis = all.filter(function (p) { return passes(p, st.f, null, st.wallet, sameMap); });
+      var vis = all.filter(function (p) { return passes(p, eff(), null, st.wallet, sameMap); });
       var ctx = contextRows(cards, all, now);
       return { now: now, all: all, same: same, sameMap: sameMap, sameKeys: sameKeys, vis: vis, ctx: ctx, next: nextCut(cards, now) };
     }
 
-    /* ---- shell: built once, when the first data lands ---- */
-    function stripHtml(id, label, key, items) {
-      return seg.html({ id: id, label: label, value: st.f[key], size: 'sm', scroll: true, items: items.map(function (it) { return { v: it[0], label: it[1], count: 0 }; }) });
+    /* ---- shell: built once, when the first data lands. One toolbar row: summary on the left, Filters on the right.
+       Sport is the host's (Sharp Money header chips); only a host that does not supply one gets V2's own sport strip. ---- */
+    var STARTS = [['all', 'All'], ['hour', 'Next hour'], ['today', 'Today']];
+    function eff() { var f = Object.assign({}, st.f), hs = SV2.hostSport(); if (hs != null) f.sport = hs; return f; }
+    function isPhone() { return !!(window.matchMedia && window.matchMedia('(max-width: 767px)').matches); }
+    function groupItems(key) {
+      if (key === 'tier') return [['all', 'All']].concat(copy.tierOrder.map(function (t) { return [t, copy.tier[t].word]; }));
+      if (key === 'market') return [['all', 'All']].concat(T.marketOrder.map(function (m) { return [m, T.market[m]]; }));
+      return STARTS;
     }
+    var GROUPS = [['tier', 'Evidence tier'], ['market', 'Market'], ['starts', 'Starts']];
     function buildShell() {
+      st.hasHost = SV2.hostSport() != null;
       var sports = [['all', 'All']].concat(SPORT_ORDER.map(function (s) { return [s, SV2.sportName(s)]; }));
-      var tiers = [['all', 'All']].concat(copy.tierOrder.map(function (t) { return [t, copy.tier[t].word]; }));
-      var mk = [['all', 'All']].concat(T.marketOrder.map(function (m) { return [m, T.market[m]]; }));
-      var starts = [['all', 'All'], ['hour', 'Next hour'], ['today', 'Today']];
+      var sportRow = st.hasHost ? '' : '<div class="sv2-sp-sportrow">' + seg.html({ id: 'sp-sport', label: 'Sport', value: st.f.sport, size: 'sm', scroll: true, items: sports.map(function (it) { return { v: it[0], label: it[1], count: 0 }; }) }) + '</div>';
       el.innerHTML =
         '<div class="sv2-cols sv2-sp"><div class="sv2-sp-main">' +
-        '<p class="sv2-sp-sum" data-sp="sum"></p>' +
-        '<div class="sv2-sp-frow">' + stripHtml('sp-sport', 'Sport', 'sport', sports) +
-        '<button type="button" class="sv2-sp-ftog sv2-press sv2-press-chip" data-sp-ftog aria-expanded="false" aria-controls="sv2-sp-fx"><span data-sp="fcount">Filters</span>' + ui.icon('chevron', 'sv2-chev') + '</button></div>' +
-        '<div class="sv2-x sv2-sp-fx" id="sv2-sp-fx"><div class="sv2-x-in"><div class="sv2-sp-panel">' +
-        '<div class="sv2-sp-fr2"><span class="sv2-sp-flab">Tier</span>' + stripHtml('sp-tier', 'Tier', 'tier', tiers) + '</div>' +
-        '<p class="sv2-sp-note sv2-sp-tiernote" data-sp="tiernote"></p>' +
-        '<div class="sv2-sp-fr2"><span class="sv2-sp-flab">Market</span>' + stripHtml('sp-market', 'Market', 'market', mk) + '</div>' +
-        '<div class="sv2-sp-fr2"><span class="sv2-sp-flab">Starts</span>' + stripHtml('sp-starts', 'Starts', 'starts', starts) + '</div>' +
-        '<button type="button" class="sv2-link sv2-sp-clear" data-sp-clear hidden>Clear filters</button>' +
-        '</div></div></div>' +
+        '<div class="sv2-sp-bar"><p class="sv2-sp-sum" data-sp="sum"></p>' +
+        '<div class="sv2-sp-acts" data-sp="acts"><div class="sv2-sp-fwrap">' +
+        '<button type="button" class="sv2-sp-ftog sv2-press sv2-press-btn" data-sp-ftog aria-haspopup="dialog" aria-expanded="false" aria-controls="sv2-sp-pop">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>' +
+        '<span>Filters</span><span class="sv2-sp-badge sv2-num" data-sp="badge" hidden></span></button>' +
+        '<button type="button" class="sv2-sp-fclr sv2-press sv2-press-chip" data-sp-clear aria-label="Clear filters" hidden>' + ui.icon('close') + '</button>' +
+        '<div class="sv2-sp-pop" id="sv2-sp-pop" data-sp="pop" role="dialog" aria-label="Filters" hidden></div></div></div></div>' +
+        sportRow +
+        '<div class="sv2-sp-active" data-sp="active" hidden></div>' +
         '<div class="sv2-sp-same" data-sp="same"></div>' +
         '<div data-sp="list"></div>' +
         '<section class="sv2-sp-ctx" data-sp="ctx" aria-label="Games with no play"></section>' +
         '</div><aside class="sv2-col-rail sv2-sp-rail" data-sp="rail" aria-label="Summary"></aside></div>';
-      ['sum', 'fcount', 'tiernote', 'same', 'list', 'ctx', 'rail'].forEach(function (k) { refs[k] = el.querySelector('[data-sp="' + k + '"]'); });
-      refs.strips = { sport: el.querySelector('[data-rail-id="sp-sport"]'), tier: el.querySelector('[data-rail-id="sp-tier"]'), market: el.querySelector('[data-rail-id="sp-market"]'), starts: el.querySelector('[data-rail-id="sp-starts"]') };
-      refs.frow = el.querySelector('.sv2-sp-frow'); refs.fx = el.querySelector('#sv2-sp-fx'); refs.ftog = el.querySelector('[data-sp-ftog]'); refs.clear = el.querySelector('[data-sp-clear]');
-      Object.keys(refs.strips).forEach(function (k) {
-        seg.bind(refs.strips[k], function (v) { st.f[k] = v; lsSet(FKEY, JSON.stringify(st.f)); paint(true, true); });
-      });
+      ['sum', 'acts', 'badge', 'pop', 'active', 'same', 'list', 'ctx', 'rail'].forEach(function (k) { refs[k] = el.querySelector('[data-sp="' + k + '"]'); });
+      refs.strips = {}; var ss = el.querySelector('[data-rail-id="sp-sport"]');
+      if (ss) { refs.strips.sport = ss; seg.bind(ss, function (v) { st.f.sport = v; lsSet(FKEY, JSON.stringify(st.f)); paint(true, true); }); }
+      refs.ftog = el.querySelector('[data-sp-ftog]'); refs.clear = el.querySelector('[data-sp-clear]');
       st.shell = true;
     }
 
@@ -496,17 +502,78 @@
       if (v === 'hour') return p.band === 'hour';
       return p.band === 'hour' || p.band === 'today';
     }
+    function countFor(d, k, v) { var f = eff(); return d.all.filter(function (p) { return passes(p, f, k, st.wallet, d.sameMap) && facetValue(p, k, v); }).length; }
     function setCounts(d) {
       Object.keys(refs.strips).forEach(function (k) {
         var strip = refs.strips[k];
         Array.prototype.forEach.call(strip.querySelectorAll('button[data-v]'), function (b) {
-          var v = b.getAttribute('data-v'), n = d.all.filter(function (p) { return passes(p, st.f, k, st.wallet, d.sameMap) && facetValue(p, k, v); }).length;
+          var n = countFor(d, k, b.getAttribute('data-v'));
           var c = b.querySelector('.sv2-cnt'); if (c && c.textContent !== String(n)) c.textContent = String(n);
         });
         seg.set(strip, st.f[k]);
       });
     }
-    function activeCount() { return Object.keys(st.f).filter(function (k) { return st.f[k] !== 'all'; }).length; }
+    /* sport is not a filter here: it belongs to the host header (or its own strip), so it never counts toward the badge */
+    function activeKeys() { return GROUPS.map(function (g) { return g[0]; }).filter(function (k) { return st.f[k] !== 'all'; }); }
+    function itemLabel(k, v) { var it = groupItems(k).filter(function (x) { return x[0] === v; })[0]; return it ? it[1] : v; }
+
+    function panelHtml(d) {
+      return '<div class="sv2-sp-pbody">' + GROUPS.map(function (g) {
+        var k = g[0];
+        return '<div class="sv2-sp-fg" role="group" aria-label="' + esc(g[1]) + '"><h3 class="sv2-h2">' + esc(g[1]) + '</h3><div class="sv2-sp-chips">' +
+          groupItems(k).map(function (it) {
+            return '<button type="button" class="sv2-sp-fc sv2-press sv2-press-chip" data-sp-fc="' + k + '" data-v="' + esc(it[0]) + '" aria-pressed="' + (st.f[k] === it[0]) + '">' + esc(it[1]) + ' <span class="sv2-cnt sv2-num">' + (d ? countFor(d, k, it[0]) : 0) + '</span></button>';
+          }).join('') + '</div></div>';
+      }).join('') + '</div><div class="sv2-sp-pf"><button type="button" class="sv2-link sv2-sp-reset" data-sp-reset>Reset</button><button type="button" class="sv2-sp-done sv2-press sv2-press-btn" data-sp-done>Done</button></div>';
+    }
+    function activeHtml() {
+      return activeKeys().map(function (k) {
+        var g = GROUPS.filter(function (x) { return x[0] === k; })[0][1], w = itemLabel(k, st.f[k]);
+        return '<button type="button" class="sv2-sp-ac sv2-press sv2-press-chip" data-sp-rm="' + k + '" data-fid="rm:' + k + '" aria-label="Remove filter: ' + esc(g + ' ' + w) + '"><span>' + esc(w) + '</span>' + ui.icon('close') + '</button>';
+      }).join('');
+    }
+    function sheetOpen() { return SV2.sheet.isOpen() && SV2.sheet.route() == null && st.panel && isPhone(); }
+    function syncFtog() { if (refs.ftog) refs.ftog.setAttribute('aria-expanded', String(!!st.panel)); }
+    function openPanel() {
+      if (!model) return;
+      st.panel = true;
+      if (isPhone()) SV2.sheet.open(panelHtml(model), { label: 'Filters', returnFocus: refs.ftog, onClose: function () { st.panel = false; syncFtog(); } });
+      else { refs.pop.innerHTML = panelHtml(model); refs.pop.hidden = false; var f0 = refs.pop.querySelector('[aria-pressed="true"]'); if (f0) f0.focus({ preventScroll: true }); }
+      syncFtog();
+    }
+    function closePanel(refocus) {
+      if (!st.panel) return;
+      if (isPhone() && SV2.sheet.isOpen()) { SV2.sheet.close(); return; }
+      st.panel = false; refs.pop.hidden = true; syncFtog();
+      if (refocus && refs.ftog) refs.ftog.focus({ preventScroll: true });
+    }
+    function refreshPanel(focusSel) {
+      if (!st.panel || !model) return;
+      var box = sheetOpen() ? SV2.sheet.body() : refs.pop;
+      if (!box) return;
+      if (sheetOpen()) SV2.sheet.set(panelHtml(model)); else box.innerHTML = panelHtml(model);
+      if (focusSel) { var n = box.querySelector(focusSel); if (n) n.focus({ preventScroll: true }); }
+      SV2.rail.catchUp();
+    }
+    function resetFilters() { st.f.tier = 'all'; st.f.market = 'all'; st.f.starts = 'all'; st.wallet = null; lsSet(FKEY, JSON.stringify(st.f)); }
+    /* one handler for the popover (inside el) and the phone sheet (in the body-level host). Returns true when it took the click. */
+    function filterClick(e) {
+      var t = e.target; if (!t || !t.closest) return false;
+      var chip = t.closest('[data-sp-fc]');
+      if (chip) {
+        var k = chip.getAttribute('data-sp-fc'), v = chip.getAttribute('data-v');
+        st.f[k] = v; lsSet(FKEY, JSON.stringify(st.f)); paint(true, true);
+        refreshPanel('[data-sp-fc="' + k + '"][data-v="' + v + '"]');
+        return true;
+      }
+      if (t.closest('[data-sp-reset]')) { resetFilters(); paint(true, true); refreshPanel('[data-sp-done]'); return true; }
+      if (t.closest('[data-sp-done]')) { closePanel(true); return true; }
+      var rm = t.closest('[data-sp-rm]');
+      if (rm) { st.f[rm.getAttribute('data-sp-rm')] = 'all'; lsSet(FKEY, JSON.stringify(st.f)); paint(true, true); return true; }
+      if (t.closest('[data-sp-clear]')) { resetFilters(); paint(true, true); return true; }
+      if (t.closest('[data-sp-ftog]')) { if (st.panel) closePanel(false); else openPanel(); return true; }
+      return false;
+    }
 
     function railHtml(d) {
       var counts = {}; copy.tierOrder.forEach(function (t) { counts[t] = 0; }); d.all.forEach(function (p) { counts[p.tier]++; });
@@ -563,15 +630,16 @@
       var d = compute(); model = d;
       refs.sum.innerHTML = summaryText(d);
       setCounts(d);
-      refs.frow.hidden = !d.all.length; refs.fx.hidden = !d.all.length;   /* zero plays: no filters, the context list is the page */
-      var na = activeCount();
-      refs.fcount.textContent = na ? 'Filters ' + na : 'Filters';
-      refs.clear.hidden = !na;
-      refs.tiernote.textContent = d.all.length && !d.all.some(function (p) { return p.tier === 'clear'; }) ? T.tierEmpty : '';
-      refs.tiernote.hidden = !refs.tiernote.textContent;
+      refs.acts.hidden = !d.all.length;   /* zero plays: no filters, the context list is the page */
+      var na = activeKeys().length;
+      refs.badge.textContent = String(na); refs.badge.hidden = !na; refs.clear.hidden = !na;
+      refs.active.innerHTML = activeHtml(); refs.active.hidden = !na;
+      if (!d.all.length && st.panel) closePanel(false);
+      refreshPanel();
       refs.same.innerHTML = sameHtml(d); refs.same.hidden = !refs.same.innerHTML;
       if (st.ctxOpen == null) st.ctxOpen = !d.all.length;   /* zero plays: the context list is the real content, open it */
       if (!d.all.length) refs.list.innerHTML = '';
+      else if (!d.vis.length && !activeKeys().length && !st.wallet && eff().sport !== 'all') refs.list.innerHTML = '<p class="sv2-empty-line">No ' + esc(SV2.sportName(eff().sport)) + ' plays right now.</p>';
       else if (!d.vis.length) refs.list.innerHTML = '<p class="sv2-empty-line">' + esc(T.noMatch) + ' <button type="button" class="sv2-link" data-sp-clear data-fid="clear2">Clear filters</button></p>';
       else refs.list.innerHTML = bandsHtml(d.vis, st, d.sameKeys, d.now);
       st.lastBands = bandSig(d.all);
@@ -617,6 +685,7 @@
     /* ---- events (delegated) ---- */
     el.addEventListener('click', function (e) {
       var t = e.target; if (!t.closest) return;
+      if (filterClick(e)) return;
       var a = t.closest('[data-sv2-acct]');
       if (a) {
         if (typeof SV2.openAccount === 'function') {
@@ -640,14 +709,6 @@
         more.setAttribute('aria-expanded', String(mo)); st.more[more.getAttribute('data-sp-more')] = mo;
         return;
       }
-      if (t.closest('[data-sp-ftog]')) {
-        st.panel = !st.panel;
-        if (st.panel) refs.fx.setAttribute('data-open', ''); else refs.fx.removeAttribute('data-open');
-        refs.ftog.setAttribute('aria-expanded', String(st.panel));
-        SV2.rail.catchUp();
-        return;
-      }
-      if (t.closest('[data-sp-clear]')) { st.f = cleanFilters(null); st.wallet = null; lsSet(FKEY, JSON.stringify(st.f)); paint(true, true); return; }
       var sw = t.closest('[data-sp-same]');
       if (sw) { st.wallet = sw.getAttribute('data-sp-same'); paint(true, true); return; }
       if (t.closest('[data-sp-same-clear]')) { st.wallet = null; paint(true, true); return; }
@@ -668,11 +729,11 @@
     });
 
     /* ---- data and clock events ---- */
-    SV2.on('cards', function () { paint(false); });
-    SV2.on('wallets', function () { paint(false); });
-    SV2.on('splits', function () { paint(false); });
-    SV2.on('route', function () { readDeep(); if (st.deep && store.cards) paint(true); });
-    SV2.on('tick', function () {
+    on('cards', function () { paint(false); });
+    on('wallets', function () { paint(false); });
+    on('splits', function () { paint(false); });
+    on('route', function () { readDeep(); if (st.deep && store.cards) paint(true); });
+    on('tick', function () {
       if (!store.cards || !st.shell || el.hidden) return;
       var now = nowT(), all = collectPlays(store.cards, now);
       if (bandSig(all) !== st.lastBands) { paint(true); return; }
@@ -680,6 +741,19 @@
         var c = countdownText(+n.getAttribute('data-cut'), now); if (c != null && n.textContent !== c) n.textContent = c;
       });
     });
+
+    on('sport', function () {
+      if (!st.shell) return;
+      if ((SV2.hostSport() != null) !== st.hasHost) st.shell = false;   /* the host appeared or went: the sport strip is rebuilt */
+      paint(true, true);
+    });
+    el.addEventListener('keydown', function (e) { if (e.key === 'Escape' && st.panel && !isPhone()) { e.stopPropagation(); closePanel(true); } });
+    if (SV2._spOut) document.removeEventListener('click', SV2._spOut);
+    SV2._spOut = function (e) { if (st.panel && !isPhone() && document.contains(el) && document.contains(e.target) && e.target.closest && !e.target.closest('.sv2-sp-fwrap')) closePanel(false); };
+    document.addEventListener('click', SV2._spOut);
+    SV2._spSheet = filterClick;
+    var shHost = document.getElementById('sv2-sheet-host');
+    if (shHost && !shHost._spf) { shHost._spf = true; shHost.addEventListener('click', function (e) { if (SV2._spSheet) SV2._spSheet(e); }); }
 
     readDeep();
     paint(true);
