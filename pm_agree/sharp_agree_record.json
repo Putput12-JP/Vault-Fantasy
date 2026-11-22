@@ -1,27 +1,27 @@
 {
- "generated": 1795367166,
+ "generated": 1795386473,
  "prereg": "docs/sharp-agree-prereg.md",
  "sports": {
   "nba": {
-   "derived": 71,
+   "derived": 81,
    "pending": 0,
-   "read_share": 0.972,
+   "read_share": 0.975,
    "no_verdict_data": false,
    "no_read_why": {
     "no_market_at_line": 2
    },
    "cells": {
     "agree": {
-     "rows": 15,
+     "rows": 18,
      "plays": 0,
-     "rows_clv": 8,
-     "games_clv": 6,
-     "clv": -0.00326,
+     "rows_clv": 9,
+     "games_clv": 7,
+     "clv": -0.00912,
      "rows_roi": 14,
      "roi": 0.34721
     },
     "against": {
-     "rows": 12,
+     "rows": 13,
      "plays": 0,
      "rows_clv": 7,
      "games_clv": 7,
@@ -30,7 +30,7 @@
      "roi": -0.4511
     },
     "mixed": {
-     "rows": 6,
+     "rows": 7,
      "plays": 0,
      "rows_clv": 2,
      "games_clv": 2,
@@ -39,11 +39,11 @@
      "roi": -0.2206
     },
     "none": {
-     "rows": 36,
+     "rows": 41,
      "plays": 0,
-     "rows_clv": 8,
-     "games_clv": 6,
-     "clv": -0.01431,
+     "rows_clv": 9,
+     "games_clv": 7,
+     "clv": -0.01144,
      "rows_roi": 25,
      "roi": 0.02228
     }
@@ -52,38 +52,38 @@
     "boost": {
      "contrast": "agree minus none",
      "ci": {
-      "diff": 0.01105,
-      "lo": -0.02408,
-      "hi": 0.05719,
-      "lo95": -0.01674,
-      "hi95": 0.04589
+      "diff": 0.00232,
+      "lo": -0.03334,
+      "hi": 0.04629,
+      "lo95": -0.02578,
+      "hi95": 0.03534
      },
      "n": [
-      8,
-      8
+      9,
+      9
      ],
      "games": [
-      6,
-      6
+      7,
+      7
      ],
      "verdict": "underpowered"
     },
     "veto": {
      "contrast": "against minus none",
      "ci": {
-      "diff": -0.05589,
-      "lo": -0.1727,
-      "hi": 0.02535,
-      "lo95": -0.14449,
-      "hi95": 0.01371
+      "diff": -0.05876,
+      "lo": -0.17644,
+      "hi": 0.0243,
+      "lo95": -0.14575,
+      "hi95": 0.01164
      },
      "n": [
       7,
-      8
+      9
      ],
      "games": [
       7,
-      6
+      7
      ],
      "verdict": "underpowered"
     }
@@ -91,50 +91,50 @@
    "note": "plays-only counts are in cells[*].plays and carry no verdict"
   },
   "nfl": {
-   "derived": 27,
+   "derived": 36,
    "pending": 0,
-   "read_share": 0.407,
+   "read_share": 0.528,
    "no_verdict_data": false,
    "no_read_why": {
-    "no_market_at_line": 10,
+    "no_market_at_line": 11,
     "read_too_old": 6
    },
    "cells": {
     "agree": {
-     "rows": 3,
-     "plays": 0,
-     "rows_clv": 0,
-     "games_clv": 0,
-     "clv": null,
-     "rows_roi": 0,
-     "roi": null
-    },
-    "against": {
-     "rows": 1,
-     "plays": 0,
-     "rows_clv": 0,
-     "games_clv": 0,
-     "clv": null,
-     "rows_roi": 0,
-     "roi": null
-    },
-    "mixed": {
-     "rows": 1,
-     "plays": 0,
-     "rows_clv": 0,
-     "games_clv": 0,
-     "clv": null,
-     "rows_roi": 0,
-     "roi": null
-    },
-    "none": {
      "rows": 6,
      "plays": 0,
      "rows_clv": 0,
      "games_clv": 0,
      "clv": null,
-     "rows_roi": 0,
-     "roi": null
+     "rows_roi": 3,
+     "roi": -0.31967
+    },
+    "against": {
+     "rows": 4,
+     "plays": 0,
+     "rows_clv": 1,
+     "games_clv": 1,
+     "clv": 0.0462,
+     "rows_roi": 3,
+     "roi": 0.032
+    },
+    "mixed": {
+     "rows": 3,
+     "plays": 0,
+     "rows_clv": 0,
+     "games_clv": 0,
+     "clv": null,
+     "rows_roi": 3,
+     "roi": -0.33333
+    },
+    "none": {
+     "rows": 6,
+     "plays": 0,
+     "rows_clv": 1,
+     "games_clv": 1,
+     "clv": 0.0,
+     "rows_roi": 5,
+     "roi": 0.2334
     }
    },
    "tests": {
@@ -143,24 +143,30 @@
      "ci": null,
      "n": [
       0,
-      0
+      1
      ],
      "games": [
       0,
-      0
+      1
      ],
      "verdict": "underpowered"
     },
     "veto": {
      "contrast": "against minus none",
-     "ci": null,
+     "ci": {
+      "diff": 0.0462,
+      "lo": 0.0462,
+      "hi": 0.0462,
+      "lo95": 0.0462,
+      "hi95": 0.0462
+     },
      "n": [
-      0,
-      0
+      1,
+      1
      ],
      "games": [
-      0,
-      0
+      1,
+      1
      ],
      "verdict": "underpowered"
     }
