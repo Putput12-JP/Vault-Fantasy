@@ -1,57 +1,57 @@
 # Player-prop retro — week 11
 
-_318 graded props (318 with a projection to score)._
+_368 graded props (368 with a projection to score)._
 
 ## Headline
 
-- **Record:** 164-154 (51.6%) vs 52.4% break-even → below break-even
-- **CLV beat-rate:** 52.2% — how often we land on the right side of the closing line
-- **Model vs market log-loss:** 0.6923 vs 0.6975 → **model prices probability better** by 0.0052
+- **Record:** 185-183 (50.3%) vs 52.4% break-even → below break-even
+- **CLV beat-rate:** 50.3% — how often we land on the right side of the closing line
+- **Model vs market log-loss:** 0.6934 vs 0.6965 → **model prices probability better** by 0.0031
 
 The closing line is the sharpest number the market posts, so it is our stand-in for "industry tools." Beating it on CLV = real side-selection edge; a worse log-loss = our confidence numbers are still less calibrated than consensus.
 
 ## By market
 
 ```
-rec            n=  81    41-40 50.6% | CLV 53.1% | MAE   1.5 bias -0.01 | edge -0.002
-rec_yd         n=  81    43-38 53.1% | CLV 54.3% | MAE  19.1 bias +3.59 | edge +0.019
-rush_yd        n=  32    15-17 46.9% | CLV 59.4% | MAE  16.8 bias -0.36 | edge -0.008
-rush_att       n=  31    20-11 64.5% | CLV 54.8% | MAE   3.0 bias -0.69 | edge +0.013
-rush_rec_yd    n=  22    11-11 50.0% | CLV 40.9% | MAE  22.9 bias +2.09 | edge   -  
-pass_yd        n=  12      6-6 50.0% | CLV 25.0% | MAE  37.5 bias +16.89 | edge +0.091
-pass_cmp       n=  12      6-6 50.0% | CLV 50.0% | MAE   3.6 bias +0.76 | edge +0.025
-pass_td        n=  12      3-9 25.0% | CLV 58.3% | MAE   0.7 bias -0.37 | edge -0.101
-pass_int       n=  12      6-6 50.0% | CLV 66.7% | MAE   0.7 bias +0.08 | edge   -  
-pass_att       n=  11      5-6 45.5% | CLV 72.7% | MAE   6.6 bias -0.47 | edge -0.039
-pass_rush_yd   n=  10      6-4 60.0% | CLV 20.0% | MAE  37.4 bias +24.77 | edge   -  
+rec            n=  92    44-48 47.8% | CLV 50.0% | MAE   1.6 bias -0.10 | edge -0.011
+rec_yd         n=  92    47-45 51.1% | CLV 53.3% | MAE  19.3 bias +3.27 | edge +0.010
+rush_yd        n=  38    18-20 47.4% | CLV 55.3% | MAE  17.2 bias +0.96 | edge +0.023
+rush_att       n=  37    24-13 64.9% | CLV 51.4% | MAE   3.0 bias -0.47 | edge +0.018
+rush_rec_yd    n=  26    13-13 50.0% | CLV 42.3% | MAE  23.3 bias +5.66 | edge   -  
+pass_yd        n=  14      7-7 50.0% | CLV 28.6% | MAE  37.8 bias +17.55 | edge +0.073
+pass_td        n=  14     3-11 21.4% | CLV 64.3% | MAE   0.8 bias -0.18 | edge -0.123
+pass_cmp       n=  14      6-8 42.9% | CLV 42.9% | MAE   4.5 bias +0.38 | edge +0.017
+pass_int       n=  14      7-7 50.0% | CLV 57.1% | MAE   0.6 bias +0.14 | edge   -  
+pass_att       n=  13      6-7 46.2% | CLV 69.2% | MAE   7.2 bias -0.74 | edge -0.023
+pass_rush_yd   n=  12      8-4 66.7% | CLV 25.0% | MAE  40.4 bias +23.15 | edge   -  
 rush_td        n=   2      2-0 100.0% | CLV  0.0% | MAE   0.2 bias -0.08 | edge +0.265
 ```
 
 ## By position
 
 ```
-RB     n= 105    58-47 55.2% | CLV 53.3% | MAE  12.0 bias +0.40 | edge +0.027
-QB     n=  89    46-43 51.7% | CLV 52.8% | MAE  12.1 bias +4.99 | edge -0.002
-WR     n=  86    41-45 47.7% | CLV 53.5% | MAE  12.8 bias +1.25 | edge +0.022
-TE     n=  38    19-19 50.0% | CLV 44.7% | MAE   8.3 bias +4.24 | edge -0.070
+RB     n= 121    66-55 54.5% | CLV 50.4% | MAE  12.3 bias +1.93 | edge +0.027
+QB     n= 105    54-51 51.4% | CLV 51.4% | MAE  12.8 bias +4.67 | edge +0.005
+WR     n=  98    43-55 43.9% | CLV 53.1% | MAE  13.2 bias +0.98 | edge +0.002
+TE     n=  44    22-22 50.0% | CLV 40.9% | MAE   7.8 bias +3.58 | edge -0.052
 ```
 
 ## Over vs under
 
 ```
-over   n= 207   99-108 47.8% | CLV 44.9% | MAE  13.0 bias +3.73 | edge +0.018
-under  n= 111    65-46 58.6% | CLV 65.8% | MAE   9.6 bias -0.17 | edge -0.018
+over   n= 232  109-123 47.0% | CLV 44.0% | MAE  13.5 bias +4.33 | edge +0.018
+under  n= 136    76-60 55.9% | CLV 61.0% | MAE   9.9 bias -0.21 | edge -0.023
 ```
 
 ## Calibration (model P(over) → realized)
 
 ```
       bucket    n   pred  actual
-0.50-0.55     86  0.525   0.442  << overconfident
-0.55-0.60     58  0.577   0.621
-0.60-0.65     42  0.624   0.619
-0.65-0.70     16  0.671   0.500  << overconfident
-0.70-0.80     11  0.743   0.545  << overconfident
+0.50-0.55     99  0.524   0.424  << overconfident
+0.55-0.60     68  0.576   0.588
+0.60-0.65     49  0.624   0.551
+0.65-0.70     17  0.671   0.529  << overconfident
+0.70-0.80     14  0.743   0.643  << overconfident
 0.80-1.01      2  0.850   0.500  << overconfident
 ```
 
@@ -59,16 +59,16 @@ under  n= 111    65-46 58.6% | CLV 65.8% | MAE   9.6 bias -0.17 | edge -0.018
 
 Ranked by demonstrated edge (sample-shrunk log-loss + CLV, collapsed when the two disagree), so a lucky small-sample market can't top it.
 
-- **Best market: rec_yd** — 43-38 (53.1%), CLV 54.3%, log-loss edge +0.019, projection MAE 19.1.
-- **Best position: RB** — 58-47 (55.2%), CLV 53.3%, log-loss edge +0.027, projection MAE 12.0.
+- **Best market: rush_yd** — 18-20 (47.4%), CLV 55.3%, log-loss edge +0.023, projection MAE 17.2.
+- **Best position: RB** — 66-55 (54.5%), CLV 50.4%, log-loss edge +0.027, projection MAE 12.3.
 
 ## Flags
 
-- **[bias]** pass_yd: OVER-projects by 16.9 (12 props, MAE 37.5) — systematic, not noise
-- **[bias]** pass_td: UNDER-projects by 0.4 (12 props, MAE 0.7) — systematic, not noise
-- **[vs-market]** pass_td: market prices it better (log-loss +0.101 worse) — defer / blend toward the line
-- **[vs-market]** pass_att: market prices it better (log-loss +0.039 worse) — defer / blend toward the line
-- **[bias]** pass_rush_yd: OVER-projects by 24.8 (10 props, MAE 37.4) — systematic, not noise
+- **[bias]** pass_yd: OVER-projects by 17.6 (14 props, MAE 37.8) — systematic, not noise
+- **[vs-market]** pass_td: market prices it better (log-loss +0.123 worse) — defer / blend toward the line
+- **[bias]** pass_rush_yd: OVER-projects by 23.2 (12 props, MAE 40.4) — systematic, not noise
+- **[luck]** pass_rush_yd: 8-4 looks hot but CLV beat-rate 25.0% — the close moved against us, this is variance not edge
+- **[grades]** grade ladder is non-monotonic vs win% — the letter grade is not separating winners from losers this slice
 
 ---
 _Auto-generated by `scripts/weekly_prop_retro.py` off the settlement tape; refreshes with each settle. See git history for dates._
