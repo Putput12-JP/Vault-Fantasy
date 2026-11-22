@@ -14,7 +14,7 @@ pass_yd       n= 255  LL 0.7257 vs 0.6910  skill -0.050 z -2.8    n= 254  LL 0.7
 rec           n=1768  LL 0.6890 vs 0.6759  skill -0.019 z -2.7    n=1803  LL 0.6912 vs 0.6794  skill -0.017 z -2.4    market better than Vault
 rec_yd        n=1824  LL 0.7019 vs 0.6917  skill -0.015 z -2.2    n=1408  LL 0.6999 vs 0.6910  skill -0.013 z -1.8    market better than Vault
 rush_att      n= 734  LL 0.7106 vs 0.6956  skill -0.021 z -1.9    n= 709  LL 0.6997 vs 0.6902  skill -0.014 z -1.2    level with the market (within noise)
-rush_yd       n= 700  LL 0.7208 vs 0.6945  skill -0.038 z -2.4    n= 580  LL 0.7197 vs 0.6962  skill -0.034 z -2.0    market better than Vault
+rush_yd       n= 700  LL 0.7211 vs 0.6945  skill -0.038 z -2.5    n= 580  LL 0.7197 vs 0.6962  skill -0.034 z -2.0    market better than Vault
 ```
 
 ### 0.5 lines: market vs. result (capture watch)
@@ -35,7 +35,7 @@ rush_yd          26             45%        46%   +0.1
 
 ```
 market         beat close  avg CLV    open: win   units    close: win   units
-all                   58%   +0.1pp        52%   -205.7u         51%   -291.7u
+all                   58%   +0.1pp        52%   -205.7u         51%   -293.5u
 pass_att              65%   +0.3pp        54%     +6.1u         53%     +4.3u
 pass_cmp              61%   +0.2pp        48%    -26.3u         48%    -22.9u
 pass_td               47%   -0.1pp        56%    -16.9u         55%    -17.6u
@@ -43,7 +43,7 @@ pass_yd               55%   +0.1pp        46%    -33.7u         46%    -35.2u
 rec                   59%   +0.1pp        56%     +3.9u         54%    -10.6u
 rec_yd                56%   -0.1pp        51%    -46.5u         51%    -71.8u
 rush_att              62%   +0.5pp        52%    -13.9u         49%    -38.1u
-rush_yd               60%   +0.2pp        48%    -53.7u         47%    -73.5u
+rush_yd               60%   +0.2pp        48%    -53.7u         47%    -75.3u
 ```
 
 ## Game markets (at the close)
@@ -62,7 +62,7 @@ _Does fresh role news beat what the market already priced? Pre-game info only: a
 ```
 trigger                   OPEN: over hit vs market said     CLOSE: over hit vs market said
 mixed                     n= 276  46.4% vs  49.2%           n= 320  45.3% vs  49.2%
-no news                   n=2286  49.2% vs  49.4%           n=2504  49.4% vs  49.4%
+no news                   n=2286  49.2% vs  49.4%           n=2504  49.3% vs  49.4%
 usage down                n= 749  49.3% vs  49.3%           n= 851  49.4% vs  49.0%
 usage up / teammate out   n=3149  49.1% vs  49.6%           n=3378  48.6% vs  49.5%
 
@@ -150,7 +150,7 @@ Wk  7  props n= 587  LL 0.6877 vs 0.6835  skill -0.006 z -0.5     games n=  41  
 Wk  8  props n= 608  LL 0.7138 vs 0.6850  skill -0.042 z -3.4     games n=  38  LL 0.6601 vs 0.6433  skill -0.026 z -0.9
 Wk  9  props n= 624  LL 0.6999 vs 0.6856  skill -0.021 z -1.9     games n=  42  LL 0.6494 vs 0.6208  skill -0.046 z -1.5
 Wk 10  props n= 622  LL 0.7036 vs 0.6937  skill -0.014 z -1.3     games n=  41  LL 0.6276 vs 0.6524  skill +0.038 z +1.0
-Wk 11  props n=  84  LL 0.6908 vs 0.6831  skill -0.011 z -0.3     games n=   6  LL 0.6615 vs 0.5099  skill -0.297 z -1.7
+Wk 11  props n=  84  LL 0.6931 vs 0.6831  skill -0.015 z -0.4     games n=   6  LL 0.6615 vs 0.5099  skill -0.297 z -1.7
 ```
 
 ## How to read this
