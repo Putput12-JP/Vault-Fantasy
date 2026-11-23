@@ -912,3 +912,63 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 @media (min-width: 1280px) {
   .sv2 .sv2-fw-dir { --sv2-fw-grid: minmax(0, 1.7fr) minmax(0, 1.1fr) minmax(0, 1.1fr) 84px 66px 56px 100px 72px 80px minmax(0, 1fr) minmax(0, .8fr); }
 }
+
+/* ===== 9. Record view (sv2-rec-): layout and type only. Surfaces come from .sv2-card, panels from .sv2-card-inset. No motion of its own:
+   the Plays | Record switch and the sport strip use the shared seg rail pill. ===== */
+.sv2-rec-sw { margin: 0 0 12px; }
+.sv2-rec-sw .sv2-seg { width: 100%; max-width: 300px; }
+#sv2-main[data-view="record"] .sv2-page:not(.sv2-rec-page) { display: none !important; }
+.sv2-rec { display: grid; gap: 14px; min-width: 0; }
+.sv2-rec-sports { min-width: 0; }
+.sv2-rec-fresh { margin: 0; font: 400 13px/1.45 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-sec { display: grid; gap: 10px; align-content: start; }
+.sv2-rec-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.sv2-rec-sub { margin: 0; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-h3 { margin: 6px 0 0; font: 600 12px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2-rec-hero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
+.sv2-rec-stat { display: grid; gap: 2px; min-width: 0; align-content: start; }
+.sv2-rec-k { margin: 0; font: 600 12px/1.2 var(--sv2-sans); letter-spacing: .04em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2-rec-v { font: 600 24px/1.15 var(--sv2-num); font-variant-numeric: tabular-nums; letter-spacing: var(--sv2-num-ls); color: var(--sv2-ink); }
+.sv2-rec-kn { margin: 0; font: 400 12.5px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.sv2-rec-clv { font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-note { margin: 0; font: 400 13px/1.5 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.sv2-rec-two > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.sv2-rec-tbl { display: grid; gap: 0; min-width: 0; }
+.sv2-rec-th, .sv2-rec-row { display: grid; grid-template-columns: minmax(0, 1fr) 58px 66px 58px; column-gap: 8px; align-items: baseline; }
+.sv2-rec-tbl--past .sv2-rec-th, .sv2-rec-row--past { grid-template-columns: minmax(0, 1fr) 76px 64px; }
+.sv2-rec-th { padding: 4px 0; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2-rec-th > span + span, .sv2-rec-c { text-align: right; }
+.sv2-rec-list { list-style: none; margin: 0; padding: 0; }
+.sv2-rec-row { padding: 9px 0; border-top: 1px solid var(--sv2-line); font: 500 14px/1.35 var(--sv2-sans); }
+.sv2-rec-lab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.sv2-rec-n { font: 400 12.5px/1.3 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-tag { font: 400 12.5px/1.3 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-c { white-space: nowrap; }
+.sv2-rec-x { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; min-height: 0; }
+.sv2-rec-x:empty { display: none; }
+.sv2-rec-plays { list-style: none; margin: 0; padding: 0; }
+.sv2-rec-play { display: grid; grid-template-columns: minmax(0, 1fr) auto 58px; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--sv2-line); }
+.sv2-rec-pl { display: grid; gap: 2px; min-width: 0; font: 500 14px/1.3 var(--sv2-sans); }
+.sv2-rec-pl b { overflow-wrap: anywhere; font-weight: 600; }
+.sv2-rec-pm { font: 400 12.5px/1.35 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-rec-pu { text-align: right; white-space: nowrap; }
+.sv2-rec .sv2-chip, .sv2-rec .sv2-tier { max-width: 100%; }
+@media (min-width: 768px) {
+  .sv2-rec-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sv2-rec-th, .sv2-rec-row { grid-template-columns: minmax(0, 1fr) 80px 80px 80px; }
+  .sv2-rec-tbl--past .sv2-rec-th, .sv2-rec-row--past { grid-template-columns: minmax(0, 1fr) 100px 90px; }
+  .sv2-rec-v { font-size: 28px; }
+}
+@media (max-width: 767px) {
+  /* phone: the label takes a line, and each figure carries its own small heading, so a long label never meets the numbers */
+  .sv2-rec-th { display: none; }
+  .sv2-rec-row, .sv2-rec-row--past { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 10px; row-gap: 4px; }
+  .sv2-rec-tbl--past .sv2-rec-row--past { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sv2-rec-row .sv2-rec-lab { grid-column: 1 / -1; }
+  .sv2-rec-c { display: grid; gap: 1px; text-align: left; }
+  .sv2-rec-c::before { content: attr(data-k); font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+  .sv2-rec-hero { grid-template-columns: auto auto auto; justify-content: space-between; }
+  .sv2-rec-v { font-size: 20px; white-space: nowrap; }
+}
