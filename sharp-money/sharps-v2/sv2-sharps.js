@@ -292,6 +292,7 @@
       if (f.starts === 'hour' && p.band !== 'hour') return false;
       if (f.starts === 'today' && p.band !== 'hour' && p.band !== 'today') return false;
     }
+    if (except !== 'moves' && f.moves && f.moves !== 'all' && !movesOf(p)[f.moves]) return false;
     if (wallet && !(sameMap[wallet] && sameMap[wallet].keys.indexOf(p.key) >= 0)) return false;
     return true;
   }
@@ -299,12 +300,421 @@
     sport: ['all'].concat(SPORT_ORDER),
     tier: ['all'].concat(copy.tierOrder),
     market: ['all'].concat(T.marketOrder),
-    starts: ['all', 'hour', 'today']
+    starts: ['all', 'hour', 'today'],
+    moves: ['all', 'pin', 'line']
   };
   function cleanFilters(o) {
-    var f = { sport: 'all', tier: 'all', market: 'all', starts: 'all' };
+    var f = { sport: 'all', tier: 'all', market: 'all', starts: 'all', moves: 'all' };
     if (o && typeof o === 'object') Object.keys(f).forEach(function (k) { if (FILTER_VALUES[k].indexOf(o[k]) >= 0) f[k] = o[k]; });
     return f;
+  }
+
+  /* ------------------------------------------------------------------ market-move flags and the write-up (rule v2f-1, docs/sharps-v2-flags-spec.md).
+     Every field here is optional: an absent or null field omits its chip or section, and nothing is ever filled in or shown as 0.
+     Flags say what the market did. They are context only: no bet signal, no size, no tier, no count of flags. */
+  var BOOKS = ['Pinnacle', 'DraftKings', 'FanDuel', 'BetMGM', 'BetRivers', 'bet365'];   /* only books we store are ever named */
+  var SPORT_EYEBROW = { nba: 'NBA', nfl: 'NFL', cbb: 'College basketball', cfb: 'College football' };
+  function isObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
+  function flagsOf(p) {
+    var m = mktOf(p.game, p.g), v = m && m.v2, f = v && v.flags;
+    return isObj(f) ? f : null;
+  }
+  function amer(x) { return isNum(x) ? (x > 0 ? '+' : '') + Math.round(x) : null; }
+  function lineTxt(x, g) { return isNum(x) ? (g === 'spread' ? fmt.line(x, { signed: true }) : fmt.line(x)) : null; }
+  function flagState(x) { return isObj(x) && (x.state === 'toward' || x.state === 'away' || x.state === 'quiet') ? x.state : null; }
+  function pinNums(f) {
+    var a = f && isObj(f.pin) ? f.pin : null;
+    return a && isNum(a.from) && isNum(a.to) ? { from: amer(a.from), to: amer(a.to) } : null;
+  }
+  /* Flag C's Pinnacle from and to: a line for spreads and totals (kind line), an American price for moneylines (kind price) */
+  function lineNums(f, g) {
+    var c = f && isObj(f.line) ? f.line : null, a = c && isObj(c.pin) ? c.pin : null;
+    if (!a || !isNum(a.from) || !isNum(a.to)) return null;
+    return c.kind === 'price' ? { from: amer(a.from), to: amer(a.to) } : { from: lineTxt(a.from, g), to: lineTxt(a.to, g) };
+  }
+  function booksTxt(c) { return c && isNum(c.books) && c.books > 0 && isNum(c.same_way) ? c.same_way + ' of ' + c.books + ' books' : null; }
+
+  /* chip text and tooltip for the Sharps table: only a toward or away state draws a chip. Quiet, null and absent draw nothing. */
+  function flagChips(p) {
+    var f = flagsOf(p), out = [];
+    if (!f) return out;
+    var a = flagState(f.pin), c = flagState(f.line);
+    if (a === 'toward' || a === 'away') {
+      var n = pinNums(f), ln = isObj(f.pin) && isNum(f.pin.line) ? lineTxt(f.pin.line, p.g) : null;
+      var tip = n ? 'Pinnacle ' + n.from + ' to ' + n.to + (ln ? ' at ' + ln : '') : 'Pinnacle\'s price';
+      out.push({ k: 'pin', state: a, text: 'Pinnacle moved ' + (a === 'toward' ? 'toward' : 'away from') + ' this side', tip: tip + ', ' + (a === 'toward' ? 'toward' : 'away from') + ' this side' });
+    }
+    if (c === 'toward' || c === 'away') {
+      var ls = f.line.kind === 'price', nn = lineNums(f, p.g), bk = booksTxt(f.line);
+      var tip2 = (ls ? 'Books' : 'Market line') + (nn ? ' ' + nn.from + ' to ' + nn.to + (ls ? '' : ' at Pinnacle') : '') + (bk ? ', ' + bk + ' the same way' : '');
+      out.push({ k: 'line', state: c, text: (ls ? 'Market price moved ' : 'Market line moved ') + (c === 'toward' ? 'toward' : 'away from') + ' this side', tip: tip2 + ', ' + (c === 'toward' ? 'toward' : 'away from') + ' this side' });
+    }
+    return out;
+  }
+  var FL_ICON = {
+    toward: '<path d="M2 8h8M7 5l3 3-3 3M14 4v8"/>',
+    away: '<path d="M2 4v8M6 8h8M11 5l3 3-3 3"/>',
+    quiet: '<path d="M3 6h10M3 10h10"/>',
+    none: '<path d="M4 8h8" stroke-dasharray="2 2"/>'
+  };
+  function flagIcon(state) { return '<svg class="sv2-fl-i" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' + (FL_ICON[state] || FL_ICON.none) + '</svg>'; }
+  function chipsHtml(p) {
+    var cs = flagChips(p);
+    if (!cs.length) return '';
+    return '<span class="sv2-tb-fl">' + cs.map(function (c) {
+      return '<span class="sv2-fl" data-flag="' + c.k + '" title="' + esc(c.tip) + '">' + flagIcon(c.state) + '<span>' + esc(c.text) + '</span><span class="sv2-sr">. ' + esc(c.tip) + '</span></span>';
+    }).join('') + '</span>';
+  }
+  /* the Filters group: which plays had a Pinnacle move or a market move (either direction), from the stored flags only */
+  function movesOf(p) {
+    var f = flagsOf(p), a = f && flagState(f.pin), c = f && flagState(f.line);
+    return { pin: a === 'toward' || a === 'away', line: c === 'toward' || c === 'away', any: !!f };
+  }
+
+  /* ---- series: points, step paths, table ---- */
+  function cleanPts(a) {
+    if (!Array.isArray(a)) return [];
+    var o = a.filter(function (r) { return Array.isArray(r) && isNum(r[0]) && isNum(r[1]); }).map(function (r) { return [r[0], r[1]]; });
+    o.sort(function (x, y) { return x[0] - y[0]; });
+    return o;
+  }
+  /* A step line holds its value until the next change, so a repeat of the previous value carries no information: drop it (the last point stays, it
+     sets the right edge). Over max points: keep first, last, lowest, highest, then fill by even spacing. */
+  function chartPoints(pts, max) {
+    var a = cleanPts(pts), out = [], i;
+    for (i = 0; i < a.length; i++) if (!out.length || a[i][1] !== out[out.length - 1][1] || i === a.length - 1) out.push(a[i]);
+    max = isNum(max) && max >= 4 ? max : 16;
+    if (out.length <= max) return out;
+    var keep = {}, lo = 0, hi = 0;
+    for (i = 1; i < out.length; i++) { if (out[i][1] < out[lo][1]) lo = i; if (out[i][1] > out[hi][1]) hi = i; }
+    keep[0] = 1; keep[out.length - 1] = 1; keep[lo] = 1; keep[hi] = 1;
+    var left = max - Object.keys(keep).length, step = (out.length - 1) / (left + 1);
+    for (i = 1; i <= left; i++) keep[Math.round(i * step)] = 1;
+    return out.filter(function (_, j) { return keep[j]; });
+  }
+  /* pixel path of a step line. pts [[x,y]], sx and sy map a value to a pixel. null for no points; one point gives a dot. */
+  function stepPath(pts, sx, sy) {
+    if (!pts || !pts.length) return null;
+    var r1 = function (n) { return Math.round(n * 10) / 10; };
+    var d = 'M' + r1(sx(pts[0][0])) + ' ' + r1(sy(pts[0][1]));
+    for (var i = 1; i < pts.length; i++) d += 'H' + r1(sx(pts[i][0])) + 'V' + r1(sy(pts[i][1]));
+    return { d: d, single: pts.length === 1, x: r1(sx(pts[0][0])), y: r1(sy(pts[0][1])) };
+  }
+  /* the lowest and highest point of a series (first one on a tie), and whether each is an endpoint */
+  function extremes(pts) {
+    if (!pts || pts.length < 2) return null;
+    var lo = 0, hi = 0;
+    for (var i = 1; i < pts.length; i++) { if (pts[i][1] < pts[lo][1]) lo = i; if (pts[i][1] > pts[hi][1]) hi = i; }
+    if (pts[lo][1] === pts[hi][1]) return null;
+    return { lo: lo, hi: hi };
+  }
+  function seriesOf(p) {
+    var m = mktOf(p.game, p.g), s = m && m.v2 && m.v2.series;
+    if (!isObj(s) || !isNum(s.t0)) return null;
+    var pin = chartPoints(s.pin_px, 16), lines = {}, n = 0;
+    if (isObj(s.lines)) BOOKS.forEach(function (b) { var pts = chartPoints(s.lines[b], 16); if (pts.length) { lines[b] = pts; n++; } });
+    if (!pin.length && !n) return null;
+    return { t0: s.t0, pin: pin, lines: lines, nBooks: n };
+  }
+  /* the data table behind the charts: one row per time any series changed, each cell the value held at that time (blank before a series starts) */
+  function chartTable(s, g) {
+    if (!s) return null;
+    var cols = [], xs = {};
+    if (s.pin.length) { cols.push({ name: 'Pinnacle price', pts: s.pin, am: true }); s.pin.forEach(function (r) { xs[r[0]] = 1; }); }
+    BOOKS.forEach(function (b) { if (s.lines[b]) { cols.push({ name: b + ' line', pts: s.lines[b] }); s.lines[b].forEach(function (r) { xs[r[0]] = 1; }); } });
+    var times = Object.keys(xs).map(Number).sort(function (a, b) { return a - b; });
+    var rows = times.map(function (x) {
+      return [ct.time(s.t0 + x * 60, true)].concat(cols.map(function (c) {
+        var v = null; c.pts.forEach(function (r) { if (r[0] <= x) v = r[1]; });
+        return v == null ? '' : (c.am ? amer(v) : lineTxt(v, g));
+      }));
+    });
+    return { head: ['Time'].concat(cols.map(function (c) { return c.name; })), rows: rows };
+  }
+
+  /* ---- tracked money (v2.sides) ---- */
+  function moneyOf(p) {
+    var m = mktOf(p.game, p.g), s = m && m.v2 && m.v2.sides;
+    if (!isObj(s)) return null;
+    var S = p.sf.side, names = Object.keys(s).filter(function (k) { return isObj(s[k]); });
+    if (names.indexOf(S) < 0 || names.length !== 2) return null;
+    var other = names.filter(function (k) { return k !== S; })[0], a = s[S], b = s[other];
+    if (!isNum(a.usd) || !isNum(b.usd)) return null;
+    return { side: S, other: other, mine: a, theirs: b, sides: s };
+  }
+  /* the panels run in market order (away then home, over then under), never heavier money first */
+  function marketOrder(p, names) {
+    if (p.g === 'total') return names.slice().sort(function (a, b) { return /^over/i.test(a) ? -1 : /^over/i.test(b) ? 1 : 0; });
+    var t = p.game.vault && p.game.vault.teams, away = t && t.away || [];
+    return names.slice().sort(function (a, b) { var x = away.indexOf(a) >= 0, y = away.indexOf(b) >= 0; return x === y ? 0 : x ? -1 : 1; });
+  }
+  function heavier(a, b) { return isNum(a) && isNum(b) && a !== b ? (a > b ? 'a' : 'b') : null; }
+  function walletsTxt(n) { return isNum(n) ? n + (n === 1 ? ' wallet' : ' wallets') : null; }
+  /* the rows of one side's panel. tiered (NBA, NFL) has the beats and loses rows, college has a note and the losing-record row. */
+  function sideRows(s, tiered) {
+    var R = [];
+    function row(label, e) { if (isObj(e) && isNum(e.n) && isNum(e.usd)) R.push({ label: label, usd: fmt.usd(e.usd), n: walletsTxt(e.n) }); }
+    if (tiered) row('Wallets that beat the close', s.beats); else R.push({ label: 'Wallets that beat the close', note: 'Not measured in college' });
+    row('Past-winner wallets', s.past_winner);
+    if (tiered) row('Wallets that lose to the close', s.loses); else row('Wallets with a losing record', s.losing_record);
+    if (isNum(s.usd)) R.push({ label: 'All tracked money', usd: fmt.usd(s.usd), n: walletsTxt(s.holders) });
+    return R;
+  }
+  /* "$1.1K", "$1.45K", "$20K", "$504": limits read at two decimals, so $1,450 is not rounded to $1.5K */
+  function limitMoney(x) {
+    if (!isNum(x)) return null;
+    if (x < 1000) return '$' + Math.round(x);
+    var k = Math.round(x / 10) / 100;
+    return '$' + (+k.toFixed(2)) + 'K';
+  }
+  function spanPhrase(f, cap) {
+    var span = f && isNum(f.span_min) ? f.span_min : null;
+    if (span == null) return '';
+    if (span < 120) return cap ? 'Since the first stored reading ' + Math.max(1, Math.round(span)) + ' minutes earlier, ' : 'since the first stored reading ' + Math.max(1, Math.round(span)) + ' minutes earlier';
+    var h = Math.round(span / 60);
+    return cap ? 'In the last ' + h + ' hours ' : 'in the last ' + h + ' hours';
+  }
+  /* two dollar figures compared in one sentence: when the short forms collide ($12K against $12K) both are written in full */
+  function usdPair(a, b) {
+    var x = fmt.usd(a), y = fmt.usd(b);
+    return x === y && a !== b ? [fmt.usd(a, { full: true }), fmt.usd(b, { full: true })] : [x, y];
+  }
+  /* ---- the takeaway: S1 market, S2 money, S3 mixed signals, graded result, S4 closer. Deterministic templates over stored numbers only. ---- */
+  function takeaway(c) {
+    var f = c.flags, side = c.side, A = f ? flagState(f.pin) : null, C = f ? flagState(f.line) : null, price = !!(f && f.line && f.line.kind === 'price');
+    var np = price ? 'price' : 'number', out = [];
+    var pn = f ? pinNums(f) : null, ln = f ? lineNums(f, c.g) : null, bk = f && f.line ? f.line : null;
+    var pf = pn ? pn.from + ' to ' + pn.to : null, lf = ln ? ln.from + ' to ' + ln.to : null, sw = booksTxt(bk);
+    var held = price ? 'Pinnacle\'s own price held' : 'Pinnacle\'s price at that number held';
+    function tw(s) { return s === 'toward' ? 'toward ' + side : 'against ' + side; }
+    var mk = c.g === 'ml' ? 'moneyline' : c.g;
+    /* a placeholder with no value forces the branch that does not print it: a state whose numbers are missing prints without them */
+    function nums(x) { return x ? ' (' + x + ')' : ''; }
+    function mvLine() { return 'The market moved the ' + np + ' ' + tw(C) + (lf && sw ? ' (' + lf + ' at Pinnacle, ' + sw + ' the same way)' : lf ? ' (' + lf + ' at Pinnacle)' : ''); }
+    var s1 = null, hasAgainst = A === 'away' || C === 'away';
+    if (f) {
+      var lead = spanPhrase(f, true);
+      if (A && A !== 'quiet' && C && C !== 'quiet') {
+        if (A === C) s1 = (lead ? lead : '') + 'Pinnacle\'s price and the market\'s ' + np + ' both moved ' + tw(A) + '.';
+        else if (A === 'toward') s1 = 'Pinnacle\'s price moved toward ' + side + ' while the market\'s ' + np + ' moved against it, so the market did not settle on one direction.';
+        else s1 = 'The market\'s ' + np + ' moved toward ' + side + ' while Pinnacle\'s price moved against it, so the market did not settle on one direction.';
+      } else if (A && A !== 'quiet') {
+        s1 = 'Pinnacle\'s price moved ' + tw(A) + nums(pf) + '; ' + (C === 'quiet' ? 'the market\'s ' + np + ' held.' : 'there were not enough book readings to say where the ' + np + ' went.');
+      } else if (C && C !== 'quiet') {
+        s1 = mvLine() + (A === 'quiet' ? '; ' + held + '.' : '.');
+      } else if (A === 'quiet' && C === 'quiet') {
+        s1 = 'The market barely moved on this ' + mk + (spanPhrase(f, false) ? ' ' + spanPhrase(f, false) : '') + '.';
+      } else if (A === 'quiet') s1 = 'Pinnacle\'s price barely moved; there were not enough book readings to say where the ' + np + ' went.';
+      else if (C === 'quiet') s1 = 'The ' + np + ' barely moved at the books; Pinnacle\'s price history was not readable.';
+      else s1 = 'No market history is stored for this game, so there is nothing to say about where the line went.';
+      if (s1 && hasAgainst && c.size) s1 += ' The play and its size are unchanged by this.';
+    }
+    if (s1) out.push(s1);
+    /* S2: the tracked money */
+    var heavy = null, small = false, mm = c.money, pr;
+    if (mm) {
+      var n = (isNum(mm.mine.holders) ? mm.mine.holders : 0) + (isNum(mm.theirs.holders) ? mm.theirs.holders : 0), ms = mm.mine.usd, mo = mm.theirs.usd, tot = ms + mo;
+      if (n < 5 || tot < 1000) { small = true; out.push('Only ' + n + (n === 1 ? ' tracked wallet (' : ' tracked wallets (') + fmt.usd(tot) + (n === 1 ? ') holds' : ') hold') + ' this market, too few to describe.'); }
+      else if (ms > mo) { heavy = 'side'; pr = usdPair(ms, mo); out.push('More of the tracked Polymarket money is on ' + side + ' (' + pr[0] + ' against ' + pr[1] + ').'); }
+      else if (mo > ms) { heavy = 'other'; pr = usdPair(mo, ms); out.push('More of the tracked Polymarket money is on ' + c.other + ' (' + pr[0] + ' against ' + pr[1] + ').'); }
+      else out.push('The tracked Polymarket money is split evenly (' + fmt.usd(ms) + ' each).');
+    }
+    /* S3: the money and the market point different ways (never says which to take) */
+    if (mm && !small && heavy && ((heavy === 'other' && (A === 'toward' || C === 'toward')) || (heavy === 'side' && (A === 'away' || C === 'away')))) {
+      out.push('The tracked money and the market\'s moves point in different directions here.');
+    }
+    if (c.graded && c.graded.result) out.push('Final ' + c.graded.score + ': the play ' + ({ won: 'won', lost: 'lost', push: 'pushed' }[c.graded.result] || 'finished') + '.');
+    out.push('These are descriptions of what the market did. Past moves like these have not paid off in Vault\'s records, so this is context, not a reason to bet.');
+    return out;
+  }
+  function sideLabelWords(p) {
+    var S = p.sf.side;
+    if (p.g === 'total') return /^over/i.test(S) ? { side: 'the over', other: 'the under' } : { side: 'the under', other: 'the over' };
+    return { side: S, other: null };
+  }
+  function eyebrowOf(sport) { return SPORT_EYEBROW[sport] || String(sport || '').toUpperCase(); }
+  function dateWords(t) {
+    if (!isNum(t)) return null;
+    try {
+      return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(t * 1000)).replace(',', '').toUpperCase();
+    } catch (e) { return null; }
+  }
+
+  /* ---- chart (inline SVG, no library). W is the drawing width; the svg scales to its box, capped so the labels stay readable. ---- */
+  var CH = { W: 340, padL: 10, padR: 104, padT: 16, padB: 14 };
+  function priceProb(a) { return a < 0 ? -a / (-a + 100) : 100 / (a + 100); }   /* American price to implied probability: places +105 and -129 on one scale */
+  function chartSvg(pane, s, o) {
+    var W = o.W || CH.W, H = pane.h, x1 = 0;
+    var all = pane.series.reduce(function (a, r) { return a.concat(r.pts); }, []);
+    all.forEach(function (r) { if (r[0] > x1) x1 = r[0]; });
+    var yv = function (v) { return pane.am ? priceProb(v) : v; };
+    var lo = Infinity, hi = -Infinity;
+    all.forEach(function (r) { var v = yv(r[1]); if (v < lo) lo = v; if (v > hi) hi = v; });
+    if (!(hi > lo)) { var pad = pane.am ? .01 : 1; lo -= pad; hi += pad; }
+    var top = CH.padT, bot = H - CH.padB - (pane.axis ? 16 : 0), w = W - CH.padL - CH.padR;
+    var sx = function (x) { return CH.padL + (x1 > 0 ? x / x1 * w : w); };
+    var sy = function (v) { return bot - (yv(v) - lo) / (hi - lo) * (bot - top); };
+    var parts = '', labels = [], k = 0;
+    pane.series.forEach(function (r) {
+      var sp = stepPath(r.pts, sx, sy); if (!sp) return;
+      var cls = 'sv2-wu-ln ' + (r.main ? 'is-main' : 'b' + (++k)) + (o.draw ? ' is-draw' : '');
+      parts += sp.single ? '<circle class="' + cls + ' is-dot" cx="' + sp.x + '" cy="' + sp.y + '" r="3.5"/>' : '<path class="' + cls + '" d="' + sp.d + '" pathLength="1"/>';
+      var last = r.pts[r.pts.length - 1];
+      labels.push({ y: sy(last[1]), text: r.name + (r.am ? '' : ' ') + (pane.am ? amer(last[1]) : lineTxt(last[1], pane.g)), cls: r.main ? 'is-main' : 'b' + k });
+    });
+    /* right-edge labels, pushed apart so two books on the same line stay readable */
+    labels.sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 12) labels[i].y = labels[i - 1].y + 12;
+    var lbl = labels.map(function (l) { return '<text class="sv2-wu-tx ' + l.cls + '" x="' + (CH.padL + w + 6) + '" y="' + (Math.round(l.y * 10) / 10 + 4) + '">' + esc(l.text) + '</text>'; }).join('');
+    /* the start value, and the highest and lowest points when they are not the end points */
+    var main = pane.series[0], pts = main.pts, ex = extremes(pts), marks = '';
+    var fmtV = function (v) { return pane.am ? amer(v) : lineTxt(v, pane.g); };
+    if (pts.length > 1) marks += '<text class="sv2-wu-tx" x="' + CH.padL + '" y="' + (Math.round((sy(pts[0][1]) + (yv(pts[1][1]) > yv(pts[0][1]) ? 13 : -6)) * 10) / 10) + '">' + esc(fmtV(pts[0][1])) + '</text>';
+    if (ex) [ex.lo, ex.hi].forEach(function (ix) {
+      if (ix === 0 || ix === pts.length - 1) return;
+      var up = ix === ex.hi;
+      marks += '<circle class="sv2-wu-pt" cx="' + Math.round(sx(pts[ix][0]) * 10) / 10 + '" cy="' + Math.round(sy(pts[ix][1]) * 10) / 10 + '" r="2.5"/><text class="sv2-wu-tx" text-anchor="middle" x="' + Math.round(sx(pts[ix][0]) * 10) / 10 + '" y="' + (Math.round((sy(pts[ix][1]) + (up ? -6 : 14)) * 10) / 10) + '">' + esc(fmtV(pts[ix][1])) + '</text>';
+    });
+    var axis = '';
+    if (pane.axis) {
+      var ya = H - 3, t0 = s.t0, mid = Math.round(x1 / 2);
+      axis = '<text class="sv2-wu-ax" x="' + CH.padL + '" y="' + ya + '">' + esc(ct.time(t0, true)) + '</text>' +
+        (x1 > 0 ? '<text class="sv2-wu-ax" text-anchor="middle" x="' + (CH.padL + w / 2) + '" y="' + ya + '">' + esc(ct.time(t0 + mid * 60, false)) + '</text>' : '') +
+        '<text class="sv2-wu-ax" text-anchor="end" x="' + (CH.padL + w) + '" y="' + ya + '">' + esc(o.edge) + '</text>';
+    }
+    return '<svg class="sv2-wu-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(pane.alt) + '" focusable="false">' +
+      '<line class="sv2-wu-base" x1="' + CH.padL + '" x2="' + (CH.padL + w) + '" y1="' + (bot + 2) + '" y2="' + (bot + 2) + '"/>' + parts + marks + lbl + axis + '</svg>';
+  }
+  function paneAlt(title, pts, fmtV, t0) {
+    var a = pts[0], b = pts[pts.length - 1], ex = extremes(pts);
+    return title + ': ' + fmtV(a[1]) + ' at ' + ct.time(t0 + a[0] * 60, true) + (pts.length > 1 ? ' to ' + fmtV(b[1]) + ' at ' + ct.time(t0 + b[0] * 60, true) : '') +
+      (ex ? ', lowest ' + fmtV(pts[ex.lo][1]) + ', highest ' + fmtV(pts[ex.hi][1]) : '') + '.';
+  }
+  function chartsHtml(p, s, words, o) {
+    var panes = [], g = p.g, edge = p.game.frozen ? 'Cut' : 'Now';
+    var side = words.side;
+    if (s.pin.length) panes.push({ h: s.nBooks ? 88 : 104, am: true, g: g, series: [{ name: '', main: true, am: true, pts: s.pin }], alt: paneAlt('Pinnacle\'s price for ' + side, s.pin, amer, s.t0) });
+    if (s.nBooks) {
+      var ser = [];
+      BOOKS.forEach(function (b) { if (s.lines[b]) ser.push({ name: b, main: b === 'Pinnacle', pts: s.lines[b] }); });
+      ser.sort(function (a, b) { return (b.main ? 1 : 0) - (a.main ? 1 : 0); });
+      var alt = 'Main line by book: ' + ser.map(function (r) { return r.name + ' ' + lineTxt(r.pts[0][1], g) + ' to ' + lineTxt(r.pts[r.pts.length - 1][1], g); }).join(', ') + '. Times are Central, from ' + ct.time(s.t0, true) + '.';
+      panes.push({ h: 124, am: false, g: g, series: ser, alt: alt });
+    }
+    panes[panes.length - 1].axis = true;
+    var tb = chartTable(s, g);
+    var table = tb ? '<table class="sv2-sr"><caption>' + esc('Line history for ' + side + ', Central time') + '</caption><thead><tr>' + tb.head.map(function (h) { return '<th scope="col">' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      tb.rows.map(function (r) { return '<tr><th scope="row">' + esc(r[0]) + '</th>' + r.slice(1).map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>' : '';
+    return '<div class="sv2-wu-charts">' + panes.map(function (pn) {
+      return '<div class="sv2-wu-pane">' + chartSvg(pn, s, { draw: o.draw, edge: edge, W: o.phone ? 290 : CH.W }) + '</div>';
+    }).join('') + table + '</div>';
+  }
+
+  /* ---- the card ---- */
+  function arrowIcon() { return '<svg class="sv2-wu-arr" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 8h11M9 4l4 4-4 4"/></svg>'; }
+  function fromTo(a, b) { return '<span class="sv2-sr">from </span>' + esc(a) + arrowIcon() + '<span class="sv2-sr"> to </span>' + esc(b); }
+  /* every flag state as a chip, for the card: held and not-readable forms included */
+  function fullChips(p, words) {
+    var f = flagsOf(p), out = [], side = words.side;
+    if (!f) return out;
+    var a = flagState(f.pin), c = flagState(f.line), price = !!(f.line && f.line.kind === 'price'), bk = booksTxt(f.line), pn = pinNums(f), ln = lineNums(f, p.g);
+    var tow = function (s) { return s === 'toward' ? 'toward ' + side : 'against ' + side; };
+    out.push({ k: 'pin', state: a || 'none', tip: pn ? 'Pinnacle ' + pn.from + ' to ' + pn.to : '',
+      text: a === 'toward' || a === 'away' ? 'Pinnacle\'s price moved ' + tow(a) : a === 'quiet' ? 'Pinnacle\'s price held' : 'Pinnacle\'s price: no history' });
+    out.push({ k: 'line', state: c || 'none', tip: ln ? 'Pinnacle ' + ln.from + ' to ' + ln.to : '',
+      text: c === 'toward' || c === 'away' ? (price ? 'The books moved the price ' : 'The market moved the number ') + tow(c) + (bk ? ' (' + bk + ')' : '') : c === 'quiet' ? (price ? 'The price held' : 'The number held') : (price ? 'Not enough books to read the price' : 'Not enough books to read the number') });
+    return out;
+  }
+  function limitLine(f, share, sport) {
+    if (!f) return '';
+    var l = isObj(f.limit) ? f.limit : null, span = isNum(f.span_min) ? Math.round(f.span_min / 60) : null;
+    if (!l || !isNum(l.to)) return 'No Pinnacle limit stored for this game.';
+    if (!isNum(l.from) || l.rows === 1 || l.from === l.to) return 'Pinnacle limit ' + limitMoney(l.to) + (l.rows === 1 ? ' (one reading)' : '') + '.';
+    var s = 'Pinnacle limit ' + limitMoney(l.from) + ' to ' + limitMoney(l.to) + (span ? ' in the last ' + span + ' hours' : '') + '.';
+    if (isObj(share) && isNum(share[sport]) && share[sport] > 0) s += ' Pinnacle raises limits toward start on almost every game (' + Math.round(share[sport] * 100) + '% of ' + eyebrowOf(sport) + ' markets this season).';
+    return s;
+  }
+  function sideHtml(p, s, tiered, isMore) {
+    var rows = sideRows(s.data, tiered);
+    return '<div class="sv2-card-inset sv2-wu-side' + (isMore ? ' is-more' : '') + '"><h4 class="sv2-wu-sn"><span class="sv2-ell">' + esc(s.name) + '</span>' + (isMore ? '<span class="sv2-chip sv2-chip--ink sv2-wu-mtag">More money</span>' : '') + '</h4><dl class="sv2-wu-rows">' +
+      rows.map(function (r) {
+        return '<div><dt>' + esc(r.label) + '</dt><dd>' + (r.note ? '<span class="sv2-mut">' + esc(r.note) + '</span>' : '<b class="sv2-num">' + esc(r.usd) + '</b> <span class="sv2-mut">' + esc(r.n || '') + '</span>') + '</dd></div>';
+      }).join('') + '</dl></div>';
+  }
+  var DRAWN = {};
+  function isPhoneNow() { try { return !!(window.matchMedia && window.matchMedia('(max-width: 767px)').matches); } catch (e) { return false; } }
+  function sectionHtml(n, title, body, open, id) {
+    return '<details class="sv2-wu-sec"' + (open ? ' open' : '') + ' id="' + id + '"><summary class="sv2-wu-sum"><span class="sv2-wu-n" aria-hidden="true">' + n + '</span><span class="sv2-wu-st">' + esc(title) + '</span>' +
+      '<svg class="sv2-chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="sv2-wu-sb">' + body + '</div></details>';
+  }
+  /* opts: share (v2_plays.flags.limit_schedule_share), phone (sections closed), draw (draw the lines in: first render only) */
+  function writeupHtml(p, opts) {
+    opts = opts || {};
+    var m = mktOf(p.game, p.g), v = m && m.v2 || {}, sf = p.sf, words = sideLabelWords(p), f = flagsOf(p), id = keyId('sv2-wu-', p.key);
+    var title = 'The read on ' + (p.g === 'ml' ? sf.side : playTitle(p.game, p.g, sf));
+    var date = dateWords(p.game.gst), money = moneyOf(p), series = seriesOf(p);
+    var tiered = !!(p.facts && p.facts.tiered);
+
+    /* tiles */
+    var c = fmt.cents(sf.price), am = fmt.american(sf.price), ex = v.exec || {}, vf = v.vs_fair || {};
+    var priceSub = [];
+    if (am) priceSub.push(am + ' in American');
+    if (ex.us_best && isNum(ex.us_best.odds)) priceSub.push('Best US book ' + amer(ex.us_best.odds) + (ex.us_best.book && BOOKS.indexOf(ex.us_best.book) >= 0 ? ' at ' + ex.us_best.book : ''));
+    var fairV = isNum(vf.fair) ? 'Fair ' + fmt.cents(vf.fair) : '';
+    var fp = fairPts(p), fairSub = fp == null ? (vf.why === 'ticket_line_not_main_at_cut' ? 'Off Pinnacle\'s main line' : 'No fair price stored') : fp === 0 ? 'Level with fair' : fmt.line(Math.abs(fp)) + ' pts ' + (fp > 0 ? 'better' : 'worse') + ' than fair';
+    if (isNum(vf.line)) fairSub += ', line ' + lineTxt(vf.line, p.g);
+    var gr = isObj(v.graded) && v.graded.result ? v.graded : null;
+    var stat = gr ? '<p class="sv2-wu-v">Final ' + esc(gr.score || '') + '</p><p class="sv2-wu-s">' + esc({ won: 'Won', lost: 'Lost', push: 'Push' }[gr.result] || '') + '</p>' :
+      '<p class="sv2-wu-v">' + (isNum(p.cut) ? 'Freezes ' + esc(ct.time(p.cut, true)) : '') + '</p><p class="sv2-wu-s">' + sizeCellHtml(p) + '</p>';
+    var tiles = '<div class="sv2-wu-tiles">' +
+      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">The play</p><p class="sv2-wu-v">' + esc(p.g === 'ml' ? sf.side : playTitle(p.game, p.g, sf)) + '</p><p class="sv2-wu-s">' + esc(gameLabel(p.game)) + ', ' + esc(marketLabel(p.g)) + '</p><p class="sv2-wu-s">' + ui.tier(p.tier) + '</p></div>' +
+      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">The price</p><p class="sv2-wu-v sv2-num">' + esc(c || '') + '</p>' + (priceSub.length ? '<p class="sv2-wu-s">' + esc(priceSub.join(', ')) + '</p>' : '') + '<p class="sv2-wu-s sv2-mut">Price now</p></div>' +
+      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">Line and fair</p><p class="sv2-wu-v sv2-num">' + esc(fairV) + '</p><p class="sv2-wu-s">' + esc(fairSub) + '</p></div>' +
+      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">Status</p>' + stat + '</div></div>';
+
+    /* the takeaway */
+    var tk = takeaway({ flags: f, side: words.side, other: words.other || (money ? money.other : null), g: p.g, money: money, size: p.units > 0, graded: gr });
+    var take = '<div class="sv2-card-inset sv2-wu-take"><p class="sv2-h2">The takeaway</p><p class="sv2-wu-tk">' + tk.map(function (s) { return esc(s); }).join(' ') + '</p></div>';
+
+    /* section 1: who is on each side */
+    var sec1 = '';
+    if (money) {
+      var names = marketOrder(p, [money.side, money.other]), hv = heavier(money.mine.usd, money.theirs.usd), heavyName = hv === 'a' ? money.side : hv === 'b' ? money.other : null;
+      sec1 = sectionHtml('1', 'Who is on each side', '<div class="sv2-wu-sides">' + names.map(function (n) { return sideHtml(p, { name: n, data: money.sides[n] }, tiered, n === heavyName); }).join('') + '</div>', !opts.phone, id + '-s1');
+    }
+    /* section 2: where the line went */
+    var sec2 = '', pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null;
+    if (f || series) {
+      var head = '';
+      if (pn) head += '<p class="sv2-h2">Pinnacle ' + esc(words.side) + ' price</p><p class="sv2-wu-big sv2-num">' + fromTo(pn.from, pn.to) + '</p>';
+      if (ln && f.line.kind !== 'price') {
+        head += '<p class="sv2-h2">Market line</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
+        var xt = f.line.extreme, nm = isObj(f.line.pin) ? f.line.pin : null;
+        if (isObj(xt) && isNum(xt.value) && BOOKS.indexOf(xt.book) >= 0) head += '<p class="sv2-wu-s">' + (nm && isNum(nm.from) && isNum(nm.to) ? (nm.to < nm.from ? 'Lowest: ' : nm.to > nm.from ? 'Highest: ' : 'Furthest: ') : 'Furthest: ') + esc(xt.book + ' ' + lineTxt(xt.value, p.g)) + '</p>';
+      } else if (ln) head += '<p class="sv2-h2">Books\' price</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
+      var chips = fullChips(p, words).map(function (ch) {
+        return '<span class="sv2-fl" data-flag="' + ch.k + '"' + (ch.tip ? ' title="' + esc(ch.tip) + '"' : '') + '>' + flagIcon(ch.state) + '<span>' + esc(ch.text) + '</span>' + (ch.tip ? '<span class="sv2-sr">. ' + esc(ch.tip) + '</span>' : '') + '</span>';
+      }).join('');
+      var byBook = '';
+      if (!series && f && f.line && isObj(f.line.by_book)) {
+        byBook = BOOKS.filter(function (b) { var r = f.line.by_book[b]; return Array.isArray(r) && isNum(r[0]) && isNum(r[1]); }).map(function (b) {
+          var r = f.line.by_book[b], s = f.line.kind === 'price' ? [amer(r[0]), amer(r[1])] : [lineTxt(r[0], p.g), lineTxt(r[1], p.g)];
+          return '<li><span>' + esc(b) + '</span><span class="sv2-num">' + esc(s[0] + ' to ' + s[1]) + '</span></li>';
+        }).join('');
+        byBook = byBook ? '<ul class="sv2-wu-books">' + byBook + '</ul>' : '';
+      }
+      var fact = limitLine(f, opts.share, p.sport);
+      var text = '<div class="sv2-wu-hl">' + head + (chips ? '<div class="sv2-wu-chips">' + chips + '</div>' : '') + byBook + (fact ? '<p class="sv2-wu-fact">' + esc(fact) + '</p>' : '') + '</div>';
+      var chart = series ? chartsHtml(p, series, words, { draw: !!opts.draw, phone: !!opts.phone }) : '';
+      sec2 = sectionHtml('2', 'Where the line went', '<div class="sv2-wu-line' + (chart ? ' has-chart' : '') + '">' + text + chart + '</div>', !opts.phone, id + '-s2');
+    }
+    /* footer */
+    var size = p.units > 0 && SV2.sizesOk() ? ' The size is a flat 1u from an untested rule.' : p.sport === 'cfb' ? ' ' + T.noSize + '.' : '';
+    var foot = '<footer class="sv2-wu-ft"><p>Wallets: Polymarket public positions.' + (f || series ? ' Lines: ' + BOOKS.join(', ') + '.' : '') + ' Times Central. Context only, not a bet signal.' + esc(size) + '</p><p class="sv2-wu-brand">Sharp Money</p></footer>';
+    return '<div class="sv2-wu-wrap"><article class="sv2-card sv2-acc-ink sv2-wu" aria-labelledby="' + id + '-t">' +
+      '<header class="sv2-wu-hd"><div class="sv2-wu-hl1"><p class="sv2-wu-ey"><span>Sharp Money</span><span class="sv2-sr">, </span><span>Play breakdown</span><span class="sv2-sr">, </span><span>' + esc(eyebrowOf(p.sport)) + '</span></p>' +
+      '<h3 class="sv2-wu-t" id="' + id + '-t">' + esc(title) + '</h3></div>' + (date ? '<span class="sv2-wu-date">' + esc(date) + '</span>' : '') + '</header>' +
+      tiles + take + sec1 + sec2 + foot + '</article></div>';
   }
 
   SV2.sharpsPage = {
@@ -312,7 +722,10 @@
     contextRows: contextRows, passes: passes, cleanFilters: cleanFilters, playTitle: playTitle, gameLabel: gameLabel, nextCut: nextCut,
     execLines: execLines, fairLine: fairLine,
     SORTS: SORTS, SORT_ORDER: SORT_ORDER, cleanSort: cleanSort, nextSort: nextSort, sortFlat: sortFlat, viewOf: viewOf, fairPts: fairPts,
-    vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell
+    vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell,
+    flagsOf: flagsOf, flagChips: flagChips, chipsHtml: chipsHtml, movesOf: movesOf, chartPoints: chartPoints, stepPath: stepPath, extremes: extremes, seriesOf: seriesOf,
+    chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml,
+    marketOrder: marketOrder, dateWords: dateWords, eyebrowOf: eyebrowOf, sideLabelWords: sideLabelWords, BOOKS: BOOKS
   };
 
   /* ------------------------------------------------------------------ view */
@@ -455,7 +868,9 @@
       return '<li class="sv2-sp-evl"><span class="sv2-sp-evt' + (l.tag ? ' is-' + l.tag : '') + '">' + esc(l.tag ? TAG_WORD[l.tag] : '') + '</span><span>' + esc(l.text) + '</span></li>';
     }).join('');
     var mid = esc(p.key.replace(/[^a-z0-9]+/gi, '-'));
-    return '<div class="sv2-sp-body">' +
+    var draw = !DRAWN[p.key]; DRAWN[p.key] = true;
+    var vp = store.cards && store.cards.v2_plays, share = vp && vp.flags && vp.flags.limit_schedule_share;
+    return writeupHtml(p, { share: share, phone: isPhoneNow(), draw: draw }) + '<div class="sv2-sp-body">' +
       '<div class="sv2-sp-col">' +
       '<section class="sv2-sp-sec"><h3 class="sv2-h2">Price</h3>' + priceHtml(p) + '</section>' +
       '<section class="sv2-sp-sec"><h3 class="sv2-h2">What is stored for and against</h3><ul class="sv2-sp-ev">' + ev + '</ul></section>' +
@@ -510,7 +925,7 @@
     var tr = '<tr class="sv2-tb-r' + (open ? ' is-open' : '') + '" data-key="' + esc(p.key) + '" data-tier="' + esc(p.tier) + '">' +
       '<td class="sv2-tb-c c-time sv2-num">' + esc(timeText(p)) + '</td>' +
       '<td class="sv2-tb-c c-sport">' + ui.chip(SV2.sportName(p.sport), 'muted') + '</td>' +
-      '<td class="sv2-tb-c c-play"><span class="sv2-tb-title"><b>' + esc(title) + '</b>' + (sameKeys[p.key] ? ' ' + ui.chip(T.sameTag, 'muted') : '') + '</span><span class="sv2-tb-mu">' + ui.matchup(p.game, gameLabel(p.game)) + '</span></td>' +
+      '<td class="sv2-tb-c c-play"><span class="sv2-tb-title"><b>' + esc(title) + '</b>' + (sameKeys[p.key] ? ' ' + ui.chip(T.sameTag, 'muted') : '') + '</span><span class="sv2-tb-mu">' + ui.matchup(p.game, gameLabel(p.game)) + '</span>' + chipsHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-mkt">' + esc(marketLabel(p.g)) + '</td>' +
       '<td class="sv2-tb-c c-px sv2-num">' + esc(c || '') + '</td>' +
       '<td class="sv2-tb-c c-fair sv2-num' + (vf.tone ? ' is-' + vf.tone : '') + '">' + esc(vf.text) + '</td>' +
@@ -574,6 +989,7 @@
 
     function compute() {
       var cards = store.cards, now = nowT(), all = collectPlays(cards, now);
+      st.hasMoves = all.some(function (p) { var m = movesOf(p); return m.pin || m.line; });
       var same = rules.sameWallet(all.map(function (p) { return { game: p.game, g: p.g }; })), sameMap = {}, sameKeys = {};
       same.forEach(function (r) { sameMap[r.w] = r; r.keys.forEach(function (k) { sameKeys[k] = 1; }); });
       if (st.wallet && !sameMap[st.wallet]) st.wallet = null;
@@ -585,14 +1001,17 @@
     /* ---- shell: built once, when the first data lands. One toolbar row: summary on the left, Filters on the right.
        Sport is the host's (Sharp Money header chips); only a host that does not supply one gets V2's own sport strip. ---- */
     var STARTS = [['all', 'All'], ['hour', 'Next hour'], ['today', 'Today']];
-    function eff() { var f = Object.assign({}, st.f), hs = SV2.hostSport(); if (hs != null) f.sport = hs; return f; }
+    function eff() { var f = Object.assign({}, st.f), hs = SV2.hostSport(); if (hs != null) f.sport = hs; if (!st.hasMoves) f.moves = 'all'; return f; }
     function isPhone() { return !!(window.matchMedia && window.matchMedia('(max-width: 767px)').matches); }
     function groupItems(key) {
       if (key === 'tier') return [['all', 'All']].concat(copy.tierOrder.map(function (t) { return [t, copy.tier[t].word]; }));
       if (key === 'market') return [['all', 'All']].concat(T.marketOrder.map(function (m) { return [m, T.market[m]]; }));
+      if (key === 'moves') return [['all', 'All'], ['pin', 'Pinnacle moved'], ['line', 'Market line moved']];
       return STARTS;
     }
-    var GROUPS = [['tier', 'Evidence tier'], ['market', 'Market'], ['starts', 'Starts']];
+    var GROUPS_ALL = [['tier', 'Evidence tier'], ['market', 'Market'], ['starts', 'Starts'], ['moves', 'Market moves']];
+    /* the Market moves group exists only while some shown play carries stored flags; a saved value is ignored (eff) while it is hidden */
+    function groups() { return st.hasMoves ? GROUPS_ALL : GROUPS_ALL.slice(0, 3); }
     function buildShell() {
       st.hasHost = SV2.hostSport() != null;
       var sports = [['all', 'All']].concat(SPORT_ORDER.map(function (s) { return [s, SV2.sportName(s)]; }));
@@ -624,6 +1043,7 @@
       if (k === 'sport') return p.sport === v;
       if (k === 'tier') return p.tier === v;
       if (k === 'market') return p.g === v;
+      if (k === 'moves') return !!movesOf(p)[v];
       if (v === 'hour') return p.band === 'hour';
       return p.band === 'hour' || p.band === 'today';
     }
@@ -639,11 +1059,11 @@
       });
     }
     /* sport is not a filter here: it belongs to the host header (or its own strip), so it never counts toward the badge */
-    function activeKeys() { return GROUPS.map(function (g) { return g[0]; }).filter(function (k) { return st.f[k] !== 'all'; }); }
+    function activeKeys() { return groups().map(function (g) { return g[0]; }).filter(function (k) { return st.f[k] !== 'all'; }); }
     function itemLabel(k, v) { var it = groupItems(k).filter(function (x) { return x[0] === v; })[0]; return it ? it[1] : v; }
 
     function panelHtml(d) {
-      return '<div class="sv2-sp-pbody">' + GROUPS.map(function (g) {
+      return '<div class="sv2-sp-pbody">' + groups().map(function (g) {
         var k = g[0];
         return '<div class="sv2-sp-fg" role="group" aria-label="' + esc(g[1]) + '"><h3 class="sv2-h2">' + esc(g[1]) + '</h3><div class="sv2-sp-chips">' +
           groupItems(k).map(function (it) {
@@ -653,7 +1073,7 @@
     }
     function activeHtml() {
       return activeKeys().map(function (k) {
-        var g = GROUPS.filter(function (x) { return x[0] === k; })[0][1], w = itemLabel(k, st.f[k]);
+        var g = groups().filter(function (x) { return x[0] === k; })[0][1], w = itemLabel(k, st.f[k]);
         return '<button type="button" class="sv2-sp-ac sv2-press sv2-press-chip" data-sp-rm="' + k + '" data-fid="rm:' + k + '" aria-label="Remove filter: ' + esc(g + ' ' + w) + '"><span>' + esc(w) + '</span>' + ui.icon('close') + '</button>';
       }).join('');
     }
@@ -680,7 +1100,7 @@
       if (focusSel) { var n = box.querySelector(focusSel); if (n) n.focus({ preventScroll: true }); }
       SV2.rail.catchUp();
     }
-    function resetFilters() { st.f.tier = 'all'; st.f.market = 'all'; st.f.starts = 'all'; st.wallet = null; lsSet(FKEY, JSON.stringify(st.f)); }
+    function resetFilters() { st.f.tier = 'all'; st.f.market = 'all'; st.f.starts = 'all'; st.f.moves = 'all'; st.wallet = null; lsSet(FKEY, JSON.stringify(st.f)); }
     /* one handler for the popover (inside el) and the phone sheet (in the body-level host). Returns true when it took the click. */
     function filterClick(e) {
       var t = e.target; if (!t || !t.closest) return false;
