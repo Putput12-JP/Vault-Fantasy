@@ -12,7 +12,7 @@
     if (sessionStorage.getItem('sm-legacy') === '1') return;
   } catch (e) {}
   var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
-  var V = { css: 14, core: 5, sharps: 3, following: 3, record: 4 };
+  var V = { css: 15, core: 5, sharps: 3, following: 3, record: 4 };
   var tpl = null, assets = null, pending = null;
   /* A wallet link on the Sharps tab points at #following/acct/<sport>/<wallet>, an address the Sharp Money shell does not know (it would land
      on the plays tab). Take the shell to its Following tab and open that wallet's popup there. */
