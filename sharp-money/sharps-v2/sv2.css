@@ -533,24 +533,8 @@ body.sv2.sv2-lock { overflow: hidden; }
 .sv2-sp-same { margin: 2px 0 2px; font-size: 13px; line-height: 18px; color: var(--sv2-mut); }
 .sv2 .sv2-sp-lnk { position: relative; padding: 0 2px; color: var(--sv2-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .sv2 .sv2-sp-lnk::after { content: ''; position: absolute; left: -10px; right: -10px; top: 50%; height: 44px; transform: translateY(-50%); }
-.sv2-sp-band .sv2-band { padding: 4px 0 6px; }
-.sv2-sp-band + .sv2-sp-band { margin-top: 6px; }
 .sv2-sp-bmeta { flex: none; font: 500 13px/1.2 var(--sv2-sans); color: var(--sv2-faint); }
 .sv2-sp-dot { display: inline-block; width: 3px; height: 3px; margin: 0 2px; border-radius: 50%; background: currentColor; vertical-align: middle; }
-.sv2 .sv2-sp-rows { display: grid; gap: 10px; }
-.sv2-sp-item { min-width: 0; scroll-margin-top: 56px; background: var(--sv2-card); border: var(--sv2-bw) solid var(--sv2-line); border-radius: var(--sv2-r); }
-.sv2 .sv2-sp-row { display: block; width: 100%; min-height: 44px; padding: 12px var(--sv2-pad); border-radius: var(--sv2-r); text-align: left; }
-.sv2 .sv2-sp-row:focus-visible { outline-offset: -3px; }
-.sv2-sp-l1 { display: flex; align-items: flex-start; gap: 8px; }
-.sv2-sp-t { flex: 1 1 auto; min-width: 0; font-size: 16px; line-height: 22px; }
-.sv2-sp-t b { font-weight: 600; }
-.sv2-sp-g { margin-left: 2px; font-size: 13px; font-weight: 400; color: var(--sv2-mut); }
-.sv2-sp-px { flex: none; font: 600 16px/22px var(--sv2-num); font-variant-numeric: tabular-nums; letter-spacing: var(--sv2-num-ls); }
-.sv2 .sv2-sp-row .sv2-chev { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--sv2-mut); }
-.sv2-sp-l2 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
-.sv2-sp-l3 { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 13px; line-height: 18px; color: var(--sv2-mut); }
-.sv2-sp-why { flex: 1 1 auto; min-width: 0; }
-.sv2-sp-time { flex: none; color: var(--sv2-faint); white-space: nowrap; }
 .sv2-sp-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 4px var(--sv2-pad) 8px; }
 .sv2-sp-col { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .sv2-sp-sec { min-width: 0; }
@@ -825,7 +809,6 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 .sv2 .sv2-mu { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; }
 .sv2 .sv2-mu-t { display: inline-flex; align-items: center; min-width: 0; }
 .sv2 .sv2-mu-at { font-weight: 400; color: var(--sv2-faint); }
-.sv2 .sv2-sp-g { display: block; margin: 2px 0 0; }
 .sv2 .sv2-fw-gt .sv2-mu { font-weight: 600; }
 .sv2 .sv2-nosize { font: 500 12px/1.2 var(--sv2-sans); color: var(--sv2-mut); }
 
@@ -884,12 +867,6 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
   .sv2-embedded .sv2-col-rail { top: 12px; }
 }
 .sv2-embedded .sv2-band { position: static; padding: 6px 0 6px; background: transparent; }
-.sv2-embedded .sv2-sp-band .sv2-band { padding: 2px 0 6px; }
-.sv2-embedded .sv2-sp-band + .sv2-sp-band { margin-top: 10px; }
-.sv2-embedded .sv2-sp-rows { gap: 8px; }
-.sv2-embedded .sv2-sp-row { padding: 10px var(--sv2-pad); }
-.sv2-embedded .sv2-sp-l2 { margin-top: 6px; }
-.sv2-embedded .sv2-sp-l3 { margin-top: 4px; }
 .sv2-embedded .sv2-sp-body { gap: 12px; padding: 2px var(--sv2-pad) 6px; }
 .sv2-embedded .sv2-sp-rb { padding: 12px 14px; }
 .sv2-embedded .sv2-sp-rail { display: grid; gap: 8px; align-content: start; }
@@ -1059,12 +1036,12 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 @media (min-width: 768px) { .sv2-sheet { border-bottom: 0; } }
 .sv2-sheet-grab { background: var(--sv2-glass-ring); }
 
-/* flat glass: list rows (play rows, gone rows). Fill, ring, no pseudo layers, no blur. */
-.sv2-sp-item, .sv2 .sv2-fw-gone-row {
+/* flat glass: list rows (gone rows). Fill, ring, no pseudo layers, no blur. */
+.sv2 .sv2-fw-gone-row {
   background: var(--sv2-glass-fill); border: 0; border-radius: var(--sv2-r-row);
   box-shadow: inset 0 0 0 1px var(--sv2-glass-ring);
 }
-.sv2 .sv2-sp-row, .sv2 .sv2-fw-gone-main { border-radius: var(--sv2-r-row); }
+.sv2 .sv2-fw-gone-main { border-radius: var(--sv2-r-row); }
 .sv2 .sv2-fw-list--mini { background: var(--sv2-glass-row); border: 0; border-radius: var(--sv2-r-inset); box-shadow: inset 0 0 0 1px var(--sv2-glass-ring); }
 .sv2-sp-rb { padding: 14px 16px; }
 
@@ -1122,31 +1099,12 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
   .sv2-bar[data-bar="new"] > i { animation: none; }
 }
 
-/* ===== glass play cards (2026-11-23): the play rows get the same card surface as the rest. The wash and the corner glow are plain gradients
-   (no blur, no filter), so 100+ rows stay cheap to paint; only the card layers are added, nothing inside a row changes. The accent follows
-   the evidence tier and is decoration only: the tier word and the pips carry the meaning. ===== */
-.sv2 .sv2-sp-item { position: relative; isolation: isolate; border-radius: var(--sv2-r-card); --sv2-accent-rgb: var(--sv2-price-rgb); }
-.sv2 .sv2-sp-item[data-tier="contested"] { --sv2-accent-rgb: var(--sv2-caution-rgb); }
-.sv2 .sv2-sp-item[data-tier="clear"] { --sv2-accent-rgb: var(--sv2-win-rgb); }
-.sv2 .sv2-sp-item[data-tier="mixed"], .sv2 .sv2-sp-item[data-tier="thin"] { --sv2-accent-rgb: var(--sv2-price-rgb); }
-.sv2 .sv2-sp-item::before, .sv2 .sv2-sp-item::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; }
-.sv2 .sv2-sp-item::before { background: linear-gradient(135deg, rgb(var(--sv2-accent-rgb) / var(--sv2-glass-wash)), transparent 62%); }
-.sv2 .sv2-sp-item::after { background: radial-gradient(circle 190px at calc(100% + 36px) -36px, rgb(var(--sv2-accent-rgb) / var(--sv2-glass-orb)), transparent 100%); }
-.sv2 .sv2-sp-row { border-radius: var(--sv2-r-card); }
-.sv2-embedded .sv2-sp-row { padding: 14px var(--sv2-pad); }
-.sv2-embedded .sv2-sp-rows { gap: 10px; }
-
 /* ===== tier colours (2026-11-23). Clear is gold and pops (stronger wash, a gold ring, a soft lift); Mixed takes the price colour; Thin is neutral
    slate; Contested is violet (amber stays the warning colour). Decoration only: the tier word and the pips always carry the meaning, and the
    tier is context, never a bet signal or a size. ===== */
 :root { --sv2-gold: #F5C542; --sv2-gold-rgb: 245 197 66; --sv2-violet: #A78BFA; --sv2-violet-rgb: 167 139 250; }
 html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2-violet: #5B3FD0; --sv2-violet-rgb: 91 63 208; }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2-violet: #5B3FD0; --sv2-violet-rgb: 91 63 208; } }
-.sv2 .sv2-sp-item[data-tier="contested"] { --sv2-accent-rgb: var(--sv2-violet-rgb); }
-.sv2 .sv2-sp-item[data-tier="mixed"] { --sv2-accent-rgb: var(--sv2-price-rgb); }
-.sv2 .sv2-sp-item[data-tier="thin"] { --sv2-accent-rgb: var(--sv2-ink-rgb); --sv2-glass-wash: .05; --sv2-glass-orb: .05; }
-.sv2 .sv2-sp-item[data-tier="clear"] { --sv2-accent-rgb: var(--sv2-gold-rgb); --sv2-glass-wash: .20; --sv2-glass-orb: .26;
-  box-shadow: inset 0 0 0 1.5px rgb(var(--sv2-gold-rgb) / .60), 0 8px 26px rgb(var(--sv2-gold-rgb) / .16); }
 .sv2-tier--clear { background: rgb(var(--sv2-gold-rgb) / .16); box-shadow: inset 0 0 0 1.5px var(--sv2-gold), inset 0 1px 0 var(--sv2-glass-hi); }
 .sv2-tier--clear .sv2-pips i { border-color: var(--sv2-gold); }
 .sv2-tier--clear .sv2-pips i.on { background: var(--sv2-gold); border-color: var(--sv2-gold); }
@@ -1197,3 +1155,106 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
   .sv2-rec-tbtn .sv2-rec-c, .sv2-rec-subrow .sv2-rec-c { text-align: left; }
 }
 #rec-h-tiers { scroll-margin-top: 88px; }
+
+
+/* ===== 13. Plays table (sv2-tb-, 2026-11-23). Replaces the card list on the Sharps tab. One glass card (.sv2-card) holds a real table; every row has
+   a detail row under it that uses the existing .sv2-x expander (--ease-out, grid rows, never a spring on height) and the same .sv2-sp- body the cards had.
+   The left bar and the Clear tint are decoration: the tier word and pips in the Tier column carry the meaning. Reduced motion is the .sv2-x rule in section 7. ===== */
+.sv2 .sv2-card.sv2-tb-card { padding: 0; overflow: hidden; container-type: inline-size; --sv2-accent-rgb: var(--sv2-price-rgb); }
+.sv2 .sv2-tb-scroll { overflow-x: auto; }
+.sv2 .sv2-tb { width: 100%; border-collapse: separate; border-spacing: 0; font: 400 14px/1.4 var(--sv2-sans); color: var(--sv2-ink); }
+.sv2 .sv2-tb thead th { padding: 4px 8px; text-align: left; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); border-bottom: 1px solid var(--sv2-line); white-space: nowrap; }
+.sv2 .sv2-tb thead th.c-time { padding-left: 20px; }
+.sv2 .sv2-tb .c-px, .sv2 .sv2-tb .c-fair { text-align: right; }
+.sv2 .sv2-tb thead th.c-fair, .sv2 .sv2-tb thead th.c-spl, .sv2 .sv2-tb thead th.c-wal { white-space: normal; line-height: 1.25; }
+.sv2 .sv2-tb thead th.c-fair .sv2-tb-sort { text-align: right; }
+.sv2 .sv2-tb-sort { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 0 -6px; padding: 0 6px; border-radius: 10px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.sv2 .sv2-tb-sort::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+.sv2 .sv2-tb th[aria-sort="ascending"] .sv2-tb-sort, .sv2 .sv2-tb th[aria-sort="descending"] .sv2-tb-sort { color: var(--sv2-ink); }
+.sv2 .sv2-tb-arr { flex: none; width: 10px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.sv2 .sv2-tb-arr .u, .sv2 .sv2-tb-arr .d { opacity: .45; }
+.sv2 .sv2-tb-arr.is-asc .u, .sv2 .sv2-tb-arr.is-desc .d { opacity: 1; }
+.sv2 .sv2-tb-arr.is-asc .d, .sv2 .sv2-tb-arr.is-desc .u { opacity: .25; }
+
+.sv2 .sv2-tb-band th { padding: 16px 20px 6px; text-align: left; border: 0; }
+.sv2 .sv2-tb-bw { display: flex; align-items: baseline; gap: 10px; }
+.sv2 .sv2-tb-band .sv2-h2 { flex: 1; margin: 0; }
+
+.sv2 .sv2-tb-r { --tb-accent: rgb(var(--sv2-price-rgb)); cursor: pointer; scroll-margin-top: 56px; }
+.sv2 .sv2-tb-r[data-tier="clear"] { --tb-accent: var(--sv2-gold); background: linear-gradient(90deg, rgb(var(--sv2-gold-rgb) / .16), transparent 55%); }
+.sv2 .sv2-tb-r[data-tier="contested"] { --tb-accent: var(--sv2-violet); }
+.sv2 .sv2-tb-r[data-tier="thin"] { --tb-accent: rgb(var(--sv2-ink-rgb) / .45); }
+.sv2 .sv2-tb-r:hover { background-color: var(--sv2-glass-row); }
+.sv2 .sv2-tb-r[data-tier="clear"]:hover { background: linear-gradient(90deg, rgb(var(--sv2-gold-rgb) / .20), transparent 55%); }
+.sv2 .sv2-tb-c { padding: 10px 8px; border-bottom: 1px solid var(--sv2-line); vertical-align: middle; }
+.sv2 .sv2-tb-r > .c-time { position: relative; padding-left: 20px; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.sv2 .sv2-tb-r > .c-time::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--tb-accent); }
+.sv2 .sv2-tb-r.is-open > .sv2-tb-c { border-bottom-color: transparent; }
+.sv2 .sv2-tb-c.c-sport, .sv2 .sv2-tb-c.c-size, .sv2 .sv2-tb-c.c-tier, .sv2 .sv2-tb-c.c-mkt { white-space: nowrap; }
+.sv2 .sv2-tb-c.c-mkt { color: var(--sv2-mut); }
+.sv2 .sv2-tb-c.c-play { min-width: 190px; }
+.sv2 .sv2-tb-title { display: block; font-size: 15px; line-height: 20px; }
+.sv2 .sv2-tb-title b { font-weight: 600; }
+.sv2 .sv2-tb-title .sv2-chip { margin-left: 6px; vertical-align: 1px; }
+.sv2 .sv2-tb-mu { display: block; margin-top: 2px; font-size: 13px; color: var(--sv2-mut); }
+.sv2 .sv2-tb .sv2-mu-at { color: var(--sv2-mut); }
+.sv2 .sv2-tb .sv2-chip--muted { color: var(--sv2-ink); }
+.sv2 .sv2-tb-c.c-px { font: 600 15px/1.2 var(--sv2-num); font-variant-numeric: tabular-nums; letter-spacing: var(--sv2-num-ls); white-space: nowrap; }
+.sv2 .sv2-tb-c.c-fair { font-weight: 600; white-space: nowrap; }
+.sv2 .sv2-tb-c.c-fair.is-pos { color: var(--sv2-win); }
+.sv2 .sv2-tb-c.c-fair.is-neg { color: var(--sv2-caution); }
+.sv2 .sv2-tb-c.c-fair.is-zero { color: var(--sv2-mut); }
+.sv2 .sv2-tb-spl { display: grid; gap: 5px; min-width: 112px; }
+.sv2 .sv2-tb-st { display: flex; gap: 10px; font-size: 12px; color: var(--sv2-mut); white-space: nowrap; }
+.sv2 .sv2-tb-st .sv2-num { color: var(--sv2-ink); }
+.sv2 .sv2-tb-sbar { position: relative; height: 8px; overflow: hidden; border-radius: 999px; background: var(--sv2-glass-track); }
+.sv2 .sv2-tb-sbar > i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, rgb(var(--sv2-price-rgb) / .55), rgb(var(--sv2-price-rgb))); }
+.sv2 .sv2-tb-h { display: inline-block; margin-right: 10px; font-weight: 600; white-space: nowrap; }
+.sv2 .sv2-tb-h.is-ag { color: var(--sv2-violet); }
+.sv2 .sv2-tb-sub { display: block; margin-top: 2px; font-size: 12px; color: var(--sv2-mut); white-space: nowrap; }
+.sv2 .sv2-tb-na { font-size: 13px; color: var(--sv2-mut); }
+.sv2 .sv2-tb-c.c-chev, .sv2 .sv2-tb thead th.c-chev { width: 52px; padding: 0 6px 0 0; text-align: right; }
+.sv2 .sv2-tb-tog { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; color: var(--sv2-mut); background: transparent; }
+.sv2 .sv2-tb-tog .sv2-chev { width: 20px; height: 20px; }
+
+.sv2 .sv2-tb-d > td { padding: 0; border: 0; }
+.sv2 .sv2-tb-r.is-open + .sv2-tb-d > td { border-bottom: 1px solid var(--sv2-line); }
+.sv2 .sv2-tb-d .sv2-sp-body { padding: 8px 20px 8px; }
+.sv2 .sv2-tb-d .sv2-sp-morewrap { padding: 0 20px 12px; }
+.sv2 .sv2-tb tbody > tr:last-child > td, .sv2 .sv2-tb tbody > .sv2-tb-r:nth-last-child(2):not(.is-open) > td { border-bottom: 0; }
+.sv2 .sv2-tb-skelcard { padding: 12px; }
+.sv2 .sv2-tb-skel { height: 56px; border-radius: 12px; }
+
+/* the two wide columns drop out of the row when the card is too narrow for them (the shell's side rail takes space at 1440), and always at 1100px and below; both stay in the dropdown */
+@container (max-width: 1130px) {
+  .sv2 .sv2-tb .c-spl, .sv2 .sv2-tb .c-wal { display: none; }
+}
+@media (max-width: 1100px) {
+  .sv2 .sv2-tb .c-spl, .sv2 .sv2-tb .c-wal { display: none; }
+}
+@media (max-width: 760px) {
+  .sv2 .sv2-tb, .sv2 .sv2-tb tbody, .sv2 .sv2-tb-d, .sv2 .sv2-tb-d > td, .sv2 .sv2-tb-band, .sv2 .sv2-tb-band th { display: block; }
+  .sv2 .sv2-tb thead { display: none; }
+  .sv2 .sv2-tb-band th { padding: 12px 16px 4px; }
+  .sv2 .sv2-tb-r { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 2px 0 8px 12px; border-bottom: 1px solid var(--sv2-line); }
+  .sv2 .sv2-tb-r.is-open { border-bottom-color: transparent; }
+  .sv2 .sv2-tb-r::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--tb-accent); }
+  .sv2 .sv2-tb-r > .sv2-tb-c { display: none; padding: 0; border: 0; }
+  .sv2 .sv2-tb-r > .c-play { display: contents; }
+  .sv2 .sv2-tb-r > .c-px, .sv2 .sv2-tb-r > .c-tier, .sv2 .sv2-tb-r > .c-size, .sv2 .sv2-tb-r > .c-chev { display: block; }
+  /* line 1: play, price, chevron (the title basis leaves room for the other two, so line 2 always starts a new line); line 2: matchup, tier, size, wrapping only when a phone is too narrow for all three */
+  .sv2 .sv2-tb-title { order: 1; flex: 1 1 calc(100% - 64px - 44px - 12px); min-width: 0; }
+  .sv2 .sv2-tb-r > .c-px { order: 2; flex: 0 0 64px; text-align: right; }
+  .sv2 .sv2-tb-r > .c-chev { order: 3; flex: 0 0 44px; width: 44px; padding: 0; text-align: center; }
+  .sv2 .sv2-tb-mu { order: 4; flex: 0 1 auto; min-width: 0; margin: 0; }
+  .sv2 .sv2-tb-r > .c-tier { order: 5; }
+  .sv2 .sv2-tb-r > .c-size { order: 6; }
+  .sv2 .sv2-tb-mu .sv2-logo { width: 16px; height: 16px; margin-right: 4px; }
+  .sv2 .sv2-tb-mu .sv2-mu { flex-wrap: nowrap; gap: 2px 5px; }
+  .sv2 .sv2-tb-r > .c-tier .sv2-tier { gap: 6px; }
+  .sv2 .sv2-tb-r > .c-size .sv2-play { padding: 4px 8px; }
+  .sv2 .sv2-tb-r.is-open + .sv2-tb-d > td { border-bottom: 1px solid var(--sv2-line); }
+  .sv2 .sv2-tb-d .sv2-sp-body { padding: 8px 16px; }
+  .sv2 .sv2-tb-d .sv2-sp-morewrap { padding: 0 16px 12px; }
+  .sv2 .sv2-tb tbody > .sv2-tb-r:nth-last-child(2):not(.is-open) { border-bottom: 0; }
+}

@@ -3,13 +3,13 @@
    <section id="sv2-page-sharps"> element.
 
    What this page is: the plays the staking rule picked (NBA, NFL, CBB at a flat 1u from an untested rule, nothing on CFB),
-   grouped by freeze time and then by evidence tier. Sharp money is context only: nothing here is a bet signal, a size rule,
+   shown as a table (one row per play, a detail row under it), grouped by freeze time and then by evidence tier, or sorted flat by Price, vs fair, Tier or Size. Sharp money is context only: nothing here is a bet signal, a size rule,
    or an input to Top Reads, SM_GATE or any total. The tier is a label of this card's own stored fields; it never changes the 1u.
    Every number is a stored field, a count of stored rows, or arithmetic on stored fields. A missing field is omitted.
 
    Account hook: a tap on a wallet calls SV2.openAccount(sport, wallet, {ev, g, side, from:'sharps'}) when the Following
    page has defined it, and otherwise follows the link #following/acct/<sport>/<wallet>.
-   All new classes are sv2-sp- (rules appended at the end of sv2.css). No em dashes, no text-glyph icons. All times Central. */
+   Classes are sv2-sp- (the detail body, filters, rail) and sv2-tb- (the table); rules are at the end of sv2.css. No em dashes, no text-glyph icons. All times Central. */
 (function () {
   'use strict';
   var SV2 = (typeof window !== 'undefined' && window.SV2) || null;
@@ -76,23 +76,98 @@
     });
     return out;
   }
-  /* inside a freeze band: tier order, then past-winner wallets on the side (descending), then freeze time, then key */
-  function sortPlays(list) {
+  /* the default order, inside a freeze band: tier order, then past-winner wallets on the side (descending), then freeze time, then key */
+  function baseCmp(a, b) {
     var ord = copy.tierOrder;
+    return ord.indexOf(a.tier) - ord.indexOf(b.tier) ||
+      (b.facts.proven - a.facts.proven) ||
+      ((a.cut || 0) - (b.cut || 0)) ||
+      (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  }
+  function sortPlays(list) { return list.slice().sort(baseCmp); }
+
+  /* the price against Pinnacle's no-vig fair, in points: the stored v2.vs_fair.pts, else the stored sf signal the facts read. null when neither is stored. */
+  function fairPts(p) {
+    var m = mktOf(p.game, p.g), vf = m && m.v2 && m.v2.vs_fair;
+    if (vf && isNum(vf.pts)) return vf.pts;
+    return p.facts && isNum(p.facts.pts) ? p.facts.pts : null;
+  }
+  /* sortable columns. dir is the first-click direction: 1 ascending, -1 descending. Freezes is the default and is the only one with bands. */
+  var SORTS = { freeze: { label: 'Freezes', dir: 1 }, price: { label: 'Price', dir: -1 }, fair: { label: 'vs fair', dir: -1 }, tier: { label: 'Tier', dir: 1 }, size: { label: 'Size', dir: -1 } };
+  var SORT_ORDER = ['freeze', 'price', 'fair', 'tier', 'size'];
+  function cleanSort(o) {
+    var k = o && SORTS[o.k] ? o.k : 'freeze';
+    return { k: k, dir: o && (o.dir === 1 || o.dir === -1) ? o.dir : SORTS[k].dir };
+  }
+  /* what a header click does: the active column flips direction, another column starts at its own first direction */
+  function nextSort(cur, k) {
+    if (!SORTS[k]) return cleanSort(cur);
+    return cur && cur.k === k ? { k: k, dir: -cur.dir } : { k: k, dir: SORTS[k].dir };
+  }
+  function sortValue(p, k) {
+    if (k === 'freeze') return isNum(p.cut) ? p.cut : null;
+    if (k === 'price') return isNum(p.sf.price) ? p.sf.price : null;
+    if (k === 'fair') return fairPts(p);
+    if (k === 'tier') { var i = copy.tierOrder.indexOf(p.tier); return i < 0 ? null : i; }
+    if (k === 'size') return p.units > 0 ? p.units : 0;
+    return null;
+  }
+  /* a missing value sorts last in either direction; ties fall back to the default order */
+  function sortFlat(list, k, dir) {
+    var d = dir === -1 ? -1 : 1;
     return list.slice().sort(function (a, b) {
-      return ord.indexOf(a.tier) - ord.indexOf(b.tier) ||
-        (b.facts.proven - a.facts.proven) ||
-        ((a.cut || 0) - (b.cut || 0)) ||
-        (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+      var x = sortValue(a, k), y = sortValue(b, k);
+      if (x == null && y != null) return 1;
+      if (y == null && x != null) return -1;
+      if (x != null && y != null && x !== y) return (x - y) * d;
+      return baseCmp(a, b);
     });
   }
-  function groupBands(list) {
-    return T.bandOrder.map(function (b) {
+  /* freeze bands, in time order (dir -1 reverses the bands), rows inside a band in the default order */
+  function groupBands(list, dir) {
+    var out = T.bandOrder.map(function (b) {
       var rows = sortPlays(list.filter(function (p) { return p.band === b; }));
       var first = rows.reduce(function (m, p) { return isNum(p.cut) && (m == null || p.cut < m) ? p.cut : m; }, null);
       return { band: b, rows: rows, first: first };
     }).filter(function (x) { return x.rows.length; });
+    return dir === -1 ? out.reverse() : out;
   }
+  /* what the table shows: bands for the Freezes sort, one flat list for any other */
+  function viewOf(list, sort) {
+    var s = cleanSort(sort);
+    return s.k === 'freeze' ? { bands: groupBands(list, s.dir), rows: null } : { bands: null, rows: sortFlat(list, s.k, s.dir) };
+  }
+
+  /* ---- column cells (pure: the view only draws what these return) ---- */
+  /* "vs fair" in points: {text, tone} where tone is pos (price better than fair), neg (worse), zero, or null with empty text when not stored */
+  function vsFairCell(p) {
+    var pts = fairPts(p);
+    if (pts == null) return { text: '', tone: null };
+    return { text: pts === 0 ? '0' : fmt.line(pts, { signed: true }), tone: pts > 0 ? 'pos' : pts < 0 ? 'neg' : 'zero' };
+  }
+  /* Action Network splits on the play's own side: whole percents, or null when the market has none */
+  function splitCell(p) {
+    var sp = SV2.splitsFor(p.game, p.g), s = sp && sp.sides && sp.sides[p.facts.side];
+    if (!s) return null;
+    var b = isNum(s.bets) ? Math.round(s.bets) : null, m = isNum(s.money) ? Math.round(s.money) : null;
+    return b == null && m == null ? null : { bets: b, money: m };
+  }
+  /* wallets that beat the close on the play's side (for) and on the other side (against), plus past winners against.
+     Stored v2.conflict first; null counts (college has no price tier) give {tiered:false}. */
+  function walletsCell(p) {
+    var m = mktOf(p.game, p.g), c = m && m.v2 && m.v2.conflict, f = p.facts;
+    var forN = null, agN = null, pw = null;
+    if (c) { forN = isNum(c.beats_for) ? c.beats_for : null; agN = isNum(c.beats_against) ? c.beats_against : null; pw = c.past_winner_against && isNum(c.past_winner_against.n) ? c.past_winner_against.n : null; }
+    else if (f && f.tiered) { forN = f.b1.n; agN = f.a2.n; pw = f.a1.n; }
+    if (forN == null || agN == null) return { tiered: false, forN: null, againstN: null, pwAgainst: null };
+    return { tiered: true, forN: forN, againstN: agN, pwAgainst: pw };
+  }
+  /* the size cell: the flat 1u pill (NBA, NFL, CBB), the CFB words, or nothing */
+  function sizeCell(p) {
+    if (p.units > 0) return { kind: 'pill', units: p.units };
+    return p.sport === 'cfb' ? { kind: 'none', text: T.noSize } : { kind: 'blank', text: '' };
+  }
+
   function nextCut(cards, nowT) {
     var best = null;
     ((cards && cards.games) || []).forEach(function (game) {
@@ -235,7 +310,9 @@
   SV2.sharpsPage = {
     collectPlays: collectPlays, sortPlays: sortPlays, groupBands: groupBands, reasonOf: reasonOf, evidenceLines: evidenceLines,
     contextRows: contextRows, passes: passes, cleanFilters: cleanFilters, playTitle: playTitle, gameLabel: gameLabel, nextCut: nextCut,
-    execLines: execLines, fairLine: fairLine
+    execLines: execLines, fairLine: fairLine,
+    SORTS: SORTS, SORT_ORDER: SORT_ORDER, cleanSort: cleanSort, nextSort: nextSort, sortFlat: sortFlat, viewOf: viewOf, fairPts: fairPts,
+    vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell
   };
 
   /* ------------------------------------------------------------------ view */
@@ -391,35 +468,87 @@
       '<div class="sv2-x" id="sv2-sp-m-' + mid + '"' + (moreOpen ? ' data-open' : '') + '><div class="sv2-x-in">' + moreHtml(p) + '</div></div></div>';
   }
 
+  /* ---- the plays table ---- */
+  var COLS = [
+    { c: 'time', label: 'Freezes', k: 'freeze' }, { c: 'sport', label: 'Sport' }, { c: 'play', label: 'Play' }, { c: 'mkt', label: 'Market' },
+    { c: 'px', label: 'Price', k: 'price' }, { c: 'fair', label: 'vs fair (pts)', k: 'fair' }, { c: 'tier', label: 'Tier', k: 'tier' },
+    { c: 'spl', label: 'Bets vs money on the play' }, { c: 'wal', label: 'Wallets that beat the close' }, { c: 'size', label: 'Size', k: 'size' },
+    { c: 'chev', label: '', sr: 'Details' }
+  ];
+
   function timeText(p) {
     if (!isNum(p.cut)) return '';
-    return 'Freezes ' + (p.band === 'hour' || p.band === 'today' ? ct.time(p.cut) : ct.dayTime(p.cut));
+    return p.band === 'hour' || p.band === 'today' ? ct.time(p.cut) : ct.dayTime(p.cut);
+  }
+  function q(s) { return String(s).replace(/"/g, '\\"'); }
+  function keyId(prefix, key) { return prefix + key.replace(/[^a-z0-9]+/gi, '-'); }
+
+  function splitCellHtml(p) {
+    var s = splitCell(p);
+    if (!s) return '<span class="sv2-tb-na">n/a</span>';
+    return '<span class="sv2-tb-spl"><span class="sv2-tb-st">' + (s.bets != null ? '<span><span class="sv2-num">' + s.bets + '%</span> bets</span>' : '') +
+      (s.money != null ? '<span><span class="sv2-num">' + s.money + '%</span> money</span>' : '') + '</span>' +
+      (s.money != null ? '<span class="sv2-tb-sbar" aria-hidden="true"><i style="width:' + s.money + '%"></i></span>' : '') + '</span>';
+  }
+  function walletsCellHtml(p) {
+    var w = walletsCell(p);
+    if (!w.tiered) return '<span class="sv2-tb-na">no price tier here</span>';
+    return '<span class="sv2-tb-h"><span class="sv2-num">' + w.forN + '</span> for</span><span class="sv2-tb-h is-ag"><span class="sv2-num">' + w.againstN + '</span> against</span>' +
+      (w.pwAgainst > 0 ? '<span class="sv2-tb-sub">' + esc(plural(w.pwAgainst, 'past winner', 'past winners')) + ' against</span>' : '');
+  }
+  function sizeCellHtml(p) {
+    var z = sizeCell(p);
+    if (z.kind === 'pill') return ui.playPill(z.units);
+    return z.text ? '<span class="sv2-nosize">' + esc(z.text) + '</span>' : '';
   }
 
   function rowHtml(p, st, sameKeys) {
-    var open = !!st.open[p.key], id = 'sv2-sp-x-' + p.key.replace(/[^a-z0-9]+/gi, '-');
-    var title = playTitle(p.game, p.g, p.sf), c = fmt.cents(p.sf.price), reason = reasonOf(p), pill = p.units > 0 ? ui.playPill(p.units) : (p.sport === 'cfb' ? '<span class="sv2-nosize">' + esc(T.noSize) + '</span>' : '');
+    var open = !!st.open[p.key], id = keyId('sv2-sp-x-', p.key);
+    var title = playTitle(p.game, p.g, p.sf), c = fmt.cents(p.sf.price), reason = reasonOf(p), vf = vsFairCell(p);
     var label = title + ', ' + gameLabel(p.game) + ', ' + (copy.tier[p.tier] ? copy.tier[p.tier].word : '') + '. ' + (reason || '');
-    var head = '<button type="button" class="sv2-sp-row sv2-press sv2-press-row" aria-expanded="' + open + '" aria-controls="' + id + '" data-sp-row="' + esc(p.key) + '" data-fid="row:' + esc(p.key) + '">' +
-      '<span class="sv2-sp-l1"><span class="sv2-sp-t"><b>' + esc(title) + '</b> <span class="sv2-sp-g">' + ui.matchup(p.game, gameLabel(p.game)) + '</span></span>' +
-      (c ? '<span class="sv2-sp-px sv2-num">' + esc(c) + '</span>' : '') + ui.icon('chevron', 'sv2-chev') + '</span>' +
-      '<span class="sv2-sp-l2">' + ui.chip(SV2.sportName(p.sport), 'muted') + ui.tier(p.tier) + pill + (sameKeys[p.key] ? ui.chip(T.sameTag, 'muted') : '') + '</span>' +
-      '<span class="sv2-sp-l3"><span class="sv2-sp-why">' + esc(reason) + '</span><span class="sv2-sp-time">' + esc(timeText(p)) + '</span></span>' +
-      '</button>';
-    return '<li class="sv2-sp-item" data-key="' + esc(p.key) + '" data-tier="' + esc(p.tier) + '">' + head +
-      '<div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc(label) + '">' + (open ? detailHtml(p, !!st.more[p.key]) : '') + '</div></div></li>';
+    var ncol = COLS.length;
+    var tr = '<tr class="sv2-tb-r' + (open ? ' is-open' : '') + '" data-key="' + esc(p.key) + '" data-tier="' + esc(p.tier) + '">' +
+      '<td class="sv2-tb-c c-time sv2-num">' + esc(timeText(p)) + '</td>' +
+      '<td class="sv2-tb-c c-sport">' + ui.chip(SV2.sportName(p.sport), 'muted') + '</td>' +
+      '<td class="sv2-tb-c c-play"><span class="sv2-tb-title"><b>' + esc(title) + '</b>' + (sameKeys[p.key] ? ' ' + ui.chip(T.sameTag, 'muted') : '') + '</span><span class="sv2-tb-mu">' + ui.matchup(p.game, gameLabel(p.game)) + '</span></td>' +
+      '<td class="sv2-tb-c c-mkt">' + esc(marketLabel(p.g)) + '</td>' +
+      '<td class="sv2-tb-c c-px sv2-num">' + esc(c || '') + '</td>' +
+      '<td class="sv2-tb-c c-fair sv2-num' + (vf.tone ? ' is-' + vf.tone : '') + '">' + esc(vf.text) + '</td>' +
+      '<td class="sv2-tb-c c-tier">' + ui.tier(p.tier) + '</td>' +
+      '<td class="sv2-tb-c c-spl">' + splitCellHtml(p) + '</td>' +
+      '<td class="sv2-tb-c c-wal">' + walletsCellHtml(p) + '</td>' +
+      '<td class="sv2-tb-c c-size">' + sizeCellHtml(p) + '</td>' +
+      '<td class="sv2-tb-c c-chev"><button type="button" class="sv2-tb-tog sv2-press sv2-press-btn" aria-expanded="' + open + '" aria-controls="' + id + '" aria-label="' + esc(label) + '" data-sp-row="' + esc(p.key) + '" data-fid="row:' + esc(p.key) + '">' + ui.icon('chevron', 'sv2-chev') + '</button></td></tr>';
+    var dr = '<tr class="sv2-tb-d" data-dkey="' + esc(p.key) + '"><td colspan="' + ncol + '"><div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc(label) + '">' +
+      (open ? detailHtml(p, !!st.more[p.key]) : '') + '</div></div></td></tr>';
+    return tr + dr;
   }
 
   function countdownText(cut, nowT) { return isNum(cut) ? ct.countdown(cut - nowT) : null; }
 
-  function bandsHtml(vis, st, sameKeys, nowT) {
-    return groupBands(vis).map(function (b) {
-      var hid = 'sv2-sp-b-' + b.band;
-      var meta = isNum(b.first) ? '<span class="sv2-sp-bmeta sv2-num">' + esc(ct.time(b.first, true)) + ' <span class="sv2-sp-dot" aria-hidden="true"></span> <span data-sp-cd data-cut="' + b.first + '">' + esc(countdownText(b.first, nowT) || '') + '</span></span>' : '';
-      return '<section class="sv2-sp-band" aria-labelledby="' + hid + '"><div class="sv2-band"><h2 class="sv2-h2" id="' + hid + '">' + esc(T.band[b.band]) + '</h2>' + meta + '</div>' +
-        '<ul class="sv2-sp-rows">' + b.rows.map(function (p) { return rowHtml(p, st, sameKeys); }).join('') + '</ul></section>';
-    }).join('');
+  function bandRowHtml(b, nowT) {
+    var meta = isNum(b.first) ? '<span class="sv2-sp-bmeta sv2-num">' + esc(ct.time(b.first, true)) + ' <span class="sv2-sp-dot" aria-hidden="true"></span> <span data-sp-cd data-cut="' + b.first + '">' + esc(countdownText(b.first, nowT) || '') + '</span></span>' : '';
+    return '<tr class="sv2-tb-band"><th scope="colgroup" colspan="' + COLS.length + '"><span class="sv2-tb-bw"><span class="sv2-h2">' + esc(T.band[b.band]) + '</span>' + meta + '</span></th></tr>';
   }
+  function sortArrow(on, dir) {
+    return '<svg class="sv2-tb-arr' + (on ? (dir === 1 ? ' is-asc' : ' is-desc') : '') + '" viewBox="0 0 12 14" aria-hidden="true" focusable="false"><path class="u" d="M3 5.5L6 2.5l3 3"/><path class="d" d="M3 8.5l3 3 3-3"/></svg>';
+  }
+  function theadHtml(sort) {
+    var s = cleanSort(sort);
+    return '<thead><tr>' + COLS.map(function (c) {
+      if (c.sr) return '<th scope="col" class="c-' + c.c + '"><span class="sv2-sr">' + c.sr + '</span></th>';
+      if (!c.k) return '<th scope="col" class="c-' + c.c + '">' + esc(c.label) + '</th>';
+      var on = s.k === c.k;
+      return '<th scope="col" class="c-' + c.c + ' is-sort" aria-sort="' + (on ? (s.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" class="sv2-tb-sort sv2-press sv2-press-chip" data-sp-sort="' + c.k + '" data-fid="sort:' + c.k + '">' + esc(c.label) + sortArrow(on, s.dir) + '</button></th>';
+    }).join('') + '</tr></thead>';
+  }
+  function tableHtml(vis, st, sameKeys, nowT) {
+    var v = viewOf(vis, st.sort), body;
+    if (v.bands) body = v.bands.map(function (b) { return bandRowHtml(b, nowT) + b.rows.map(function (p) { return rowHtml(p, st, sameKeys); }).join(''); }).join('');
+    else body = v.rows.map(function (p) { return rowHtml(p, st, sameKeys); }).join('');
+    return '<div class="sv2-card sv2-tb-card"><div class="sv2-tb-scroll"><table class="sv2-tb" aria-label="Plays">' + theadHtml(st.sort) + '<tbody>' + body + '</tbody></table></div></div>';
+  }
+  function sortWord(s) { return SORTS[s.k].label + ', ' + (s.dir === 1 ? 'ascending' : 'descending'); }
 
   function ctxItemHtml(r) {
     var v = r.game, bits = '<span class="sv2-sp-cg">' + esc(gameLabel(v)) + '</span>' + ui.chip(SV2.sportName(r.sport), 'muted');
@@ -438,7 +567,7 @@
 
   /* ------------------------------------------------------------------ mount */
   SV2.register('sharps', function mount(el) {
-    var st = { f: loadFilters(), wallet: null, open: {}, more: {}, ctxOpen: null, ctxN: CTX_STEP, panel: false, deep: null, shell: false, sig: '', lastBands: '' };
+    var st = { f: loadFilters(), sort: cleanSort(null), wallet: null, open: {}, more: {}, ctxOpen: null, ctxN: CTX_STEP, panel: false, deep: null, shell: false, sig: '', lastBands: '' };
     var refs = {}, model = null;
     function on(name, fn) { SV2.on(name, function (a) { if (document.contains(el)) fn(a); }); }   /* a re-mounted tab leaves the old closures behind: they stay quiet */
 
@@ -627,7 +756,7 @@
       var cards = store.cards;
       if (!cards) {
         st.shell = false; st.sig = '';
-        el.innerHTML = store.state.cards === 'loading' ? ui.skel(3, 'Loading plays') : '<p class="sv2-err">Could not load the plays. <button type="button" class="sv2-link" data-sv2-retry>Try again</button></p>';
+        el.innerHTML = store.state.cards === 'loading' ? '<div class="sv2-card sv2-tb-card sv2-tb-skelcard">' + ui.skel(6, 'Loading plays', 'sv2-tb-skel') + '</div>' : '<p class="sv2-err">Could not load the plays. <button type="button" class="sv2-link" data-sv2-retry>Try again</button></p>';
         return;
       }
       var sig = [cards.built, store.wallets && store.wallets.built, store.splits && store.splits.generated, SV2.sizesOk() ? 1 : 0, store.state.wallets].join('|');
@@ -649,7 +778,7 @@
       if (!d.all.length) refs.list.innerHTML = '';
       else if (!d.vis.length && !activeKeys().length && !st.wallet && eff().sport !== 'all') refs.list.innerHTML = '<p class="sv2-empty-line">No ' + esc(SV2.sportName(eff().sport)) + ' plays right now.</p>';
       else if (!d.vis.length) refs.list.innerHTML = '<p class="sv2-empty-line">' + esc(T.noMatch) + ' <button type="button" class="sv2-link" data-sp-clear data-fid="clear2">Clear filters</button></p>';
-      else refs.list.innerHTML = bandsHtml(d.vis, st, d.sameKeys, d.now);
+      else refs.list.innerHTML = tableHtml(d.vis, st, d.sameKeys, d.now);
       st.lastBands = bandSig(d.all);
       refs.ctx.innerHTML = ctxHtml(d.ctx, st);
       refs.rail.innerHTML = railHtml(d);
@@ -672,9 +801,9 @@
         st.open[key] = true; paint(true); return;
       }
       st.open[key] = true;
-      var item = el.querySelector('.sv2-sp-item[data-key="' + key.replace(/"/g, '\\"') + '"]');
+      var item = el.querySelector('tr.sv2-tb-r[data-key="' + q(key) + '"]');
       if (!item) return;
-      if (!item.querySelector('.sv2-x[data-open]')) { paint(true); item = el.querySelector('.sv2-sp-item[data-key="' + key.replace(/"/g, '\\"') + '"]'); }
+      if (!el.querySelector('tr.sv2-tb-d[data-dkey="' + q(key) + '"] .sv2-x[data-open]')) { paint(true); item = el.querySelector('tr.sv2-tb-r[data-key="' + q(key) + '"]'); }
       if (item) item.scrollIntoView({ block: 'start' });
     }
     function readDeep() {
@@ -682,12 +811,20 @@
       if (r.page === 'sharps' && r.sub[0] === 'play' && r.sub[1] && r.sub[2]) st.deep = { ev: r.sub[1], g: r.sub[2] };
     }
 
-    function ensureDetail(item, key) {
-      var inEl = item.querySelector('.sv2-x-in');
+    function ensureDetail(drow, key) {
+      var inEl = drow.querySelector('.sv2-x-in');
       if (!inEl.firstChild && model) {
         var p = model.all.filter(function (x) { return x.key === key; })[0];
         if (p) inEl.innerHTML = detailHtml(p, !!st.more[key]);
       }
+    }
+
+    function toggleRow(key) {
+      var btn = el.querySelector('[data-sp-row="' + q(key) + '"]'), dr = el.querySelector('tr.sv2-tb-d[data-dkey="' + q(key) + '"]');
+      if (!btn || !dr) return;
+      var x = dr.querySelector('.sv2-x'), open = !x.hasAttribute('data-open');
+      if (open) { ensureDetail(dr, key); x.setAttribute('data-open', ''); } else x.removeAttribute('data-open');
+      btn.setAttribute('aria-expanded', String(open)); btn.closest('tr').classList.toggle('is-open', open); st.open[key] = open;
     }
 
     /* ---- events (delegated) ---- */
@@ -702,14 +839,10 @@
         }
         return;
       }
-      var row = t.closest('[data-sp-row]');
-      if (row) {
-        var key = row.getAttribute('data-sp-row'), item = row.closest('.sv2-sp-item'), x = item.querySelector(':scope > .sv2-x');
-        var open = !x.hasAttribute('data-open');
-        if (open) { ensureDetail(item, key); x.setAttribute('data-open', ''); } else x.removeAttribute('data-open');
-        row.setAttribute('aria-expanded', String(open)); st.open[key] = open;
-        return;
-      }
+      var sb = t.closest('[data-sp-sort]');
+      if (sb) { st.sort = nextSort(st.sort, sb.getAttribute('data-sp-sort')); paint(true); setLive('Sorted by ' + sortWord(st.sort)); return; }
+      var tr = t.closest('tr.sv2-tb-r');
+      if (tr) { toggleRow(tr.getAttribute('data-key')); return; }   /* the whole row toggles; the chevron button is the keyboard and screen reader control */
       var more = t.closest('[data-sp-more]');
       if (more) {
         var mx = more.parentNode.querySelector('.sv2-x'), mo = !mx.hasAttribute('data-open');
