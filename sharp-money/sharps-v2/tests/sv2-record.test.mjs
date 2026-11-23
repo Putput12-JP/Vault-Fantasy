@@ -366,10 +366,53 @@ console.log('shadow size v2s-1 (tier_record.json shadow cells)');
   eq('the size table matches the rule v2s-1', R.SHADOW_SIZE, { clear: 1.5, mixed: 1, thin: 0.5, contested: 0.5, none: null });
 }
 
+console.log('table sorting (record tables)');
+{
+  const m = (idx, n, units, roi) => ({ idx, t: { n, units, roi } });
+  const list = [m(0, 10, 1.5, 0.15), m(1, 0, 0, null), m(2, 30, -2, -0.07), m(3, 5, 1.5, 0.3)];
+  eq('the default sort is the stored order, ascending', R.cleanSort(null), { k: 'def', dir: 1 });
+  eq('a known column starts at its own first direction', [R.cleanSort({ k: 'units' }), R.cleanSort({ k: 'n' }), R.cleanSort({ k: 'roi', dir: 1 })], [{ k: 'units', dir: -1 }, { k: 'n', dir: -1 }, { k: 'roi', dir: 1 }]);
+  eq('an unknown key or direction is cleaned', [R.cleanSort({ k: 'bogus', dir: 5 }), R.cleanSort({ k: 'constructor' })], [{ k: 'def', dir: 1 }, { k: 'def', dir: 1 }]);
+  eq('a click on another column starts at its first direction', R.nextSort({ k: 'def', dir: 1 }, 'units'), { k: 'units', dir: -1 });
+  eq('a click on the active column flips it', R.nextSort({ k: 'units', dir: -1 }, 'units'), { k: 'units', dir: 1 });
+  eq('a click on the stored-order column after a sort goes back to ascending', R.nextSort({ k: 'roi', dir: -1 }, 'def'), { k: 'def', dir: 1 });
+  eq('an unknown key changes nothing', R.nextSort({ k: 'roi', dir: 1 }, 'toString'), { k: 'roi', dir: 1 });
+  eq('default order is the stored order', R.sortRows(list).map(x => x.idx), [0, 1, 2, 3]);
+  eq('the stored-order column descending reverses it', R.sortRows(list, { k: 'def', dir: -1 }).map(x => x.idx), [3, 2, 1, 0]);
+  eq('units descending: ties keep the stored order, no plays last', R.sortRows(list, { k: 'units', dir: -1 }).map(x => x.idx), [0, 3, 2, 1]);
+  eq('units ascending: no plays still last', R.sortRows(list, { k: 'units', dir: 1 }).map(x => x.idx), [2, 0, 3, 1]);
+  eq('roi: a null roi sorts last either way', [R.sortRows(list, { k: 'roi', dir: -1 }).map(x => x.idx), R.sortRows(list, { k: 'roi', dir: 1 }).map(x => x.idx)], [[3, 0, 2, 1], [2, 0, 3, 1]]);
+  eq('n descending', R.sortRows(list, { k: 'n', dir: -1 }).map(x => x.idx), [2, 0, 3, 1]);
+  eq('sorting does not change the input', list.map(x => x.idx), [0, 1, 2, 3]);
+  eq('empty and missing input', [R.sortRows([]), R.sortRows(null)], [[], []]);
+  eq('the live-region words', [R.sortWord({ k: 'units', dir: -1 }), R.sortWord(null)], ['Units, descending', 'default order, ascending']);
+  eq('sortValue is null for no plays and for an unknown column', [R.sortValue(m(0, 0, 0, null), 'units'), R.sortValue(m(0, 5, 1, 0.2), 'zzz'), R.sortValue(null, 'n')], [null, null, null]);
+}
+
+console.log('table cells (record tables)');
+{
+  ok('the shared sort arrow marks the active direction', SV2.ui.sortArrow(true, 1).includes('is-asc') && SV2.ui.sortArrow(true, -1).includes('is-desc') && !/is-(asc|desc)/.test(SV2.ui.sortArrow(false, 1)));
+  eq('a null roi is a dash, not 0%', R.fmtRoi({ n: 0, roi: null }), '-');
+  eq('a roi with plays is signed', R.fmtRoi({ n: 3, roi: 0.123 }), '+12.3%');
+  eq('zero plays reads 0-0 and 0u', [R.fmtWl({ n: 0 }), R.fmtUnits({ n: 0, units: 0 })], ['0-0', '0u']);
+  eq('close column: mean and count apart', R.clvParts({ clv_n: 91, clv_mean: 0.1 }, 'play'), { value: SV2.fmt.centsSigned(0.1), sub: 'on 91 plays' });
+  eq('close column: one bet is singular', R.clvParts({ clv_n: 1, clv_mean: -1 }, 'bet').sub, 'on 1 bet');
+  eq('close column: none stored is null', [R.clvParts({ clv_n: 0, clv_mean: null }), R.clvParts(null)], [null, null]);
+  eq('past cell: record, games and win rate', R.pastCell({ w: 3566, l: 3612, n: 7178 }), { wl: SV2.fmt.wl(3566, 3612), n: 7178, rate: 3566 / 7178 });
+  eq('past cell: none stored is null', [R.pastCell({ w: 0, l: 0, n: 0 }), R.pastCell(null)], [null, null]);
+  const win = R.latestModel(row({ res: 'win', flat: 0.46, side: 'Knicks', group: 'ml', sport: 'nba', gst: CUT, price: 0.685 }), { clv: 0 });
+  eq('latest row: label, outcome and kind', [win.label, win.word, win.kind, win.market, win.sport], ['Knicks ML', 'Win', 'win', 'ml', 'nba']);
+  eq('latest row: price, close, units and date as text', [win.price, win.close, win.units, win.date], [SV2.fmt.cents(0.685), SV2.fmt.centsSigned(0), '+0.46u', SV2.ct.md(CUT)]);
+  const loss = R.latestModel(row({ res: 'loss', flat: -1, gst: undefined, price: undefined }), null);
+  eq('latest row: a loss with no close, price or date', [loss.word, loss.kind, loss.close, loss.price, loss.date, loss.units], ['Loss', 'loss', '', '', '', '-1u']);
+  eq('latest row: a push is neither', R.latestModel(row({ res: 'push', flat: 0 }), null).kind, 'push');
+}
+
 console.log('copy rules');
 {
   const src = fs.readFileSync(path.join(ROOT, 'sv2-record.js'), 'utf8');
   ok('no em dash', !src.includes(String.fromCharCode(0x2014)));
+  ok('no em dash in the stylesheet', !fs.readFileSync(path.join(ROOT, 'sv2.css'), 'utf8').includes(String.fromCharCode(0x2014)));
   ok('no agree, proven or elite in the page text', !/'[^']*\b(agree|agreement|proven|elite)\b[^']*'/i.test(src.replace(/\/\*[\s\S]*?\*\//g, '')));
 }
 

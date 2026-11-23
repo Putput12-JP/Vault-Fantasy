@@ -530,16 +530,13 @@
     var meta = isNum(b.first) ? '<span class="sv2-sp-bmeta sv2-num">' + esc(ct.time(b.first, true)) + ' <span class="sv2-sp-dot" aria-hidden="true"></span> <span data-sp-cd data-cut="' + b.first + '">' + esc(countdownText(b.first, nowT) || '') + '</span></span>' : '';
     return '<tr class="sv2-tb-band"><th scope="colgroup" colspan="' + COLS.length + '"><span class="sv2-tb-bw"><span class="sv2-h2">' + esc(T.band[b.band]) + '</span>' + meta + '</span></th></tr>';
   }
-  function sortArrow(on, dir) {
-    return '<svg class="sv2-tb-arr' + (on ? (dir === 1 ? ' is-asc' : ' is-desc') : '') + '" viewBox="0 0 12 14" aria-hidden="true" focusable="false"><path class="u" d="M3 5.5L6 2.5l3 3"/><path class="d" d="M3 8.5l3 3 3-3"/></svg>';
-  }
   function theadHtml(sort) {
     var s = cleanSort(sort);
     return '<thead><tr>' + COLS.map(function (c) {
       if (c.sr) return '<th scope="col" class="c-' + c.c + '"><span class="sv2-sr">' + c.sr + '</span></th>';
       if (!c.k) return '<th scope="col" class="c-' + c.c + '">' + esc(c.label) + '</th>';
       var on = s.k === c.k;
-      return '<th scope="col" class="c-' + c.c + ' is-sort" aria-sort="' + (on ? (s.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" class="sv2-tb-sort sv2-press sv2-press-chip" data-sp-sort="' + c.k + '" data-fid="sort:' + c.k + '">' + esc(c.label) + sortArrow(on, s.dir) + '</button></th>';
+      return '<th scope="col" class="c-' + c.c + ' is-sort" aria-sort="' + (on ? (s.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" class="sv2-tb-sort sv2-press sv2-press-chip" data-sp-sort="' + c.k + '" data-fid="sort:' + c.k + '">' + esc(c.label) + ui.sortArrow(on, s.dir) + '</button></th>';
     }).join('') + '</tr></thead>';
   }
   function tableHtml(vis, st, sameKeys, nowT) {
