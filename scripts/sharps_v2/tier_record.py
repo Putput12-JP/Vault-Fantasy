@@ -47,8 +47,8 @@ def shadow_cell(ps, tier):
     sized = [(p, P2.shadow_units(p["sport"], tier)) for p in ps]
     sized = [(p, u) for p, u in sized if u is not None]
     staked = sum(u for _, u in sized)
-    units = round(sum(p["flat"] * u for p, u in sized), 2)
-    return {"units_staked": round(staked, 2), "units": units, "roi": round(units / staked, 4) if staked else None}
+    raw = sum(p["flat"] * u for p, u in sized)
+    return {"units_staked": round(staked, 2), "units": round(raw, 2), "roi": round(raw / staked, 4) if staked else None}   # roi from the unrounded sum
 
 
 def cell(ps, tier=None):

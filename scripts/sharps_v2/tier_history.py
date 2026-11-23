@@ -165,7 +165,7 @@ def stats(ps):
 def shadow_stats(ps):
     """The rule v2s-1 record of a play list: size per play from its sport and derived tier (plays_v2.shadow_units), result = the play's flat result
     (unit result at its own stored price) times the size. A play with no tier or no size (None) is left out and counted in `unsized`; a CFB play
-    (size 0) is counted in n and stakes nothing. roi = units / staked (percent), None at 0 staked; se is the delta-method standard error of that
+    (size 0) is left out of n and stakes nothing. roi = units / staked (percent), None at 0 staked; se is the delta-method standard error of that
     ratio, sqrt(sum(size^2 (r - roi)^2)) / staked (percent), None under 2 sized plays."""
     sized = [(p, P2.shadow_units(p["sport"], p["tier"] if p["tier"] != "none" else None)) for p in ps]
     live = [(p, u) for p, u in sized if u]
