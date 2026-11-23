@@ -13,6 +13,10 @@ Every number is in-sample: the tier rule was written after these results. It is 
 
 Also prints the Nov 20 CBB re-add numbers (docs/side-card-record.md) and the record at the size the page showed at each cut.
 Flat units: 1 unit at the stored price at the cut, a win pays 1 / price - 1. Voided plays are left out, as in the record.
+
+Also prints the tier-scaled size SHADOW v2s-1 (plays_v2.SHADOW, user decision 2026-11-23) beside the flat record: each play's flat result times
+its shadow size (Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, CFB 0, no tier no size). In-sample, an ordering by evidence and not fitted to
+results; the flat 1u stays the size the page shows.
 """
 import argparse, json, math, os, subprocess, sys
 
@@ -158,6 +162,23 @@ def stats(ps):
             "clv_n": len(clv), "clv_mean": round(sum(clv) / len(clv), 2) if clv else None}
 
 
+def shadow_stats(ps):
+    """The rule v2s-1 record of a play list: size per play from its sport and derived tier (plays_v2.shadow_units), result = the play's flat result
+    (unit result at its own stored price) times the size. A play with no tier or no size (None) is left out and counted in `unsized`; a CFB play
+    (size 0) is counted in n and stakes nothing. roi = units / staked (percent), None at 0 staked; se is the delta-method standard error of that
+    ratio, sqrt(sum(size^2 (r - roi)^2)) / staked (percent), None under 2 sized plays."""
+    sized = [(p, P2.shadow_units(p["sport"], p["tier"] if p["tier"] != "none" else None)) for p in ps]
+    live = [(p, u) for p, u in sized if u]
+    staked = sum(u for _, u in live)
+    units = sum(p["flat"] * u for p, u in live)
+    roi = units / staked if staked else None
+    se = None
+    if roi is not None and len(live) > 1:
+        se = round(100 * math.sqrt(sum((u * (p["flat"] - roi)) ** 2 for p, u in live)) / staked, 1)
+    return {"n": len(live), "n_all": len(ps), "unsized": sum(1 for _, u in sized if u is None), "staked": round(staked, 2), "units": round(units, 2),
+            "roi": round(100 * roi, 1) if roi is not None else None, "se": se}
+
+
 def fmt(s):
     if not s["n"]:
         return "none"
@@ -205,6 +226,7 @@ def compute(ps):
         out["headline"][t] = stats([p for p in hp if p["tier"] == t])
         slices.append((f"Headline {slice_label(t)}", out["headline"][t]))
     out["headline"]["at_the_time"] = at_the_time(ps)
+    out["shadow"] = shadow_compute(ps, out)
     out["at_the_time_by_sport"] = {sp: at_the_time([p for p in ps if p["sport"] == sp]) for sp in SPORTS}
     before = [p for p in ps if p["cut"] < NOV20_MIDNIGHT]
     graded = [p for p in ps if p["graded_at"] < NOV20_MERGE]
@@ -226,6 +248,81 @@ def compute(ps):
             flagged.append({"slice": name, "metric": "Pinnacle CLV", "n": st["clv_n"], "small_sample": st["clv_n"] < SMALL_N, "stats": st})
     out["flagged"] = flagged
     return out
+
+
+def shadow_compute(ps, out):
+    """The shadow beside the flat record, per sport and tier, for the headline (NBA+NFL+CBB), and the slices where the shadow ROI is above the flat
+    ROI of the SAME plays (flagged with n). The shadow sizes only plays with a tier, so an "all" slice is compared with the flat record of its
+    derivable plays (`flat_derived`), never with the flat record that also holds the not-derivable plays. A tier slice of one sport has one size
+    for every play, so its ROI equals the flat ROI by construction; only the mixed-size slices (a sport's all, the headline's all) can differ,
+    and every slice's units scale by its size."""
+    sh = {"rule": P2.SHADOW_RULE, "sizes": dict(P2.SHADOW["sizes"]), "cfb": P2.SHADOW["cfb"], "tiers": {}, "flat_derived": {}, "headline": {}, "flagged": []}
+    pairs = []                                            # (name, flat stats, shadow stats)
+    for sport in SPORTS:
+        sp = [p for p in ps if p["sport"] == sport]
+        sh["tiers"][sport] = {"all": shadow_stats(sp)}
+        sh["flat_derived"][sport] = stats([p for p in sp if p["tier"] != "none"])
+        pairs.append((f"{sport.upper()} all derivable plays", sh["flat_derived"][sport], sh["tiers"][sport]["all"]))
+        for t in TIERS:
+            sh["tiers"][sport][t] = shadow_stats([p for p in sp if p["tier"] == t])
+            pairs.append((f"{sport.upper()} {slice_label(t)}", out["tiers"][sport][t], sh["tiers"][sport][t]))
+    hp = [p for p in ps if p["sport"] in HEADLINE]
+    derived = [p for p in hp if p["tier"] != "none"]
+    sh["headline"]["all"] = shadow_stats(hp)
+    sh["headline"]["flat_on_derived"] = stats(derived)    # the flat 1u on the same plays the shadow sizes (the not-derivable plays are left out)
+    pairs.append(("Headline (NBA+NFL+CBB) derivable plays", sh["headline"]["flat_on_derived"], sh["headline"]["all"]))
+    for t in TIERS:
+        sh["headline"][t] = shadow_stats([p for p in hp if p["tier"] == t])
+        pairs.append((f"Headline {slice_label(t)}", out["headline"][t], sh["headline"][t]))
+    for name, fl, sd in pairs:
+        if fl["n"] and sd["roi"] is not None and fl["roi"] is not None and sd["roi"] > fl["roi"]:
+            sh["flagged"].append({"slice": name, "n": sd["n"], "small_sample": sd["n"] < SMALL_N, "flat_roi": fl["roi"], "shadow_roi": sd["roi"],
+                                  "flat_units": fl["units"], "shadow_units": sd["units"], "flat_n": fl["n"]})
+    return sh
+
+
+def fmt_flat(st):
+    return f"{st['units']:+.2f}u, {st['roi']:+.1f}%, n={st['n']}" if st["n"] else "n=0"
+
+
+def fmt_shadow(fl, sd):
+    if not sd["n"] or sd["roi"] is None:
+        return "no shadow stake" + (f" ({sd['unsized']} not derivable, no size)" if sd["unsized"] else "")
+    se = f", se {sd['se']}" if sd["se"] is not None else ""
+    return f"{sd['units']:+.2f}u on {sd['staked']:g}u staked, {sd['roi']:+.1f}%{se}, n={sd['n']}"
+
+
+def print_shadow(out):
+    sh = out["shadow"]
+    sz = sh["sizes"]
+    print(f"\nTIER-SCALED SIZE SHADOW {sh['rule']}: Clear {sz['clear']:g}u, Mixed {sz['mixed']:g}u, Thin {sz['thin']:g}u, Contested {sz['contested']:g}u, CFB {sh['cfb']:g}u, "
+          "no tier no size.")
+    print("An ordering by evidence, NOT fitted to results; in-sample; the flat 1u stays the size the page shows. shadow units = each play's flat result times its size.")
+    for sport in SPORTS:
+        print(f"\n{sport.upper()}{' (no size shown)' if sport == 'cfb' else ''}:")
+        rows = [("all", out["tiers"][sport]["all"], {"n": 0, "roi": None, "unsized": 0})]
+        if out["tiers"][sport]["all"]["n"]:
+            rows.append(("all derivable", sh["flat_derived"][sport], sh["tiers"][sport]["all"]))
+        rows += [(slice_label(t), out["tiers"][sport][t], sh["tiers"][sport][t]) for t in TIERS if out["tiers"][sport][t]["n"]]
+        for name, fl, sd in rows:
+            print(f"  {name:<13} flat {fmt_flat(fl)}" + (f"  |  shadow {fmt_shadow(fl, sd)}" if name != "all" else ""))
+    hd = sh["headline"]
+    fa, fd = out["headline"]["all"], hd["flat_on_derived"]
+    print("\nOVERALL NBA+NFL+CBB")
+    line = lambda st: f"{st['units']:+.2f}u on {st['n']}u staked, {st['roi']:+.1f}%, se {st['se']}, n={st['n']}" if st["n"] else "n=0"
+    print(f"  flat 1u, every play:           {line(fa)}")
+    print(f"  flat 1u, derivable plays only: {line(fd)}")
+    s = hd["all"]
+    if s["roi"] is not None:
+        print(f"  shadow {sh['rule']}:                {s['units']:+.2f}u on {s['staked']:g}u staked, {s['roi']:+.1f}%, se {s['se']}, n={s['n']} sized ({s['unsized']} not derivable get no size)")
+    print("  Caveat: one standard error of an ROI at n=300 is about 5.8 points, so no sport (n under 300 each) can read an edge, and the flat-versus-shadow gap is inside noise.")
+    print(f"  Per-tier ROI inside one sport is the same under both rules (one size per tier); only the sport-all and headline-all lines can differ in ROI.")
+    print(f"\nIMPROVES UNDER THE SHADOW (shadow ROI above flat ROI), for close monitoring, with n (tag under n={SMALL_N}); in-sample, none promoted, none a signal")
+    if not sh["flagged"]:
+        print("  none")
+    for f in sh["flagged"]:
+        tag = "  [small sample]" if f["small_sample"] else ""
+        print(f"  {f['slice']} (n={f['n']}){tag}: flat {f['flat_roi']:+.1f}% ({f['flat_units']:+.2f}u, n={f['flat_n']}) -> shadow {f['shadow_roi']:+.1f}% ({f['shadow_units']:+.2f}u)")
 
 
 def main(argv=None):
@@ -275,6 +372,7 @@ def main(argv=None):
     print(f"         new (+CBB)    {short(r['today_new'])}")
     for k in ("cbb_before_nov18_831am", "cbb_nov18_to_merge (hidden)", "cbb_nov18_to_nov19", "cbb_since_nov20_midnight", "cbb_after_merge"):
         print(f"  {k}: {short(r[k])}")
+    print_shadow(out)
     print(f"\nFLAGGED FOR CLOSE MONITORING: every record that improves, with its n (tag under n={SMALL_N}); in-sample, none promoted, none a signal")
     for f in out["flagged"]:
         tag = "  [small sample]" if f["small_sample"] else ""

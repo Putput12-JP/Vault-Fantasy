@@ -314,6 +314,7 @@ by event and start, since same-start games come out in a hash-seed order in both
 | Key | What |
 |---|---|
 | `v2.shown_units`, `v2.shown_rule`, `v2.untested` | the size the page shows: flat 1u on NBA, NFL and CBB plays, 0 on CFB or without a pick, always "untested rule". The ladder stays in `sf.all.units`. Never reads the tier |
+| `v2.shadow_units`, `v2.shadow_rule` | the tier-scaled size shadow `v2s-1` (user decision 2026-11-23), **beside** the flat 1u and never shown: Clear 1.5, Mixed 1, Thin 0.5, Contested 0.5, CFB 0, and `null` (never 0) when the play has no derivable tier or the market has no pick. The five values are an ordering by evidence, **not fitted to results** (one constant, `SHADOW` in `plays_v2.py`, which the tests read). Never reads an outcome and never feeds Top Reads, SM_GATE or an agree total. `shadow_rule` is always `"v2s-1"` |
 | `v2.tier`, `v2.facts`, `v2.facts_na` | evidence tier (`clear`, `mixed`, `thin`, `contested`, rule `v2t-1`, `docs/sharp-tier-v2-prereg.md`) and the eight facts behind it, from fields stored at the cut. On a live card it is a preview |
 | `v2.sides[<side>]` | per side: holders, money, past winners, losing record, and (NBA, NFL) holders whose CLV tier at the cut beats, loses to or is even with the close, plus `few`; college is all `few` |
 | `v2.conflict`, `v2.lead`, `v2.past_winners_for` | the shown side against the other side(s); the largest past-winner wallet; every past-winner wallet on the side (the card's `list` keeps the top 4) |
@@ -321,7 +322,7 @@ by event and start, since same-start games come out in a hash-seed order in both
 | `v2.exec` | best US book on the same line (DraftKings, FanDuel, BetMGM, BetRivers, bet365), Kalshi, Novig, Pinnacle, from the book tape, each with its last-change time and age (tape rows are written on change: "unchanged since", never "read at"). Reads stop at the cut. No Polymarket ask is stored, so there is no `pm_ask` yet |
 | `v2.vs_fair` | `sf.all.signals.ev` plus the Pinnacle row time and ticket line, with the reason when not readable |
 | `splits` | Action Network public split joined by `vault.key`, both sides as stored (live) or the last history row at or before the cut with the other side 100 minus it, marked `comp` (frozen). Absent when the feed has none, never 0. Context only |
-| top `v2_slate`, `v2_plays`, `v2_tier_record` | live only: shown plays by tier, wallets that are past winners on 2 or more shown plays, field list, and the per-tier forward record when `--v2-tier-record` is given |
+| top `v2_slate`, `v2_plays`, `v2_tier_record` | live only: shown plays by tier, wallets that are past winners on 2 or more shown plays, field list (`v2_plays.shadow` names the shadow rule and its sizes), and the per-tier forward record when `--v2-tier-record` is given |
 
 **Never fails the build.** The V2 block of a market, the quote tape, the log sync and the slate each run inside a guard: on any exception that market
 (or that step) simply has no V2 keys and a `::warning::` line is printed. Malformed tape rows (a short or `null` list) are skipped, never indexed.
@@ -330,9 +331,14 @@ by event and start, since same-start games come out in a hash-seed order in both
 **Shadow log.** `pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl` on `pm-holders-data`: one append-only row per rule pick on each new frozen card (key = the
 graded `sf` row's key), a projection of the card's own stored `v2` block, repaired on the next run if an append was missed. The month is the **Central**
 date of game start. Committed by the existing `commit_push("pmdata", "pm_cards", ...)` step.
+New rows (from the shadow's merge) also carry `shadow_units` and `shadow_rule` (a projection of the card's stored `v2` block; a card frozen before the shadow
+existed gets the same value from its stored tier, which is a pure function of it). The log is append-only: older rows are never rewritten and have neither
+key, and every reader treats a missing key as "not logged", never as 0.
 
 **History.** `python3 -I scripts/sharps_v2/tier_history.py [--ref REF]` re-derives the tier of every graded shown play from its card at the cut and prints
-the commit hash it read, the record per tier, the Nov 20 CBB numbers and the flag list (every improving record, with its n). In-sample. On an old card
+the commit hash it read, the record per tier, the Nov 20 CBB numbers and the flag list (every improving record, with its n). In-sample. It also prints the tier-scaled shadow `v2s-1` beside the flat record per sport and tier (units on units staked, ROI, standard error, n), the overall NBA+NFL+CBB
+line (flat every play, flat on the plays the shadow sizes, shadow) with the standard-error caveat, and the slices where the shadow ROI is above the flat ROI of
+the same plays, with n. Output as `shadow` in `--json`. On an old card
 with no price check possible at the cut (the tape did not exist yet) the price facts are unknown and the play is "not derivable", not Thin.
 
 **Size.** The V2 keys add 54 KB to a 839 KB `live.json` (183 games). `scripts/sharps_v2/check_size.py --live live/live.json` is **not** a hard gate: over
@@ -342,15 +348,15 @@ with no price check possible at the cut (the tape did not exist yet) the price f
 ### `tier_record.json` (beside `live.json` on `pm-cards-live`)
 
 Written by `scripts/sharps_v2/tier_record.py` every run from the frozen cards and the graded rows of the `pm-holders-data` checkout, point in time (a
-play's tier comes from its own card at its cut, never from its result). About 10 KB. A failed build drops the file for that run; the V1 files still
+play's tier comes from its own card at its cut, never from its result). About 20 KB with the shadow cells (budget 25 KB). A failed build drops the file for that run; the V1 files still
 publish. Context only: a record, not a signal.
 
 ```
 { "built": epoch, "data_ref": "<pm-holders-data commit read>", "rule": "<text>", "units_basis": "flat 1u at the stored price at the cut",
   "first_logged_cut": epoch|null, "logged_rows": n, "forward_graded": n, "forward_note": "forward starts at the first logged lock",
-  "since_nov16_from": 1794808800, "all_sports": ["nba", "nfl", "cbb"],
+  "since_nov16_from": 1794808800, "all_sports": ["nba", "nfl", "cbb"], "shadow_rule": "v2s-1", "shadow_note": "<text>",
   "sports": { "nba|nfl|cfb|cbb": { "tiers": { "clear|mixed|thin|contested|none": {
-        "all":       {"w", "l", "p", "n", "units", "roi"},
+        "all":       {"w", "l", "p", "n", "units", "roi", "shadow": {"units_staked", "units", "roi"} | null},
         "in_sample": {...}, "forward": {...}, "since_nov16": {...},
         "by_market": {"ml": {...}, "spread": {...}, "total": {...}} } } } },
   "all": { "tiers": { ...same shape... } } }
@@ -366,6 +372,13 @@ publish. Context only: a record, not a signal.
 - `since_nov16` = plays cut on or after 2026-11-16 12:00 AM Central (`since_nov16_from`), the Nov 16 shadow rules; informational, tier still derived
   after the fact, **never forward**. `all` (inside a tier) is every play.
 - `none` = not derivable at the cut. It is never folded into a tier.
+- `shadow` (every cell: `all`, `in_sample`, `forward`, `since_nov16`, each `by_market`) is the same plays at the tier-scaled size rule `v2s-1`:
+  `units` = the sum of each play's flat result (the unit result at its own stored price: a win pays 1 / price - 1, a loss -1, a push 0) **times its shadow
+  size** (Clear 1.5, Mixed 1, Thin 0.5, Contested 0.5, CFB 0), `units_staked` = the sum of the sizes (a push is staked and returns 0), `roi` = units /
+  units_staked as a fraction, `null` at 0 staked (a CFB cell, an empty cell) and never 0. The `none` bucket has `shadow: null` (no tier, no size). The size
+  of a forward play follows the tier the log holds. The flat fields stay the page's shown size; the shadow is a record beside it, never shown. Every cell is one
+  tier, so one size: its shadow ROI equals its flat ROI by construction (CFB and the null cases aside) and only the units and the stake differ. The slices
+  that mix tiers (a sport's derivable plays, the headline) are in `tier_history.py`. The file stays under 25 KB.
 - `by_market` splits a tier's `all` plays by market group.
 - Top-level `all` pools NBA, NFL and CBB (the sports that show a size, the page headline). CFB shows no size, so it appears under `sports.cfb` as a
   flat-1u reference only and is not pooled.
