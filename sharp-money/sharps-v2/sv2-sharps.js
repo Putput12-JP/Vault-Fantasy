@@ -24,7 +24,6 @@
     market: { ml: 'ML', spread: 'Spread', total: 'Total' },
     marketOrder: ['ml', 'spread', 'total'],
     tierEmpty: 'No play is Clear right now.',
-    tierRecNone: 'Tier record: not logged yet',
     priceNote: 'Polymarket\'s displayed price (a mid or last trade, not the price you would get), or Pinnacle\'s price when Polymarket had none. The file does not say which.',
     sameTag: 'same wallet',
     noMatch: 'No plays match these filters.',
@@ -583,12 +582,21 @@
       if (d.same.length) h += '<section class="sv2-box sv2-sp-rb"><h2 class="sv2-h2">Same wallet</h2>' + d.same.slice(0, 2).map(function (r) { return '<p><span class="sv2-num">' + esc(fmt.tail(r.w)) + '</span> on ' + r.n + ' plays</p>'; }).join('') + '</section>';
       h += '<section class="sv2-box sv2-sp-rb"><h2 class="sv2-h2">Tiers</h2><ul class="sv2-sp-tl">' + copy.tierOrder.map(function (t) { return '<li>' + ui.tier(t) + '<span class="sv2-num">' + counts[t] + '</span></li>'; }).join('') + '</ul>';
       if (d.all.length && !counts.clear) h += '<p class="sv2-sp-note">' + esc(T.tierEmpty) + '</p>';
-      var rec = store.cards && store.cards.v2_tier_record;
-      if (rec && typeof rec === 'object') {
-        h += copy.tierOrder.filter(function (t) { return rec[t] && isNum(rec[t].n); }).map(function (t) {
-          var r = rec[t]; return '<p class="sv2-sp-note">' + esc(copy.tier[t].word + ' ' + (fmt.wl(r.w, r.l, r.p) || '') + ', n=' + r.n + '. No verdict until n = 300.') + '</p>';
-        }).join('');
-      } else h += '<p class="sv2-sp-note">' + esc(T.tierRecNone) + '</p>';
+      var R = SV2.rec, tf = R && R.tierFile ? R.tierFile() : null, line = tf && R.railLine ? R.railLine(tf, eff().sport) : null, sp = eff().sport;
+      if (line) {
+        h += '<p class="sv2-rec-railn">' + esc(line.label + (sp === 'cfb' ? ', flat 1u, no size shown' : '')) + ':</p><ul class="sv2-rec-railul">' + line.items.map(function (it) {
+          return '<li>' + esc(it.word) + ' <span class="sv2-num">' + esc(it.wl || '') + '</span></li>';
+        }).join('') + '</ul>';
+      } else if (R && R.tierFile && tf) h += '<p class="sv2-rec-railn">' + esc('No tier record for ' + (sp === 'all' ? 'these sports' : SV2.sportName(sp)) + ' yet.') + '</p>';
+      else {
+        var rec = store.cards && store.cards.v2_tier_record;
+        if (rec && typeof rec === 'object') {
+          h += copy.tierOrder.filter(function (t) { return rec[t] && isNum(rec[t].n); }).map(function (t) {
+            var r = rec[t]; return '<p class="sv2-sp-note">' + esc(copy.tier[t].word + ' ' + (fmt.wl(r.w, r.l, r.p) || '') + ', n=' + r.n + '. No verdict until n = 300.') + '</p>';
+          }).join('');
+        }
+      }
+      h += '<p class="sv2-rec-railn"><button type="button" class="sv2-sp-lnk" data-sv2-open-record>See the tier record</button></p>';
       h += '</section>';
       if (d.ctx.length) h += '<section class="sv2-box sv2-sp-rb"><h2 class="sv2-h2">Context</h2><p>' + esc(fmt.n(d.ctx.length)) + ' games with past-winner money on a side, no play <button type="button" class="sv2-sp-lnk" data-sp-ctxgo data-fid="ctxgo">show</button></p></section>';
       h += '<p class="sv2-sp-rec"><a class="sv2-link" href="../new/#vrecord">Play record</a></p>';
@@ -730,6 +738,7 @@
 
     /* ---- data and clock events ---- */
     on('cards', function () { paint(false); });
+    on('tierrecord', function () { if (model && refs.rail) { refs.rail.innerHTML = railHtml(model); SV2.rail.catchUp(); } });   /* the tier file lands after the plays: only the rail changes */
     on('wallets', function () { paint(false); });
     on('splits', function () { paint(false); });
     on('route', function () { readDeep(); if (st.deep && store.cards) paint(true); });
