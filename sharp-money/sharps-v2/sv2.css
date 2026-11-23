@@ -956,42 +956,12 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 .sv2-rec-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .sv2-rec-clv { font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
 .sv2-rec-note { margin: 0; font: 400 13px/1.5 var(--sv2-sans); color: var(--sv2-mut); }
-.sv2-rec-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
-.sv2-rec-two > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
-.sv2-rec-tbl { display: grid; gap: 0; min-width: 0; }
-.sv2-rec-th, .sv2-rec-row { display: grid; grid-template-columns: minmax(0, 1fr) 58px 66px 58px; column-gap: 8px; align-items: baseline; }
-.sv2-rec-tbl--past .sv2-rec-th, .sv2-rec-row--past { grid-template-columns: minmax(0, 1fr) 76px 64px; }
-.sv2-rec-th { padding: 4px 0; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
-.sv2-rec-th > span + span, .sv2-rec-c { text-align: right; }
-.sv2-rec-list { list-style: none; margin: 0; padding: 0; }
-.sv2-rec-row { padding: 9px 0; border-top: 1px solid var(--sv2-line); font: 500 14px/1.35 var(--sv2-sans); }
-.sv2-rec-lab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
-.sv2-rec-n { font: 400 12.5px/1.3 var(--sv2-sans); color: var(--sv2-mut); }
 .sv2-rec-tag { font: 400 12.5px/1.3 var(--sv2-sans); color: var(--sv2-mut); }
-.sv2-rec-c { white-space: nowrap; }
-.sv2-rec-x { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; min-height: 0; }
-.sv2-rec-x:empty { display: none; }
-.sv2-rec-plays { list-style: none; margin: 0; padding: 0; }
-.sv2-rec-play { display: grid; grid-template-columns: minmax(0, 1fr) auto 58px; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--sv2-line); }
-.sv2-rec-pl { display: grid; gap: 2px; min-width: 0; font: 500 14px/1.3 var(--sv2-sans); }
-.sv2-rec-pl b { overflow-wrap: anywhere; font-weight: 600; }
-.sv2-rec-pm { font: 400 12.5px/1.35 var(--sv2-sans); color: var(--sv2-mut); }
-.sv2-rec-pu { text-align: right; white-space: nowrap; }
 .sv2-rec .sv2-chip, .sv2-rec .sv2-tier { max-width: 100%; }
 @media (min-width: 768px) {
-  .sv2-rec-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sv2-rec-th, .sv2-rec-row { grid-template-columns: minmax(0, 1fr) 80px 80px 80px; }
-  .sv2-rec-tbl--past .sv2-rec-th, .sv2-rec-row--past { grid-template-columns: minmax(0, 1fr) 100px 90px; }
   .sv2-rec-v { font-size: 28px; }
 }
 @media (max-width: 767px) {
-  /* phone: the label takes a line, and each figure carries its own small heading, so a long label never meets the numbers */
-  .sv2-rec-th { display: none; }
-  .sv2-rec-row, .sv2-rec-row--past { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 10px; row-gap: 4px; }
-  .sv2-rec-tbl--past .sv2-rec-row--past { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sv2-rec-row .sv2-rec-lab { grid-column: 1 / -1; }
-  .sv2-rec-c { display: grid; gap: 1px; text-align: left; }
-  .sv2-rec-c::before { content: attr(data-k); font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
   .sv2-rec-hero { grid-template-columns: auto auto auto; justify-content: space-between; }
   .sv2-rec-v { font-size: 20px; white-space: nowrap; }
 }
@@ -1021,7 +991,7 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 .sv2-card::after, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini)::after, .sv2-box.sv2-sp-rb::after, .sv2-sheet::after {
   background: radial-gradient(circle 190px at calc(100% + 36px) -36px, rgb(var(--sv2-accent-rgb) / var(--sv2-glass-orb)), transparent 100%);
 }
-.sv2-rec-sec:nth-child(even)::after, .sv2-sp-rail .sv2-sp-rb:nth-child(even)::after {
+.sv2-sp-rail .sv2-sp-rb:nth-child(even)::after {
   background: radial-gradient(circle 190px at -36px calc(100% + 36px), rgb(var(--sv2-accent-rgb) / var(--sv2-glass-orb)), transparent 100%);
 }
 /* accent per kind (CSS only) */
@@ -1089,7 +1059,7 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 .sv2-rec-h .sv2-h2 { font: 600 20px/1.2 var(--sv2-sans); letter-spacing: -.01em; text-transform: none; color: var(--sv2-ink); }
 .sv2 .sv2-fw-gt { font-size: 20px; line-height: 1.2; letter-spacing: -.01em; }
 .sv2 .sv2-fw-railh { font: 600 20px/1.2 var(--sv2-sans); letter-spacing: -.01em; text-transform: none; color: var(--sv2-ink); }
-.sv2-sp-rb .sv2-h2, .sv2-rec-k, .sv2-rec-h3, .sv2-rec-th { font-size: 11px; letter-spacing: .04em; }
+.sv2-sp-rb .sv2-h2, .sv2-rec-k, .sv2-rec-h3 { font-size: 11px; letter-spacing: .04em; }
 .sv2-sp-rb p, .sv2-sp-rb li { color: var(--sv2-mut); }
 .sv2-sp-rb p b, .sv2-sp-rb .sv2-num { color: var(--sv2-ink); }
 
@@ -1113,7 +1083,7 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2-tier--contested { box-shadow: inset 0 0 0 1.5px var(--sv2-violet), inset 0 1px 0 var(--sv2-glass-hi); }
 .sv2-tier--contested .sv2-pips i { border-color: var(--sv2-violet); }
 
-/* ===== 12. Tier record table (sv2-rec-t*, 2026-11-23). Layout and type only: surfaces are .sv2-card and .sv2-card-inset, tier chips are the
+/* ===== 12. Tier record controls and share bar (sv2-rec-t*, 2026-11-23). Layout and type only: surfaces are .sv2-card, tier chips are the
    existing .sv2-tier ones. Motion reuses .sv2-x, .sv2-chev and .sv2-press (their reduced-motion rules are in section 7). The bar is a share of
    the total n: decoration only, the figures carry the meaning. ===== */
 .sv2-rec-tsw { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
@@ -1121,18 +1091,6 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2 .sv2-rec-since { min-height: 44px; padding: 0 14px; border: 1px solid var(--sv2-line); border-radius: 999px; background: transparent; color: var(--sv2-ink); font: 500 13px/1.2 var(--sv2-sans); text-align: left; }
 .sv2 .sv2-rec-since[aria-pressed="true"] { border-color: var(--sv2-ink); box-shadow: inset 0 0 0 1px var(--sv2-ink); font-weight: 600; }
 .sv2-rec-tnote { padding: 10px 14px; }
-.sv2-rec-ttbl .sv2-rec-list { display: grid; }
-.sv2-rec-tth, .sv2-rec-tbtn, .sv2-rec-subrow { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px 64px 44px 56px 112px 24px; column-gap: 8px; align-items: baseline; }
-.sv2-rec-tth { grid-template-columns: minmax(0, 1fr) 64px 64px 64px 44px 56px 112px 24px; }
-.sv2-rec-tth > span + span { text-align: right; }
-.sv2-rec-trow { border-top: 1px solid var(--sv2-line); min-width: 0; }
-.sv2 .sv2-rec-tbtn { position: relative; width: 100%; min-height: 44px; padding: 10px 0; margin: 0; border: 0; background: transparent; color: var(--sv2-ink); font: 500 14px/1.35 var(--sv2-sans); text-align: left; row-gap: 6px; cursor: pointer; }
-.sv2-rec-tbtn--flat { cursor: default; }
-.sv2-rec-tl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
-.sv2-rec-tchev { grid-column: 8; grid-row: 1; align-self: center; justify-self: end; display: inline-flex; color: var(--sv2-mut); }
-.sv2-rec-tchev svg { width: 20px; height: 20px; }
-.sv2-rec-tbtn .sv2-rec-c { text-align: right; }
-.sv2-rec-tx { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
 .sv2-rec-share { display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 140px; }
 .sv2-rec-bar { flex: 1 1 auto; min-width: 48px; max-width: 220px; height: 6px; border-radius: 999px; background: var(--sv2-line); overflow: hidden; }
 .sv2-rec-bar > i { display: block; height: 100%; min-width: 0; border-radius: 999px; background: var(--sv2-mut); }
@@ -1140,30 +1098,12 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2-rec-bar[data-tier="mixed"] > i { background: var(--sv2-price); }
 .sv2-rec-bar[data-tier="contested"] > i { background: var(--sv2-violet); }
 .sv2-rec-sharet { flex: none; font: 400 12.5px/1.3 var(--sv2-sans); color: var(--sv2-mut); white-space: nowrap; }
-.sv2-rec-sub { list-style: none; margin: 0; padding: 2px 0 8px; display: grid; gap: 0; }
-.sv2-rec-subrow { padding: 8px 0; border-top: 1px dashed var(--sv2-line); font: 500 13.5px/1.35 var(--sv2-sans); color: var(--sv2-ink); }
-.sv2-rec-subrow .sv2-rec-tl { padding-left: 14px; color: var(--sv2-mut); }
-.sv2-rec-subrow .sv2-rec-c { text-align: right; }
 .sv2-rec-railn { margin: 6px 0 0; font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
 .sv2-rec-railul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; font: 500 14px/1.35 var(--sv2-sans); color: var(--sv2-ink); }
-@media (max-width: 767px) {
-  .sv2-rec-tth { display: none; }
-  .sv2-rec-tbtn, .sv2-rec-subrow { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 10px; padding-right: 28px; }
-  .sv2-rec-subrow { padding-right: 0; }
-  .sv2-rec-tbtn .sv2-rec-tl, .sv2-rec-subrow .sv2-rec-tl { grid-column: 1 / -1; }
-  .sv2-rec-tchev { position: absolute; top: 10px; right: 0; grid-column: auto; grid-row: auto; }
-  .sv2-rec-tbtn .sv2-rec-c, .sv2-rec-subrow .sv2-rec-c { text-align: left; }
-  .sv2-rec-shw { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; grid-column: 1 / -1; min-width: 0; }
-  .sv2-rec-shw::before { content: 'shadow'; padding: 0 6px; border: 1px solid var(--sv2-line); border-radius: 999px; font: 600 10px/1.5 var(--sv2-sans); letter-spacing: .04em; color: var(--sv2-mut); }
-  .sv2-rec-shw .sv2-rec-c { display: inline-flex; align-items: baseline; gap: 5px; }
-  .sv2-rec-shw .sv2-rec-c::before { content: attr(data-m); font: 400 12.5px/1.3 var(--sv2-sans); letter-spacing: 0; text-transform: none; }
-}
 /* shadow size columns (v2s-1, 2026-11-23): muted, tagged 'shadow', never coloured as a result. Desktop: the wrapper dissolves so its two cells join the row
    grid. Phone: it becomes one line under the flat figures, with each cell's own small heading. */
-.sv2-rec-shw { display: contents; }
 .sv2-rec-sh, .sv2-rec-sh .sv2-num { color: var(--sv2-mut); font-weight: 400; }
 .sv2-rec-shr { color: var(--sv2-mut); font-size: 12.5px; }
-.sv2-rec-tth .sv2-rec-shh { display: grid; justify-items: end; gap: 2px; }
 .sv2-rec-shtag { display: inline-block; padding: 0 6px; border: 1px solid var(--sv2-line); border-radius: 999px; font: 600 10px/1.5 var(--sv2-sans); font-style: normal; letter-spacing: .04em; text-transform: lowercase; color: var(--sv2-mut); }
 .sv2-rec-like { margin-top: 8px; }
 #rec-h-tiers { scroll-margin-top: 88px; }
@@ -1176,7 +1116,7 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2 .sv2-tb-scroll { overflow-x: auto; }
 .sv2 .sv2-tb { width: 100%; border-collapse: separate; border-spacing: 0; font: 400 14px/1.4 var(--sv2-sans); color: var(--sv2-ink); }
 .sv2 .sv2-tb thead th { padding: 4px 8px; text-align: left; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); border-bottom: 1px solid var(--sv2-line); white-space: nowrap; }
-.sv2 .sv2-tb thead th.c-time { padding-left: 20px; }
+.sv2 .sv2-tb thead th.c-time, .sv2 .sv2-tb thead th.c-bar { padding-left: 20px; }
 .sv2 .sv2-tb .c-px, .sv2 .sv2-tb .c-fair { text-align: right; }
 .sv2 .sv2-tb thead th.c-fair, .sv2 .sv2-tb thead th.c-spl, .sv2 .sv2-tb thead th.c-wal { white-space: normal; line-height: 1.25; }
 .sv2 .sv2-tb thead th.c-fair .sv2-tb-sort { text-align: right; }
@@ -1200,7 +1140,7 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2 .sv2-tb-r[data-tier="clear"]:hover { background: linear-gradient(90deg, rgb(var(--sv2-gold-rgb) / .20), transparent 55%); }
 .sv2 .sv2-tb-c { padding: 10px 8px; border-bottom: 1px solid var(--sv2-line); vertical-align: middle; }
 .sv2 .sv2-tb-r > .c-time { position: relative; padding-left: 20px; white-space: nowrap; font-size: 13px; font-weight: 600; }
-.sv2 .sv2-tb-r > .c-time::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--tb-accent); }
+.sv2 .sv2-tb-r > .c-time::before, .sv2 .sv2-tb-r > .c-bar::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--tb-accent); }
 .sv2 .sv2-tb-r.is-open > .sv2-tb-c { border-bottom-color: transparent; }
 .sv2 .sv2-tb-c.c-sport, .sv2 .sv2-tb-c.c-size, .sv2 .sv2-tb-c.c-tier, .sv2 .sv2-tb-c.c-mkt { white-space: nowrap; }
 .sv2 .sv2-tb-c.c-mkt { color: var(--sv2-mut); }
@@ -1301,4 +1241,71 @@ html[data-theme="light"] .sv2 .sv2-tb-r:hover { background: rgb(255 255 255 / .6
 .sv2 .sv2-tb-r[data-tier="clear"]:hover { background: linear-gradient(90deg, rgb(var(--sv2-gold-rgb) / .22), transparent 55%); }
 @media (prefers-reduced-transparency: reduce) {
   .sv2 .sv2-card.sv2-tb-card { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--sv2-glass-fill); }
+}
+
+/* ===== 14. Record tables (sv2-rec-tb, 2026-11-23). The Record view's tables are the Plays table (section 13) in the same liquid glass card: one
+   .sv2-tb in one .sv2-card.sv2-tb-card. This section only adds what a record table needs: a row header cell, right-aligned figures, a group header
+   row, the shadow and past groups (muted, tagged), the dropdown body, and a stacked row for phones. Secondary columns (c-s1, c-s2) leave the row when
+   the card is narrow and stay in the dropdown. Win and loss colour is used for the outcome only: the Result chip, the units figure and the left bar
+   of a Latest graded row. No motion of its own: the dropdown is .sv2-x, the press is .sv2-press (reduced motion is in section 7). ===== */
+.sv2 .sv2-rec-tb .sv2-tb-r:not([data-tier]):not([data-acct]):not([data-res]), .sv2 .sv2-rec-tb .sv2-tb-r[data-acct]:not([data-acct="beats"]), .sv2 .sv2-rec-tb .sv2-tb-r[data-res="push"] { --tb-accent: rgb(var(--sv2-ink-rgb) / .35); }
+.sv2 .sv2-rec-tb .sv2-tb-r[data-tier="none"] { --tb-accent: rgb(var(--sv2-ink-rgb) / .22); }
+.sv2 .sv2-rec-tb .sv2-tb-r[data-res="win"] { --tb-accent: var(--sv2-win); }
+.sv2 .sv2-rec-tb .sv2-tb-r[data-res="loss"] { --tb-accent: var(--sv2-loss); }
+.sv2 .sv2-rec-tb tbody th.sv2-tb-c { font-weight: inherit; text-align: left; }
+.sv2 .sv2-rec-tb .sv2-tb-r > .c-bar { position: relative; padding-left: 20px; }
+.sv2 .sv2-rec-tb .c-num { text-align: right; white-space: nowrap; }
+.sv2 .sv2-rec-tb thead th.c-num .sv2-tb-sort { text-align: right; }
+.sv2 .sv2-rec-tb .c-lab { min-width: 150px; }
+.sv2 .sv2-rec-tb .c-dt, .sv2 .sv2-rec-tb .c-px { white-space: nowrap; }
+.sv2 .sv2-rec-tb .c-dt { font-size: 13px; font-weight: 600; }
+.sv2 .sv2-rec-tb .sv2-tb-mu { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.sv2 .sv2-rec-tb .sv2-tb-sub { margin-top: 2px; font-size: 12px; color: var(--sv2-mut); }
+.sv2 .sv2-rec-tb .c-msg { color: var(--sv2-mut); }
+.sv2 .sv2-rec-tb .sv2-rec-none, .sv2 .sv2-rec-tb .sv2-rec-flat { cursor: default; }
+.sv2 .sv2-rec-tb .sv2-rec-none:hover, .sv2 .sv2-rec-tb .sv2-rec-flat:hover { background: none; box-shadow: none; }
+.sv2 .sv2-rec-tb .sv2-rec-cut { font-size: 12.5px; color: var(--sv2-mut); }
+/* the amber flag sits on the gold-tinted Clear row too: lean toward ink so it keeps 4.5:1 on the composited glass in both themes */
+.sv2 .sv2-rec-tb .sv2-chip--caution { color: var(--sv2-caution); color: color-mix(in srgb, var(--sv2-caution) 55%, var(--sv2-ink)); }
+.sv2 .sv2-rec-grp th { padding: 8px 8px 0; border-bottom: 0; }
+.sv2 .sv2-rec-grp th.is-past, .sv2 .sv2-rec-tb thead th.c-past, .sv2 .sv2-rec-tb .sv2-rec-pst { background: rgb(var(--sv2-ink-rgb) / .05); }
+.sv2 .sv2-rec-tb thead th.c-past, .sv2 .sv2-rec-grp th.is-past, .sv2 .sv2-rec-tb .sv2-rec-pst, .sv2 .sv2-rec-tb .sv2-rec-pst .sv2-num { color: var(--sv2-mut); font-weight: 400; }
+.sv2 .sv2-rec-tb .sv2-rec-shh { display: grid; justify-items: end; gap: 2px; }
+.sv2 .sv2-rec-tb .sv2-rec-sh { white-space: nowrap; }
+.sv2-rec-dd { padding: 4px 20px 14px; display: grid; gap: 10px; }
+.sv2-rec-dl { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.sv2-rec-dl > div { display: grid; gap: 2px; min-width: 0; }
+.sv2-rec-dl dt { font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2-rec-dl dd { margin: 0; font: 500 14px/1.35 var(--sv2-sans); color: var(--sv2-ink); }
+.sv2-rec-dl .is-past dd, .sv2-rec-dl .is-past dd .sv2-num { color: var(--sv2-mut); font-weight: 400; }
+.sv2-rec-st { width: 100%; max-width: 760px; border-collapse: collapse; font: 500 13.5px/1.35 var(--sv2-sans); color: var(--sv2-ink); }
+.sv2-rec-st th, .sv2-rec-st td { padding: 7px 8px; border-top: 1px dashed var(--sv2-line); text-align: left; font-weight: 500; }
+.sv2-rec-st thead th { border-top: 0; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2-rec-st .c-num { text-align: right; white-space: nowrap; }
+@container (max-width: 760px) {
+  .sv2 .sv2-rec-tb .c-s1, .sv2 .sv2-rec-grp { display: none; }
+}
+@container (max-width: 560px) {
+  .sv2 .sv2-rec-tb .c-s2 { display: none; }
+}
+@media (max-width: 760px) {
+  .sv2 .sv2-rec-tb .sv2-tb-r > .c-lab { display: block; order: 1; flex: 1 1 calc(100% - 44px - 12px); min-width: 0; }
+  .sv2 .sv2-rec-tb .sv2-tb-r > .c-chev { display: block; order: 2; flex: 0 0 44px; width: 44px; padding: 0; text-align: center; }
+  .sv2 .sv2-rec-tb .sv2-tb-r > .c-bar { padding-left: 0; }
+  .sv2 .sv2-rec-tb .sv2-tb-r > .c-bar::before { content: none; }
+  .sv2 .sv2-rec-tb .sv2-tb-r > .c-p { display: block; order: 3; flex: 1 1 0; min-width: 56px; padding-top: 2px; text-align: left; }
+  .sv2 .sv2-rec-tb .sv2-tb-r > .c-p::before { content: attr(data-k); display: block; position: static; width: auto; height: auto; margin-bottom: 2px; background: none; border-radius: 0;
+    font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+  .sv2 .sv2-rec-tb .sv2-tb-r > .c-res { flex: 0 0 auto; }
+  .sv2 .sv2-rec-tb .sv2-rec-none > .c-lab { flex: 1 1 100%; }
+  .sv2 .sv2-rec-tb .sv2-rec-none > .c-msg { display: block; order: 3; flex: 1 1 100%; }
+  .sv2 .sv2-rec-tb .sv2-rec-flat > .c-p { display: block; }
+  .sv2-rec-dd { padding: 4px 16px 14px; }
+  .sv2-rec-st thead { display: none; }
+  .sv2-rec-st, .sv2-rec-st tbody { display: block; }
+  .sv2-rec-st tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px 10px; padding: 8px 0; border-top: 1px dashed var(--sv2-line); }
+  .sv2-rec-st th, .sv2-rec-st td, .sv2-rec-st .c-num { padding: 0; border: 0; text-align: left; }
+  .sv2-rec-st tbody th { grid-column: 1 / -1; }
+  .sv2-rec-st td::before { content: attr(data-k); display: block; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+  .sv2-rec-st td.sv2-rec-sh { grid-column: span 2; }
 }

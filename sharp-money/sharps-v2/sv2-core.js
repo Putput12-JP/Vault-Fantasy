@@ -617,6 +617,10 @@
     var rows = ''; for (var i = 0; i < (n || 3); i++) rows += '<div class="sv2-skel ' + (rowClass || 'sv2-skel-row') + '"></div>';
     return '<div class="sv2-skel-list" role="status" aria-label="' + esc(label || 'Loading') + '">' + rows + '<span class="sv2-sr">' + esc(label || 'Loading') + '</span></div>';
   };
+  /* the drawn sort arrow of a table header button (both chevrons, the active one is full ink); on is true for the sorted column, dir 1 ascending */
+  ui.sortArrow = function (on, dir) {
+    return '<svg class="sv2-tb-arr' + (on ? (dir === 1 ? ' is-asc' : ' is-desc') : '') + '" viewBox="0 0 12 14" aria-hidden="true" focusable="false"><path class="u" d="M3 5.5L6 2.5l3 3"/><path class="d" d="M3 8.5l3 3 3-3"/></svg>';
+  };
   ui.chip = function (text, kind, extra) {
     return '<span class="sv2-chip sv2-chip--' + (kind || 'muted') + (extra ? ' ' + extra : '') + '">' + esc(text) + '</span>';
   };

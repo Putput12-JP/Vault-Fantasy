@@ -331,18 +331,73 @@
   /* an account aggregate seen as a tally, so the same monitor and row code reads it */
   rec.asTally = function (a) { return { n: a.n, w: a.w, l: a.l, p: a.p, units: a.units, roi: a.roi, se: null, unpriced: 0, clv_n: a.clv_n, clv_mean: a.clv_mean }; };
 
+  /* ---- Table view-models and sorting (presentation only: no number is computed here that was not shown before).
+     Every record table sorts by Units, ROI or n, or returns to its stored order (key def). A first click starts at the column's own direction. */
+  var SORT_FIRST = { def: 1, units: -1, roi: -1, n: -1 };
+  var SORT_NAME = { def: 'default order', units: 'Units', roi: 'ROI', n: 'n' };
+  function hasSort(k) { return Object.prototype.hasOwnProperty.call(SORT_FIRST, k); }
+  rec.cleanSort = function (o) {
+    var k = o && hasSort(o.k) ? o.k : 'def';
+    return { k: k, dir: o && (o.dir === 1 || o.dir === -1) ? o.dir : SORT_FIRST[k] };
+  };
+  /* a header click: the active column flips direction, another column starts at its own first direction, an unknown key changes nothing */
+  rec.nextSort = function (cur, k) {
+    var c = rec.cleanSort(cur);
+    if (!hasSort(k)) return c;
+    return c.k === k ? { k: k, dir: -c.dir } : { k: k, dir: SORT_FIRST[k] };
+  };
+  rec.sortWord = function (s) { var c = rec.cleanSort(s); return SORT_NAME[c.k] + ', ' + (c.dir === 1 ? 'ascending' : 'descending'); };
+  /* a model is { idx, t } (idx = the stored order, t = a tally). A row with no plays has no units or ROI value. */
+  rec.sortValue = function (m, k) {
+    if (!m) return null;
+    var t = m.t || {};
+    if (k === 'def') return isNum(m.idx) ? m.idx : null;
+    if (k === 'units') return t.n > 0 && isNum(t.units) ? t.units : null;
+    if (k === 'roi') return t.n > 0 && isNum(t.roi) ? t.roi : null;
+    if (k === 'n') return isNum(t.n) ? t.n : null;
+    return null;
+  };
+  /* a missing value sorts last in either direction; ties keep the stored order */
+  rec.sortRows = function (models, sort) {
+    var s = rec.cleanSort(sort), d = s.dir;
+    return (models || []).slice().sort(function (a, b) {
+      var x = rec.sortValue(a, s.k), y = rec.sortValue(b, s.k);
+      if (x == null && y != null) return 1;
+      if (y == null && x != null) return -1;
+      if (x != null && y != null && x !== y) return (x - y) * d;
+      return (a.idx || 0) - (b.idx || 0);
+    });
+  };
+  /* the close column: the mean in cents with the count under it, null when no closing price is stored */
+  rec.clvParts = function (t, unit) {
+    if (!t || !t.clv_n) return null;
+    var u = unit || 'play';
+    return { value: fmt.centsSigned(t.clv_mean), sub: 'on ' + t.clv_n + ' ' + u + (t.clv_n === 1 ? '' : 's') };
+  };
+  /* the past record of one account tier: null when none is stored. rate = wins over games. */
+  rec.pastCell = function (past) {
+    if (!past || !isNum(past.n) || past.n <= 0) return null;
+    return { wl: fmt.wl(past.w, past.l), n: past.n, rate: past.w / past.n };
+  };
+  /* one latest-graded row as table text: result is the outcome word, kind drives the one place win and loss colour is used */
+  rec.latestModel = function (r, close) {
+    var win = r.res === 'win', loss = r.res === 'loss';
+    return { key: r.key, label: rec.playLabel(r), sport: r.sport, market: r.group, date: isNum(r.gst) ? ct.md(r.gst) : '',
+      price: isNum(r.price) ? fmt.cents(r.price) : '', close: close && isNum(close.clv) ? fmt.centsSigned(close.clv) : '',
+      word: win ? 'Win' : loss ? 'Loss' : 'Push', kind: win ? 'win' : loss ? 'loss' : 'push', flat: r.flat, units: fmt.units(r.flat, { signed: true }) || '' };
+  };
   /* Central month keys to read: this month and the one before */
   rec.months = function (nowT) {
     var k = ct.dateKey(nowT), first = k.slice(0, 7) + '-01', prev = ct.addDays(first, -1).slice(0, 7), cur = k.slice(0, 7);
     return prev >= FIRST_MONTH ? [prev, cur] : [cur];
   };
-  rec.SHADOW_SIZE = SHADOW_SIZE; rec.SHADOW_TIP = SHADOW_TIP; rec.TIER_ROWS = TIER_ROWS; rec.BUCKETS = BUCKETS; rec.TIER_FOOT = TIER_FOOT; rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
+  rec.SORT_FIRST = SORT_FIRST; rec.SHADOW_SIZE = SHADOW_SIZE; rec.SHADOW_TIP = SHADOW_TIP; rec.TIER_ROWS = TIER_ROWS; rec.BUCKETS = BUCKETS; rec.TIER_FOOT = TIER_FOOT; rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
   SV2.rec = rec;
 
   /* ------------------------------------------------------------------ browser side */
   if (typeof document === 'undefined') return;
   var S = { sport: 'all', view: 'main', file: null, rows: null, state: 'idle', loadedAt: 0, main: null, page: null, sw: null, swPage: null, busy: false,
-    tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, tb: 'all', tSince: false, tOpen: {} };
+    tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, tb: 'all', tSince: false, open: {}, sort: {} };
 
   function get(p, txt, force) {
     var k = force ? Date.now() : Math.floor(Date.now() / 300000);
@@ -410,18 +465,85 @@
   function head(id, title, sub) {
     return '<div class="sv2-rec-h"><h2 class="sv2-h2" id="' + id + '">' + esc(title) + '</h2>' + (sub ? '<p class="sv2-rec-sub">' + sub + '</p>' : '') + '</div>';
   }
-  /* one row of a record table: label, record, units, ROI; then CLV and flags */
-  function row(label, t, o) {
-    var clv = o && o.noClv ? '' : '<span class="sv2-rec-clv">' + esc(clvText(t, o && o.unit)) + '</span>';
-    return '<li class="sv2-rec-row"><div class="sv2-rec-lab">' + label + '<span class="sv2-rec-n">n=' + num(fmt.n(t.n)) + '</span></div>' +
-      '<div class="sv2-rec-c" data-k="W-L">' + num(wl(t)) + '</div><div class="sv2-rec-c" data-k="Units">' + unitsHtml(t) + '</div><div class="sv2-rec-c" data-k="ROI">' + roiHtml(t) + '</div>' +
-      '<div class="sv2-rec-x">' + flagHtml(t) + clv + '</div></li>';
-  }
-  function table(label, rowsHtml) {
-    return '<div class="sv2-rec-tbl" role="group" aria-label="' + esc(label) + '"><div class="sv2-rec-th" aria-hidden="true"><span></span><span>W-L</span><span>Units</span><span>ROI</span></div><ul class="sv2-rec-list">' + rowsHtml + '</ul></div>';
-  }
   function stat(label, valueHtml, note) {
     return '<div class="sv2-rec-stat"><span class="sv2-rec-k">' + esc(label) + '</span><span class="sv2-rec-v">' + valueHtml + '</span>' + (note ? '<span class="sv2-rec-kn">' + note + '</span>' : '') + '</div>';
+  }
+
+  /* ---- record tables: the Plays table design (.sv2-tb in one glass card, sv2.css section 13), with a few sv2-rec-tb modifiers.
+     A column is { c, label, k (sortable), num, p (stays in the stacked row), s (1 or 2: leaves the row when the card is narrow, stays in the dropdown), tag }.
+     Every row has a dropdown holding what the narrow row leaves out. */
+  function idOf(tid, key) { return 'sv2-rx-' + tid + '-' + String(key).replace(/[^a-z0-9]+/gi, '-'); }
+  function colCls(c) { return 'c-' + c.c + (c.num ? ' c-num' : '') + (c.s ? ' c-s' + c.s : '') + (c.grp ? ' c-' + c.grp : '') + (c.bar ? ' c-bar' : ''); }
+  function theadHtml(tid, cols, groups) {
+    var s = rec.cleanSort(S.sort[tid]);
+    var g = groups ? '<tr class="sv2-rec-grp">' + groups.map(function (x) {
+      return '<th scope="colgroup"' + (x.span > 1 ? ' colspan="' + x.span + '"' : '') + ' class="' + (x.cls || '') + '">' + (x.label ? esc(x.label) : '<span class="sv2-sr">' + esc(x.sr) + '</span>') + '</th>';
+    }).join('') + '</tr>' : '';
+    return '<thead>' + g + '<tr>' + cols.map(function (c) {
+      if (c.sr) return '<th scope="col" class="' + colCls(c) + '"><span class="sv2-sr">' + esc(c.sr) + '</span></th>';
+      if (!c.k) return '<th scope="col" class="' + colCls(c) + '">' + (c.tag ? '<span class="sv2-rec-shh"><i class="sv2-rec-shtag"' + (c.tip ? ' title="' + esc(c.tip) + '"' : '') + '>' + esc(c.tag) + '</i>' + esc(c.label) + '</span>' : esc(c.label)) + '</th>';
+      var on = s.k === c.k;
+      return '<th scope="col" class="' + colCls(c) + ' is-sort" aria-sort="' + (on ? (s.dir === 1 ? 'ascending' : 'descending') : 'none') + '"><button type="button" class="sv2-tb-sort sv2-press sv2-press-chip" data-sv2-rsort="' + tid + ':' + c.k + '">' + esc(c.label) + ui.sortArrow(on, s.dir) + '</button></th>';
+    }).join('') + '</tr></thead>';
+  }
+  /* one cell. kind 'row' is the row header (th scope row); p marks a cell that stays in the stacked row, with its label from data-k */
+  function cell(c, html, o) {
+    o = o || {};
+    var tag = o.row ? 'th' : 'td';
+    return '<' + tag + (o.row ? ' scope="row"' : '') + ' class="sv2-tb-c ' + colCls(c) + (c.p ? ' c-p' : '') + (o.cls ? ' ' + o.cls : '') + '"' + (c.p ? ' data-k="' + esc(c.label) + '"' : '') + '>' + html + '</' + tag + '>';
+  }
+  function chevCell(open, id, label) {
+    return '<td class="sv2-tb-c c-chev"><button type="button" class="sv2-tb-tog sv2-press sv2-press-btn" aria-expanded="' + open + '" aria-controls="' + id + '" aria-label="' + esc(label) + '" data-sv2-rx="' + id + '">' + ui.icon('chevron', 'sv2-chev') + '</button></td>';
+  }
+  /* o: tid, key, attrs (extra tr attributes), cells (html), detail (html), label (what the dropdown is for), ncol */
+  function rowHtml(o) {
+    var id = idOf(o.tid, o.key), open = !!S.open[id];
+    var tr = '<tr class="sv2-tb-r' + (open ? ' is-open' : '') + '"' + (o.attrs || '') + '>' + o.cells + chevCell(open, id, o.label) + '</tr>';
+    var dr = '<tr class="sv2-tb-d"><td colspan="' + o.ncol + '"><div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc(o.label) + '"><div class="sv2-rec-dd">' + o.detail + '</div></div></div></td></tr>';
+    return tr + dr;
+  }
+  function tableHtml(tid, label, cols, rowsHtml, groups) {
+    return '<div class="sv2-card sv2-tb-card sv2-rec-tb" data-tid="' + tid + '"><div class="sv2-tb-scroll"><table class="sv2-tb" aria-label="' + esc(label) + '">' +
+      theadHtml(tid, cols, groups) + '<tbody>' + rowsHtml + '</tbody></table></div></div>';
+  }
+  function dl(items) {
+    return '<dl class="sv2-rec-dl">' + items.map(function (x) { return '<div class="' + (x[2] || '') + '"><dt>' + x[0] + '</dt><dd>' + x[1] + '</dd></div>'; }).join('') + '</dl>';
+  }
+  /* a label cell: the name, then a muted line with the sample note and the flag */
+  function labCell(c, title, sub, o) {
+    return cell(c, '<span class="sv2-tb-title"><b>' + title + '</b></span>' + (sub ? '<span class="sv2-tb-mu">' + sub + '</span>' : ''), { row: true, cls: 'c-bar' + (o && o.cls ? ' ' + o.cls : '') });
+  }
+  function clvCell(c, t, unit) {
+    var p = rec.clvParts(t, unit);
+    return cell(c, p ? '<span class="sv2-num">' + esc(p.value) + '</span><span class="sv2-tb-sub">' + esc(p.sub) + '</span>' : '<span aria-hidden="true">-</span><span class="sv2-sr">No closing price stored yet</span>');
+  }
+  function tUnits(t) { return '<span class="sv2-num' + signCls(t.units) + '">' + esc(rec.fmtUnits(t)) + '</span>'; }
+  function tRoi(t) { return '<span class="sv2-num' + signCls(t.roi) + '">' + esc(rec.fmtRoi(t)) + '</span>'; }
+  /* the columns every tally table shares. cols are built once per table. */
+  function mcol(label0, o) {
+    o = o || {};
+    var cols = [{ c: 'lab', label: label0, k: 'def', bar: true }, { c: 'wl', label: 'W-L', num: true, p: true }, { c: 'units', label: 'Units', k: 'units', num: true, p: true }, { c: 'roi', label: 'ROI', k: 'roi', num: true, p: true }];
+    if (o.accts) cols.splice(1, 0, { c: 'ac', label: 'Accounts', num: true, p: true });
+    cols.push({ c: 'n', label: 'n', k: 'n', num: true, s: 2 });
+    if (!o.noClv) cols.push({ c: 'clv', label: 'vs the close', num: true, s: 1 });
+    return cols;
+  }
+  function byC(cols) { var m = {}; cols.forEach(function (c) { m[c.c] = c; }); return m; }
+  function tallyCells(C, t, unit, o) {
+    return cell(C.wl, num(rec.fmtWl(t))) + (o && o.ac ? cell(C.ac, o.ac) : '') + cell(C.units, tUnits(t)) + cell(C.roi, tRoi(t)) + cell(C.n, num(fmt.n(t.n))) + (C.clv ? clvCell(C.clv, t, unit) : '');
+  }
+  function clvDetail(t, unit) { var p = rec.clvParts(t, unit); return p ? num(p.value) + ' ' + esc(p.sub) : 'No closing price stored yet'; }
+  function tallyDetail(t, unit) { return dl([['n', num(fmt.n(t.n))], ['vs the close', clvDetail(t, unit)]]); }
+  /* a plain tally table (sport, market, forward and in-sample): models are { key, label (html), sub (html), t, tag? } */
+  function tallyTable(tid, label, firstCol, models, unit, o) {
+    var cols = mcol(firstCol), C = byC(cols), ncol = cols.length + 1;
+    var order = rec.sortRows(models.map(function (m, i) { m.idx = i; return m; }), S.sort[tid]);
+    var rows = order.map(function (m) {
+      var fl = flagHtml(m.t), sub = (m.sub || '') + (m.sub && fl ? ' ' : '') + fl;
+      return rowHtml({ tid: tid, key: m.key, ncol: ncol, label: m.name + ', detail', attrs: o && o.attrs ? o.attrs(m) : '',
+        cells: labCell(C.lab, m.label, sub) + tallyCells(C, m.t, unit), detail: tallyDetail(m.t, unit) });
+    }).join('');
+    return tableHtml(tid, label, cols, rows);
   }
 
   /* ---- section 1: plays record */
@@ -429,84 +551,99 @@
     var all = rec.playRows(S.rows || [], sport), t = rec.tally(all, S.closes), sp = rec.splitForward(all, FWD_CUT);
     var tf = rec.tally(sp.forward, S.closes), ti = rec.tally(sp.in_sample, S.closes);
     var tracked = sport === 'cfb';
-    var html = '<section class="sv2-card sv2-rec-sec" aria-labelledby="rec-h-plays">' +
+    var html = '<section class="sv2-rec-sec" aria-labelledby="rec-h-plays">' +
       head('rec-h-plays', 'Plays record', tracked ? 'CFB shows no size. This is a tracked record at a flat 1u, not a shown play.' : 'The shown plays at a flat 1u ' + pill()) ;
     if (!t.n) {
       return html + '<p class="sv2-empty-line">No graded plays yet for ' + esc(sport === 'all' ? 'these sports' : sportName(sport)) + '.</p></section>';
     }
-    html += '<div class="sv2-card-inset sv2-rec-hero">' +
+    html += '<div class="sv2-card sv2-rec-hero">' +
       stat('Units', unitsHtml(t)) + stat('ROI', roiHtml(t)) + stat('Record', num(wl(t)), 'n=' + num(fmt.n(t.n))) + '</div>' +
       '<p class="sv2-rec-line">' + flagHtml(t) + ' <span class="sv2-rec-clv">' + esc(clvText(t)) + '</span></p>' +
       (rec.seNote(t) ? '<p class="sv2-rec-note">' + esc(rec.seNote(t)) + '</p>' : '') +
       '<p class="sv2-rec-note">A record is context, not proof. It is a shadow test of an untested rule.</p>';
-    /* forward and in-sample, read apart */
-    html += '<h3 class="sv2-rec-h3">Forward and in-sample</h3><div class="sv2-rec-two">' +
-      '<div class="sv2-card-inset"><p class="sv2-rec-k">Forward</p><p class="sv2-rec-kn">Cut from ' + esc(ct.md(FWD_CUT) + ', ' + ct.time(FWD_CUT, true)) + '</p>' + (tf.n ? table('Forward', row('Forward', tf)) : '<p class="sv2-empty-line">No graded forward plays yet.</p>') + '</div>' +
-      '<div class="sv2-card-inset"><p class="sv2-rec-k">In-sample</p><p class="sv2-rec-kn">Cut before that. Read it as history, not a test.</p>' + (ti.n ? table('In-sample', row('In-sample', ti)) : '<p class="sv2-empty-line">None.</p>') + '</div></div>';
+    /* forward and in-sample, read apart: one table, two rows */
+    var fcut = 'Cut from ' + esc(ct.md(FWD_CUT) + ', ' + ct.time(FWD_CUT, true)), icut = 'Cut before that. Read it as history, not a test.';
+    html += '<h3 class="sv2-rec-h3">Forward and in-sample</h3>' + fwdTable([
+      { key: 'forward', name: 'Forward', label: 'Forward', sub: '<span class="sv2-rec-cut">' + fcut + '</span>', t: tf, empty: 'No graded forward plays yet.' },
+      { key: 'insample', name: 'In-sample', label: 'In-sample', sub: '<span class="sv2-rec-cut">' + icut + '</span>', t: ti, empty: 'None.' }]);
     /* by sport (all) and by market */
     if (sport === 'all') {
       var rs = SHOWN.concat(['cfb']).map(function (s) {
         var tt = rec.tally(rec.playRows(S.rows || [], s), S.closes);
-        return tt.n ? row(sportName(s) + (s === 'cfb' ? ' <span class="sv2-rec-tag">no size shown</span>' : ''), tt) : '';
-      }).join('');
-      if (rs) html += '<h3 class="sv2-rec-h3">By sport</h3>' + table('By sport', rs);
+        return tt.n ? { key: s, name: sportName(s), label: esc(sportName(s)), sub: s === 'cfb' ? '<span class="sv2-rec-tag">no size shown</span>' : '', t: tt } : null;
+      }).filter(Boolean);
+      if (rs.length) html += '<h3 class="sv2-rec-h3">By sport</h3>' + tallyTable('sport', 'By sport', 'Sport', rs, 'play');
     }
     var ms = MARKETS.map(function (m) {
       var tt = rec.tally(all.filter(function (r) { return r.group === m[0]; }), S.closes);
-      return tt.n ? row(m[1], tt) : '';
-    }).join('');
-    if (ms) html += '<h3 class="sv2-rec-h3">By market</h3>' + table('By market', ms);
+      return tt.n ? { key: m[0], name: m[1], label: esc(m[1]), sub: '', t: tt } : null;
+    }).filter(Boolean);
+    if (ms.length) html += '<h3 class="sv2-rec-h3">By market</h3>' + tallyTable('mkt', 'By market', 'Market', ms, 'play');
     /* latest graded */
-    var lat = rec.latest(all, 12);
-    html += '<h3 class="sv2-rec-h3">Latest graded plays</h3><ul class="sv2-rec-plays">' + lat.map(function (r) {
-      var res = r.res === 'win' ? 'sv2-chip--win' : r.res === 'loss' ? 'sv2-chip--loss' : 'sv2-chip--muted';
-      var word = r.res === 'win' ? 'Win' : r.res === 'loss' ? 'Loss' : 'Push';
-      var c = S.closes && S.closes[r.key];
-      return '<li class="sv2-rec-play"><div class="sv2-rec-pl"><b>' + esc(rec.playLabel(r)) + '</b><span class="sv2-rec-pm">' + esc(sportName(r.sport)) + ' ' + esc(r.group) +
-        (isNum(r.gst) ? ', ' + esc(ct.md(r.gst)) : '') + (isNum(r.price) ? ', ' + esc(fmt.cents(r.price)) : '') + (c ? ', close ' + esc(fmt.centsSigned(c.clv)) : '') + '</span></div>' +
-        '<span class="sv2-chip ' + res + '"><span>' + word + '</span></span><span class="sv2-num sv2-rec-pu' + signCls(r.flat) + '">' + esc(fmt.units(r.flat, { signed: true }) || '') + '</span></li>';
-    }).join('') + '</ul>';
+    html += '<h3 class="sv2-rec-h3">Latest graded plays</h3>' + latestTable(rec.latest(all, 12));
     return html + '</section>';
+  }
+  /* forward and in-sample: two fixed rows (not sortable), a row with no plays says so */
+  function fwdTable(models) {
+    var cols = mcol('Plays'), C = byC(cols), ncol = cols.length + 1;
+    cols.forEach(function (c) { if (c.k) c.k = null; });
+    var rows = models.map(function (m) {
+      if (!m.t.n) return '<tr class="sv2-tb-r sv2-rec-none">' + labCell(C.lab, m.label, m.sub) + '<td class="sv2-tb-c c-msg" colspan="' + (ncol - 1) + '">' + esc(m.empty) + '</td></tr>';
+      var fl = flagHtml(m.t);
+      return rowHtml({ tid: 'fwd', key: m.key, ncol: ncol, label: m.name + ', detail', cells: labCell(C.lab, m.label, m.sub + (fl ? ' ' + fl : '')) + tallyCells(C, m.t, 'play'), detail: tallyDetail(m.t, 'play') });
+    }).join('');
+    return tableHtml('fwd', 'Forward and in-sample', cols, rows);
+  }
+  function latestTable(list) {
+    var cols = [{ c: 'dt', label: 'Date', p: true, bar: true }, { c: 'sp', label: 'Sport', s: 2 }, { c: 'lab', label: 'Play' }, { c: 'px', label: 'Price', num: true, p: true },
+      { c: 'cl', label: 'Close', num: true, s: 1 }, { c: 'res', label: 'Result', p: true }, { c: 'u', label: 'Units', num: true, p: true }], C = byC(cols), ncol = cols.length + 1;
+    var rows = list.map(function (r, i) {
+      var m = rec.latestModel(r, S.closes && S.closes[r.key]), chip = m.kind === 'win' ? 'sv2-chip--win' : m.kind === 'loss' ? 'sv2-chip--loss' : 'sv2-chip--muted';
+      var cells = cell(C.dt, esc(m.date), { row: true, cls: 'c-bar' }) + cell(C.sp, '<span class="sv2-chip sv2-chip--muted"><span>' + esc(sportName(m.sport)) + '</span></span>') +
+        cell(C.lab, '<span class="sv2-tb-title"><b>' + esc(m.label) + '</b></span><span class="sv2-tb-mu">' + esc(m.market) + '</span>') +
+        cell(C.px, '<span class="sv2-num">' + esc(m.price) + '</span>') + cell(C.cl, m.close ? '<span class="sv2-num">' + esc(m.close) + '</span>' : '<span aria-hidden="true">-</span><span class="sv2-sr">No closing price stored</span>') +
+        cell(C.res, '<span class="sv2-chip ' + chip + '"><span>' + m.word + '</span></span>') +
+        cell(C.u, '<span class="sv2-num' + signCls(m.flat) + '">' + esc(m.units) + '</span>');
+      return rowHtml({ tid: 'latest', key: i + '-' + m.key, ncol: ncol, label: m.label + ', ' + m.word + ', detail', attrs: ' data-res="' + m.kind + '"', cells: cells,
+        detail: dl([['Sport', esc(sportName(m.sport))], ['Market', esc(m.market)], ['Price', num(m.price || '-')], ['Close', m.close ? num(m.close) : 'No closing price stored']]) });
+    }).join('');
+    return tableHtml('latest', 'Latest graded plays', cols, rows);
   }
 
   /* ---- section 2: tier record (evidence tiers), from tier_record.json */
-  function tUnits(t) { return '<span class="sv2-num' + signCls(t.units) + '">' + esc(rec.fmtUnits(t)) + '</span>'; }
-  function tRoi(t) { return '<span class="sv2-num' + signCls(t.roi) + '">' + esc(rec.fmtRoi(t)) + '</span>'; }
-  /* shadow cells: muted and tagged, never coloured as a result. Size, then units with the ROI on staked units. */
-  function shCells(size, sh) {
+  function shVals(size, sh) {
     var ss = rec.fmtSize(size), un = rec.fmtShadowUnits(sh), ro = rec.fmtShadowRoi(sh), st = rec.fmtStaked(sh);
-    return '<span class="sv2-rec-shw">' +
-      '<span class="sv2-rec-c sv2-rec-sh" data-k="Shadow size" data-m="size" title="' + esc(rec.SHADOW_TIP) + '"><span class="sv2-sr">Shadow size, </span>' + num(ss) + '</span>' +
-      '<span class="sv2-rec-c sv2-rec-sh" data-k="Shadow units" data-m="units" title="' + esc(rec.SHADOW_TIP + (st !== '-' ? ' Staked ' + st + '.' : '')) + '"><span class="sv2-sr">Shadow units and ROI on staked units, </span>' +
-      num(un) + (ro !== '-' ? ' <span class="sv2-rec-shr">' + esc(ro) + '</span>' : '') + '</span></span>';
+    return { size: num(ss), units: num(un) + (ro !== '-' ? ' <span class="sv2-rec-shr">' + esc(ro) + '</span>' : ''), tip: rec.SHADOW_TIP + (st !== '-' ? ' Staked ' + st + '.' : '') };
   }
-  function tCells(t) {
-    return '<span class="sv2-rec-c" data-k="W-L">' + num(rec.fmtWl(t)) + '</span><span class="sv2-rec-c" data-k="Units">' + tUnits(t) + '</span>' +
-      '<span class="sv2-rec-c" data-k="ROI">' + tRoi(t) + '</span><span class="sv2-rec-c" data-k="n">' + num(fmt.n(t.n)) + '</span>';
-  }
+  var TCOLS = mcol('Tier', { noClv: true }).concat([{ c: 'shs', label: 'Size', num: true, s: 1, tag: 'shadow', tip: rec.SHADOW_TIP, grp: 'sh' }, { c: 'shu', label: 'Units, ROI', num: true, s: 1, tag: 'shadow', tip: rec.SHADOW_TIP, grp: 'sh' }]);
   function tLabel(r) {
     return r.derived ? ui.tier(r.tier) : '<span class="sv2-chip sv2-chip--muted" data-tier="none"><span>Not derivable</span></span>';
   }
-  function tierRow(r) {
-    var open = !!S.tOpen[r.tier], id = 'sv2-tt-' + r.tier, hasX = !!r.markets;
-    var head = '<span class="sv2-rec-tl">' + tLabel(r) + (r.derived ? '' : '<span class="sv2-rec-tag">no stored facts at the cut</span>') + '</span>' + tCells(r.t) + shCells(r.size, r.shadow);
+  function tierRow(m) {
+    var r = m.r, C = byC(TCOLS), ncol = TCOLS.length + 1, v = shVals(r.size, r.shadow), fl = flagHtml(r.t);
+    var sub = (r.derived ? '' : '<span class="sv2-rec-tag">no stored facts at the cut</span> ') + fl;
+    var name = r.derived ? copy.tier[r.tier].word : 'Not derivable';
+    var cells = cell(C.lab, '<span class="sv2-tb-title">' + tLabel(r) + '</span>' + (sub.trim() ? '<span class="sv2-tb-mu">' + sub + '</span>' : ''), { row: true, cls: 'c-bar' }) +
+      tallyCells(C, r.t) + cell(C.shs, v.size, { cls: 'sv2-rec-sh' }) + '<td class="sv2-tb-c ' + colCls(C.shu) + ' sv2-rec-sh" title="' + esc(v.tip) + '"><span class="sv2-sr">Shadow units and ROI on staked units, </span>' + v.units + '</td>';
     var share = r.share == null ? 0 : r.share * 100;
-    var line = '<span class="sv2-rec-tx">' + flagHtml(r.t) +
-      '<span class="sv2-rec-share"><span class="sv2-rec-bar" data-tier="' + r.tier + '" aria-hidden="true"><i style="width:' + share.toFixed(1) + '%"></i></span>' +
-      '<span class="sv2-rec-sharet">' + (r.share == null ? 'no plays' : esc(fmt.pct(r.share, { d: 0 })) + ' of the total') + '</span></span></span>';
-    var inner = head + line;
-    var top = hasX
-      ? '<button type="button" class="sv2-rec-tbtn sv2-press sv2-press-row" data-sv2-tt-x="' + r.tier + '" aria-expanded="' + open + '" aria-controls="' + id + '">' + inner + '<span class="sv2-rec-tchev" aria-hidden="true">' + ui.icon('chevron', 'sv2-chev') + '</span><span class="sv2-sr">By market</span></button>'
-      : '<div class="sv2-rec-tbtn sv2-rec-tbtn--flat">' + inner + '</div>';
-    var sub = '';
-    if (hasX) {
-      sub = '<div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc((r.derived ? copy.tier[r.tier].word : 'Not derivable') + ' by market') + '"><ul class="sv2-rec-sub">' +
-        r.markets.map(function (m) { return '<li class="sv2-rec-subrow"><span class="sv2-rec-tl">' + esc(m.label) + '</span>' + tCells(m.t) + shCells(r.size, m.shadow) + '</li>'; }).join('') + '</ul></div></div>';
-    }
-    return '<li class="sv2-rec-trow" data-tier="' + r.tier + '">' + top + sub + '</li>';
+    var shareHtml = '<span class="sv2-rec-share"><span class="sv2-rec-bar" data-tier="' + r.tier + '" aria-hidden="true"><i style="width:' + share.toFixed(1) + '%"></i></span>' +
+      '<span class="sv2-rec-sharet">' + (r.share == null ? 'no plays' : esc(fmt.pct(r.share, { d: 0 })) + ' of the total') + '</span></span>';
+    var detail = shareHtml + dl([['n', num(fmt.n(r.t.n))], ['<i class="sv2-rec-shtag">shadow</i> Size', v.size], ['<i class="sv2-rec-shtag">shadow</i> Units, ROI', v.units]]) + marketSplit(r, name);
+    return rowHtml({ tid: 'tier', key: r.tier, ncol: ncol, label: name + ', by market and detail', attrs: ' data-tier="' + r.tier + '"', cells: cells, detail: detail });
+  }
+  /* the market split of one tier: a nested table, shown when the bucket holds the same plays as all */
+  function marketSplit(r, name) {
+    if (!r.markets) return '';
+    return '<p class="sv2-rec-k">By market</p><table class="sv2-rec-st" aria-label="' + esc(name + ' by market') + '"><thead><tr><th scope="col">Market</th><th scope="col" class="c-num">W-L</th><th scope="col" class="c-num">Units</th><th scope="col" class="c-num">ROI</th><th scope="col" class="c-num">n</th>' +
+      '<th scope="col" class="c-num"><i class="sv2-rec-shtag">shadow</i> Size</th><th scope="col" class="c-num"><i class="sv2-rec-shtag">shadow</i> Units, ROI</th></tr></thead><tbody>' +
+      r.markets.map(function (m) {
+        var v = shVals(r.size, m.shadow);
+        return '<tr><th scope="row">' + esc(m.label) + '</th><td class="c-num" data-k="W-L">' + num(rec.fmtWl(m.t)) + '</td><td class="c-num" data-k="Units">' + tUnits(m.t) + '</td><td class="c-num" data-k="ROI">' + tRoi(m.t) + '</td><td class="c-num" data-k="n">' + num(fmt.n(m.t.n)) + '</td>' +
+          '<td class="c-num sv2-rec-sh" data-k="Shadow size">' + v.size + '</td><td class="c-num sv2-rec-sh" data-k="Shadow units" title="' + esc(v.tip) + '">' + v.units + '</td></tr>';
+      }).join('') + '</tbody></table>';
   }
   function tiersSection(sport) {
-    var T = S.tier, html = '<section class="sv2-card sv2-rec-sec" aria-labelledby="rec-h-tiers">' + head('rec-h-tiers', 'Tier record', 'Each tier read apart, at a flat 1u');
+    var T = S.tier, html = '<section class="sv2-rec-sec" aria-labelledby="rec-h-tiers">' + head('rec-h-tiers', 'Tier record', 'Each tier read apart, at a flat 1u');
     if (T.state === 'loading' || T.state === 'idle') return html + ui.skel(2, 'Loading the tier record') + '</section>';
     if (!T.data) return html + '<p class="sv2-empty-line">Could not load the tier record. <button type="button" class="sv2-link" data-sv2-rec-retry>Try again</button></p></section>';
     var f = T.data, bucket = S.tSince ? 'since_nov16' : S.tb, tb = rec.tierTable(f, sport, bucket);
@@ -517,17 +654,17 @@
     var note = '';
     if (bucket === 'forward') {
       var fn = String(f.forward_note || 'forward starts at the first logged lock');
-      note = '<div class="sv2-card-inset sv2-rec-tnote"><p class="sv2-rec-note"><b>Forward.</b> ' + esc(fn.charAt(0).toUpperCase() + fn.slice(1)) + '. ' +
+      note = '<div class="sv2-card sv2-rec-tnote"><p class="sv2-rec-note"><b>Forward.</b> ' + esc(fn.charAt(0).toUpperCase() + fn.slice(1)) + '. ' +
         (tb.total.n ? '' : 'No tier has been logged at a lock and graded yet, so every row below is zero. Zero is not a record.') +
         ' Logged rows so far: <span class="sv2-num">' + esc(fmt.n(isNum(f.logged_rows) ? f.logged_rows : 0)) + '</span>.</p></div>';
     } else if (bucket === 'since_nov16') {
-      note = '<div class="sv2-card-inset sv2-rec-tnote"><p class="sv2-rec-note"><b>Informational only.</b> These are plays cut on or after Nov 16, 12:00 AM Central. Their tier was derived after the fact, so this is not forward.</p></div>';
+      note = '<div class="sv2-card sv2-rec-tnote"><p class="sv2-rec-note"><b>Informational only.</b> These are plays cut on or after Nov 16, 12:00 AM Central. Their tier was derived after the fact, so this is not forward.</p></div>';
     } else if (bucket === 'in_sample') {
-      note = '<div class="sv2-card-inset sv2-rec-tnote"><p class="sv2-rec-note"><b>In-sample.</b> The tier rule was written after these results. Read it as history, not a test.</p></div>';
+      note = '<div class="sv2-card sv2-rec-tnote"><p class="sv2-rec-note"><b>In-sample.</b> The tier rule was written after these results. Read it as history, not a test.</p></div>';
     }
-    var hero = tb.derived.n ? '<div class="sv2-card-inset sv2-rec-hero">' + stat('Units', tUnits(tb.derived)) + stat('ROI', tRoi(tb.derived)) + stat('Record', num(rec.fmtWl(tb.derived)), 'n=' + num(fmt.n(tb.derived.n)) + ', tiers only') + '</div>' : '';
-    var th = '<div class="sv2-rec-th sv2-rec-tth" aria-hidden="true"><span></span><span>W-L</span><span>Units</span><span>ROI</span><span>n</span><span class="sv2-rec-shh"><i class="sv2-rec-shtag" title="' + esc(rec.SHADOW_TIP) + '">shadow</i>Size</span><span class="sv2-rec-shh"><i class="sv2-rec-shtag" title="' + esc(rec.SHADOW_TIP) + '">shadow</i>Units, ROI</span></div>';
-    var tbl = '<div class="sv2-rec-tbl sv2-rec-ttbl" role="group" aria-label="Tier record, ' + esc(BUCKET_NAME[bucket]) + '">' + th + '<ul class="sv2-rec-list">' + tb.rows.map(tierRow).join('') + '</ul></div>';
+    var hero = tb.derived.n ? '<div class="sv2-card sv2-rec-hero">' + stat('Units', tUnits(tb.derived)) + stat('ROI', tRoi(tb.derived)) + stat('Record', num(rec.fmtWl(tb.derived)), 'n=' + num(fmt.n(tb.derived.n)) + ', tiers only') + '</div>' : '';
+    var models = rec.sortRows(tb.rows.map(function (r, i) { return { idx: i, r: r, t: r.t }; }), S.sort.tier);
+    var tbl = tableHtml('tier', 'Tier record, ' + BUCKET_NAME[bucket], TCOLS, models.map(tierRow).join(''));
     var likeTxt = rec.likeLine(tb.like, bucket);
     var cfbNote = sport === 'cfb' ? 'CFB: the shadow stakes nothing, no size shown.' : '';
     var like = likeTxt || cfbNote ? '<p class="sv2-rec-note sv2-rec-like">' + esc(likeTxt || cfbNote) + '</p>' : '';
@@ -542,40 +679,62 @@
   }
 
   /* ---- section 3: accounts record */
+  var PAST_NOTE = 'These records come from games before we picked the account, so they were chosen after the fact. They have not held up going forward.';
+  function acctCols(first, past) {
+    var cols = mcol(first, { accts: true });
+    if (past) cols.splice(cols.length, 0, { c: 'pwl', label: 'W-L', num: true, s: 1, grp: 'past' }, { c: 'prt', label: 'Win rate', num: true, s: 1, grp: 'past' }, { c: 'pn', label: 'n', num: true, s: 2, grp: 'past' });
+    return cols;
+  }
+  function pastDetail(g) {
+    var pc = rec.pastCell(g.past);
+    return ['Past record, picked after the fact', pc ? num(pc.wl) + ' <span class="sv2-rec-shr">win rate ' + num(fmt.pct(pc.rate, { d: 0 })) + ', n=' + num(fmt.n(pc.n)) + '</span>' : '<span class="sv2-mut">none stored</span>', 'is-past'];
+  }
+  /* rows: { key, name, label (html), accounts, g (aggregate), past } */
+  function acctTable(tid, label, firstCol, models, o) {
+    var cols = acctCols(firstCol, o.past), C = byC(cols), ncol = cols.length + 1;
+    var order = rec.sortRows(models.map(function (m, i) { m.idx = i; m.t = rec.asTally(m.g); return m; }), S.sort[tid]);
+    var rows = order.map(function (m) {
+      var g = m.g, t = m.t, fl = flagHtml(t);
+      var acN = '<span class="sv2-num">' + esc(fmt.n(g.accounts)) + '</span>' + (isNum(g.active) ? '<span class="sv2-tb-sub">' + esc(fmt.n(g.active)) + ' with bets</span>' : '');
+      var pc = o.past ? rec.pastCell(g.past) : null, pastCells = '';
+      if (o.past) pastCells = (pc ? cell(C.pwl, num(pc.wl), { cls: 'sv2-rec-pst' }) + cell(C.prt, num(fmt.pct(pc.rate, { d: 0 })), { cls: 'sv2-rec-pst' }) + cell(C.pn, num(fmt.n(pc.n)), { cls: 'sv2-rec-pst' })
+        : cell(C.pwl, '<span aria-hidden="true">-</span><span class="sv2-sr">No past record stored</span>', { cls: 'sv2-rec-pst' }) + cell(C.prt, '<span aria-hidden="true">-</span>', { cls: 'sv2-rec-pst' }) + cell(C.pn, '<span aria-hidden="true">-</span>', { cls: 'sv2-rec-pst' }));
+      var cells = labCell(C.lab, m.label, fl) + cell(C.ac, acN) + tallyCells(C, t, 'bet') + pastCells;
+      return rowHtml({ tid: tid, key: m.key, ncol: ncol, label: m.name + ', detail', attrs: m.attrs || '', cells: cells,
+        detail: dl([['Accounts', num(fmt.n(g.accounts)) + (isNum(g.active) ? ' <span class="sv2-rec-shr">' + esc(fmt.n(g.active)) + ' with bets</span>' : '')], ['n', num(fmt.n(t.n))], ['vs the close', clvDetail(t, 'bet')]].concat(o.past ? [pastDetail(g)] : [])) });
+    }).join('');
+    return tableHtml(tid, label, cols, rows, o.past ? [{ span: 1, sr: 'Account tier' }, { span: cols.length - 4, label: 'Forward, since first tracked' }, { span: 3, label: 'Past record, picked after the fact', cls: 'is-past' }, { span: 1, sr: 'Details' }] : null);
+  }
   function acctsSection(sport) {
-    var f = store.wallets, html = '<section class="sv2-card sv2-rec-sec" aria-labelledby="rec-h-accts">' + head('rec-h-accts', 'Accounts record', 'Forward since each account was first tracked, apart from its past record');
+    var f = store.wallets, html = '<section class="sv2-rec-sec" aria-labelledby="rec-h-accts">' + head('rec-h-accts', 'Accounts record', 'Forward since each account was first tracked, apart from its past record');
     if (!f) return html + '<p class="sv2-empty-line">' + (store.state.wallets === 'loading' ? 'Loading accounts.' : 'Could not load the accounts file.') + '</p></section>';
     var a = rec.acctAgg(f, sport);
     if (!a.total.accounts) return html + '<p class="sv2-empty-line">No accounts for ' + esc(sportName(sport)) + '.</p></section>';
-    if (!a.fwdPub) html += '<p class="sv2-empty-line">The forward record is not published yet.</p>';
-    else {
-      var tt = rec.asTally(a.total);
-      html += '<div class="sv2-card-inset sv2-rec-hero">' + stat('Units', unitsHtml(tt)) + stat('ROI', roiHtml(tt)) + stat('Record', num(wl(tt)), 'n=' + num(fmt.n(tt.n))) + '</div>' +
-        '<p class="sv2-rec-line">' + flagHtml(tt) + ' <span class="sv2-rec-clv">' + esc(clvText(tt, 'bet')) + '</span></p>' +
-        '<p class="sv2-rec-note">Flat 1u on each bet at the account\'s own price. Accounts are counted once per sport. Accounts reach this list after a good run, and a bet placed before an account was added can settle after it, so read this as context, not a test. ' + (isNum(a.total.pnl) && a.total.n ? 'In dollars at their own stake sizes: <span class="sv2-num' + signCls(a.total.pnl) + '">' + esc(fmt.usd(a.total.pnl, { full: true })) + '</span>, which a few large accounts drive.' : '') + '</p>';
-      var rs = copy.acctOrder.map(function (t) {
-        var g = a.tiers[t]; if (!g || !g.accounts) return '';
-        var tl = rec.asTally(g);
-        return row(ui.acct(t) + ' <span class="sv2-rec-tag">' + fmt.n(g.accounts) + ' accounts, ' + fmt.n(g.active) + ' with bets</span>', tl, { unit: 'bet' });
-      }).join('');
-      html += '<h3 class="sv2-rec-h3">By account tier</h3>' + table('By account tier', rs);
-      if (sport === 'all') {
-        var bs = SPORT_ORDER.filter(function (s) { return a.bySport[s] && a.bySport[s].accounts; }).map(function (s) {
-          var g = a.bySport[s]; return row(esc(sportName(s)) + ' <span class="sv2-rec-tag">' + fmt.n(g.accounts) + ' accounts</span>', rec.asTally(g), { unit: 'bet' });
-        }).join('');
-        if (bs) html += '<h3 class="sv2-rec-h3">By sport</h3>' + table('By sport', bs);
-      }
+    var tiers = copy.acctOrder.map(function (t) { var g = a.tiers[t]; return g && g.accounts ? { key: t, name: copy.acct[t].word, label: ui.acct(t), g: g, attrs: ' data-acct="' + t + '"' } : null; }).filter(Boolean);
+    if (!a.fwdPub) {
+      html += '<p class="sv2-empty-line">The forward record is not published yet.</p>';
+      /* no forward columns: the past record alone, as before */
+      return html + '<h3 class="sv2-rec-h3">Past record, picked after the fact</h3><p class="sv2-rec-note">' + PAST_NOTE + '</p>' + pastOnlyTable(tiers) + '</section>';
     }
-    /* the past record, apart */
-    var past = copy.acctOrder.map(function (t) {
-      var g = a.tiers[t]; if (!g || !g.past.n) return '';
-      var wr = g.past.n ? g.past.w / g.past.n : null;
-      return '<li class="sv2-rec-row sv2-rec-row--past"><div class="sv2-rec-lab">' + ui.acct(t) + '<span class="sv2-rec-n">n=' + num(fmt.n(g.past.n)) + '</span></div>' +
-        '<div class="sv2-rec-c" data-k="W-L">' + num(fmt.wl(g.past.w, g.past.l)) + '</div><div class="sv2-rec-c" data-k="Win rate">' + (wr != null ? num(fmt.pct(wr, { d: 0 })) : '') + '</div></li>';
-    }).join('');
-    html += '<h3 class="sv2-rec-h3">Past record, picked after the fact</h3><div class="sv2-card-inset"><p class="sv2-rec-note">These records come from games before we picked the account, so they were chosen after the fact. They have not held up going forward.</p>' +
-      '<div class="sv2-rec-tbl sv2-rec-tbl--past" role="group" aria-label="Past record"><div class="sv2-rec-th" aria-hidden="true"><span></span><span>W-L</span><span>Win rate</span></div><ul class="sv2-rec-list">' + past + '</ul></div></div>';
+    var tt = rec.asTally(a.total);
+    html += '<div class="sv2-card sv2-rec-hero">' + stat('Units', unitsHtml(tt)) + stat('ROI', roiHtml(tt)) + stat('Record', num(wl(tt)), 'n=' + num(fmt.n(tt.n))) + '</div>' +
+      '<p class="sv2-rec-line">' + flagHtml(tt) + ' <span class="sv2-rec-clv">' + esc(clvText(tt, 'bet')) + '</span></p>' +
+      '<p class="sv2-rec-note">Flat 1u on each bet at the account\'s own price. Accounts are counted once per sport. Accounts reach this list after a good run, and a bet placed before an account was added can settle after it, so read this as context, not a test. ' + (isNum(a.total.pnl) && a.total.n ? 'In dollars at their own stake sizes: <span class="sv2-num' + signCls(a.total.pnl) + '">' + esc(fmt.usd(a.total.pnl, { full: true })) + '</span>, which a few large accounts drive.' : '') + '</p>';
+    html += '<h3 class="sv2-rec-h3">By account tier</h3>' + acctTable('acct', 'By account tier', 'Account tier', tiers, { past: true }) + '<p class="sv2-rec-note">' + PAST_NOTE + '</p>';
+    if (sport === 'all') {
+      var bs = SPORT_ORDER.filter(function (s) { return a.bySport[s] && a.bySport[s].accounts; }).map(function (s) { return { key: s, name: sportName(s), label: esc(sportName(s)), g: a.bySport[s] }; });
+      if (bs.length) html += '<h3 class="sv2-rec-h3">By sport</h3>' + acctTable('asport', 'By sport', 'Sport', bs, { past: false });
+    }
     return html + '</section>';
+  }
+  /* the past record when no forward record is published: tier, W-L, win rate, n */
+  function pastOnlyTable(tiers) {
+    var cols = [{ c: 'lab', label: 'Account tier' }, { c: 'pwl', label: 'W-L', num: true, p: true }, { c: 'prt', label: 'Win rate', num: true, p: true }, { c: 'pn', label: 'n', num: true, p: true }], C = byC(cols);
+    var rows = tiers.map(function (m) {
+      var pc = rec.pastCell(m.g.past); if (!pc) return '';
+      return '<tr class="sv2-tb-r sv2-rec-flat"' + m.attrs + '>' + labCell(C.lab, m.label, '') + cell(C.pwl, num(pc.wl)) + cell(C.prt, num(fmt.pct(pc.rate, { d: 0 }))) + cell(C.pn, num(fmt.n(pc.n))) + '</tr>';
+    }).join('');
+    return tableHtml('past', 'Past record', cols, rows);
   }
 
   /* ---- the page */
@@ -653,13 +812,21 @@
       document.addEventListener('click', function (e) {
         var t = e.target; if (!t || !t.closest) return;
         if (t.closest('[data-sv2-rec-retry]')) { S.state = 'loading'; if (!S.tier.data) S.tier.state = 'loading'; paint(); load(true); return; }
-        var x = t.closest('[data-sv2-tt-x]');
-        if (x && S.page && S.page.contains(x)) {
-          var k = x.getAttribute('data-sv2-tt-x'), li = x.closest('.sv2-rec-trow'), box = li && li.querySelector('.sv2-x');
+        var so = t.closest('[data-sv2-rsort]');
+        if (so && S.page && S.page.contains(so)) {
+          var sp2 = so.getAttribute('data-sv2-rsort').split(':'), tid = sp2[0];
+          S.sort[tid] = rec.nextSort(S.sort[tid], sp2[1]); paint();
+          var again2 = S.page.querySelector('[data-sv2-rsort="' + so.getAttribute('data-sv2-rsort') + '"]'); if (again2) { try { again2.focus({ preventScroll: true }); } catch (e3) { /* ignore */ } }
+          var live = document.getElementById('sv2-live'); if (live) live.textContent = 'Sorted by ' + rec.sortWord(S.sort[tid]);
+          return;
+        }
+        var tr = t.closest('tr.sv2-tb-r');   /* the whole row toggles; the chevron button is the keyboard and screen reader control */
+        if (tr && S.page && S.page.contains(tr) && !t.closest('a, button:not(.sv2-tb-tog), .sv2-link')) {
+          var btn = tr.querySelector('[data-sv2-rx]'), box = btn && document.getElementById(btn.getAttribute('data-sv2-rx'));
           if (!box) return;
           var open = !box.hasAttribute('data-open');
-          if (open) box.setAttribute('data-open', ''); else box.removeAttribute('data-open');
-          x.setAttribute('aria-expanded', String(open)); S.tOpen[k] = open; return;
+          if (open) { box.setAttribute('data-open', ''); tr.classList.add('is-open'); } else { box.removeAttribute('data-open'); tr.classList.remove('is-open'); }
+          btn.setAttribute('aria-expanded', String(open)); S.open[box.id] = open; return;
         }
         var sn = t.closest('[data-sv2-tt-since]');
         if (sn && S.page && S.page.contains(sn)) { S.tSince = !S.tSince; paint(); var again = S.page.querySelector('[data-sv2-tt-since]'); if (again) { try { again.focus({ preventScroll: true }); } catch (er) { /* ignore */ } } return; }
