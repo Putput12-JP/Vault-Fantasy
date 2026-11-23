@@ -766,7 +766,7 @@ class TierRecord(unittest.TestCase):
             for t in sp["tiers"].values():
                 self.assertEqual(set(t), {"all", "in_sample", "forward", "since_nov16", "by_market"})
                 self.assertEqual(set(t["by_market"]), {"ml", "spread", "total"})
-                self.assertEqual(set(t["all"]), {"w", "l", "p", "n", "units", "roi"})
+                self.assertEqual(set(t["all"]), {"w", "l", "p", "n", "units", "roi", "shadow"})
         z = d["sports"]["nba"]["tiers"]["clear"]["all"]
         self.assertEqual((z["w"], z["l"], z["p"], z["n"], z["units"], z["roi"]), (0, 0, 0, 0, 0, None))   # present with zeros; no roi invented
         t = d["sports"]["nba"]["tiers"]["contested"]
@@ -797,6 +797,228 @@ class TierRecord(unittest.TestCase):
             self.assertEqual((doc["data_ref"], doc["built"], doc["logged_rows"], doc["first_logged_cut"]), ("deadbeef", 5, 1, self.S16 + 100))
             self.assertEqual((t["forward"]["n"], t["forward"]["l"], t["in_sample"]["n"], t["since_nov16"]["n"], t["all"]["n"]), (1, 1, 0, 2, 2))
             self.assertLess(os.path.getsize(out), 20_000)
+
+
+class ShadowSize(unittest.TestCase):
+    """The tier-scaled size shadow v2s-1 (user decision 2026-11-23): Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, CFB 0, no tier None. It runs
+    beside the flat 1u; the shown size, the ladder and every other key stay as they were. Literal values here on purpose: a changed constant fails."""
+    LIVE = ("nba", "nfl", "cbb")
+
+    def test_each_tier_value_on_every_sport_that_shows_a_size(self):
+        for sp in self.LIVE:
+            self.assertEqual([P.shadow_units(sp, t) for t in ("clear", "mixed", "thin", "contested")], [1.5, 1, 0.5, 0.5], sp)
+        self.assertEqual((P.SHADOW["rule"], P.SHADOW_RULE), ("v2s-1", "v2s-1"))
+        self.assertEqual(P.SHADOW["sizes"], {"clear": 1.5, "mixed": 1, "thin": 0.5, "contested": 0.5})
+        self.assertGreater(P.shadow_units("nba", "clear"), P.shadow_units("nba", "mixed"))        # the ordering by evidence
+        self.assertGreater(P.shadow_units("nba", "mixed"), P.shadow_units("nba", "thin"))
+        self.assertEqual(P.shadow_units("nba", "thin"), P.shadow_units("nba", "contested"))
+
+    def test_cfb_gets_zero_on_every_tier(self):
+        self.assertEqual([P.shadow_units("cfb", t) for t in ("clear", "mixed", "thin", "contested")], [0, 0, 0, 0])
+        for t in ("clear", "mixed", "thin", "contested"):
+            self.assertIsNotNone(P.shadow_units("cfb", t))                                         # a known "no size", not an unknown
+
+    def test_no_tier_is_none_never_zero(self):
+        for sp in self.LIVE + ("cfb",):
+            v = P.shadow_units(sp, None)
+            self.assertIsNone(v, sp)
+            self.assertFalse(v == 0 and v is not None)
+        self.assertIsNone(P.shadow_units("mlb", "clear"))                                           # a sport the page does not cover: unknown
+        self.assertIsNone(P.shadow_units("nba", "bogus"))
+
+    def test_the_market_block_publishes_it_beside_the_flat_size(self):
+        cases = {"clear": ({"pts": 0.5, "s": side_all(hc=1, rk=(1, 0))}, 1.5), "contested": ({"o": side_all(hc=1, rk=(0, 0))}, 0.5),
+                 "thin": ({"s": side_all(proven=1, rk=(0, 0)), "fwd": False}, 0.5)}
+        for tier, (kw, size) in cases.items():
+            v2, _ = P.market_v2("nba", "ml", market(**kw), [], {}, {"mk": {}}, CUT, {})
+            self.assertEqual((v2["tier"], v2["shadow_units"], v2["shadow_rule"]), (tier, size, "v2s-1"))
+            self.assertEqual((v2["shown_units"], v2["untested"], v2["shown_rule"]), (1, True, P.SHOWN_RULE))   # the page keeps the flat 1u and the label
+        v2, _ = P.market_v2("nba", "ml", market(sport_rk=True, s=side_all(hc=2, rk=(0, 0)), pts=0.0, fwd=False), [], {}, {"mk": {}}, CUT, {})
+        self.assertEqual((v2["tier"], v2["shadow_units"]), ("mixed", 1))
+        v2, _ = P.market_v2("cfb", "ml", market(sport_rk=False, tp=False), [], {}, {"mk": {}}, CUT, {})
+        self.assertEqual((v2["tier"] is not None, v2["shadow_units"], v2["shown_units"]), (True, 0, 0))
+        v2, _ = P.market_v2("nba", "ml", market(units=0), [], {}, {"mk": {}}, CUT, {})
+        self.assertEqual((v2["side"], v2["tier"], v2["shadow_units"], v2["shadow_rule"]), (None, None, None, "v2s-1"))
+
+    def test_additive_only_no_other_key_reads_the_shadow(self):
+        """Same card with a different shadow table: every other key of the card, the v2 block included, is identical."""
+        rows = T.proven("0xp") + T.proven("0xq")
+        k = T.kf([("m1", 0, "0xp", 400), ("m1", 1, "0xq", 350), ("m1", 1, "0xu", 900), ("s1", 1, "0xp", 500)])
+
+        def build(sizes):
+            with mock.patch.object(time, "time", return_value=CUT + 5), mock.patch.dict(P.SHADOW, {"sizes": sizes}):
+                return C.card(copy.deepcopy(k), T.ledger(rows), "nba")
+        a = build({"clear": 1.5, "mixed": 1, "thin": 0.5, "contested": 0.5})
+        b = build({"clear": 9, "mixed": 9, "thin": 9, "contested": 9})
+        strip = lambda c: [{k2: v for k2, v in m["v2"].items() if k2 != "shadow_units"} for m in c["markets"].values()]
+        self.assertEqual(strip(a), strip(b))
+        self.assertNotEqual([m["v2"]["shadow_units"] for m in a["markets"].values()], [m["v2"]["shadow_units"] for m in b["markets"].values()])
+        for m in a["markets"].values():
+            self.assertEqual(set(m["v2"]) & {"shadow_units", "shadow_rule"}, {"shadow_units", "shadow_rule"})
+            self.assertEqual(m["v2"]["shown_units"], 1 if m["v2"]["side"] else 0)
+        stripped = P.strip_plays_v2(a)
+        self.assertTrue(all("v2" not in m for m in stripped["markets"].values()))                   # the shadow keys leave with the v2 block
+        self.assertEqual(json.dumps(stripped, sort_keys=True), json.dumps(P.strip_plays_v2(b), sort_keys=True))
+
+    def test_new_log_rows_carry_it_and_old_rows_and_cards_are_tolerated(self):
+        c = ShadowLog().frozen_card()
+        row = P.log_row("nba/frozen/x.json", c, "ml", 1)
+        self.assertEqual((row["shadow_units"], row["shadow_rule"], row["tier"], row["shown_units"]), (1.5, "v2s-1", "clear", 1))
+        old = copy.deepcopy(c)                                                                      # a card frozen before the shadow existed
+        del old["markets"]["ml"]["v2"]["shadow_units"], old["markets"]["ml"]["v2"]["shadow_rule"]
+        r2 = P.log_row("nba/frozen/x.json", old, "ml", 1)
+        self.assertEqual((r2["shadow_units"], r2["shadow_rule"]), (1.5, "v2s-1"))                   # a pure function of the stored tier, same as the freeze
+        self.assertEqual({k: v for k, v in r2.items()}, {k: v for k, v in row.items()})
+        with tempfile.TemporaryDirectory() as d:                                                   # a log holding an old row (no shadow keys) and a new one
+            os.makedirs(os.path.join(d, "pm_cards", "nba", "v2_tier"))
+            oldrow = {k: v for k, v in row.items() if not k.startswith("shadow_")}
+            oldrow["key"] = "old|ml|all|sf"
+            with open(os.path.join(d, "pm_cards", "nba", "v2_tier", "2026-11.jsonl"), "w") as f:
+                f.write(json.dumps(oldrow) + "\n" + json.dumps(row) + "\n")
+            lg = TR.logged_rows(TH.FsReader(d))
+            self.assertEqual(set(lg), {"old|ml|all|sf", row["key"]})
+            ps = [{"key": "old|ml|all|sf", "sport": "nba", "tier": "none", "res": "win", "flat": 1.0, "cut": row["cut"], "group": "ml"}]
+            doc = TR.build(ps, 1, "x", lg)                                                          # an old row without shadow keys breaks nothing
+            self.assertNotIn("shadow_units", lg["old|ml|all|sf"])
+            self.assertEqual(doc["sports"]["nba"]["tiers"]["clear"]["forward"]["n"], 1)               # the old row's tier (clear) is read; no shadow key is needed
+            self.assertEqual(doc["sports"]["nba"]["tiers"]["clear"]["forward"]["shadow"], {"units_staked": 1.5, "units": 1.5, "roi": 1.0})
+
+
+class TierRecordShadow(unittest.TestCase):
+    """shadow = flat result times the play's shadow size, staked = sum of the sizes, roi = units / staked. Hand-computed on a tiny fixture."""
+    FIRST = 1_795_200_000
+
+    def mk(self, key, sp, tier, res, flat, g="ml", cut=None):
+        return {"key": key, "sport": sp, "tier": tier, "res": res, "flat": flat, "cut": cut if cut is not None else self.FIRST - 100, "group": g}
+
+    def plays(self):
+        return [self.mk("a", "nba", "clear", "win", 0.8), self.mk("b", "nba", "clear", "loss", -1.0, "spread"), self.mk("c", "nba", "clear", "push", 0.0),
+                self.mk("d", "nba", "contested", "win", 0.5), self.mk("e", "nba", "contested", "loss", -1.0, "total"),
+                self.mk("f", "cbb", "thin", "win", 0.5), self.mk("g", "nfl", "mixed", "win", 0.9), self.mk("h", "nba", "none", "win", 1.0),
+                self.mk("i", "cfb", "contested", "win", 0.9), self.mk("j", "cfb", "contested", "loss", -1.0)]
+
+    def test_hand_arithmetic_per_tier(self):
+        d = TR.build(self.plays(), 1, "x")
+        t = d["sports"]["nba"]["tiers"]
+        # clear: sizes 1.5 each. win 0.8 -> +1.2, loss -1 -> -1.5, push 0. staked 4.5, units -0.3, roi -0.0667
+        self.assertEqual(t["clear"]["all"]["shadow"], {"units_staked": 4.5, "units": -0.3, "roi": -0.0667})
+        self.assertEqual((t["clear"]["all"]["units"], t["clear"]["all"]["n"]), (-0.2, 3))           # the flat record beside it is unchanged
+        # contested: sizes 0.5. win 0.5 -> +0.25, loss -1 -> -0.5. staked 1.0, units -0.25, roi -0.25
+        self.assertEqual(t["contested"]["all"]["shadow"], {"units_staked": 1.0, "units": -0.25, "roi": -0.25})
+        self.assertEqual(d["sports"]["cbb"]["tiers"]["thin"]["all"]["shadow"], {"units_staked": 0.5, "units": 0.25, "roi": 0.5})   # thin 0.5u win at 0.5
+        self.assertEqual(d["sports"]["nfl"]["tiers"]["mixed"]["all"]["shadow"], {"units_staked": 1.0, "units": 0.9, "roi": 0.9})   # mixed 1u
+
+    def test_a_play_with_no_size_is_left_out_not_staked_at_1u(self):
+        self.assertEqual(TR.shadow_cell([self.mk("u", "mlb", "clear", "win", 0.9)], "clear"), {"units_staked": 0, "units": 0, "roi": None})
+        self.assertEqual(TR.shadow_cell([self.mk("u", "nba", "clear", "win", 0.9), self.mk("v", "mlb", "clear", "loss", -1.0)], "clear"),
+                         {"units_staked": 1.5, "units": 1.35, "roi": 0.9})
+
+    def test_push_stakes_and_returns_zero(self):
+        d = TR.build([self.mk("p", "nba", "clear", "push", 0.0)], 1, "x")["sports"]["nba"]["tiers"]["clear"]["all"]
+        self.assertEqual((d["n"], d["p"], d["roi"]), (1, 1, 0.0))
+        self.assertEqual(d["shadow"], {"units_staked": 1.5, "units": 0, "roi": 0.0})
+
+    def test_zero_stake_tier_gives_roi_none_not_zero(self):
+        d = TR.build(self.plays(), 1, "x")
+        c = d["sports"]["cfb"]["tiers"]["contested"]["all"]
+        self.assertEqual((c["n"], c["units"]), (2, -0.1))                                          # CFB flat reference unchanged
+        self.assertEqual(c["shadow"], {"units_staked": 0, "units": 0, "roi": None})
+        e = d["sports"]["nba"]["tiers"]["thin"]["all"]
+        self.assertEqual((e["n"], e["shadow"]), (0, {"units_staked": 0, "units": 0, "roi": None}))   # no plays at all: also null, never 0
+        self.assertIsNone(e["roi"])
+
+    def test_none_bucket_has_shadow_null_and_never_a_size(self):
+        d = TR.build(self.plays(), 1, "x")
+        n = d["sports"]["nba"]["tiers"]["none"]
+        for b in ("all", "in_sample", "forward", "since_nov16"):
+            self.assertIsNone(n[b]["shadow"], b)
+        self.assertIsNone(n["by_market"]["ml"]["shadow"])
+        self.assertEqual(n["all"]["units"], 1.0)                                                   # its flat record is still there
+
+    def test_all_pools_nba_nfl_cbb_with_each_play_at_its_own_size(self):
+        d = TR.build(self.plays(), 1, "x")["all"]["tiers"]
+        self.assertEqual(d["contested"]["all"]["shadow"], {"units_staked": 1.0, "units": -0.25, "roi": -0.25})   # CFB contested is not pooled
+        self.assertEqual(d["clear"]["all"]["shadow"]["units_staked"], 4.5)
+
+    def test_every_bucket_and_market_carries_it(self):
+        ps = self.plays()
+        lg = {"a": {"key": "a", "cut": self.FIRST - 100, "tier": "clear"}, "b": {"key": "b", "cut": self.FIRST - 100, "tier": "clear"}}
+        t = TR.build(ps, 1, "x", lg)["sports"]["nba"]["tiers"]["clear"]
+        self.assertEqual(t["forward"]["shadow"], {"units_staked": 3.0, "units": -0.3, "roi": -0.1})      # a win 1.2 + b loss -1.5
+        self.assertEqual(t["by_market"]["ml"]["shadow"], {"units_staked": 3.0, "units": 1.2, "roi": 0.4})  # a (win) and c (push)
+        self.assertEqual(t["by_market"]["spread"]["shadow"], {"units_staked": 1.5, "units": -1.5, "roi": -1.0})
+        self.assertEqual(t["by_market"]["total"]["shadow"], {"units_staked": 0, "units": 0, "roi": None})
+        self.assertEqual(t["in_sample"]["shadow"]["units_staked"], 0)                              # the log's first cut is before every play: none in sample
+        self.assertEqual(t["since_nov16"]["shadow"]["units_staked"], 4.5)
+
+    def test_the_shadow_uses_the_logged_tier_for_a_forward_play(self):
+        ps = [self.mk("z", "nba", "clear", "win", 1.0)]
+        t = TR.build(ps, 1, "x", {"z": {"key": "z", "cut": self.FIRST - 100, "tier": "thin"}})["sports"]["nba"]["tiers"]
+        self.assertEqual(t["thin"]["forward"]["shadow"], {"units_staked": 0.5, "units": 0.5, "roi": 1.0})
+        self.assertEqual(t["clear"]["forward"]["shadow"], {"units_staked": 0, "units": 0, "roi": None})
+
+    def test_header_names_the_rule_and_the_file_stays_small(self):
+        d = TR.build(self.plays(), 1, "x")
+        self.assertEqual(d["shadow_rule"], "v2s-1")
+        self.assertIn("not fitted to results", d["shadow_note"])
+        self.assertLess(len(json.dumps(d, separators=(",", ":"))), 25_000)
+
+
+class HistoryShadow(unittest.TestCase):
+    def play(self, sp, tier, res, flat, key=None):
+        return {"key": key or f"{sp}{tier}{flat}", "sport": sp, "group": "ml", "cut": CUT, "gst": CUT + 900, "graded_at": CUT + 4000, "res": res, "flat": flat,
+                "tier": tier, "why": None, "src": "derived", "facts": {}, "ladder": 1, "clv": None}
+
+    def test_shadow_stats_by_hand_and_the_unsized_are_left_out(self):
+        ps = [self.play("nba", "clear", "win", 0.8, "1"), self.play("nba", "contested", "loss", -1.0, "2"), self.play("nba", "none", "win", 1.0, "3"),
+              self.play("cfb", "thin", "win", 0.9, "4")]
+        nba = TH.shadow_stats([p for p in ps if p["sport"] == "nba"])
+        self.assertEqual((nba["n"], nba["n_all"], nba["unsized"], nba["staked"], nba["units"], nba["roi"]), (2, 3, 1, 2.0, 0.7, 35.0))   # 1.2 - 0.5 on 2.0u
+        self.assertIsNotNone(nba["se"])
+        cfbnone = TH.shadow_stats([self.play("cfb", "none", "win", 1.0, "5")])
+        self.assertEqual((cfbnone["unsized"], cfbnone["n"], cfbnone["roi"]), (1, 0, None))                       # no tier means no size in every sport, CFB included
+        cfb = TH.shadow_stats([ps[3]])
+        self.assertEqual((cfb["n"], cfb["staked"], cfb["units"], cfb["roi"], cfb["se"]), (0, 0, 0, None, None))   # CFB stakes nothing: roi None, not 0
+        self.assertEqual(TH.shadow_stats([])["roi"], None)
+
+    def test_compute_puts_flat_and_shadow_side_by_side_and_flags_improvement_with_n(self):
+        ps = [self.play("nba", "clear", "win", 0.8, "1"), self.play("nba", "contested", "loss", -1.0, "2"), self.play("nfl", "contested", "loss", -1.0, "3"),
+              self.play("nfl", "clear", "loss", -1.0, "4")]
+        out = TH.compute(ps)
+        sh = out["shadow"]
+        self.assertEqual((sh["rule"], sh["sizes"]["clear"], sh["cfb"]), ("v2s-1", 1.5, 0))
+        self.assertEqual((out["tiers"]["nba"]["all"]["units"], out["tiers"]["nba"]["all"]["roi"]), (-0.2, -10.0))       # flat: 0.8 - 1.0 on 2u
+        self.assertEqual((sh["tiers"]["nba"]["all"]["units"], sh["tiers"]["nba"]["all"]["roi"], sh["tiers"]["nba"]["all"]["staked"]), (0.7, 35.0, 2.0))
+        self.assertEqual(sh["tiers"]["nba"]["clear"]["roi"], out["tiers"]["nba"]["clear"]["roi"])                       # one size per tier: same ROI
+        fl = {f["slice"]: f for f in sh["flagged"]}
+        self.assertEqual(set(fl), {"NBA all derivable plays", "Headline (NBA+NFL+CBB) derivable plays"})                                    # only mixed-size slices move
+        self.assertEqual((fl["NBA all derivable plays"]["n"], fl["NBA all derivable plays"]["small_sample"], fl["NBA all derivable plays"]["flat_roi"],
+                          fl["NBA all derivable plays"]["shadow_roi"]), (2, True, -10.0, 35.0))
+        h = sh["headline"]["all"]                                                                                       # nba+nfl: 1.2 - .5 - .5 - 1.5 on 4.0u
+        self.assertEqual((h["staked"], h["units"], h["roi"]), (4.0, -1.3, -32.5))
+        self.assertEqual(sh["headline"]["flat_on_derived"]["n"], 4)
+
+    def test_the_comparison_uses_the_same_plays_not_the_not_derivable_ones(self):
+        ps = [self.play("nba", "contested", "win", 0.5, "1"), self.play("nba", "contested", "loss", -1.0, "2"), self.play("nba", "none", "loss", -1.0, "3")]
+        out = TH.compute(ps)
+        sh = out["shadow"]
+        self.assertEqual((out["tiers"]["nba"]["all"]["n"], out["tiers"]["nba"]["all"]["units"]), (3, -1.5))             # the flat record with the not derivable play
+        self.assertEqual((sh["flat_derived"]["nba"]["n"], sh["flat_derived"]["nba"]["units"]), (2, -0.5))               # the plays the shadow sizes
+        self.assertEqual(sh["tiers"]["nba"]["all"]["roi"], sh["flat_derived"]["nba"]["roi"])                           # both -25.0: nothing improved
+        self.assertEqual(sh["flagged"], [])                                                                             # dropping the loser is not an improvement
+        self.assertEqual((sh["headline"]["flat_on_derived"]["n"], sh["headline"]["flat_on_derived"]["units"]), (2, -0.5))   # the headline's flat basis leaves it out too
+        self.assertEqual((sh["tiers"]["nba"]["none"]["unsized"], sh["tiers"]["nba"]["none"]["n"]), (1, 0))
+
+    def test_the_report_prints_the_overall_line_the_caveat_and_the_flag_section(self):
+        buf = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            out = TH.compute([self.play("nba", "clear", "win", 0.8, "1"), self.play("nba", "contested", "loss", -1.0, "2"), self.play("nba", "none", "win", 1.0, "3")])
+        with contextlib.redirect_stdout(buf):
+            TH.print_shadow(out)
+        text = buf.getvalue()
+        for needle in ("TIER-SCALED SIZE SHADOW v2s-1", "NOT fitted to results", "OVERALL NBA+NFL+CBB", "flat 1u, every play", "derivable plays only",
+                       "n=300", "IMPROVES UNDER THE SHADOW", "NBA all derivable plays (n=2)  [small sample]", "1 not derivable"):
+            self.assertIn(needle, text)
 
 
 class NoEmDash(unittest.TestCase):

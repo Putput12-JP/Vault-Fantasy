@@ -127,3 +127,29 @@ bottleneck is the No wallet against group, not the total. NFL has 33 plays over 
 
 Whether to keep or remove the flat 1u on Contested plays (D-P3 of the plays spec), Polymarket ask pricing (needs a stored ask first, D-P1), the
 public split (context only, not a tier input, no record), and the account tiers of the wallets file. The tier changes none of the shown sizes.
+
+## Shadow size v2s-1
+
+Added 2026-11-23 by the user's decision, still **PROPOSED** with the rest of this file. The flat 1u was an MVP, so a second sizing rule runs **beside** it:
+**v2s-1** sizes a play by its evidence tier: **Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, CFB 0**, and a play with no derivable tier gets no shadow
+size (null, never 0). The values are an **ordering by evidence, not fitted to results**, and they are frozen in code (`SHADOW` in
+`scripts/sharps_v2/plays_v2.py`) at the registering commit. A different value is a new rule id (v2s-2) and a new registration.
+
+- **It changes nothing shown.** The page keeps the flat 1u on NBA, NFL and CBB and the "untested rule" label; `shown_units`, the ladder, `sf_rungs`, the
+  gates and the locks do not read it; it never feeds Top Reads, SM_GATE or an agree total. Passing this test only lets the user *consider* showing a
+  tier-scaled size, as a separate decision.
+- **Logged forward.** Each new `v2_tier` log row carries `shadow_units` and `shadow_rule` next to `shown_units`. The log is append-only, so older rows
+  without them stay as written and readers treat a missing key as "not logged", never as 0.
+- **Secondary metric only:** the shadow's units and ROI against the flat 1u on the same plays (shadow units = each play's flat result at its own stored
+  price times its size; staked = sum of sizes; ROI = units / staked; a push is staked and returns 0), per sport and pooled over NBA, NFL and CBB, flat
+  compared on the plays the shadow sizes (not-derivable plays are not sized). Interval: 95% percentile bootstrap, 10,000 resamples, seed 20261111,
+  resampling plays. Reported with the CFB read (no size) apart.
+- **Read only at the final read date** of each sport (the table above). No verdict before then: monthly interim reads are report-only and cannot pass or
+  fail the shadow, and repeated looks do not add up to one.
+- **Kill rule, written in advance:** at the final read, with **n >= 300** sized plays in the pooled read, drop the shadow if the interval of its ROI lies
+  **below the flat ROI's interval** (the upper bound of the shadow's ROI is below the lower bound of the flat ROI on the same plays). Below n=300 the read is
+  Underpowered: neither kept as better nor dropped, and the read says by how much it was short. A standard error of an ROI is about 5.8 points at n=300, so
+  an Underpowered ending is the expected one this season, and it is said here in advance.
+- **In-sample record (not evidence):** on the Nov 23 history the headline derivable plays were flat +4.91u on 90u (+5.5%) against shadow +3.15u on 46.5u
+  (+6.8%), and 85 of those 90 plays are Contested (`docs/side-card-record.md`, "Tier-scaled size shadow v2s-1 (2026-11-23)"). A better-looking slice found
+  along the way is flagged for close monitoring with its n and is never promoted on the same data.

@@ -238,3 +238,70 @@ in-sample, none promoted, none a signal; the list is the output of `tier_history
 | Headline not derivable (Pinnacle CLV +0.21 pts) | | 5, small sample |
 
 The tiers do not separate on these samples: Contested +9.1% at se 9.8 against not derivable +13.1% at se 13.7.
+
+
+## Tier-scaled size shadow v2s-1 (2026-11-23)
+
+By the user's decision of 2026-11-23, the flat 1u was an MVP. A second rule, **v2s-1**, sizes each play by its V2 evidence tier: **Clear 1.5u, Mixed 1u,
+Thin 0.5u, Contested 0.5u, CFB nothing**, and a play whose tier is not derivable gets **no shadow size** (null, never 0). It runs **beside** the flat
+1u and changes nothing the page shows: the shown size is still a flat 1u on NBA, NFL and CBB with the "untested rule" label, the ladder, `sf_rungs`, the
+gates and the locks are untouched, and the shadow never feeds Top Reads, SM_GATE or an agree total. The five values are an **ordering by evidence, not
+fitted to results**: nobody looked at a result to pick them. The record below is **in-sample** (the tier rule v2t-1 was written after these results, so
+the tiers are derived after the fact) and each play's tier is re-derived point in time from its own card at its cut, as before. Shadow units are each
+play's flat result (the unit result at its own stored price, a push 0) times its shadow size; units staked is the sum of the sizes (a push is staked and
+returns 0); ROI is units over staked. Printed by `python3 -I scripts/sharps_v2/tier_history.py` and written to `tier_record.json` (`shadow` in every cell).
+
+Data: `pm-holders-data` at commit `b5940c258ee7`, 205 graded shown plays (sf, variant all), 3 voided left out.
+
+| Slice | Flat 1u (the shown size) | Shadow v2s-1 (units on units staked, ROI, se) |
+|---|---|---|
+| NBA, every play (flat only) | 34-24, +0.10u, +0.2%, n=58 | |
+| NBA, derivable plays | 30-20, +0.96u, +1.9%, n=50 | +0.48u on 25u, +1.9%, se 12.6, n=50 |
+| NBA, Contested | 30-20, +0.96u, +1.9%, n=50 | +0.48u on 25u, +1.9%, se 12.6, n=50 |
+| NBA, Not derivable | 4-4, -0.86u, -10.8%, n=8 | no stake (8 not derivable) |
+| NFL, every play (flat only) | 22-11, +7.88u, +23.9%, n=33 | |
+| NFL, derivable plays | 19-11, +4.89u, +16.3%, n=30 | +2.45u on 15u, +16.3%, se 16.7, n=30 |
+| NFL, Contested | 19-11, +4.89u, +16.3%, n=30 | +2.45u on 15u, +16.3%, se 16.7, n=30 |
+| NFL, Not derivable | 3-0, +2.99u, +99.7%, n=3 | no stake (3 not derivable) |
+| CBB, every play (flat only) | 29-24, +4.00u, +7.5%, n=53 | |
+| CBB, derivable plays | 5-5, -0.94u, -9.4%, n=10 | +0.23u on 6.5u, +3.5%, se 36.9, n=10 |
+| CBB, Clear | 1-0, +1.20u, +119.8%, n=1 | +1.80u on 1.5u, +119.8%, n=1 |
+| CBB, Mixed | 0-1, -1.00u, -100.0%, n=1 | -1.00u on 1u, -100.0%, n=1 |
+| CBB, Thin | 0-3, -3.00u, -100.0%, n=3 | -1.50u on 1.5u, -100.0%, se 0.0, n=3 |
+| CBB, Contested | 4-1, +1.86u, +37.3%, n=5 | +0.93u on 2.5u, +37.3%, se 33.7, n=5 |
+| CBB, Not derivable | 24-19, +4.94u, +11.5%, n=43 | no stake (43 not derivable) |
+| CFB (no size shown), every play (flat only) | 29-32, -9.33u, -15.3%, n=61 | |
+| CFB (no size shown), derivable plays | 21-27, -10.72u, -22.3%, n=48 | no stake (13 not derivable) |
+| CFB (no size shown), Mixed | 4-9, -5.27u, -40.5%, n=13 | no stake |
+| CFB (no size shown), Thin | 9-5, +2.53u, +18.0%, n=14 | no stake |
+| CFB (no size shown), Contested | 8-13, -7.98u, -38.0%, n=21 | no stake |
+| CFB (no size shown), Not derivable | 8-5, +1.39u, +10.7%, n=13 | no stake (13 not derivable) |
+| **Headline NBA+NFL+CBB**, every play (flat only) | 85-59, +11.98u, +8.3%, n=144 | |
+| **Headline**, derivable plays | 54-36, +4.91u, +5.5%, n=90 | +3.15u on 46.5u, +6.8%, se 10.1, n=90 |
+| Headline, Clear | 1-0, +1.20u, +119.8%, n=1 | +1.80u on 1.5u, +119.8%, n=1 |
+| Headline, Mixed | 0-1, -1.00u, -100.0%, n=1 | -1.00u on 1u, -100.0%, n=1 |
+| Headline, Thin | 0-3, -3.00u, -100.0%, n=3 | -1.50u on 1.5u, -100.0%, se 0.0, n=3 |
+| Headline, Contested | 53-32, +7.72u, +9.1%, n=85 | +3.86u on 42.5u, +9.1%, se 9.8, n=85 |
+| Headline, Not derivable | 31-23, +7.07u, +13.1%, n=54 | no stake (54 not derivable) |
+
+How to read it, plainly:
+
+- **Per-tier ROI is the same under both rules** inside one sport, because every play of a tier gets one size. The shadow changes the units and the money
+  staked there, not the percentage. Only a slice that mixes tiers (a sport's derivable plays, the headline) can differ in ROI.
+- **The shadow does not stake the 54 not derivable plays** (an old-card limit: no price check was possible at the cut), and those were the best flat
+  slice (31-23, +7.07u). So the honest same-plays comparison is the **derivable** rows: headline flat **+4.91u on 90u, +5.5%** against shadow **+3.15u on
+  46.5u, +6.8%**. The shadow stakes about half as much and earns a slightly higher ROI, a gap of 1.3 points against a standard error near 10.
+- **85 of the 90 derivable headline plays are Contested** (0.5u), so today the shadow is mostly a half-size flat bet on Contested plays. Clear, Mixed and
+  Thin hold 5 plays in total (n=1, 1 and 3). The 1.5u on Clear rests on one play.
+- **Standard error:** a standard error of an ROI is about 5.8 points at n=300, so a sport with n under 300 (NBA 50, NFL 30, CBB 10 derivable) cannot read an
+  edge, and the headline's n=90 reads none either (se 10.1). Neither rule is shown to beat the other. This is a record, not a signal.
+
+**Improves under the shadow, flagged for close monitoring** (shadow ROI above the flat ROI of the same plays, with n; in-sample, none promoted):
+
+| Slice | Flat | Shadow | n |
+|---|---|---|---|
+| CBB derivable plays | -9.4% (-0.94u) | +3.5% (+0.23u) | 10, small sample |
+| Headline derivable plays | +5.5% (+4.91u) | +6.8% (+3.15u) | 90 |
+
+The CBB line moves mostly because the one Clear play (a win) is sized up and the three Thin plays (all losses) are sized down; that is an ordering applied after
+the fact to ten plays and says nothing about forward results. The proposed forward read is in `docs/sharp-tier-v2-prereg.md`, "Shadow size v2s-1" (still PROPOSED).

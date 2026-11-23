@@ -4,6 +4,8 @@
 Everything here is additive context for the Sharps V2 page. Sharp money is context only (CLAUDE.md): nothing below is a bet signal, a
 size or an input to Top Reads, SM_GATE or an agree total. The only size is the documented side-card exception (flat 1u on NBA, NFL and
 CBB plays, none on CFB, always labelled "untested rule"), and the evidence tier never changes it.
+The tier-scaled size shadow v2s-1 (user decision 2026-11-23, `shadow_units`) sits BESIDE that flat size as a record: it is never shown, never
+read by the page, the ladder, the gates or the locks, and its values are an ordering by evidence, not fitted to results.
 
 Never invent a number: every value is a stored price, a stored quote, a stored count, or arithmetic on stored fields. A value that is
 not stored is None or an absent key, never 0. Point in time: every read is stopped at `asof` (the cut on a frozen card), so a later
@@ -28,6 +30,12 @@ EV_PTS = SIG.EV_ON_PTS                           # 0.3, registered Nov 14 (scrip
 PIN_LINE_EPS = SIG.PIN_LINE_EPS
 US_BOOKS = ("BetMGM", "BetRivers", "DraftKings", "FanDuel", "bet365")
 SHOWN_RULE = "flat 1u on NBA, NFL, CBB; none on CFB; untested rule (since 2026-11-20 4:47 PM CT)"
+# The tier-scaled size SHADOW (user decision 2026-11-23). It runs BESIDE the flat 1u above and never replaces it: the page, `shown_units`, the
+# ladder, sf_rungs, the gates and the locks do not read it. The values are an ordering by evidence tier, NOT fitted to results. One constant, so the
+# code, the docs and the tests read the same source.
+SHADOW = {"rule": "v2s-1", "sizes": {"clear": 1.5, "mixed": 1, "thin": 0.5, "contested": 0.5}, "cfb": 0}
+SHADOW_RULE = SHADOW["rule"]
+SHADOW_SPORTS = SHOWN_SPORTS + ("cfb",)
 SPLIT_SRC = "action_network_consensus"
 SPLIT_KEY = {"ml": "ml", "spread": "sp", "total": "tot"}
 TAPE_KEY = {"ml": "ml", "spread": "sp", "total": "tot"}
@@ -49,6 +57,17 @@ def _n(x):
 def shown_units(sport, side):
     """The size the page shows: flat 1u on NBA, NFL and CBB plays, none on CFB or without a pick. Never reads the tier."""
     return 1 if side and sport in SHOWN_SPORTS else 0
+
+
+def shadow_units(sport, tier):
+    """The rule v2s-1 size of a play: Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, nothing (0) on CFB. None, never 0, when the play has no
+    tier (not derivable at its cut) or the sport is not one the page covers: "no size because no evidence" is not "a size of zero". Pure: reads
+    the sport and the stored tier only, never an outcome, a price or a result. Never feeds Top Reads, SM_GATE or an agree total."""
+    if tier is None or sport not in SHADOW_SPORTS:
+        return None
+    if sport == "cfb":
+        return SHADOW["cfb"]
+    return SHADOW["sizes"].get(tier)
 
 
 def shown_units_at(sport, cut, ladder_units):
@@ -354,12 +373,14 @@ def market_v2(sport, g, m, ws, cls, kf, asof, norms, rows=None, game=None, feed_
     side = sf.get("side") if (sf.get("units") or 0) > 0 and sf.get("side") else None
     sides = side_blocks(sport, m["sides"], ws, names)
     v2 = {"rule": RULE, "side": side, "shown_units": shown_units(sport, side), "shown_rule": SHOWN_RULE, "untested": True,
-          "tier": None, "facts": None, "facts_na": [], "sides": sides, "conflict": None, "lead": None, "past_winners_for": None}
+          "tier": None, "shadow_units": None, "shadow_rule": SHADOW_RULE,
+          "facts": None, "facts_na": [], "sides": sides, "conflict": None, "lead": None, "past_winners_for": None}
     if side:
         f, na = facts(sport, m, side)
         pw = past_winners(ws, cls, side)
         proven_n = (m["sides"][side]["all"].get("proven") or {}).get("wallets") or 0
         v2["tier"], _ = tier_of(f, proven_n, (ev_of(sf) or {}).get("pts"))
+        v2["shadow_units"] = shadow_units(sport, v2["tier"])
         v2["facts"], v2["facts_na"] = f, na
         v2["conflict"] = conflict(sides, side, f["a3"])
         v2["lead"] = dict(pw[0]) if pw else None
@@ -406,7 +427,8 @@ def v2_slate(games):
 def plays_fields():
     """`live.json` v2_plays: the rule version and the names of everything this module adds."""
     return {"rule": RULE, "spec": "docs/sharps-v2-plays-spec.md", "market_keys": list(V2_MARKET_KEYS), "top_keys": list(V2_TOP_KEYS),
-            "shown_rule": SHOWN_RULE, "context_only": True}
+            "shown_rule": SHOWN_RULE, "shadow": {"rule": SHADOW_RULE, "sizes": dict(SHADOW["sizes"]), "cfb": SHADOW["cfb"], "shown": False},
+            "context_only": True}
 
 
 # ---------- shadow log ----------
@@ -430,6 +452,7 @@ def log_row(rel, card, g, now):
     return {"key": f"{rel}|{g}|all|sf", "v": 1, "rule": v2["rule"], "src": "frozen", "logged_at": now, "sport": card["sport"], "ev": card["ev"],
             "gst": card["gst"], "cut": card["cut"], "group": g, "side": side, "line": sf.get("line"), "outs": sf.get("outs"), "cid": sf.get("cid"),
             "price": sf.get("price"), "price_t": sf.get("price_t"), "price_src": v2.get("price_src"), "shown_units": v2["shown_units"],
+            "shadow_units": v2.get("shadow_units", shadow_units(card["sport"], v2["tier"])), "shadow_rule": v2.get("shadow_rule", SHADOW_RULE),
             "ladder_units": sf.get("units"), "tier": v2["tier"], "facts": f, "facts_na": v2.get("facts_na"),
             "ev_pts": ev.get("pts"), "fair": ev.get("fair"), "pin_t": ev.get("t"),
             "past_winner_for": (sides.get(side) or {}).get("past_winner", {}).get("n"),
