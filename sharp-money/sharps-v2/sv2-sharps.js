@@ -407,7 +407,7 @@
       '<span class="sv2-sp-l2">' + ui.chip(SV2.sportName(p.sport), 'muted') + ui.tier(p.tier) + pill + (sameKeys[p.key] ? ui.chip(T.sameTag, 'muted') : '') + '</span>' +
       '<span class="sv2-sp-l3"><span class="sv2-sp-why">' + esc(reason) + '</span><span class="sv2-sp-time">' + esc(timeText(p)) + '</span></span>' +
       '</button>';
-    return '<li class="sv2-sp-item" data-key="' + esc(p.key) + '">' + head +
+    return '<li class="sv2-sp-item" data-key="' + esc(p.key) + '" data-tier="' + esc(p.tier) + '">' + head +
       '<div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc(label) + '">' + (open ? detailHtml(p, !!st.more[p.key]) : '') + '</div></div></li>';
   }
 
