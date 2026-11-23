@@ -38,8 +38,8 @@ console.log('page API');
 ok('sharpsPage is exported', !!P && typeof P.collectPlays === 'function');
 
 console.log('filters');
-eq('cleanFilters keeps valid values', P.cleanFilters({ sport: 'nfl', tier: 'thin', market: 'total', starts: 'hour' }), { sport: 'nfl', tier: 'thin', market: 'total', starts: 'hour' });
-eq('cleanFilters drops invalid values', P.cleanFilters({ sport: 'mlb', tier: 'strong', market: 5, starts: null }), { sport: 'all', tier: 'all', market: 'all', starts: 'all' });
+eq('cleanFilters keeps valid values', P.cleanFilters({ sport: 'nfl', tier: 'thin', market: 'total', starts: 'hour' }), { sport: 'nfl', tier: 'thin', market: 'total', starts: 'hour', moves: 'all' });
+eq('cleanFilters drops invalid values', P.cleanFilters({ sport: 'mlb', tier: 'strong', market: 5, starts: null }), { sport: 'all', tier: 'all', market: 'all', starts: 'all', moves: 'all' });
 eq('cleanFilters keeps cfb (CFB plays show, with no size)', P.cleanFilters({ sport: 'cfb' }).sport, 'cfb');
 eq('cleanFilters on garbage', [P.cleanFilters(null), P.cleanFilters('x')].map((f) => f.sport), ['all', 'all']);
 
@@ -205,6 +205,170 @@ console.log('exec lines (plays-data fields, present only when published)');
   eq('five lines when all are published', lines.length, 5);
   ok('formats', lines[0] === 'Polymarket ask 56c (10:27 AM CT)' && lines[1] === 'Best US book on this line: -118 at FanDuel (10:25 AM CT)' && lines[4] === 'Pinnacle close vs fair: +0.4 pts', lines);
   eq('absent or malformed fields give nothing', P.execLines({ exec: { pm_ask: { px: null }, us_best: {} } }), []);
+}
+
+console.log('flag chips (v2.flags, optional)');
+SV2.sizesOk = () => true;
+const mk = (flags, extra) => ({ game: { ev: 'e1', sport: 'nba', gst: NOW + 7200, cut: NOW + 6300, vault: { away: 'MEM', home: 'CHA', teams: { away: ['Memphis Grizzlies', 'Grizzlies'], home: ['Charlotte Hornets', 'Hornets'] } },
+  markets: { spread: Object.assign({ v2: Object.assign({ side: 'Hornets' }, flags === undefined ? {} : { flags }) }, extra || {}) } }, g: 'spread', sf: { side: 'Hornets', line: -3.5, price: 0.525 }, key: 'e1|spread', sport: 'nba', units: 1, tier: 'mixed', cut: NOW + 6300, facts: { tiered: true } });
+const F = (pin, line, extra) => Object.assign({ rule: 'v2f-1', span_min: 1290, window_min: 1440, pin, line, limit: null }, extra || {});
+const PIN = (state) => ({ state, pts: 2.3, t_a: 1.5, from: 105, to: -129, line: -3.5, rows: 12 });
+const LIN = (state, kind) => ({ kind: kind || 'line', state, t_c: 1, pin: kind === 'price' ? { from: 105, to: -129 } : { from: 22, to: 19 }, books: 6, same_way: 4, by_book: {}, extreme: { book: 'BetMGM', value: 18.5 } });
+eq('absent flags: no chips', P.flagChips(mk(undefined)), []);
+eq('null flags: no chips', P.flagChips(mk(null)), []);
+eq('flags with both null: no chips', P.flagChips(mk(F(null, null))), []);
+eq('quiet draws no chip', P.flagChips(mk(F(PIN('quiet'), LIN('quiet')))), []);
+{
+  const c = P.flagChips(mk(F(PIN('toward'), LIN('away'))));
+  eq('toward A and away C draw two chips', c.map((x) => x.text), ['Pinnacle moved toward this side', 'Market line moved away from this side']);
+  ok('tooltip carries the numbers', c[0].tip.indexOf('Pinnacle +105 to -129') === 0 && c[1].tip.indexOf('Market line +22 to +19') === 0 && c[1].tip.indexOf('4 of 6 books the same way') > 0, c.map((x) => x.tip));
+  const pc = P.flagChips(mk(F(null, LIN('toward', 'price'))));
+  eq('moneyline C reads as the price', pc.map((x) => x.text), ['Market price moved toward this side']);
+  const h = P.chipsHtml(mk(F(PIN('away'), null)));
+  ok('chip html: neutral class, svg arrow, aria text, no tier or win/loss class', /class="sv2-fl"/.test(h) && /<svg/.test(h) && /sv2-sr/.test(h) && !/sv2-chip--(win|loss|price|caution|follow)|sv2-tier/.test(h), h);
+  eq('no chip html when absent', P.chipsHtml(mk(undefined)), '');
+  ok('a flag with no numbers still draws the state without inventing numbers', P.flagChips(mk(F({ state: 'toward' }, null)))[0].tip === 'Pinnacle\'s price, toward this side');
+  ok('garbage flags (string, array) are absent', P.flagsOf(mk('x')) === null && P.flagsOf(mk([1])) === null);
+  eq('movesOf: any direction counts, quiet does not', [P.movesOf(mk(F(PIN('away'), LIN('quiet')))), P.movesOf(mk(undefined))].map((m) => [m.pin, m.line, m.any]), [[true, false, true], [false, false, false]]);
+}
+eq('filters: a play without a Pinnacle move fails the Pinnacle filter', P.passes(mk(F(PIN('quiet'), null)), { sport: 'all', tier: 'all', market: 'all', starts: 'all', moves: 'pin' }, null, null, {}), false);
+eq('filters: a moved play passes it', P.passes(mk(F(PIN('toward'), null)), { sport: 'all', tier: 'all', market: 'all', starts: 'all', moves: 'pin' }, null, null, {}), true);
+eq('filters: moves is a valid value and garbage falls back', [P.cleanFilters({ moves: 'line' }).moves, P.cleanFilters({ moves: 'x' }).moves], ['line', 'all']);
+
+console.log('chart series to points');
+{
+  eq('empty series', P.chartPoints([], 16), []);
+  eq('missing series', P.chartPoints(undefined, 16), []);
+  eq('single point kept', P.chartPoints([[0, -105]], 16), [[0, -105]]);
+  eq('consecutive duplicates dropped, last kept', P.chartPoints([[0, 5], [10, 5], [20, 6], [30, 6], [40, 6]], 16), [[0, 5], [20, 6], [40, 6]]);
+  eq('non-numeric rows dropped and order fixed', P.chartPoints([[20, 2], ['x', 1], [0, 1], [10, null]], 16), [[0, 1], [20, 2]]);
+  const big = []; for (let i = 0; i < 60; i++) big.push([i * 10, i === 17 ? -40 : i === 41 ? 90 : i % 7 === 0 ? 10 : 11 + (i % 2)]);
+  const th = P.chartPoints(big, 12);
+  ok('thinned to at most the cap', th.length <= 12, th.length);
+  ok('first and last kept', th[0][0] === 0 && th[th.length - 1][0] === 590, th);
+  ok('lowest and highest kept', th.some((r) => r[1] === -40) && th.some((r) => r[1] === 90), th);
+  const sx = (x) => x / 10, sy = (y) => 100 - y;
+  const sp = P.stepPath([[0, 10], [100, 20], [200, 5]], sx, sy);
+  eq('step path holds then steps', sp.d, 'M0 90H10V80H20V95');
+  ok('single point is a dot, not a path', P.stepPath([[50, 7]], sx, sy).single === true);
+  eq('no points gives null', P.stepPath([], sx, sy), null);
+  eq('extremes are found', P.extremes([[0, 5], [1, 9], [2, 1], [3, 5]]), { lo: 2, hi: 1 });
+  eq('a flat or tiny series has no extremes', [P.extremes([[0, 5], [1, 5]]), P.extremes([[0, 5]])], [null, null]);
+}
+console.log('series and the text alternative');
+{
+  const ser = { t0: NOW - 40000, unit: 'min', pin_px: [[0, -105], [95, -110], [1230, -129]], lines: { Pinnacle: [[0, 22], [300, 20], [1100, 19]], DraftKings: [[0, 22.5], [1100, 19.5]], BookMaker: [[0, 1], [10, 2]], Circa: [[0, 1], [10, 2]] } };
+  const p = mk(F(PIN('toward'), LIN('toward')), { v2: { side: 'Hornets', flags: F(PIN('toward'), LIN('toward')), series: ser } });
+  const s = P.seriesOf(p);
+  eq('only stored books are kept (never BookMaker or Circa)', Object.keys(s.lines), ['Pinnacle', 'DraftKings']);
+  const t = P.chartTable(s, 'spread');
+  eq('table head', t.head, ['Time', 'Pinnacle price', 'Pinnacle line', 'DraftKings line']);
+  eq('table has a row per change time', t.rows.length, 5);
+  eq('values are held between changes and blank before a series starts', [t.rows[1][1], t.rows[1][2], t.rows[1][3], t.rows[4][1]], ['-110', '+22', '+22.5', '-129']);
+  ok('rows start with a Central time', /CT$/.test(t.rows[0][0]), t.rows[0][0]);
+  const html = P.writeupHtml(p, {});
+  ok('chart is role=img with a label and a hidden table', /role="img" aria-label="Pinnacle&#39;s price for Hornets/.test(html) && /<table class="sv2-sr"><caption>/.test(html), html.length);
+  ok('no BookMaker or Circa anywhere', !/BookMaker|Circa/.test(html));
+  ok('draws in only when asked', /is-draw/.test(P.writeupHtml(p, { draw: true })) && !/is-draw/.test(html));
+  eq('absent series: no chart, no table', /sv2-wu-charts/.test(P.writeupHtml(mk(F(PIN('toward'), LIN('toward'))), {})), false);
+  eq('series with only empty books is absent', P.seriesOf(mk(F(null, null), { v2: { side: 'Hornets', series: { t0: 1, pin_px: [], lines: {} } } })), null);
+}
+
+console.log('money share formatting');
+{
+  eq('limit money: $1.1K to $1.45K, whole dollars under $1,000', [P.limitMoney(1100), P.limitMoney(1450), P.limitMoney(20000), P.limitMoney(504), P.limitMoney(null)], ['$1.1K', '$1.45K', '$20K', '$504', null]);
+  const side = (usd, holders, extra) => Object.assign({ usd, holders, past_winner: { n: 3, usd: 3700 }, losing_record: { n: 2, usd: 504 }, beats: { n: 3, usd: 14900 }, loses: { n: 2, usd: 504 } }, extra || {});
+  const tiered = P.sideRows(side(97900, 54), true);
+  eq('tiered rows', tiered.map((r) => [r.label, r.usd, r.n]), [['Wallets that beat the close', '$14.9K', '3 wallets'], ['Past-winner wallets', '$3.7K', '3 wallets'], ['Wallets that lose to the close', '$504', '2 wallets'], ['All tracked money', '$97.9K', '54 wallets']]);
+  const col = P.sideRows(side(1000, 1), false);
+  eq('college rows say not measured and use the losing record', [col[0].note, col[2].label, col[3].n], ['Not measured in college', 'Wallets with a losing record', '1 wallet']);
+  eq('a missing entry is omitted, never zero', P.sideRows({ usd: 5 }, true).map((r) => r.label), ['Wallets that beat the close'.replace('beat', 'beat')].length ? ['All tracked money'] : []);
+  const base = { v2: { side: 'Hornets', sides: { Grizzlies: side(30000, 14), Hornets: side(20000, 17) } } };
+  const html = P.writeupHtml(mk(F(PIN('toward'), null), base), {});
+  ok('the heavier side gets the neutral ring and the tag, the other does not', (html.match(/sv2-wu-side is-more/g) || []).length === 1 && /Grizzlies<\/span><span class="sv2-chip sv2-chip--ink sv2-wu-mtag">More money/.test(html));
+  ok('panels run away then home, not heavier first', html.indexOf('>Grizzlies<') < html.indexOf('>Hornets<'));
+  ok('no tier class on the money panels', !/sv2-wu-side[^>]*sv2-tier/.test(html));
+  const eqHtml = P.writeupHtml(mk(F(PIN('toward'), null), { v2: { side: 'Hornets', sides: { Grizzlies: side(20000, 14), Hornets: side(20000, 17) } } }), {});
+  ok('equal money: no tag', !/sv2-wu-mtag/.test(eqHtml));
+  eq('no sides: no panels', /Who is on each side/.test(P.writeupHtml(mk(F(PIN('toward'), null)), {})), false);
+  const totalP = mk(F(null, null)); totalP.g = 'total'; totalP.sf = { side: 'Over', line: 221.5, price: 0.5 }; totalP.game.markets.total = { v2: { side: 'Over', sides: { Under: side(9000, 9), Over: side(8000, 9) } } };
+  const th = P.writeupHtml(totalP, {});
+  ok('totals run over then under', th.indexOf('>Over<') < th.indexOf('>Under<'));
+}
+
+console.log('takeaway templates, every branch');
+{
+  const st = [null, 'toward', 'away', 'quiet'];
+  const flagsFor = (A, C, kind) => F(A ? { state: A, from: 105, to: -129 } : null, C ? Object.assign(LIN(C, kind), {}) : null);
+  const money = (ms, mo, n) => ({ mine: { usd: ms, holders: n }, theirs: { usd: mo, holders: n }, other: 'Grizzlies' });
+  const bannedRe = /\b(agree|agreement|proven|elite|lock|locks|locked|go|follow|lean|hot|strong|weak|confidence|guaranteed|edge|sharp pick|best bet)\b/i;
+  let n = 0, bad = [];
+  const seen = {};
+  for (const A of st) for (const C of st) for (const kind of ['line', 'price']) for (const mon of [null, money(30000, 20000, 20), money(20000, 30000, 20), money(10000, 10000, 20), money(300, 200, 2)]) for (const size of [true, false]) for (const gr of [null, { score: '105-101', result: 'won' }]) for (const span of [1290, 75, null]) {
+    const f = flagsFor(A, C, kind); if (span == null) delete f.span_min; else f.span_min = span;
+    const out = P.takeaway({ flags: f, side: 'Hornets', other: 'Grizzlies', g: kind === 'price' ? 'ml' : 'spread', money: mon, size, graded: gr });
+    const txt = out.join(' ');
+    n++;
+    if (/[{}]/.test(txt) || bannedRe.test(txt) || /undefined|null|NaN|0 books/.test(txt) || new RegExp(String.fromCharCode(8212) + '|' + String.fromCharCode(8211)).test(txt)) bad.push(txt);
+    seen[A + '/' + C + (kind === 'price' ? 'p' : '')] = out[0];
+    if (out[out.length - 1].indexOf('These are descriptions of what the market did.') !== 0) bad.push('last sentence: ' + txt);
+    if (gr && out[out.length - 2].indexOf('Final 105-101: the play won.') !== 0) bad.push('graded: ' + txt);
+  }
+  ok('every combination renders, no unfilled slot, no banned word, S4 last (' + n + ' cases)', bad.length === 0, bad.slice(0, 3));
+  const T1 = (A, C, o) => P.takeaway(Object.assign({ flags: flagsFor(A, C), side: 'Hornets', other: 'Grizzlies', g: 'spread', money: null, size: true }, o || {}))[0];
+  eq('toward and toward', T1('toward', 'toward'), 'In the last 22 hours Pinnacle\'s price and the market\'s number both moved toward Hornets.');
+  eq('away and away appends the unchanged-size note', T1('away', 'away'), 'In the last 22 hours Pinnacle\'s price and the market\'s number both moved against Hornets. The play and its size are unchanged by this.');
+  eq('away and away, no size shown: no note', T1('away', 'away', { size: false }), 'In the last 22 hours Pinnacle\'s price and the market\'s number both moved against Hornets.');
+  eq('toward and away', T1('toward', 'away'), 'Pinnacle\'s price moved toward Hornets while the market\'s number moved against it, so the market did not settle on one direction. The play and its size are unchanged by this.');
+  eq('away and toward', T1('away', 'toward'), 'The market\'s number moved toward Hornets while Pinnacle\'s price moved against it, so the market did not settle on one direction. The play and its size are unchanged by this.');
+  eq('toward and quiet', T1('toward', 'quiet'), 'Pinnacle\'s price moved toward Hornets (+105 to -129); the market\'s number held.');
+  eq('toward and null', T1('toward', null), 'Pinnacle\'s price moved toward Hornets (+105 to -129); there were not enough book readings to say where the number went.');
+  eq('away and quiet', T1('away', 'quiet'), 'Pinnacle\'s price moved against Hornets (+105 to -129); the market\'s number held. The play and its size are unchanged by this.');
+  eq('away and null', T1('away', null), 'Pinnacle\'s price moved against Hornets (+105 to -129); there were not enough book readings to say where the number went. The play and its size are unchanged by this.');
+  eq('quiet and toward', T1('quiet', 'toward'), 'The market moved the number toward Hornets (+22 to +19 at Pinnacle, 4 of 6 books the same way); Pinnacle\'s price at that number held.');
+  eq('null and toward', T1(null, 'toward'), 'The market moved the number toward Hornets (+22 to +19 at Pinnacle, 4 of 6 books the same way).');
+  eq('quiet and away', T1('quiet', 'away'), 'The market moved the number against Hornets (+22 to +19 at Pinnacle, 4 of 6 books the same way); Pinnacle\'s price at that number held. The play and its size are unchanged by this.');
+  eq('null and away', T1(null, 'away'), 'The market moved the number against Hornets (+22 to +19 at Pinnacle, 4 of 6 books the same way). The play and its size are unchanged by this.');
+  eq('quiet and quiet', T1('quiet', 'quiet'), 'The market barely moved on this spread in the last 22 hours.');
+  eq('quiet and null', T1('quiet', null), 'Pinnacle\'s price barely moved; there were not enough book readings to say where the number went.');
+  eq('null and quiet', T1(null, 'quiet'), 'The number barely moved at the books; Pinnacle\'s price history was not readable.');
+  eq('null and null', T1(null, null), 'No market history is stored for this game, so there is nothing to say about where the line went.');
+  eq('moneyline reads price, and Pinnacle\'s own price held', P.takeaway({ flags: flagsFor('quiet', 'toward', 'price'), side: 'Hornets', g: 'ml', size: false })[0], 'The market moved the price toward Hornets (+105 to -129 at Pinnacle, 4 of 6 books the same way); Pinnacle\'s own price held.');
+  eq('a short span says since the first reading', P.takeaway({ flags: Object.assign(flagsFor('toward', 'toward'), { span_min: 75 }), side: 'Hornets', g: 'spread', size: true })[0], 'Since the first stored reading 75 minutes earlier, Pinnacle\'s price and the market\'s number both moved toward Hornets.');
+  eq('absent flags: no S1 at all (never faked)', P.takeaway({ flags: null, side: 'Hornets', g: 'spread', money: null, size: true }).length, 1);
+  const s2 = (m, A, C) => P.takeaway({ flags: flagsFor(A || 'quiet', C || 'quiet'), side: 'Hornets', other: 'Grizzlies', g: 'spread', money: m, size: true });
+  eq('S2 side heavier', s2(money(30000, 20000, 20))[1], 'More of the tracked Polymarket money is on Hornets ($30K against $20K).');
+  eq('S2 other heavier', s2(money(20000, 30000, 20))[1], 'More of the tracked Polymarket money is on Grizzlies ($30K against $20K).');
+  eq('S2 close money is written in full when the short forms collide', s2({ mine: { usd: 120400, holders: 20 }, theirs: { usd: 119800, holders: 20 }, other: 'Grizzlies' })[1], 'More of the tracked Polymarket money is on Hornets ($120,400 against $119,800).');
+  eq('S2 even', s2(money(10000, 10000, 20))[1], 'The tracked Polymarket money is split evenly ($10K each).');
+  eq('S2 small sample (wallets)', s2(money(900000, 800000, 2))[1], 'Only 4 tracked wallets ($1.7M) hold this market, too few to describe.');
+  eq('S2 small sample (dollars)', s2(money(300, 200, 20))[1], 'Only 40 tracked wallets ($500) hold this market, too few to describe.');
+  eq('S3 when the heavier money is the other side and the market moved toward the play', s2(money(20000, 30000, 20), 'toward')[2], 'The tracked money and the market\'s moves point in different directions here.');
+  eq('S3 when the heavier money is the play and the market moved against it', s2(money(30000, 20000, 20), 'quiet', 'away')[2].indexOf('The tracked money and the market\'s moves'), 0);
+  ok('no S3 when they point the same way, or the sample is small', s2(money(30000, 20000, 20), 'toward').length === 3 && s2(money(300, 200, 2), 'toward').length === 3);
+  ok('the closer is never advice', P.takeaway({ flags: null, side: 'x', g: 'ml', size: false }).pop() === 'These are descriptions of what the market did. Past moves like these have not paid off in Vault\'s records, so this is context, not a reason to bet.');
+}
+
+console.log('the card');
+{
+  const p = mk(F(PIN('toward'), LIN('toward'), { limit: { from: 1100, to: 1450, pct: 31.8, rising: true, rows: 14 } }), { v2: { side: 'Hornets', exec: { us_best: { book: 'BetMGM', odds: -102 } }, vs_fair: { pts: 0.4, fair: 0.478, line: -3.5, why: null }, flags: F(PIN('toward'), LIN('toward'), { limit: { from: 1100, to: 1450, rows: 14 } }) } });
+  const h = P.writeupHtml(p, { share: { nba: 0.99 } });
+  ok('eyebrow, title, date pill, four tiles', /Sharp Money<\/span>.*Play breakdown<\/span>.*NBA<\/span>/.test(h) && /The read on Hornets -3.5/.test(h) && /sv2-wu-date/.test(h) && (h.match(/sv2-wu-tile"/g) || []).length === 4);
+  ok('shared card classes', /class="sv2-card sv2-acc-ink sv2-wu"/.test(h) && /sv2-card-inset sv2-wu-tile/.test(h));
+  ok('limit fact line is plain text, not a chip', /Pinnacle limit \$1.1K to \$1.45K in the last 22 hours\. Pinnacle raises limits toward start on almost every game \(99% of NBA markets this season\)\./.test(h) && !/data-flag="limit"/.test(h));
+  ok('chips name the side and carry text, aria and no tier colour', /Pinnacle&#39;s price moved toward Hornets/.test(h) && /The market moved the number toward Hornets \(4 of 6 books\)/.test(h));
+  ok('phone: sections closed; desktop: open', !/<details[^>]* open/.test(P.writeupHtml(p, { phone: true })) && /<details class="sv2-wu-sec" open/.test(h));
+  const noFlags = P.writeupHtml(mk(undefined), {});
+  ok('absent flags and series: no section 2, no chips, still has tiles and takeaway', !/Where the line went/.test(noFlags) && !/data-flag=/.test(noFlags) && /The takeaway/.test(noFlags) && (noFlags.match(/sv2-wu-tile"/g) || []).length === 4);
+  ok('limit fact line absent without flags', !/Pinnacle limit/.test(noFlags));
+  eq('limit null prints the stored-none line', P.limitLine(F(PIN('quiet'), null), null, 'nba'), 'No Pinnacle limit stored for this game.');
+  eq('one reading', P.limitLine(F(null, null, { limit: { from: 3000, to: 3000, rows: 1 } }), null, 'nba'), 'Pinnacle limit $3K (one reading).');
+  ok('no share sentence when the share is not stored', P.limitLine(F(null, null, { limit: { from: 3000, to: 20000, rows: 3 } }), null, 'nba').indexOf('raises limits') < 0);
+  ok('fair tile blank when absent', /Line and fair<\/p><p class="sv2-wu-v sv2-num"><\/p>/.test(noFlags));
+  ok('size pill and label untouched, CFB says No size', /untested rule/.test(h) && /No size on CFB/.test(P.writeupHtml(Object.assign(mk(undefined), { sport: 'cfb', units: 0 }), {})));
+  ok('card text has no banned word or em dash', !/\b(agree|proven|elite|lock|follow|lean|strong|weak|confidence|edge)\b/i.test(h.replace(/<[^>]+>/g, ' ')) && h.indexOf(String.fromCharCode(8212)) < 0);
+  eq('eyebrow sport names', ['nba', 'nfl', 'cbb', 'cfb'].map(P.eyebrowOf), ['NBA', 'NFL', 'College basketball', 'College football']);
+  eq('date pill is Central', P.dateWords(1795478400), 'MON NOV 23');
 }
 
 console.log('\n' + pass + ' pass, ' + fail + ' fail, ' + skipped + ' skipped');
