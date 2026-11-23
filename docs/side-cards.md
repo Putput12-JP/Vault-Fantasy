@@ -323,15 +323,46 @@ by event and start; same-start games come out in a hash-seed order in both build
 | `splits` | Action Network public split joined by `vault.key`, both sides as stored (live) or the last history row at or before the cut with the other side 100 minus it, marked `comp` (frozen). Absent when the feed has none, never 0. Context only |
 | top `v2_slate`, `v2_plays`, `v2_tier_record` | live only: shown plays by tier, wallets that are past winners on 2 or more shown plays, field list, and the per-tier forward record when `--v2-tier-record` is given |
 
+**Never fails the build.** The V2 block of a market, the quote tape, the log sync and the slate each run inside a guard: on any exception that market
+(or that step) simply has no V2 keys and a `::warning::` line is printed. Malformed tape rows (a short or `null` list) are skipped, never indexed.
+`--now` pins `built` and a live card's V2 reads.
+
 **Shadow log.** `pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl` on `pm-holders-data`: one append-only row per rule pick on each new frozen card (key = the
-graded `sf` row's key), a projection of the card's own stored `v2` block, repaired on the next run if an append was missed. Committed by the existing
-`commit_push("pmdata", "pm_cards", ...)` step.
+graded `sf` row's key), a projection of the card's own stored `v2` block, repaired on the next run if an append was missed. The month is the **Central**
+date of game start. Committed by the existing `commit_push("pmdata", "pm_cards", ...)` step.
 
-**History.** `python3 -I scripts/sharps_v2/tier_history.py` re-derives the tier of every graded shown play from its card at the cut and prints the
-record per tier, the Nov 20 CBB numbers and the close-monitoring list (`docs/side-card-record.md`). In-sample.
+**History.** `python3 -I scripts/sharps_v2/tier_history.py [--ref REF]` re-derives the tier of every graded shown play from its card at the cut and prints
+the commit hash it read, the record per tier, the Nov 20 CBB numbers and the flag list (every improving record, with its n). In-sample. On an old card
+with no price check possible at the cut (the tape did not exist yet) the price facts are unknown and the play is "not derivable", not Thin.
 
-**Size.** The V2 keys add 54 KB to a 839 KB `live.json` (183 games). `scripts/sharps_v2/check_size.py --live live/live.json` fails the publish step over
-250 KB and the last good file stays live.
+**Size.** The V2 keys add 54 KB to a 839 KB `live.json` (183 games). `scripts/sharps_v2/check_size.py --live live/live.json` is **not** a hard gate: over
+250 KB it rewrites `live.json` without the V2 keys (the V1 file), prints a `::warning::` line and exits 0, so the V1 publish is never frozen. Only
+`wallets.json` keeps the hard gate (exit 3).
+
+### `tier_record.json` (beside `live.json` on `pm-cards-live`)
+
+Written by `scripts/sharps_v2/tier_record.py` every run from the frozen cards and the graded rows of the `pm-holders-data` checkout, point in time (a
+play's tier comes from its own card at its cut, never from its result). About 10 KB. A failed build drops the file for that run; the V1 files still
+publish. Context only: a record, not a signal.
+
+```
+{ "built": epoch, "data_ref": "<pm-holders-data commit read>", "rule": "<text>", "units_basis": "flat 1u at the stored price at the cut",
+  "forward_from": 1794808800, "all_sports": ["nba", "nfl", "cbb"],
+  "sports": { "nba|nfl|cfb|cbb": { "tiers": { "clear|mixed|thin|contested|none": {
+        "all":       {"w", "l", "p", "n", "units", "roi"},
+        "forward":   {...}, "in_sample": {...},
+        "by_market": {"ml": {...}, "spread": {...}, "total": {...}} } } } },
+  "all": { "tiers": { ...same shape... } } }
+```
+
+- `units` and `roi` are **flat 1u** at the stored price at the cut (a win pays 1 / price - 1, a loss -1, a push 0), not the size the page shows. `roi` =
+  units / n as a fraction (0.081 = 8.1%) and is `null` when n is 0, never 0. A tier with no plays is present with zeros.
+- `forward` = cut at or after 2026-11-16 12:00 AM Central (`forward_from`); `in_sample` = before it. `all` (inside a tier) is both.
+- `none` = not derivable at the cut. It is never folded into a tier.
+- `by_market` splits a tier's `all` plays by market group.
+- Top-level `all` pools NBA, NFL and CBB (the sports that show a size, the page headline). CFB shows no size, so it appears under `sports.cfb` as a
+  flat-1u reference only and is not pooled.
+- Voided plays are left out. Variant `all` only.
 
 **Not built yet (forward only, said explicitly):** `exec.pm_ask` (needs `bestBid` and `bestAsk` in the holders scan, spec D-P1); the grader's
 `pinclose` rows, per-tier `cards_record.json` sections and `v2_tier_record.json` (the builder already reads that file when present); a one-time splits

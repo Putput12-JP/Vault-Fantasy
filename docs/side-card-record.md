@@ -155,7 +155,7 @@ chosen after seeing the results, so it is in-sample and flagged for close monito
 
 At the user's request the page shows CBB plays again at a flat 1u with "untested rule", against the Nov 18 audit's read of CBB (-8.0% forward
 on its signal). Nothing stored changes; the headline now adds CBB over all history. This entry was missing until 2026-11-23. Every number is
-re-measured from the graded rows on `pm-holders-data` by `scripts/sharps_v2/tier_history.py` (flat 1u at the stored price at the cut,
+re-measured from the graded rows on `pm-holders-data` at commit `dec770c0e7bb1292f7b2bc09d754ae6680b76387` by `scripts/sharps_v2/tier_history.py` (flat 1u at the stored price at the cut,
 variant `all`, voided plays left out).
 
 | Line | Before (NBA + NFL) | After (NBA + NFL + CBB) |
@@ -181,6 +181,15 @@ shows (+11.98u) is the current rule applied to all history, not what a reader fo
 play from its own card at its cut (nothing from the outcome) and prints the record per tier. The tiers are in-sample (the rule was written after
 these results) and are not a signal. Forward test: `docs/sharp-tier-v2-prereg.md` (PROPOSED).
 
+**Data read:** `origin/pm-holders-data` at commit `dec770c0e7bb1292f7b2bc09d754ae6680b76387` (Nov 23, 11:26 AM CT). Every number in this entry is as of that
+commit and is reproduced by `python3 -I scripts/sharps_v2/tier_history.py --ref <commit>`, which prints the hash it read.
+
+**Old-card rule (added after review).** On a card from before the tape existed for its game, no price check was possible at the cut, so the price facts
+(a4, b2) are *unknown*, not "no price evidence". Those plays are **not derivable**, not Thin. This moved 42 of the 45 CBB Thin plays (and 10 of 24 CFB
+Thin plays) to not derivable. A **forward Thin** play (a card written by the new builder, tier stored on the card at its freeze) is a different group: the live rule counts "no price read" as
+Thin whatever the reason, so forward Thin includes plays with no price check possible (for example a ticket line that is not Pinnacle's main line).
+The two groups must not be read together, and forward Thin will be read on its own record (`tier_record.json` `forward`).
+
 | Old (the record today, no tier) | Record | n |
 |---|---|---|
 | NBA | 34-24, +0.10u, +0.2% | 58 |
@@ -193,16 +202,39 @@ these results) and are not a signal. Forward test: `docs/sharp-tier-v2-prereg.md
 |---|---|---|---|---|---|
 | NBA | 0 | 0 | 0 | 30-20, +0.96u, n=50 | 4-4, -0.86u, n=8 |
 | NFL | 0 | 0 | 0 | 19-11, +4.89u, n=30 | 3-0, +2.99u, n=3 |
-| CBB | 1-0, +1.20u, n=1 | 0-2, -2.00u, n=2 | 24-21, +2.94u, n=45 | 4-1, +1.86u, n=5 | 0 |
-| CFB (no size) | 0 | 6-10, -4.56u, n=16 | 15-9, +3.22u, n=24 | 8-13, -7.98u, n=21 | 0 |
-| Headline | 1-0, +1.20u, n=1 | 0-2, -2.00u, n=2 | 24-21, +2.94u, +6.5%, n=45 | 53-32, +7.72u, +9.1%, n=85 | 7-4, +2.13u, n=11 |
+| CBB | 1-0, +1.20u, n=1 | 0-1, -1.00u, n=1 | 0-3, -3.00u, n=3 | 4-1, +1.86u, n=5 | 24-19, +4.94u, n=43 |
+| CFB (no size) | 0 | 4-9, -5.27u, n=13 | 9-5, +2.53u, n=14 | 8-13, -7.98u, n=21 | 8-5, +1.39u, n=13 |
+| Headline | 1-0, +1.20u, n=1 | 0-1, -1.00u, n=1 | 0-3, -3.00u, n=3 | 53-32, +7.72u, +9.1%, n=85 | 31-23, +7.07u, +13.1%, n=54 |
 
-"Not derivable" means a fact the tier needs was not stored on the card at its cut (the CLV tiers were first stored on cards cut Nov 18, the
-fade rule on cards cut from Nov 19) and no stored fact against the side was already true. It is left empty, never guessed. Pinnacle CLV (no-vig
-close minus the price at the cut, last tape row before kickoff): NBA +0.12 pts (n=47), NFL -0.59 (n=18), CBB -0.26 (n=4), CFB -0.19 (n=23),
-headline -0.09 (n=69).
+"Not derivable" means a fact the tier needs was not stored on the card at its cut (the CLV tiers were first stored on cards cut Nov 18, the fade rule on
+cards cut from Nov 19, and no tape existed yet for the game on many college cards) and no stored fact against the side was already true. It is never
+guessed and never folded into a tier. Pinnacle CLV (no-vig close minus the price at the cut, last tape row before kickoff): NBA +0.12 pts (n=47), NFL
+-0.59 (n=18), CBB -0.26 (n=4), CFB -0.19 (n=23), headline -0.09 (n=69).
 
-**Flagged for close monitoring (a record that improves; all in-sample, none promoted):** NBA Contested 30-20 +0.96u (n=50); NBA Pinnacle CLV +0.12 pts
-(n=47); NFL Contested 19-11 +4.89u (n=30, but Pinnacle CLV -0.59, n=18); CBB Thin 24-21 +2.94u (n=45); CFB Thin 15-9 +3.22u (n=24, no size
-shown); headline Contested 53-32 +7.72u (n=85) and Thin (n=45). The tiers do not separate on these samples: Contested +9.1% at se 9.8 against Thin
-+6.5% at se 15.2.
+**Flagged for close monitoring: every record that improves, with its n** (flat ROI above 0, or mean Pinnacle CLV above 0; "small sample" under n=30; all
+in-sample, none promoted, none a signal; the list is the output of `tier_history.py`, in the same order):
+
+| Slice (metric) | Record | n |
+|---|---|---|
+| NBA all shown plays (flat ROI) | 34-24, +0.10u | 58 |
+| NBA all shown plays (Pinnacle CLV +0.12 pts) | | 47 |
+| NBA Contested (flat ROI) | 30-20, +0.96u | 50 |
+| NBA Contested (Pinnacle CLV +0.11 pts) | | 42 |
+| NBA not derivable (Pinnacle CLV +0.21 pts) | | 5, small sample |
+| NFL all shown plays (flat ROI) | 22-11, +7.88u (Pinnacle CLV -0.59, n=18) | 33 |
+| NFL Contested (flat ROI) | 19-11, +4.89u (Pinnacle CLV -0.59, n=18) | 30 |
+| NFL not derivable (flat ROI) | 3-0, +2.99u | 3, small sample |
+| CBB all shown plays (flat ROI) | 29-24, +4.00u | 53 |
+| CBB Clear (flat ROI and Pinnacle CLV +1.01 pts) | 1-0, +1.20u | 1, small sample |
+| CBB Contested (flat ROI) | 4-1, +1.86u (Pinnacle CLV -0.69, n=3) | 5, small sample |
+| CBB not derivable (flat ROI) | 24-19, +4.94u | 43 |
+| CFB Mixed (Pinnacle CLV +0.03 pts) | 4-9, -5.27u | 9, small sample |
+| CFB Thin (flat ROI) | 9-5, +2.53u | 14, small sample |
+| CFB not derivable (flat ROI) | 8-5, +1.39u | 13, small sample |
+| Headline NBA+NFL+CBB (flat ROI) | 85-59, +11.98u | 144 |
+| Headline Clear (flat ROI and Pinnacle CLV +1.01 pts) | 1-0, +1.20u | 1, small sample |
+| Headline Contested (flat ROI) | 53-32, +7.72u | 85 |
+| Headline not derivable (flat ROI) | 31-23, +7.07u | 54 |
+| Headline not derivable (Pinnacle CLV +0.21 pts) | | 5, small sample |
+
+The tiers do not separate on these samples: Contested +9.1% at se 9.8 against not derivable +13.1% at se 13.7.

@@ -14,6 +14,7 @@ history script (scripts/sharps_v2/tier_history.py) calls `facts` and `tier_of` o
 can never disagree on a rule.
 """
 import copy, datetime as dt, json, os, sys
+from zoneinfo import ZoneInfo
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -185,7 +186,7 @@ def _since(asof, t):
 def _by_book(rows, asof):
     out = {}
     for r in rows or []:
-        if r.get("t") is not None and r["t"] <= asof and r.get("book"):
+        if isinstance(r, dict) and _n(r.get("t")) and r["t"] <= asof and r.get("book"):
             out.setdefault(r["book"], []).append(r)
     return out
 
@@ -195,9 +196,20 @@ def _last(rows, field):
     return max(have, key=lambda r: r["t"]) if have else None
 
 
+def _vals(v, n):
+    """The stored list when it has at least `n` entries, else None (a short or non-list row is not readable, never indexed)."""
+    return v if isinstance(v, (list, tuple)) and len(v) >= n else None
+
+
 def _side_line(g, v, away):
-    """The book's line as it reads for the side (tape sp: [home line, ...]; tot: [line, ...])."""
+    """The book's line as it reads for the side (tape sp: [home line, ...]; tot: [line, ...]); None when the line is not a number."""
+    if not _n(v[0]):
+        return None
     return (-v[0] if away else v[0]) if g == "spread" else v[0]
+
+
+def _same_line(ln, line):
+    return _n(ln) and _n(line) and abs(ln - line) <= PIN_LINE_EPS
 
 
 def exec_block(rows, g, norm, line, pin_odds, asof):
@@ -208,7 +220,8 @@ def exec_block(rows, g, norm, line, pin_odds, asof):
       kalshi   moneyline only: Kalshi's home contract [bid, ask]; cost of the side = ask if home, 1 - bid if away
       novig    Novig's quote (px / nsp / ntot, the line must equal the ticket's): cost as for Kalshi
       pin      Pinnacle's price for the side (the card's pinnacle_odds) and the time of the tape row it came from
-    Polymarket's displayed price is never copied in here, and no best ask is stored anywhere yet (spec D-P1), so `pm_ask` is absent."""
+    Polymarket's displayed price is never copied in here, and no best ask is stored anywhere yet (spec D-P1), so `pm_ask` is absent.
+    A malformed row (too short, a None where a number belongs) is skipped, never indexed blind."""
     out = {"asof": asof}
     books = _by_book(rows, asof)
     if norm in ("home", "away", "over", "under"):
@@ -217,17 +230,17 @@ def exec_block(rows, g, norm, line, pin_odds, asof):
         best = None
         for b in US_BOOKS:
             r = _last(books.get(b), key)
-            if not r:
+            v = _vals(r[key], 2 if g == "ml" else 3) if r else None
+            if v is None:
                 continue
-            v = r[key]
             if g == "ml":
                 odds, ln = (v[0] if away else v[1]), None
             else:
                 ln = _side_line(g, v, away)
-                if line is None or ln is None or abs(ln - line) > PIN_LINE_EPS:
+                if not _same_line(ln, line):
                     continue
                 odds = v[2] if away else v[1]
-            p = SIG.american_prob(odds)
+            p = SIG.american_prob(odds) if _n(odds) else None
             if p is None:
                 continue
             if best is None or (p, b) < (best[0], best[1]):
@@ -236,23 +249,20 @@ def exec_block(rows, g, norm, line, pin_odds, asof):
             out["us_best"] = {"book": best[1], "odds": best[2], "line": best[3], "px": round(best[0], 4), "t": best[4], "since_min": _since(asof, best[4])}
         if g == "ml":
             r = _last(books.get("Kalshi"), "px")
-            if r and len(r["px"]) >= 2 and None not in r["px"][:2]:
-                px = r["px"][1] if norm == "home" else 1.0 - r["px"][0]
+            v = _vals(r["px"], 2) if r else None
+            if v is not None and _n(v[0]) and _n(v[1]):
+                px = v[1] if norm == "home" else 1.0 - v[0]
                 out["kalshi"] = {"px": round(px, 4), "t": r["t"], "since_min": _since(asof, r["t"])}
         nk = NOVIG_KEY[g]
         r = _last(books.get("Novig"), nk)
-        if r:
-            v = r[nk]
+        v = _vals(r[nk], 2 if g == "ml" else 3) if r else None
+        if v is not None:
             if g == "ml":
-                bid, ask, ok = v[0], v[1], len(v) >= 2
+                bid, ask, ok = v[0], v[1], True
             else:
-                bid, ask, ok = v[1], v[2], len(v) >= 3
-                if ok and g == "spread":
-                    ln = _side_line(g, v, away)
-                    ok = line is not None and ln is not None and abs(ln - line) <= PIN_LINE_EPS
-                elif ok:
-                    ok = line is not None and abs(v[0] - line) <= PIN_LINE_EPS
-            if ok and bid is not None and ask is not None:
+                bid, ask = v[1], v[2]
+                ok = _same_line(_side_line(g, v, away) if g == "spread" else (v[0] if _n(v[0]) else None), line)
+            if ok and _n(bid) and _n(ask):
                 home = norm in ("home", "over")
                 out["novig"] = {"px": round(ask if home else 1.0 - bid, 4), "t": r["t"], "since_min": _since(asof, r["t"])}
     if pin_odds is not None:
@@ -402,7 +412,8 @@ def plays_fields():
 # ---------- shadow log ----------
 
 def month_of(gst):
-    return dt.datetime.fromtimestamp(gst, dt.timezone.utc).strftime("%Y-%m")
+    """The log file month: the CENTRAL date of game start (an 11 PM CT game on the last day of a month stays in that month)."""
+    return dt.datetime.fromtimestamp(gst, ZoneInfo("America/Chicago")).strftime("%Y-%m")
 
 
 def log_row(rel, card, g, now):
@@ -453,13 +464,13 @@ def logged_keys(root, sport):
                     for line in f:
                         try:
                             keys.add(json.loads(line)["key"])
-                        except (ValueError, KeyError):
+                        except (ValueError, KeyError, TypeError):   # a non-object or keyless line is skipped, never fatal
                             pass
     return keys
 
 
 def append_log(root, sport, rows):
-    """Append-only: rows already in the log (by key) are skipped, existing lines are never rewritten. Month by the game start in UTC."""
+    """Append-only: rows already in the log (by key) are skipped, existing lines are never rewritten. Month by the Central date of game start."""
     have = logged_keys(root, sport)
     new = sorted((r for r in rows if r["key"] not in have), key=lambda r: r["key"])
     by_month = {}

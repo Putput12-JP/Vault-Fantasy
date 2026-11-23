@@ -74,11 +74,21 @@ jobs:
           ok = H.commit_push("pmdata", "pm_cards", sports, "pm cards: " + dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " [skip ci]")
           sys.exit(0 if ok and H.remote_has_head("pmdata") else 1)
           PY
+      - name: Tier record (context only, never blocks the publish)
+        if: env.SKIP != '1'
+        # per-sport record of the play evidence tiers, from the frozen cards and the graded rows just checked out (docs/side-cards.md "tier_record.json").
+        # Any failure drops the file for this run: the V1 files still publish.
+        run: |
+          python3 -I scripts/sharps_v2/tier_record.py --data-dir pmdata --book-tape data/book_tape --out live/tier_record.json \
+            --data-ref "$(git -C pmdata rev-parse HEAD)" || { echo "::warning::tier_record.json not built this run"; rm -f live/tier_record.json; }
       - name: Wallets file size gate
         if: env.SKIP != '1'
+        run: python3 -I scripts/sharps_v2/check_size.py live/wallets.json
+      - name: Live V2 size gate (never blocks the V1 publish)
+        if: env.SKIP != '1'
+        # over 250 KB of V2 keys: live.json is rewritten without them (the V1 file) and a warning is printed; the publish step still runs
         run: |
-          python3 -I scripts/sharps_v2/check_size.py live/wallets.json
-          python3 -I scripts/sharps_v2/check_size.py --live live/live.json       # the V2 plays keys, budget 250 KB
+          python3 -I scripts/sharps_v2/check_size.py --live live/live.json || echo "::warning::V2 size check failed to run, publishing live.json as built"
       - name: Publish live cards (single commit, force-pushed)
         if: env.SKIP != '1'
         run: |
@@ -87,6 +97,11 @@ jobs:
           blob=$(git hash-object -w live/live.json)
           wblob=$(git hash-object -w live/wallets.json)      # every proven wallet's book and open positions, for a follow page
           sblob=$(git hash-object -w live/since.json)        # each wallet's dated settled list, for "Since you followed" (not read by the classic page)
-          tree=$(printf '100644 blob %s\tlive.json\n100644 blob %s\twallets.json\n100644 blob %s\tsince.json\n' "$blob" "$wblob" "$sblob" | git mktree)
+          entries=$(printf '100644 blob %s\tlive.json\n100644 blob %s\twallets.json\n100644 blob %s\tsince.json\n' "$blob" "$wblob" "$sblob")
+          if [ -s live/tier_record.json ] && python3 -c "import json; json.load(open('live/tier_record.json'))"; then
+            tblob=$(git hash-object -w live/tier_record.json)  # the per-sport tier record, beside live.json (not read by the classic page)
+            entries=$(printf '%s\n100644 blob %s\ttier_record.json\n' "$entries" "$tblob")
+          fi
+          tree=$(printf '%s\n' "$entries" | git mktree)
           c=$(git commit-tree "$tree" -m "pm cards live $(date -u +%FT%TZ)")
           git push -q --force origin "$c:refs/heads/pm-cards-live"

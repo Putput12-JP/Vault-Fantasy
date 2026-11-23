@@ -28,7 +28,8 @@ TIERS = ("clear", "mixed", "thin", "contested", "none")
 NOV18_AM = P2.FLAT_FROM                          # 2026-11-18 8:31 AM CT, #461
 NOV20_MERGE = P2.CBB_FROM                        # 2026-11-20 4:47 PM CT, #534
 NOV20_MIDNIGHT = 1795154400                      # 2026-11-20 12:00 AM CT
-FLAG_MIN_N = 10                                  # a record that improves is flagged for close monitoring from this sample size, with its n
+SMALL_N = 30                                     # a flagged record under this sample size carries a "small sample" tag (a tag, not a cutoff: every improving slice is flagged)
+NO_TAPE_WHY = ("no_tape_rows_for_game", "no_pinnacle_before_cut")   # stored reasons for "no price check was possible at the cut"
 
 
 class Git:
@@ -37,6 +38,10 @@ class Git:
     def __init__(self, repo, ref):
         self.repo, self.ref = repo, ref
         self.p = subprocess.Popen(["git", "-C", repo, "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    @property
+    def sha(self):
+        return subprocess.run(["git", "-C", self.repo, "rev-parse", self.ref], capture_output=True, check=True).stdout.decode().strip()
 
     def ls(self, prefix):
         out = subprocess.run(["git", "-C", self.repo, "ls-tree", "-r", "--name-only", self.ref, prefix + "/"], capture_output=True, check=True)
@@ -55,6 +60,29 @@ class Git:
     def close(self):
         self.p.stdin.close()
         self.p.wait()
+
+
+class FsReader:
+    """The same two calls on a checked-out pm-holders-data folder (the workflow's `pmdata`), for the per-run tier_record.json."""
+
+    def __init__(self, root, sha=None):
+        self.root, self.sha = root, sha
+
+    def ls(self, prefix):
+        out = []
+        for dp, _, fns in os.walk(os.path.join(self.root, prefix)):
+            out += [os.path.relpath(os.path.join(dp, fn), self.root) for fn in fns]
+        return sorted(out)
+
+    def show(self, path):
+        try:
+            with open(os.path.join(self.root, path)) as f:
+                return f.read()
+        except OSError:
+            return None
+
+    def close(self):
+        pass
 
 
 def graded_rows(git):
@@ -88,6 +116,9 @@ def derive(c, g, side, tape):
     sg = sf.get("signals") or BSC.card_signals(c, g, "all", tape)
     m2 = dict(m, sf=dict(m["sf"], all=dict(sf, signals=sg) if sg is not None else sf))
     f, _ = P2.facts(c["sport"], m2, side)
+    ev = (sg or {}).get("ev")
+    if sg is None or ev is None or (ev.get("pts") is None and ev.get("why") in NO_TAPE_WHY):
+        f["a4"] = f["b2"] = None                         # no price check was possible at the cut (the tape did not exist yet): unknown, never "no price evidence"
     pts = (P2.ev_of(m2["sf"]["all"]) or {}).get("pts")
     proven_n = ((m["sides"][side]["all"].get("proven") or {}).get("wallets")) or 0
     tier, why = P2.tier_of(f, proven_n, pts)
@@ -110,7 +141,7 @@ def play_rows(git, rows, tape):
         d = derive(c, r["group"], r["side"], tape)
         sf = c["markets"][r["group"]]["sf"]["all"]
         clv, _ = pin_close_pts(c, r["group"], sf, tape)
-        out.append({"key": r["key"], "sport": r["sport"], "cut": r["cut"], "gst": r["gst"], "graded_at": r.get("graded_at") or 0,
+        out.append({"key": r["key"], "sport": r["sport"], "group": r["group"], "cut": r["cut"], "gst": r["gst"], "graded_at": r.get("graded_at") or 0,
                     "res": r["res"], "flat": r["flat"], "tier": d["tier"] or "none", "why": d["why"], "src": d["src"], "facts": d["facts"],
                     "ladder": r.get("units") or 0, "clv": clv})
     return out
@@ -148,84 +179,109 @@ def headline(ps, sports):
     return stats([p for p in ps if p["sport"] in sports])
 
 
+LABEL = {"none": "not derivable"}
+
+
+def slice_label(t):
+    return LABEL.get(t, t)
+
+
+def compute(ps):
+    """Every number the report prints, as data: per sport and tier, the headline, the size shown at the time, the Nov 20 CBB re-add lines, and
+    the flag list. Pure: a list of play records in, a dict out (tests feed it fixtures)."""
+    out = {"plays": len(ps), "tiers": {}, "headline": {}, "cbb_readd": {}}
+    slices = []                                           # (name, stats, sample-size field) of every slice a record can improve in
+    for sport in SPORTS:
+        sp = [p for p in ps if p["sport"] == sport]
+        out["tiers"][sport] = {"all": stats(sp)}
+        slices.append((f"{sport.upper()} all shown plays", out["tiers"][sport]["all"]))
+        for t in TIERS:
+            out["tiers"][sport][t] = stats([p for p in sp if p["tier"] == t])
+            slices.append((f"{sport.upper()} {slice_label(t)}", out["tiers"][sport][t]))
+    hp = [p for p in ps if p["sport"] in HEADLINE]
+    out["headline"]["all"] = stats(hp)
+    slices.append(("Headline (NBA+NFL+CBB)", out["headline"]["all"]))
+    for t in TIERS:
+        out["headline"][t] = stats([p for p in hp if p["tier"] == t])
+        slices.append((f"Headline {slice_label(t)}", out["headline"][t]))
+    out["headline"]["at_the_time"] = at_the_time(ps)
+    out["at_the_time_by_sport"] = {sp: at_the_time([p for p in ps if p["sport"] == sp]) for sp in SPORTS}
+    before = [p for p in ps if p["cut"] < NOV20_MIDNIGHT]
+    graded = [p for p in ps if p["graded_at"] < NOV20_MERGE]
+    cbb = [p for p in ps if p["sport"] == "cbb"]
+    out["cbb_readd"] = {
+        "before_nov20_old": headline(before, ("nba", "nfl")), "before_nov20_new": headline(before, HEADLINE),
+        "graded_before_merge_old": headline(graded, ("nba", "nfl")), "graded_before_merge_new": headline(graded, HEADLINE),
+        "today_old": headline(ps, ("nba", "nfl")), "today_new": headline(ps, HEADLINE),
+        "cbb_before_nov18_831am": stats([p for p in cbb if p["cut"] < NOV18_AM]),
+        "cbb_nov18_to_merge (hidden)": stats([p for p in cbb if NOV18_AM <= p["cut"] < NOV20_MERGE]),
+        "cbb_nov18_to_nov19": stats([p for p in cbb if NOV18_AM <= p["cut"] < NOV20_MIDNIGHT]),
+        "cbb_since_nov20_midnight": stats([p for p in cbb if p["cut"] >= NOV20_MIDNIGHT]),
+        "cbb_after_merge": stats([p for p in cbb if p["cut"] >= NOV20_MERGE])}
+    flagged = []                                          # EVERY slice whose record improves (units above 0, or a mean CLV above 0), with its n
+    for name, st in slices:
+        if st["n"] and st["units"] > 0:
+            flagged.append({"slice": name, "metric": "flat ROI", "n": st["n"], "small_sample": st["n"] < SMALL_N, "stats": st})
+        if st["clv_n"] and st["clv_mean"] > 0:
+            flagged.append({"slice": name, "metric": "Pinnacle CLV", "n": st["clv_n"], "small_sample": st["clv_n"] < SMALL_N, "stats": st})
+    out["flagged"] = flagged
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", default=".")
-    ap.add_argument("--ref", default="origin/pm-holders-data")
+    ap.add_argument("--ref", default="origin/pm-holders-data", help="the data ref to read; its commit hash is printed and written to --json")
     ap.add_argument("--book-tape", default="data/book_tape")
     ap.add_argument("--json", help="also write the numbers to this file")
     a = ap.parse_args(argv)
     git = Git(a.repo, a.ref)
+    sha = git.sha
     tape = BSC.BookTape(a.book_tape)
     rows = graded_rows(git)
     ps = play_rows(git, rows, tape)
     voided = sum(1 for r in rows if r.get("play") == "sf" and r.get("variant") == "all" and r.get("status") == "void")
     git.close()
-    out = {"ref": a.ref, "rule": P2.RULE, "plays": len(ps), "voided_left_out": voided, "tiers": {}, "headline": {}, "cbb_readd": {}}
-    print(f"Shown plays graded (sf, variant all, {a.ref}): {len(ps)}; voided and left out: {voided}")
+    out = compute(ps)
+    out.update({"ref": a.ref, "data_ref_sha": sha, "rule": P2.RULE, "voided_left_out": voided})
+    print(f"Data: {a.ref} at commit {sha}. Numbers are as of that commit.")
+    print(f"Shown plays graded (sf, variant all): {len(ps)}; voided and left out: {voided}")
     print(f"Derived from each card's stored fields at its cut (rule {P2.RULE}); {sum(p['src'] == 'frozen' for p in ps)} read from a stored v2 block.")
+    print("Where no price check was possible at the cut because the tape did not exist yet, the price facts are unknown and the play is 'not derivable'.")
     print("Every number below is IN-SAMPLE: the tier rule was written after these results.\n")
     print("PER-TIER RECORD (flat 1u at the stored price at the cut; Pin CLV = Pinnacle no-vig close minus the price, points)")
-    flagged = []
     for sport in SPORTS:
-        print(f"\n{sport.upper()}{' (no size shown)' if sport == 'cfb' else ''}: all {fmt(stats([p for p in ps if p['sport'] == sport]))}")
+        print(f"\n{sport.upper()}{' (no size shown)' if sport == 'cfb' else ''}: all {fmt(out['tiers'][sport]['all'])}")
         for t in TIERS:
-            sub = [p for p in ps if p["sport"] == sport and p["tier"] == t]
-            s = stats(sub)
-            out["tiers"].setdefault(sport, {})[t] = s
-            if s["n"]:
-                print(f"  {t:<10} {fmt(s)}")
-            if s["n"] >= FLAG_MIN_N and s["units"] > 0:
-                flagged.append((f"{sport.upper()} {t}", s, "flat ROI"))
-        allp = stats([p for p in ps if p["sport"] == sport])
-        if allp["clv_n"] >= FLAG_MIN_N and allp["clv_mean"] > 0:
-            flagged.append((f"{sport.upper()} all shown plays", allp, "Pinnacle CLV"))
-    print(f"\nHEADLINE (NBA + NFL + CBB, the sports the page sizes today): {fmt(headline(ps, HEADLINE))}")
-    out["headline"]["all"] = headline(ps, HEADLINE)
+            if out["tiers"][sport][t]["n"]:
+                print(f"  {slice_label(t):<13} {fmt(out['tiers'][sport][t])}")
+    print(f"\nHEADLINE (NBA + NFL + CBB, the sports the page sizes today): {fmt(out['headline']['all'])}")
     for t in TIERS:
-        s = stats([p for p in ps if p["sport"] in HEADLINE and p["tier"] == t])
-        out["headline"][t] = s
-        if s["n"]:
-            print(f"  {t:<10} {fmt(s)}")
-        if s["n"] >= FLAG_MIN_N and s["units"] > 0:
-            flagged.append((f"Headline {t}", s, "flat ROI"))
-    tt = at_the_time(ps)
-    out["headline"]["at_the_time"] = tt
+        if out["headline"][t]["n"]:
+            print(f"  {slice_label(t):<13} {fmt(out['headline'][t])}")
+    tt = out["headline"]["at_the_time"]
     print(f"\nAT THE SIZE THE PAGE SHOWED AT EACH CUT (all four sports): {tt['w']}-{tt['l']}, {tt['units']:+.2f}u on {tt['staked']:g}u staked, n={tt['n']}")
     for sport in SPORTS:
-        x = at_the_time([p for p in ps if p["sport"] == sport])
+        x = out["at_the_time_by_sport"][sport]
         print(f"  {sport.upper()}: {x['units']:+.2f}u on {x['staked']:g}u staked, n={x['n']}")
+    r = out["cbb_readd"]
+    short = lambda st: fmt(st).split("; ")[0]
     print("\n2026-11-20 CBB RE-ADD (docs/side-card-record.md)")
-    nn = [p for p in ps if p["cut"] < NOV20_MIDNIGHT]
-    old, new = headline(nn, ("nba", "nfl")), headline(nn, HEADLINE)
-    gr = [p for p in ps if p["graded_at"] < NOV20_MERGE]
-    old_g, new_g = headline(gr, ("nba", "nfl")), headline(gr, HEADLINE)
-    now_old, now_new = headline(ps, ("nba", "nfl")), headline(ps, HEADLINE)
-    print(f"  plays cut before Nov 20 12:00 AM CT: old (NBA+NFL) {fmt(old).split('; ')[0]}")
-    print(f"                                       new (+CBB)    {fmt(new).split('; ')[0]}")
-    print(f"  rows graded before #534 merged (Nov 20 4:47 PM CT): old {fmt(old_g).split('; ')[0]}")
-    print(f"                                                       new {fmt(new_g).split('; ')[0]}")
-    print(f"  today: old (NBA+NFL) {fmt(now_old).split('; ')[0]}")
-    print(f"         new (+CBB)    {fmt(now_new).split('; ')[0]}")
-    cbb = [p for p in ps if p["sport"] == "cbb"]
-    slices = {"cbb_before_nov18_831am": [p for p in cbb if p["cut"] < NOV18_AM],
-              "cbb_nov18_to_merge (hidden)": [p for p in cbb if NOV18_AM <= p["cut"] < NOV20_MERGE],
-              "cbb_nov18_to_nov19": [p for p in cbb if NOV18_AM <= p["cut"] < NOV20_MIDNIGHT],
-              "cbb_since_nov20_midnight": [p for p in cbb if p["cut"] >= NOV20_MIDNIGHT],
-              "cbb_after_merge": [p for p in cbb if p["cut"] >= NOV20_MERGE]}
-    for k, v in slices.items():
-        print(f"  {k}: {fmt(stats(v)).split('; ')[0]}")
-    out["cbb_readd"] = {"before_nov20_old": old, "before_nov20_new": new, "graded_before_merge_old": old_g, "graded_before_merge_new": new_g,
-                        "today_old": now_old, "today_new": now_new, **{k: stats(v) for k, v in slices.items()}}
-    print("\nFLAGGED FOR CLOSE MONITORING (a record that improves; in-sample, none promoted, none a signal)")
-    if not flagged:
-        print("  none")
-    for name, s, what in flagged:
-        print(f"  {name} ({what}): {fmt(s)}")
-    out["flagged"] = [{"slice": n, "metric": w, **s} for n, s, w in flagged]
+    print(f"  plays cut before Nov 20 12:00 AM CT: old (NBA+NFL) {short(r['before_nov20_old'])}")
+    print(f"                                       new (+CBB)    {short(r['before_nov20_new'])}")
+    print(f"  rows graded before #534 merged (Nov 20 4:47 PM CT): old {short(r['graded_before_merge_old'])}")
+    print(f"                                                       new {short(r['graded_before_merge_new'])}")
+    print(f"  today: old (NBA+NFL) {short(r['today_old'])}")
+    print(f"         new (+CBB)    {short(r['today_new'])}")
+    for k in ("cbb_before_nov18_831am", "cbb_nov18_to_merge (hidden)", "cbb_nov18_to_nov19", "cbb_since_nov20_midnight", "cbb_after_merge"):
+        print(f"  {k}: {short(r[k])}")
+    print(f"\nFLAGGED FOR CLOSE MONITORING: every record that improves, with its n (tag under n={SMALL_N}); in-sample, none promoted, none a signal")
+    for f in out["flagged"]:
+        tag = "  [small sample]" if f["small_sample"] else ""
+        print(f"  {f['slice']} ({f['metric']}, n={f['n']}){tag}: {fmt(f['stats'])}")
     if a.json:
-        with open(a.json, "w") as f:
-            json.dump(out, f, indent=1)
+        with open(a.json, "w") as fh:
+            json.dump(out, fh, indent=1)
     return 0
 
 

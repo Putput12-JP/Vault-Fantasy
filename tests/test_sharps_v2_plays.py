@@ -2,7 +2,7 @@
 scripts/build_side_cards.py. Synthetic inputs only; no network, no stored data. Run from the repo root:
     python3 -m unittest tests.test_sharps_v2_plays
 """
-import copy, importlib.util, json, os, subprocess, sys, tempfile, time, unittest
+import contextlib, copy, importlib.util, io, json, os, subprocess, sys, tempfile, time, unittest
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +12,8 @@ sys.path.insert(0, HERE)
 import build_side_cards as C  # noqa: E402
 from sharps_v2 import plays_v2 as P  # noqa: E402
 from sharps_v2 import tier_history as TH  # noqa: E402
+from sharps_v2 import tier_record as TR  # noqa: E402
+from sharps_v2 import check_size as CS  # noqa: E402
 import test_side_cards as T  # noqa: E402
 
 CUT = T.CUT
@@ -348,6 +350,13 @@ class Additive(unittest.TestCase):
 
 
 class ShadowLog(unittest.TestCase):
+    def test_the_log_month_is_the_central_date_of_game_start(self):
+        import datetime as dt
+        from zoneinfo import ZoneInfo
+        late = int(dt.datetime(2026, 11, 30, 21, 30, tzinfo=ZoneInfo("America/Chicago")).timestamp())     # Dec 1, 3:30 AM UTC
+        self.assertEqual((P.month_of(late), P.month_of(late + 3 * 3600)), ("2026-11", "2026-12"))
+
+
     def frozen_card(self, ev="nba-a-b-2026-11-24", gst=1_795_500_000):
         m = market(pts=0.4)
         v2, _ = P.market_v2("nba", "ml", m, [], {}, {"mk": {}}, gst - 900, {"A": "home", "B": "away"})
@@ -403,9 +412,337 @@ class History(unittest.TestCase):
         self.assertEqual((t["n"], t["staked"], t["units"]), (2, 4, round(0.8 - 3.0, 2)))         # the CFB play had no size after Nov 18
 
 
+class Malformed(unittest.TestCase):
+    """A bad tape row, a bad feed row or a bad log line must never stop a card, the frozen commit or the publish."""
+
+    BAD = [{"t": CUT - 10, "book": "FanDuel", "sp": [None, -110, -110]}, {"t": CUT - 10, "book": "BetMGM", "sp": [-3.5, -110]},
+           {"t": CUT - 10, "book": "DraftKings", "ml": [120]}, {"t": CUT - 10, "book": "Novig", "nsp": [-3.5, 0.5]},
+           {"t": CUT - 10, "book": "Novig", "ntot": [None, 0.5, 0.5]}, {"t": CUT - 10, "book": "Novig", "px": [0.5]},
+           {"t": CUT - 10, "book": "Kalshi", "px": [None, 0.6]}, {"t": CUT - 10, "book": "bet365", "tot": [220.5, None, "x"]},
+           {"t": CUT - 10, "book": "FanDuel", "ml": "oops"}, {"t": CUT - 10, "book": "BetRivers", "sp": [-3.5, None, None]},
+           "not a row", None, {"t": None, "book": "FanDuel", "ml": [100, -120]}, {"t": CUT - 10, "book": "Pinnacle", "ml": [1]}]
+
+    def test_exec_block_skips_every_malformed_row(self):
+        for g, line in (("ml", None), ("spread", -3.5), ("spread", 3.5), ("total", 220.5)):
+            for norm in ("home", "away", "over", "under", None):
+                e = P.exec_block(self.BAD, g, norm, line, -110, CUT)
+                self.assertEqual(e["asof"], CUT)
+                for k in ("us_best", "kalshi", "novig"):
+                    self.assertNotIn(k, e)                                                     # nothing readable: nothing written, never a guess
+
+    def test_a_good_row_still_reads_beside_bad_ones(self):
+        rows = self.BAD + [{"t": CUT - 5, "book": "FanDuel", "ml": [110, -130]}]
+        self.assertEqual(P.exec_block(rows, "ml", "home", None, None, CUT)["us_best"]["book"], "FanDuel")
+
+    def test_logged_keys_survive_a_non_object_line(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "nba", "v2_tier"))
+            with open(os.path.join(d, "nba", "v2_tier", "2026-11.jsonl"), "w") as f:
+                f.write('[1,2]\n"str"\n3\nnull\n{"a":1}\nnot json\n{"key":"k1"}\n')
+            self.assertEqual(P.logged_keys(d, "nba"), {"k1"})
+
+    def card(self, **kw):
+        rows = T.proven("0xp") + T.proven("0xq")
+        k = T.kf([("m1", 0, "0xp", 400), ("m1", 1, "0xq", 350), ("s1", 1, "0xp", 500)])
+        with mock.patch.object(time, "time", return_value=CUT + 5):
+            return C.card(k, T.ledger(rows), "nba", **kw)
+
+    class Quotes:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def game(self, *a):
+            return self.rows, "stub"
+
+    def test_card_keeps_every_pre_existing_key_on_malformed_tape_rows(self):
+        with mock.patch.object(P, "market_v2", return_value=({}, None)):
+            bare = self.card()
+        got = self.card(quotes=self.Quotes(self.BAD))
+        self.assertTrue(all("v2" in m for m in got["markets"].values()))
+        self.assertEqual(json.dumps(P.strip_plays_v2(got), separators=(",", ":")), json.dumps(P.strip_plays_v2(bare), separators=(",", ":")))
+
+    def test_card_omits_v2_and_warns_when_the_block_raises(self):
+        with mock.patch.object(P, "market_v2", return_value=({}, None)):
+            bare = self.card()
+        err = io.StringIO()
+        with mock.patch.object(P, "market_v2", side_effect=TypeError("boom")), contextlib.redirect_stderr(err):
+            got = self.card()
+        self.assertTrue(all("v2" not in m and "splits" not in m for m in got["markets"].values()))
+        self.assertIn("::warning::V2 plays block skipped", err.getvalue())
+        self.assertEqual(json.dumps(P.strip_plays_v2(got), separators=(",", ":")), json.dumps(P.strip_plays_v2(bare), separators=(",", ":")))
+
+    def test_a_quote_tape_that_raises_leaves_v2_off_not_the_card(self):
+        class Boom:
+            def game(self, *a):
+                raise ValueError("bad tape file")
+        got = self.card(quotes=Boom())
+        self.assertTrue(all("v2" not in m for m in got["markets"].values()))
+        self.assertIn("sf", got["markets"]["ml"])
+
+    def test_pinned_now_sets_built(self):
+        got = self.card(now=CUT - 123)
+        self.assertEqual(got["built"], CUT - 123)                                               # --now reaches card(): built and a live asof use it
+        live = self.card(now=CUT - 123, frozen=False)
+        self.assertEqual(live["built"], CUT - 123)
+
+
+class LiveGate(unittest.TestCase):
+    def test_over_budget_publishes_the_v1_file_and_never_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            doc = {"built": 1, "games": [{"ev": "e", "markets": {"ml": {"sides": {}, "v2": {"pad": "x" * 5000}, "splits": {"t": 1}}}}],
+                   "v2_slate": {"plays": 1}, "v2_plays": {"rule": "v2t-1"}, "v2_tier_record": {"a": 1}}
+            path = os.path.join(d, "live.json")
+            with open(path, "w") as f:
+                json.dump(doc, f, separators=(",", ":"))
+            kb, stripped = CS.enforce_live(path, max_kb=1)
+            self.assertTrue(stripped and kb > 1)
+            with open(path) as f:
+                got = f.read()
+            self.assertEqual(got, json.dumps({"built": 1, "games": [{"ev": "e", "markets": {"ml": {"sides": {}}}}]}, separators=(",", ":")))
+            self.assertEqual(subprocess.run([sys.executable, "-I", os.path.join(ROOT, "scripts", "sharps_v2", "check_size.py"), "--live", path]).returncode, 0)
+
+    def test_under_budget_leaves_the_file_alone(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "live.json")
+            raw = json.dumps({"games": [{"markets": {"ml": {"v2": {"a": 1}}}}], "v2_slate": {}}, separators=(",", ":"))
+            with open(path, "w") as f:
+                f.write(raw)
+            self.assertEqual(CS.enforce_live(path), (CS.live_v2_kb(json.loads(raw)), False))
+            self.assertEqual(open(path).read(), raw)
+
+    def test_the_command_exits_zero_over_budget_and_prints_a_warning(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "live.json")
+            with open(path, "w") as f:
+                json.dump({"games": [{"markets": {"ml": {"v2": {"pad": "x" * 260_000}}}}]}, f)
+            r = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "scripts", "sharps_v2", "check_size.py"), "--live", path], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0)
+            self.assertIn("::warning::", r.stdout)
+            self.assertNotIn("v2", open(path).read())
+
+
+NOV = {"day": 86400}
+NM = TH.NOV20_MIDNIGHT
+
+
+def tcard(sport, ev, cut, gst=None, v2=None, side="A", pts=None, ev_why=None, college=False, tb=None, o=None, s=None, gk=None):
+    """A stored frozen card as pm-holders-data holds it: one ml market, the V2 block only when `v2` is given."""
+    m = market(S=side, O="B" if side == "A" else "A", s=s, o=o, pts=pts, tb=tb, tp=not college, sport_rk=not college)
+    if ev_why is not None:
+        m["sf"]["all"]["signals"] = {"limit": None, "ev": None, "why": ev_why} if ev_why == "no_tape_rows_for_game" else \
+            {"limit": None, "ev": {"fair": None, "pts": None, "on": None, "why": ev_why}, "why": None}
+    if v2 is not None:
+        m["v2"] = v2
+    return {"sport": sport, "ev": ev, "gst": gst or cut + 900, "cut": cut, "frozen": True, "test": {"counts": True, "why_not": []},
+            "vault": {"key": gk or "x:" + ev, "teams": {"away": ["B"], "home": ["A"]}}, "markets": {"ml": m}}
+
+
+def result(card_rel, card, res, flat, side="A", graded_at=None, group="ml", status="graded"):
+    return {"kind": "result", "play": "sf", "variant": "all", "status": status, "card": card_rel, "group": group, "side": side, "cut": card["cut"],
+            "gst": card["gst"], "res": res, "flat": flat, "units": 3, "graded_at": graded_at or card["gst"] + 3600, "sport": card["sport"],
+            "key": f"{card_rel}|{group}|all|sf"}
+
+
+class Fixture:
+    """A throwaway git repo shaped like pm-holders-data (pm_cards/, pm_record/cards/), plus a book tape folder."""
+
+    def __init__(self, d):
+        self.d, self.rows, self.n = d, [], 0
+        os.makedirs(os.path.join(d, "tape", "nba"))
+        os.makedirs(os.path.join(d, "tape", "cbb"))
+
+    def add(self, card, res="win", flat=0.8, side="A", graded_at=None, group="ml", status="graded"):
+        self.n += 1
+        rel = f"{card['sport']}/frozen/2026-11-{self.n:02d}/{card['ev']}@{card['gst']}.json"
+        path = os.path.join(self.d, "pm_cards", rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(card, f)
+        self.rows.append(result(rel, card, res, flat, side=side, graded_at=graded_at, group=group, status=status))
+        return rel
+
+    def commit(self):
+        by = {}
+        for r in self.rows:
+            by.setdefault(r["sport"], []).append(r)
+        for sp, rs in by.items():
+            p = os.path.join(self.d, "pm_record", "cards", sp)
+            os.makedirs(p, exist_ok=True)
+            with open(os.path.join(p, "2026-11.jsonl"), "w") as f:
+                f.write("".join(json.dumps(r) + "\n" for r in rs))
+        env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+        for cmd in (["init", "-q", "-b", "main"], ["add", "pm_cards", "pm_record"], ["commit", "-q", "-m", "fixture"]):
+            subprocess.run(["git", "-C", self.d] + cmd, check=True, env=env)
+        return subprocess.run(["git", "-C", self.d, "rev-parse", "HEAD"], capture_output=True, check=True).stdout.decode().strip()
+
+
+class HistoryDerive(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.fx = Fixture(self._t.name)
+        self.tape = C.BookTape(os.path.join(self._t.name, "tape"))
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def v2(self, tier, side="A"):
+        return {"rule": "v2t-1", "side": side, "tier": tier, "facts": {"a1": False}, "vs_fair": {"pts": 0.4}}
+
+    def run_rows(self):
+        self.fx.commit()
+        g = TH.Git(self._t.name, "HEAD")
+        try:
+            return TH.play_rows(g, TH.graded_rows(g), self.tape)
+        finally:
+            g.close()
+
+    def test_a_stored_v2_block_is_used_only_for_its_own_side(self):
+        a = tcard("nba", "g1", CUT, v2=self.v2("clear", "A"), pts=0.5)
+        b = tcard("nba", "g2", CUT + 1000, v2=self.v2("clear", "A"), side="B", o=side_all(hc=1, rk=(0, 0)))    # the stored block names side A; the row is side B
+        self.fx.add(a, side="A")
+        self.fx.add(b, side="B")
+        ps = {p["key"].split("/")[-1].split("@")[0]: p for p in self.run_rows()}
+        self.assertEqual((ps["g1"]["src"], ps["g1"]["tier"]), ("frozen", "clear"))
+        self.assertEqual((ps["g2"]["src"], ps["g2"]["tier"]), ("derived", "contested"))               # re-derived: a past winner holds A, the other side
+
+    def test_the_derived_path_reads_the_cards_stored_fields(self):
+        self.fx.add(tcard("nba", "d1", CUT, o=side_all(unproven=2, rk=(1, 0))))                      # a2: a close-beater on the other side
+        self.fx.add(tcard("nba", "d2", CUT + 10, pts=0.5, s=side_all(hc=1, rk=(1, 0))))              # b1/b2 and b3: clear
+        ps = {p["key"].split("/")[-1].split("@")[0]: p for p in self.run_rows()}
+        self.assertEqual((ps["d1"]["tier"], ps["d2"]["tier"]), ("contested", "clear"))
+
+    def test_no_price_check_because_the_tape_did_not_exist_is_not_derivable_not_thin(self):
+        thin = side_all(hc=1)
+        self.fx.add(tcard("cbb", "c1", CUT, college=True, s=thin, ev_why="no_tape_rows_for_game"))
+        self.fx.add(tcard("cbb", "c2", CUT + 10, college=True, s=thin, ev_why="no_pinnacle_before_cut"))
+        self.fx.add(tcard("cbb", "c3", CUT + 20, college=True, s=thin, ev_why="ticket_line_not_main_at_cut"))   # a tape existed: a real "no price read"
+        self.fx.add(tcard("cbb", "c4", CUT + 30, college=True, s=thin))                                          # nothing stored and no tape row at the cut
+        self.fx.add(tcard("cbb", "c5", CUT + 40, college=True, s=thin, o=side_all(hc=1), ev_why="no_tape_rows_for_game"))  # a stored fact against still decides
+        ps = {p["key"].split("/")[-1].split("@")[0]: p["tier"] for p in self.run_rows()}
+        self.assertEqual(ps, {"c1": "none", "c2": "none", "c3": "thin", "c4": "none", "c5": "contested"})
+
+    def test_pinnacle_close_is_read_at_game_start_not_at_the_cut(self):
+        gst = CUT + 900
+        rows = [{"t": CUT - 60, "book": "Pinnacle", "gk": "nba:9", "ml": [150, -170], "start": gst}, {"t": gst - 30, "book": "Pinnacle", "gk": "nba:9", "ml": [100, -120], "start": gst},
+                {"t": gst + 30, "book": "Pinnacle", "gk": "nba:9", "ml": [-300, 250], "start": gst}]
+        with open(os.path.join(self._t.name, "tape", "nba", "2026-11.jsonl"), "w") as f:
+            f.write("".join(json.dumps(r) + "\n" for r in rows))
+        self.fx.add(tcard("nba", "p1", CUT, gst=gst, pts=0.5, gk="nba:9"))
+        p = self.run_rows()[0]
+        fair_close = (120 / 220) / ((120 / 220) + (100 / 200))                                      # home: -120 against +100, no vig
+        self.assertAlmostEqual(p["clv"], round((fair_close - 0.55) * 100, 2), places=1)
+
+
+class HistoryMain(unittest.TestCase):
+    """TH.main on a throwaway repo: the re-add lines, the flag list and the data hash."""
+
+    def build(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.addCleanup(self._t.cleanup)
+        fx = Fixture(self._t.name)
+        cut = lambda off: NM + off
+        # CBB plays (a college card with a stored "no tape" read: not derivable) around the Nov 20 boundaries
+        mk = lambda ev, c, gst=None: tcard("cbb", ev, c, gst=gst, college=True, s=side_all(hc=1), ev_why="no_tape_rows_for_game")
+        fx.add(mk("b1", cut(-3 * 3600)), res="win", flat=0.5, graded_at=cut(-3600))                          # before Nov 20, cut and graded before the merge
+        fx.add(mk("b2", cut(-600), gst=cut(300)), res="loss", flat=-1.0, graded_at=cut(7200))                # cut 10 min before midnight, game starts after it
+        fx.add(mk("b3", cut(3600)), res="win", flat=0.4, graded_at=TH.NOV20_MERGE + 60)                                # cut on Nov 20 before 4:47 PM: not "before Nov 20"
+        # NBA plays: one losing slice (contested) and a winning not-derivable one
+        fx.add(tcard("nba", "n1", cut(-86400 * 3), o=side_all(hc=1, rk=(0, 0))), res="loss", flat=-1.0, graded_at=cut(-86400 * 2))
+        fx.add(tcard("nba", "n2", cut(-86400 * 3 + 10)), res="win", flat=0.9, graded_at=cut(-86400 * 2))     # no tape on file, no stored signals: not derivable
+        fx.add(tcard("nba", "n3", cut(-86400 * 3 + 20), side="B", v2=None, o=side_all(hc=1, rk=(0, 0))), res="loss", flat=-1.0, side="B", graded_at=cut(-86400 * 2))
+        fx.add(tcard("cbb", "v1", cut(10), college=True, s=side_all(hc=1)), status="void", flat=0.0)       # a void: left out
+        self.sha = fx.commit()
+        out = os.path.join(self._t.name, "out.json")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            TH.main(["--repo", self._t.name, "--ref", "main", "--book-tape", os.path.join(self._t.name, "tape"), "--json", out])
+        return json.load(open(out)), buf.getvalue()
+
+    def test_readd_lines_cut_by_the_cut_and_the_midnight_boundary(self):
+        d, _ = self.build()
+        r = d["cbb_readd"]
+        # cut before Nov 20 12:00 AM CT: CBB b1, b2 (b2's game starts after midnight, its cut does not) and NBA n1, n2, n3. b3 is cut after midnight.
+        self.assertEqual((r["before_nov20_new"]["n"], r["before_nov20_old"]["n"]), (5, 3))
+        self.assertEqual(r["before_nov20_new"]["units"], round(0.5 - 1.0 - 1.0 + 0.9 - 1.0, 2))
+        self.assertEqual(r["before_nov20_old"]["units"], round(-1.0 + 0.9 - 1.0, 2))
+        self.assertEqual((r["today_new"]["n"], r["today_old"]["n"]), (6, 3))
+        self.assertEqual((r["cbb_since_nov20_midnight"]["n"], r["cbb_after_merge"]["n"]), (1, 0))   # b3 is cut before 4:47 PM: since midnight, not after the merge
+        self.assertEqual((r["graded_before_merge_new"]["n"], r["graded_before_merge_old"]["n"]), (5, 3))   # b3 was graded after the merge
+        self.assertEqual(d["voided_left_out"], 1)
+        self.assertEqual(d["data_ref_sha"], self.sha)
+
+    def test_the_flag_list_is_every_improving_slice_with_its_n(self):
+        d, text = self.build()
+        roi = {f["slice"]: f for f in d["flagged"] if f["metric"] == "flat ROI"}
+        self.assertEqual(set(roi), {"NBA not derivable", "Headline not derivable"})                 # n2 alone wins in NBA; CBB (+0.5 -1.0 +0.4) and NBA contested lose
+        self.assertEqual((roi["NBA not derivable"]["n"], roi["NBA not derivable"]["small_sample"]), (1, True))
+        self.assertEqual((roi["Headline not derivable"]["n"], roi["Headline not derivable"]["stats"]["units"]), (4, round(0.5 - 1.0 + 0.4 + 0.9, 2)))
+        self.assertIn("NBA not derivable (flat ROI, n=1)  [small sample]", text)
+        self.assertNotIn("NBA contested", text.split("FLAGGED")[1])                                  # a losing slice is never flagged
+
+    def test_flag_condition_is_improving_not_losing(self):
+        d, _ = self.build()
+        for f in d["flagged"]:
+            if f["metric"] == "flat ROI":
+                self.assertGreater(f["stats"]["units"], 0, f["slice"])
+
+
+class TierRecord(unittest.TestCase):
+    def plays(self):
+        mk = lambda sp, tier, res, flat, cut, g="ml": {"sport": sp, "tier": tier, "res": res, "flat": flat, "cut": cut, "group": g}
+        f = TR.FORWARD_FROM
+        return [mk("nba", "contested", "win", 0.8, f + 10), mk("nba", "contested", "loss", -1.0, f - 10, "spread"), mk("nba", "none", "win", 1.0, f + 5),
+                mk("nfl", "contested", "push", 0.0, f + 1, "total"), mk("cfb", "thin", "win", 0.5, f + 1), mk("cbb", "thin", "loss", -1.0, f - 1)]
+
+    def test_forward_starts_at_nov_16_midnight_central(self):
+        self.assertEqual(TR.FORWARD_FROM, 1794808800)                                                # 2026-11-16 12:00 AM CT (06:00 UTC)
+        self.assertEqual(TR.build([], 1, "x")["forward_from"], 1794808800)
+
+    def test_shape_and_zero_tiers(self):
+        d = TR.build(self.plays(), 123, "abc")
+        self.assertEqual((d["built"], d["data_ref"]), (123, "abc"))
+        self.assertEqual(set(d["sports"]), {"nba", "nfl", "cfb", "cbb"})
+        for sp in d["sports"].values():
+            self.assertEqual(set(sp["tiers"]), {"clear", "mixed", "thin", "contested", "none"})
+            for t in sp["tiers"].values():
+                self.assertEqual(set(t), {"all", "forward", "in_sample", "by_market"})
+                self.assertEqual(set(t["by_market"]), {"ml", "spread", "total"})
+                self.assertEqual(set(t["all"]), {"w", "l", "p", "n", "units", "roi"})
+        z = d["sports"]["nba"]["tiers"]["clear"]["all"]
+        self.assertEqual((z["w"], z["l"], z["p"], z["n"], z["units"], z["roi"]), (0, 0, 0, 0, 0, None))   # present with zeros; no roi invented
+
+    def test_forward_vs_in_sample_and_by_market(self):
+        t = TR.build(self.plays(), 1, "x")["sports"]["nba"]["tiers"]["contested"]
+        self.assertEqual((t["all"]["n"], t["forward"]["n"], t["in_sample"]["n"]), (2, 1, 1))
+        self.assertEqual((t["forward"]["w"], t["in_sample"]["l"]), (1, 1))
+        self.assertEqual((t["by_market"]["ml"]["n"], t["by_market"]["spread"]["n"], t["by_market"]["total"]["n"]), (1, 1, 0))
+        self.assertEqual((t["all"]["units"], t["all"]["roi"]), (-0.2, -0.1))
+        self.assertEqual(TR.build([dict(p, cut=TR.FORWARD_FROM) for p in self.plays()], 1, "x")["sports"]["nba"]["tiers"]["contested"]["in_sample"]["n"], 0)
+
+    def test_none_is_kept_apart_and_all_excludes_cfb(self):
+        d = TR.build(self.plays(), 1, "x")
+        self.assertEqual(d["sports"]["nba"]["tiers"]["none"]["all"]["n"], 1)
+        self.assertEqual(d["sports"]["nba"]["tiers"]["contested"]["all"]["n"], 2)                   # the none play is not folded into a tier
+        self.assertEqual(d["all"]["tiers"]["thin"]["all"]["n"], 1)                                   # cbb thin only: the cfb thin play is reference, not in `all`
+        self.assertEqual(sum(t["all"]["n"] for t in d["all"]["tiers"].values()), 5)
+        self.assertEqual(d["sports"]["cfb"]["tiers"]["thin"]["all"]["n"], 1)
+
+    def test_the_command_writes_a_small_file_from_a_checkout(self):
+        with tempfile.TemporaryDirectory() as d:
+            fx = Fixture(d)
+            fx.add(tcard("nba", "k1", TR.FORWARD_FROM + 100, o=side_all(hc=1, rk=(0, 0))), res="loss", flat=-1.0)
+            fx.commit()
+            out = os.path.join(d, "o", "tier_record.json")
+            TR.main(["--data-dir", d, "--book-tape", os.path.join(d, "tape"), "--out", out, "--data-ref", "deadbeef", "--now", "5"])
+            doc = json.load(open(out))
+            self.assertEqual((doc["data_ref"], doc["built"]), ("deadbeef", 5))
+            self.assertEqual(doc["sports"]["nba"]["tiers"]["contested"]["forward"]["l"], 1)
+            self.assertLess(os.path.getsize(out), 20_000)
+
+
 class NoEmDash(unittest.TestCase):
     def test_no_u2014_in_new_or_changed_files(self):
-        files = ["scripts/sharps_v2/plays_v2.py", "scripts/sharps_v2/tier_history.py", "scripts/sharps_v2/check_size.py",
+        files = ["scripts/sharps_v2/plays_v2.py", "scripts/sharps_v2/tier_history.py", "scripts/sharps_v2/tier_record.py", "scripts/sharps_v2/check_size.py", "docs/sharps-v2-plays-spec.md",
                  "scripts/build_side_cards.py", "tests/test_sharps_v2_plays.py", "docs/sharp-tier-v2-prereg.md", "docs/side-cards.md",
                  "docs/side-card-record.md", ".github/workflows/pm-cards.yml"]
         for f in files:

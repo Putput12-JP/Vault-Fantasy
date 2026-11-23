@@ -4,6 +4,9 @@ stop before it publishes an over-budget file. Stdlib only.
 
   python3 -I scripts/sharps_v2/check_size.py live/wallets.json
   python3 -I scripts/sharps_v2/check_size.py --live live/live.json     # the V2 plays keys of live.json (docs/sharps-v2-plays-spec.md section 6)
+
+The wallets gate is hard (exit 3). The live gate NEVER fails the publish: over its budget it rewrites live.json without the V2 keys (the V1 file),
+prints a ::warning:: line and exits 0, so a V2 overrun can never freeze the V1 live cards.
 """
 import json, os, sys
 
@@ -22,14 +25,27 @@ def live_v2_kb(doc):
     return (dump(doc) - dump(P2.strip_plays_v2(doc))) / 1000
 
 
+def enforce_live(path, max_kb=LIVE_V2_MAX_KB):
+    """-> (kb, stripped). When the V2 plays keys are over `max_kb` the file is rewritten without them (the V1 file, compact JSON as the builder
+    writes it); otherwise it is left alone."""
+    from sharps_v2 import plays_v2 as P2
+    with open(path) as f:
+        doc = json.load(f)
+    kb = live_v2_kb(doc)
+    if kb <= max_kb:
+        return kb, False
+    with open(path + ".tmp", "w") as f:
+        json.dump(P2.strip_plays_v2(doc), f, separators=(",", ":"))
+    os.replace(path + ".tmp", path)
+    return kb, True
+
+
 def main(argv):
     if len(argv) == 3 and argv[1] == "--live":
-        with open(argv[2]) as f:
-            kb = live_v2_kb(json.load(f))
+        kb, stripped = enforce_live(argv[2])
         print("live.json V2 plays keys %.0f KB (budget %d)" % (kb, LIVE_V2_MAX_KB))
-        if kb > LIVE_V2_MAX_KB:
-            print("ERROR: over the size budget: the V2 plays keys are %.0f KB, over %d KB" % (kb, LIVE_V2_MAX_KB), file=sys.stderr)
-            return C.BUDGET_EXIT
+        if stripped:
+            print("::warning::live.json V2 plays keys are %.0f KB, over the %d KB budget: publishing the V1 file without them" % (kb, LIVE_V2_MAX_KB))
         return 0
     if len(argv) != 2:
         print(__doc__, file=sys.stderr)

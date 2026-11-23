@@ -520,14 +520,15 @@ def holder_groups(kf, ledger):
     return groups, dust, best
 
 
-def card(kf, ledger, sport, vault=None, frozen=True, tape=None, quotes=None, feed=None):
+def card(kf, ledger, sport, vault=None, frozen=True, tape=None, quotes=None, feed=None, now=None):
     """One game's card from a keyframe (step 2) and the ledger as of its cut. `quotes` (a QuoteTape) and `feed` ({"games": {Vault key: sharp-data
     game}, "ts": epoch}) feed only the additive V2 plays block (markets[g].v2 and .splits, docs/sharps-v2-plays-spec.md); without them
-    those reads are simply absent."""
+    those reads are simply absent. `now` pins the build time (`built` and a live card's V2 reads); the clock when absent. Any failure in the V2
+    block leaves that market without `v2` and `splits` and prints a ::warning:: line: it never fails the build."""
     groups, dust, best = holder_groups(kf, ledger)
     cut = kf["cut"]
     rk = ledger.clv_tiers(cut)                       # cached per cut; the tier plays below read it
-    built = int(time.time())
+    built = int(now) if now is not None else int(time.time())
     out = {"v": VERSION, "sport": sport, "ev": kf["ev"], "gst": kf["gst"], "cut": cut, "frozen": frozen, "sf_excluded_n": len(ledger.sf_excluded), "pop": len(ledger.population("all", cut)),
            "built": built, "keyframe_written": kf.get("written"), "ledger_run_at": ledger.run_at,
            "money_basis": "shares x market price at the cut", "context_only": True,
@@ -601,14 +602,18 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None, quotes=None, fee
             if sg is not None:
                 out["markets"][g]["sf"][variant]["signals"] = sg
         # V2 plays data: additive keys, every read stopped at the cut (a live card: at the build time); nothing above changes
-        asof = cut if frozen else min(cut, built)
-        names = team_names(vault, kf["ev"], sport)
-        norms = side_norms(g, sorted(out["markets"][g]["sides"]), names)
-        rows = quotes.game(sport, vault, kf["ev"], kf["gst"])[0] if quotes is not None else None
-        gm = ((feed or {}).get("games") or {}).get((vault or {}).get("key")) if feed else None
-        cls_all = {x["w"]: classify(x, "all") for x in ws}
-        v2, sp = P2.market_v2(sport, g, out["markets"][g], ws, cls_all, kf, asof, norms, rows=rows, game=gm,
-                              feed_ts=(feed or {}).get("ts"), frozen=frozen, cut=cut)
+        try:
+            asof = cut if frozen else min(cut, built)
+            names = team_names(vault, kf["ev"], sport)
+            norms = side_norms(g, sorted(out["markets"][g]["sides"]), names)
+            rows = quotes.game(sport, vault, kf["ev"], kf["gst"])[0] if quotes is not None else None
+            gm = ((feed or {}).get("games") or {}).get((vault or {}).get("key")) if feed else None
+            cls_all = {x["w"]: classify(x, "all") for x in ws}
+            v2, sp = P2.market_v2(sport, g, out["markets"][g], ws, cls_all, kf, asof, norms, rows=rows, game=gm,
+                                  feed_ts=(feed or {}).get("ts"), frozen=frozen, cut=cut)
+        except Exception as e:                   # the V2 block is context: a bad tape row or feed must never stop the card, the frozen commit or the publish
+            print("::warning::V2 plays block skipped for %s %s %s: %s: %s" % (sport, kf.get("ev"), g, type(e).__name__, e), file=sys.stderr)
+            continue
         out["markets"][g]["v2"] = v2
         if sp is not None:
             out["markets"][g]["splits"] = sp
@@ -1566,7 +1571,11 @@ def main():
     if a.wallets_out:
         name_hist = name_history(a.ledger, a.holders)
     tape = BookTape(a.book_tape)
-    quotes = QuoteTape(a.book_tape)                  # every book of the same files, for the V2 exec block
+    try:
+        quotes = QuoteTape(a.book_tape)              # every book of the same files, for the V2 exec block
+    except Exception as e:                           # context only: without it the exec block is simply absent
+        print("::warning::V2 quote tape unavailable: %s: %s" % (type(e).__name__, e), file=sys.stderr)
+        quotes = None
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
         ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
         ledger.sf_excluded = sf_ex
@@ -1582,7 +1591,7 @@ def main():
                 continue
             with open(kpath) as f:
                 kf = json.load(f)
-            c = card(kf, ledger, sport, vault_join(games, kf["ev"], kf["gst"]), frozen=True, tape=tape, quotes=quotes, feed=feed)
+            c = card(kf, ledger, sport, vault_join(games, kf["ev"], kf["gst"]), frozen=True, tape=tape, quotes=quotes, feed=feed, now=a.now)
             carry_flagged(c, prev.get((kf["ev"], kf["gst"])), None)
             # one card per game for the test: a postponed game can have several; the earliest cut is the one that counts
             earlier = sorted(x for x in glob.glob(os.path.join(a.frozen_out, sport, "frozen", "*", f"{kf['ev']}@*.json"))
@@ -1597,7 +1606,10 @@ def main():
             os.replace(out + ".tmp", out)
             wrote.append(os.path.relpath(out, a.frozen_out))
         if not a.wallets_only:                       # the V2 tier shadow log: a row per rule pick on each new frozen card (+ repair of a missed append)
-            P2.sync_log(a.frozen_out, sport, now, extra=[w for w in wrote if w.startswith(sport + "/")])
+            try:
+                P2.sync_log(a.frozen_out, sport, now, extra=[w for w in wrote if w.startswith(sport + "/")])
+            except Exception as e:                   # the cards are written; the log is repaired on the next run
+                print("::warning::V2 tier log skipped for %s: %s: %s" % (sport, type(e).__name__, e), file=sys.stderr)
         # live: every game not yet at its cut, from the replayed holder logs
         st, _ = H.replay(a.holders, sport, now)
         rk = fl.clv_tiers(now) if a.wallets_out and sport in TIERS.TIER_SPORTS else {}     # price-sharp wallets join the directory (docs/pm-clv-tiers.md)
@@ -1607,7 +1619,7 @@ def main():
             kf = H.keyframe(st, ev, gst, now)
             if kf:
                 if not a.wallets_only:
-                    c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape, quotes=quotes, feed=feed)
+                    c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape, quotes=quotes, feed=feed, now=a.now)
                     carry_flagged(c, prev.get((ev, gst)), now)
                     live["games"].append(c)
                 if a.wallets_out:
@@ -1641,8 +1653,12 @@ def main():
                 since_ret.setdefault(sport, {})[w] = since_list(st["all"].get("_ps") or [], floor, now)
     live["locked"] = locked_plays(a.frozen_out, now)
     if not a.wallets_only:                           # V2 plays data (docs/sharps-v2-plays-spec.md): top-level keys, all new
-        live["v2_slate"] = P2.v2_slate(live["games"])
-        live["v2_plays"] = P2.plays_fields()
+        try:
+            slate = P2.v2_slate(live["games"])
+            plays = P2.plays_fields()
+            live["v2_slate"], live["v2_plays"] = slate, plays
+        except Exception as e:
+            print("::warning::V2 slate skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
         if a.v2_tier_record and os.path.exists(a.v2_tier_record):
             try:
                 with open(a.v2_tier_record) as f:
