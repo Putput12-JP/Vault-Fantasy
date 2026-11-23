@@ -165,9 +165,13 @@ window.PBX = (() => {
     return `<span class="pbx-opp ${gd > 0 ? 'h1' : gd < 0 ? 'l1' : ''}" title="${x.opp} allow ${fmt(k[1])} ${SLABEL[x.r.e.s]} a game to ${x.grp === 'G' ? 'guards' : x.grp === 'C' ? 'centers' : 'forwards'} this season (${k[2]} games). 1st allows the fewest.">${ord(k[0])}<small>${x.opp}</small></span>`; };
   const lineC = x => { const d = x.sc.dm; return `<span class="pbx-two"><b>${x.r.line}</b>${d ? `<small class="${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)} from ${x.r.line - d}</small>` : ''}</span>`; };
   // signal count for the list: how many of the 5 counted checks back this side (shown on the model's side only)
-  const sigC = x => { const g = rowSig(x); if (!g) return '<span class="muted" title="No model price">-</span>';
+  const sigC = (x, pips) => { const g = rowSig(x); if (!g) return '<span class="muted" title="No model price">-</span>';
     if ((x.side === 'o' ? 'O' : 'U') !== g.ms) return `<span class="muted" title="The model is on the ${g.ms === 'O' ? 'over' : 'under'}">-</span>`;
-    return `<span class="pbx-sigc ${g.tier}" title="${TIER[g.tier][0]}: ${g.kf} of 5 checks agree${g.ka ? `, ${g.ka} against` : ''}"><b>${g.kf}</b><small>/5</small></span>`; };
+    const tip = `${TIER[g.tier][0]}: ${g.kf} of 5 checks agree${g.ka ? `, ${g.ka} against` : ''}`;
+    return pips ? `<span class="pbx-sigc pips ${g.tier}" data-n="${g.kf}" title="${tip}">${[1, 2, 3, 4, 5].map(k => `<i${k <= g.kf ? ' class="on"' : ''}></i>`).join('')}</span>`
+      : `<span class="pbx-sigc ${g.tier}" title="${tip}"><b>${g.kf}</b><small>/5</small></span>`; };
+  // 0 when the row shows no signal count (no model price, or the model is on the other side): the bar stays grey
+  const sigN = x => { const g = rowSig(x); return g && (x.side === 'o' ? 'O' : 'U') === g.ms ? g.kf : 0; };
   const projC = x => x.r.mu == null ? '<span class="muted">-</span>' : `<span class="pbx-two"><b>${fmt(x.r.mu)}</b><small class="${x.diff > 0 ? 'pos' : 'neg'}">${sgn(x.diff)}</small></span>`;
 
   function filterPanel(n){
@@ -959,12 +963,12 @@ window.PBX = (() => {
     const act = fActive();
     const row = (x, i) => { const r = x.r, h = hits(x), key = `${r.e.p}|${r.e.s}|${x.side}`, open = S.open === key, w = watched(r, x.side);
       const who = x.g ? `${x.g.away} @ ${x.g.home} · ${clock(x.g.tip)}` : esc(r.team);
-      return `<article class="pbx-row${open ? ' open' : ''}" data-i="${i}">
+      return `<article class="pbx-row${open ? ' open' : ''}" data-i="${i}" data-n="${sigN(x)}">
         <button type="button" class="pbx-tr press" aria-expanded="${open}">
           <span class="pbx-star${w ? ' on' : ''}" title="${w ? 'Watching' : ''}">${w ? '★' : ''}</span>
           <span class="pbx-prop">${face(x)}<span class="who"><b>${esc(r.name)} ${injTag(r)}<small>${who}</small></b><span>${sideW(x.side)} <b>${r.line}</b> ${esc(SLABEL[r.e.s])}</span></span></span>
           <span class="c">${lineC(x)}</span><span>${odds(x)}</span>
-          <span class="c v">${projC(x)}</span><span class="c v"><b>${pc0(x.fair)}</b></span><span class="c v">${edgeC(x)}</span><span class="c">${sigC(x)}</span><span class="c">${gradeC(x)}</span>
+          <span class="c v">${projC(x)}</span><span class="c v"><b>${pc0(x.fair)}</b></span><span class="c v">${edgeC(x)}</span><span class="c">${sigC(x, true)}</span><span class="c">${gradeC(x)}</span>
           <span class="c">${oppC(x)}</span>${WIN.map(([k]) => `<span class="c">${hcell(h[k])}</span>`).join('')}
         </button>
         <button type="button" class="pbx-card press" aria-expanded="${open}">
@@ -1388,6 +1392,46 @@ window.PBX = (() => {
 .pbx-lc{padding:8px 12px 0}.pbx-lc svg{display:block;width:100%;height:auto}
 .pbx-lc .gl{stroke:rgb(var(--ink) / .07)}.pbx-lc .ax{font:500 9.5px var(--font-sans);fill:var(--fg3)}
 .pbx-lc .st{stroke:var(--pbx-g);stroke-width:2;fill:none}.pbx-lc .pt{fill:var(--pbx-g)}.pbx-lc .px{font:600 9px var(--font-mono);fill:var(--fg2)}
+/* Glass table: faint fill + one inset ring, a bar and pips coloured by signal count (1 to 5), soft pills instead of solid chips.
+   Tints are rgb(var(--ink) / a) so one rule serves dark and light. No backdrop-filter on purpose (onyx scroll stutter). */
+#pbx-root{--gl-fill:rgb(var(--ink) / .04);--gl-ring:rgb(var(--ink) / .10);--gl-hi:rgb(var(--ink) / .16);--gl-line:rgb(var(--ink) / .07);
+  --sg1:rgb(var(--ink) / .34);--sg2:#60a5fa;--sg3:#2dd4bf;--sg4:#4ade80;--sg5:#f5c542}
+:root[data-theme=light] #pbx-root{--sg1:rgb(var(--ink) / .38);--sg2:#1d5fd0;--sg3:#0b6b64;--sg4:#157a3c;--sg5:#8a6400}
+#pbx-root .pbx-face .hs{box-shadow:inset 0 0 0 1px var(--gl-ring)}
+#pbx-root .pbx-face .lo{box-shadow:0 0 0 1px var(--gl-ring)}
+#pbx-root .pbx-gate,#pbx-root .pbx-gate.go,#pbx-root .pbx-gate.watch,#pbx-root .pbx-gate.hold{padding:2px 7px;border-radius:999px;box-shadow:inset 0 0 0 1px currentColor;background:transparent;color:var(--fg2);font-size:9px}
+#pbx-root .pbx-tag{border-radius:999px;box-shadow:inset 0 0 0 1px currentColor;background:transparent}
+#pbx-root .pbx-gr{background:var(--gl-fill);box-shadow:inset 0 0 0 1px var(--gl-ring),inset 0 1px 0 var(--gl-ring)}
+#pbx-root .pbx-gr.am,#pbx-root .pbx-gr.a{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-g) 45%,transparent)}
+#pbx-root .pbx-gr.ap{background:color-mix(in srgb,var(--pbx-g) 22%,transparent);color:var(--pbx-g);box-shadow:inset 0 0 0 1.5px var(--pbx-g)}
+#pbx-root .pbx-sigc.pips{--c:var(--sg1);gap:3px;align-items:center;padding:4px 9px;background:transparent;box-shadow:inset 0 0 0 1.5px var(--c),inset 0 1px 0 var(--gl-ring)}
+#pbx-root .pbx-sigc.pips i{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--c);display:block}
+#pbx-root .pbx-sigc.pips i.on{background:var(--c)}
+#pbx-root .pbx-sigc.pips[data-n="2"]{--c:var(--sg2)}#pbx-root .pbx-sigc.pips[data-n="3"]{--c:var(--sg3)}#pbx-root .pbx-sigc.pips[data-n="4"]{--c:var(--sg4)}#pbx-root .pbx-sigc.pips[data-n="5"]{--c:var(--sg5)}
+#pbx-root .pbx-hc{width:46px;height:26px;border-radius:999px;font-weight:600;background:var(--gl-fill);box-shadow:inset 0 0 0 1px var(--gl-ring)}
+#pbx-root .pbx-hc.h3{background:color-mix(in srgb,var(--pbx-g) 24%,transparent);color:var(--pbx-g);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-g) 55%,transparent),inset 0 1px 0 color-mix(in srgb,var(--pbx-g) 30%,transparent)}
+#pbx-root .pbx-hc.h2{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-g) 32%,transparent)}
+#pbx-root .pbx-hc.h1{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-g) 18%,transparent)}
+#pbx-root .pbx-hc.l1{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-r) 18%,transparent)}
+#pbx-root .pbx-hc.l2{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-r) 32%,transparent)}
+#pbx-root .pbx-hc.l3{background:color-mix(in srgb,var(--pbx-r) 24%,transparent);color:var(--pbx-r);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-r) 55%,transparent),inset 0 1px 0 color-mix(in srgb,var(--pbx-r) 30%,transparent)}
+#pbx-root .pbx-hc.na{background:none;box-shadow:none}
+#pbx-root .pbx-opp{border-radius:999px;padding:3px 9px;background:var(--gl-fill);box-shadow:inset 0 0 0 1px var(--gl-ring)}
+#pbx-root .pbx-opp.h1,#pbx-root .pbx-opp.h2{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-g) 32%,transparent)}
+#pbx-root .pbx-opp.l1{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pbx-r) 32%,transparent)}
+#pbx-root .pbx-bk{box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 1px rgba(0,0,0,.18)}
+@media (min-width:761px){
+#pbx-root .pbx-tbl{position:relative;border:0;border-radius:24px;background:var(--gl-fill);box-shadow:inset 0 0 0 1px var(--gl-ring),inset 0 1px 0 var(--gl-hi),0 28px 70px -36px rgba(0,0,0,.65)}
+#pbx-root .pbx-th{background:none;height:46px;border-bottom:1px solid var(--gl-line)}
+#pbx-root .pbx-th button{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+#pbx-root .pbx-row{border-top:1px solid var(--gl-line)}
+#pbx-root .pbx-row:first-child{border-top:0}
+#pbx-root .pbx-tr{position:relative}
+#pbx-root .pbx-tr::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--gl-bar,var(--sg1));pointer-events:none}
+#pbx-root .pbx-row[data-n="2"]{--gl-bar:var(--sg2)}#pbx-root .pbx-row[data-n="3"]{--gl-bar:var(--sg3)}#pbx-root .pbx-row[data-n="4"]{--gl-bar:var(--sg4)}#pbx-root .pbx-row[data-n="5"]{--gl-bar:var(--sg5)}
+#pbx-root .pbx-tr:hover,#pbx-root .pbx-row.open .pbx-tr{background:var(--gl-fill)}
+#pbx-root .pbx-prop{padding-left:6px}
+}
 @media (max-width:760px){
   .pbx-o4{grid-template-columns:1fr 1fr}
   .pbx-o4 > div:nth-child(2){border-right:0}
