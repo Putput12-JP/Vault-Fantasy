@@ -1146,6 +1146,32 @@
   }
   SV2.boot = boot;
 
+  /* The money bar fills from zero once, the first time a given bar appears (1s, ease-out, transform only; sv2.css section 11). A bar that is
+     re-rendered later with the same figures (a refresh, a collapse and reopen) does not run again. Marks are set in the same microtask the
+     node is added, so the first paint already carries the animation. */
+  var barSeen = Object.create(null);
+  function markBars(scope) {
+    if (!scope || !scope.querySelectorAll) return;
+    var bars = scope.matches && scope.matches('.sv2-bar') ? [scope] : scope.querySelectorAll('.sv2-bar');
+    var fresh = [];
+    for (var i = 0; i < bars.length; i++) {
+      var b = bars[i]; if (b.hasAttribute('data-bar')) continue;
+      var k = b.getAttribute('style') + '|' + b.innerHTML;
+      b.setAttribute('data-bar', barSeen[k] ? 'seen' : 'new'); fresh.push(k);
+    }
+    fresh.forEach(function (k) { barSeen[k] = 1; });
+  }
+  SV2.markBars = markBars;
+  if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
+    var barRoot = function () {
+      markBars(document);
+      new MutationObserver(function (muts) {
+        for (var i = 0; i < muts.length; i++) for (var j = 0; j < muts[i].addedNodes.length; j++) { var n = muts[i].addedNodes[j]; if (n.nodeType === 1) markBars(n); }
+      }).observe(document.body || document.documentElement, { childList: true, subtree: true });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', barRoot); else barRoot();
+  }
+
   root.SV2 = SV2;
   if (typeof module !== 'undefined' && module.exports) module.exports = SV2;
   if (typeof document !== 'undefined') {
