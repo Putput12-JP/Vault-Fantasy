@@ -14,6 +14,9 @@ Every number is in-sample: the tier rule was written after these results. It is 
 Also prints the Nov 20 CBB re-add numbers (docs/side-card-record.md) and the record at the size the page showed at each cut.
 Flat units: 1 unit at the stored price at the cut, a win pays 1 / price - 1. Voided plays are left out, as in the record.
 
+Also prints the market-move flag record (scripts/sharps_v2/flag_record.py, docs/sharps-v2-flags-spec.md): the same plays by Flag A and Flag C state beside the
+old record with no flags, derived point in time from the tape rows at or before each cut, with every improving slice flagged with its n.
+
 Also prints the tier-scaled size SHADOW v2s-1 (plays_v2.SHADOW, user decision 2026-11-23) beside the flat record: each play's flat result times
 its shadow size (Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, CFB 0, no tier no size). In-sample, an ordering by evidence and not fitted to
 results; the flat 1u stays the size the page shows.
@@ -129,8 +132,11 @@ def derive(c, g, side, tape):
     return {"tier": tier, "why": why, "facts": f, "src": "derived", "ev_pts": pts}
 
 
-def play_rows(git, rows, tape):
-    """One record per graded sf play of variant all: the result row joined to its tier."""
+def play_rows(git, rows, tape, quotes=None):
+    """One record per graded sf play of variant all: the result row joined to its tier. With `quotes` (a QuoteTape) each play also carries its
+    market-move flag states `fa` (Flag A) and `fc` (Flag C) at its cut, from its card's stored v2.flags or re-derived from the tape (`fsrc`);
+    without it they are None (not readable) and the record is exactly what it was."""
+    from sharps_v2 import flag_record as FR
     out, cards = [], {}
     for r in rows:
         if r.get("kind") != "result" or r.get("play") != "sf" or r.get("variant") != "all" or r.get("status") != "graded":
@@ -145,7 +151,8 @@ def play_rows(git, rows, tape):
         d = derive(c, r["group"], r["side"], tape)
         sf = c["markets"][r["group"]]["sf"]["all"]
         clv, _ = pin_close_pts(c, r["group"], sf, tape)
-        out.append({"key": r["key"], "sport": r["sport"], "group": r["group"], "cut": r["cut"], "gst": r["gst"], "graded_at": r.get("graded_at") or 0,
+        fl = FR.derive_flags(c, r["group"], r["side"], quotes) if quotes is not None else {"a": None, "c": None, "src": None}
+        out.append({"fa": fl["a"], "fc": fl["c"], "fsrc": fl["src"], "key": r["key"], "sport": r["sport"], "group": r["group"], "cut": r["cut"], "gst": r["gst"], "graded_at": r.get("graded_at") or 0,
                     "res": r["res"], "flat": r["flat"], "tier": d["tier"] or "none", "why": d["why"], "src": d["src"], "facts": d["facts"],
                     "ladder": r.get("units") or 0, "clv": clv})
     return out
@@ -336,7 +343,7 @@ def main(argv=None):
     sha = git.sha
     tape = BSC.BookTape(a.book_tape)
     rows = graded_rows(git)
-    ps = play_rows(git, rows, tape)
+    ps = play_rows(git, rows, tape, BSC.QuoteTape(a.book_tape))
     voided = sum(1 for r in rows if r.get("play") == "sf" and r.get("variant") == "all" and r.get("status") == "void")
     git.close()
     out = compute(ps)
@@ -373,6 +380,9 @@ def main(argv=None):
     for k in ("cbb_before_nov18_831am", "cbb_nov18_to_merge (hidden)", "cbb_nov18_to_nov19", "cbb_since_nov20_midnight", "cbb_after_merge"):
         print(f"  {k}: {short(r[k])}")
     print_shadow(out)
+    from sharps_v2 import flag_record as FR
+    out["flags"] = FR.compute(ps)
+    FR.print_report(out["flags"])
     print(f"\nFLAGGED FOR CLOSE MONITORING: every record that improves, with its n (tag under n={SMALL_N}); in-sample, none promoted, none a signal")
     for f in out["flagged"]:
         tag = "  [small sample]" if f["small_sample"] else ""

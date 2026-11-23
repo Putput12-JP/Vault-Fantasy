@@ -520,7 +520,7 @@ def holder_groups(kf, ledger):
     return groups, dust, best
 
 
-def card(kf, ledger, sport, vault=None, frozen=True, tape=None, quotes=None, feed=None, now=None):
+def card(kf, ledger, sport, vault=None, frozen=True, tape=None, quotes=None, feed=None, now=None, heartbeat=None):
     """One game's card from a keyframe (step 2) and the ledger as of its cut. `quotes` (a QuoteTape) and `feed` ({"games": {Vault key: sharp-data
     game}, "ts": epoch}) feed only the additive V2 plays block (markets[g].v2 and .splits, docs/sharps-v2-plays-spec.md); without them
     those reads are simply absent. `now` pins the build time (`built` and a live card's V2 reads); the clock when absent. Any failure in the V2
@@ -610,7 +610,8 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None, quotes=None, fee
             gm = ((feed or {}).get("games") or {}).get((vault or {}).get("key")) if feed else None
             cls_all = {x["w"]: classify(x, "all") for x in ws}
             v2, sp = P2.market_v2(sport, g, out["markets"][g], ws, cls_all, kf, asof, norms, rows=rows, game=gm,
-                                  feed_ts=(feed or {}).get("ts"), frozen=frozen, cut=cut)
+                                  feed_ts=(feed or {}).get("ts"), frozen=frozen, cut=cut,
+                                  heartbeat=None if frozen else heartbeat, ev=kf.get("ev"))
         except Exception as e:                   # the V2 block is context: a bad tape row or feed must never stop the card, the frozen commit or the publish
             print("::warning::V2 plays block skipped for %s %s %s: %s: %s" % (sport, kf.get("ev"), g, type(e).__name__, e), file=sys.stderr)
             continue
@@ -894,7 +895,7 @@ class QuoteTape(BookTape):
                             continue
                         if r.get("book") not in self.BOOKS or r.get("t") is None or r.get("bf"):
                             continue
-                        c = {k: r[k] for k in ("t", "book", "ml", "sp", "tot", "px", "nsp", "ntot", "start") if k in r}
+                        c = {k: r[k] for k in ("t", "book", "ml", "sp", "tot", "px", "nsp", "ntot", "start", "lim") if k in r}
                         if r.get("gk"):
                             gk.setdefault(r["gk"], []).append(c)
                         a, h = NFL_ALIAS.get(r.get("away"), r.get("away")), NFL_ALIAS.get(r.get("home"), r.get("home"))
@@ -1506,6 +1507,9 @@ def main():
                                            "without V2 keys in it the first V2 build seeds `retained` from a 60 day replay")
     ap.add_argument("--v2-tier-record", help="pm_record/v2_tier_record.json: the per-tier forward record, copied unchanged into live.json "
                                              "`v2_tier_record` when it parses (absent otherwise; docs/sharps-v2-plays-spec.md section 5.3)")
+    ap.add_argument("--heartbeat", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "exchange_edge_live.json"),
+                    help="exchange_edge_live.json: its `seen` (per-source last-seen epoch) is the staleness read of the v2 market-move flags on a live card; "
+                         "absent or unreadable means the flags are read as written (docs/sharps-v2-flags-spec.md 1.1)")
     ap.add_argument("--now", type=int, help="pin the build time (epoch seconds) for a reproducible local run; default the clock")
     ap.add_argument("--since-out", help="the since.json path (each wallet's dated settled list); default: beside --wallets-out")
     ap.add_argument("--no-budget-exit", action="store_true",
@@ -1526,6 +1530,13 @@ def main():
             except ValueError:
                 feed_ts = None
         feed = {"games": {g["key"]: g for g in games if g.get("key")}, "ts": feed_ts}   # public splits for the V2 plays block
+    heartbeat = None                                 # v2 flags staleness: the live feed's per-source last-seen times; absent means "read as written"
+    try:
+        with open(a.heartbeat) as f:
+            seen = json.load(f).get("seen") or {}
+        heartbeat = {k: seen.get(src) for k, src in (("pinnacle", "Pinnacle"), ("us", "US books")) if isinstance(seen.get(src), (int, float))} or None
+    except (OSError, ValueError, AttributeError, TypeError):
+        heartbeat = None
     now = int(a.now or time.time())
     live, wrote = {"built": now, "context_only": True, "games": []}, []
     pm_closes = {}
@@ -1619,7 +1630,7 @@ def main():
             kf = H.keyframe(st, ev, gst, now)
             if kf:
                 if not a.wallets_only:
-                    c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape, quotes=quotes, feed=feed, now=a.now)
+                    c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape, quotes=quotes, feed=feed, now=a.now, heartbeat=heartbeat)
                     carry_flagged(c, prev.get((ev, gst)), now)
                     live["games"].append(c)
                 if a.wallets_out:
