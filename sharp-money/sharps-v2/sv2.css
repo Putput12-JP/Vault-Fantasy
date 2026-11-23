@@ -730,13 +730,14 @@ body.sv2.sv2-lock { overflow: hidden; }
   .sv2 .sv2-fw-tools { grid-template-columns: minmax(220px, 340px) auto minmax(0, 1fr); gap: 14px; }
   .sv2 .sv2-fw-sortw { grid-column: auto; justify-content: flex-end; }
   .sv2 .sv2-fw-togs { grid-column: auto; }
-  .sv2 .sv2-fw-head { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.25fr) minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, .8fr); padding: 0 12px 0 56px; }
+  .sv2 .sv2-fw-dir { --sv2-fw-grid: minmax(0, 1.7fr) minmax(0, 1.1fr) minmax(0, 1.1fr) 84px 66px 56px minmax(0, 1fr) minmax(0, .8fr); }
+  .sv2 .sv2-fw-head { display: grid; grid-template-columns: var(--sv2-fw-grid); padding: 0 12px 0 56px; }
   .sv2 .sv2-fw-hc { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font: 600 12px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); text-align: left; }
   .sv2 .sv2-fw-hc .sv2-fw-arrow { width: 14px; height: 14px; opacity: 0; }
   .sv2 .sv2-fw-hc[aria-pressed="true"] { color: var(--sv2-ink); }
   .sv2 .sv2-fw-hc[aria-pressed="true"] .sv2-fw-arrow { opacity: 1; }
   .sv2 .sv2-fw-hc[aria-disabled="true"] { color: var(--sv2-faint); cursor: default; }
-  .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-main { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.25fr) minmax(0, 1.15fr) minmax(0, 1.1fr) minmax(0, .8fr); align-items: center; gap: 0 0; padding-right: 12px; }
+  .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-main { grid-template-columns: var(--sv2-fw-grid); align-items: center; gap: 0 0; padding-right: 12px; }
   .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-cells { display: contents; }
   .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-cell { padding-right: 10px; }
   .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-who { grid-column: 1; grid-row: 1; min-width: 0; padding-right: 10px; }
@@ -870,3 +871,44 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 
 /* an empty (hidden) rail must not reserve its column: Following with nobody followed uses the whole width */
 .sv2-embedded .sv2-cols:has(> .sv2-col-rail[hidden]), .sv2-cols:has(> .sv2-col-rail[hidden]) { grid-template-columns: minmax(0, 1fr); }
+
+/* ---- Following table: past record columns (2026-11-23) ----
+   Record, ROI, Bets, Last 10, Usual stake and Beat the close are the wallet's PAST record, picked after the fact. Win and loss colours
+   mark outcomes only (the ROI sign and the Last 10 dots); a thin sample (under 20 graded bets) is flagged in the caution colour. */
+.sv2 .sv2-fw-mktw { min-width: 0; max-width: 100%; }
+.sv2 .sv2-fw-mktw > .sv2-seg { max-width: 100%; }
+.sv2 .sv2-fw-thin { display: inline-flex; align-items: center; font: 500 12px/1.2 var(--sv2-sans); color: var(--sv2-caution); white-space: nowrap; }
+.sv2 .sv2-fw-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sv2 .sv2-fw-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--sv2-faint); flex: none; }
+.sv2 .sv2-fw-dots i.is-w { background: var(--sv2-win); }
+.sv2 .sv2-fw-dots i.is-l { background: var(--sv2-loss); }
+.sv2 .sv2-fw-rec2 { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.sv2 .sv2-fw-rec2 .sv2-num { color: var(--sv2-ink); }
+.sv2 .sv2-fw-rec2 .sv2-win { color: var(--sv2-win); }
+.sv2 .sv2-fw-rec2 .sv2-loss { color: var(--sv2-loss); }
+.sv2 .sv2-fw-pastnote { margin: 0 0 8px; }
+.sv2 .sv2-fw-hc--plain { display: inline-flex; align-items: center; min-height: 44px; font: 600 12px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2 .sv2-fw-hc0 { gap: 4px; }
+.sv2 .sv2-fw-hc0[aria-pressed="true"] { color: var(--sv2-ink); }
+@media (min-width: 1024px) {
+  .sv2 .sv2-fw-head .sv2-fw-hc { padding-right: 10px; }
+  .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-c2 { font-size: 11.5px; }
+  .sv2 .sv2-fw-mktw { grid-column: auto; }
+  .sv2-embedded .sv2-fw-sortw { display: none; }   /* the column headers sort on desktop */
+}
+@media (max-width: 767px) {
+  .sv2 .sv2-fw-mktw { overflow-x: auto; scrollbar-width: none; }
+  .sv2 .sv2-fw-mktw::-webkit-scrollbar { display: none; }
+}
+.sv2 .sv2-fw-cell .sv2-num, .sv2 .sv2-fw-rec2 .sv2-num { white-space: nowrap; }
+.sv2 .sv2-fw-chips-l { min-width: 0; max-width: 100%; }
+.sv2 .sv2-fw-chips-l .sv2-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Following table: the full set of columns needs about 1280px; below that Last 10, Usual stake and Beat the close drop out
+   (the phone layout shows the record and ROI instead) so nothing overlaps. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .sv2 .sv2-fw-head > :nth-child(7), .sv2 .sv2-fw-head > :nth-child(8), .sv2 .sv2-fw-head > :nth-child(9) { display: none; }
+  .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-cells > :nth-child(6), .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-cells > :nth-child(7), .sv2 .sv2-fw-row:not(.sv2-fw-row--mini) .sv2-fw-cells > :nth-child(8) { display: none; }
+}
+@media (min-width: 1280px) {
+  .sv2 .sv2-fw-dir { --sv2-fw-grid: minmax(0, 1.7fr) minmax(0, 1.1fr) minmax(0, 1.1fr) 84px 66px 56px 100px 72px 80px minmax(0, 1fr) minmax(0, .8fr); }
+}
