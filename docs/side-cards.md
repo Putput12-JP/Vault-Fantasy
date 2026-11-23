@@ -307,8 +307,8 @@ reads it). The budget is enforced, not warned: `build_side_cards.py` exits 3 whe
 
 Spec: `docs/sharps-v2-plays-spec.md`. Code: `scripts/sharps_v2/plays_v2.py`, called from `card()` in `scripts/build_side_cards.py`. **Additive only:**
 no existing key of `live.json`, a frozen card or the shadow logs changes its name, shape or value, and `scripts/sf_rungs.py` and every gate and lock
-are untouched. On the Nov 23 inputs the new builder's `live.json` with the new keys stripped equals the old builder's byte for byte (games matched
-by event and start; same-start games come out in a hash-seed order in both builders), and so do all 923 frozen cards rebuilt from the keyframes
+are untouched. On the Nov 23 inputs the new builder's `live.json` with the new keys stripped is JSON-equal to the old builder's apart from `built` (the clock; equal in the pinned runs; games matched
+by event and start, since same-start games come out in a hash-seed order in both builders), and so are all 925 frozen cards rebuilt from the keyframes
 (`tests.test_sharps_v2_plays` runs the same strip-and-compare against `origin/main`). Sharp money is context only; the tier never changes the size.
 
 | Key | What |
@@ -347,17 +347,24 @@ publish. Context only: a record, not a signal.
 
 ```
 { "built": epoch, "data_ref": "<pm-holders-data commit read>", "rule": "<text>", "units_basis": "flat 1u at the stored price at the cut",
-  "forward_from": 1794808800, "all_sports": ["nba", "nfl", "cbb"],
+  "first_logged_cut": epoch|null, "logged_rows": n, "forward_graded": n, "forward_note": "forward starts at the first logged lock",
+  "since_nov16_from": 1794808800, "all_sports": ["nba", "nfl", "cbb"],
   "sports": { "nba|nfl|cfb|cbb": { "tiers": { "clear|mixed|thin|contested|none": {
         "all":       {"w", "l", "p", "n", "units", "roi"},
-        "forward":   {...}, "in_sample": {...},
+        "in_sample": {...}, "forward": {...}, "since_nov16": {...},
         "by_market": {"ml": {...}, "spread": {...}, "total": {...}} } } } },
   "all": { "tiers": { ...same shape... } } }
 ```
 
 - `units` and `roi` are **flat 1u** at the stored price at the cut (a win pays 1 / price - 1, a loss -1, a push 0), not the size the page shows. `roi` =
   units / n as a fraction (0.081 = 8.1%) and is `null` when n is 0, never 0. A tier with no plays is present with zeros.
-- `forward` = cut at or after 2026-11-16 12:00 AM Central (`forward_from`); `in_sample` = before it. `all` (inside a tier) is both.
+- `in_sample` = every play cut **strictly before the first row of the forward tier log** (`pm_cards/<sport>/v2_tier/*.jsonl`, written by the live builder
+  at lock); with no log, every play. The tier rule (v2t-1) was written Nov 21 to 23, so these tiers are derived after the fact.
+- `forward` = **only plays whose tier was logged at lock** by the live builder, joined to the graded record by key, with the tier the log holds. It
+  starts at the first logged lock: until a logged play is graded it is all zeros and `forward_note` says "forward starts at the first logged lock".
+  A play cut at or after the first logged lock with no log row is in `all` only.
+- `since_nov16` = plays cut on or after 2026-11-16 12:00 AM Central (`since_nov16_from`), the Nov 16 shadow rules; informational, tier still derived
+  after the fact, **never forward**. `all` (inside a tier) is every play.
 - `none` = not derivable at the cut. It is never folded into a tier.
 - `by_market` splits a tier's `all` plays by market group.
 - Top-level `all` pools NBA, NFL and CBB (the sports that show a size, the page headline). CFB shows no size, so it appears under `sports.cfb` as a

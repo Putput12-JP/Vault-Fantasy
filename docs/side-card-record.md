@@ -181,14 +181,14 @@ shows (+11.98u) is the current rule applied to all history, not what a reader fo
 play from its own card at its cut (nothing from the outcome) and prints the record per tier. The tiers are in-sample (the rule was written after
 these results) and are not a signal. Forward test: `docs/sharp-tier-v2-prereg.md` (PROPOSED).
 
-**Data read:** `origin/pm-holders-data` at commit `dec770c0e7bb1292f7b2bc09d754ae6680b76387` (Nov 23, 11:26 AM CT). Every number in this entry is as of that
+**Data read:** `origin/pm-holders-data` at commit `dec770c0e7bb1292f7b2bc09d754ae6680b76387` (Nov 23, 10:26 AM CT). Every number in this entry is as of that
 commit and is reproduced by `python3 -I scripts/sharps_v2/tier_history.py --ref <commit>`, which prints the hash it read.
 
 **Old-card rule (added after review).** On a card from before the tape existed for its game, no price check was possible at the cut, so the price facts
 (a4, b2) are *unknown*, not "no price evidence". Those plays are **not derivable**, not Thin. This moved 42 of the 45 CBB Thin plays (and 10 of 24 CFB
 Thin plays) to not derivable. A **forward Thin** play (a card written by the new builder, tier stored on the card at its freeze) is a different group: the live rule counts "no price read" as
 Thin whatever the reason, so forward Thin includes plays with no price check possible (for example a ticket line that is not Pinnacle's main line).
-The two groups must not be read together, and forward Thin will be read on its own record (`tier_record.json` `forward`).
+The two groups must not be read together, and forward Thin will be read on its own record (`tier_record.json` `forward`: only plays whose tier the live builder logged at lock, which starts at the first logged lock and is empty until a logged play is graded). Every record in this entry, and `in_sample` and `since_nov16` in `tier_record.json`, are tiers derived after the fact (rule v2t-1 was written Nov 21 to 23), never forward.
 
 | Old (the record today, no tier) | Record | n |
 |---|---|---|

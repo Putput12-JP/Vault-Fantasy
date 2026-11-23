@@ -38,6 +38,9 @@ Facts for the shown side S, with O the other side(s) of the same market group, a
 Tier, first match wins: **Contested** if any of a1 to a4; **Clear** if (b1 or b2) and b3; **Thin** if past-winner wallets on S <= 1, no b1, and no price
 read (`ev.pts` null); otherwise **Mixed**. College (CBB, CFB) has no tested CLV model, so a2, a3 and b1 are published false and listed in `facts_na`.
 
+"Forward" in this registration means a tier **logged at lock by the live builder** (the `v2_tier` log), joined to the graded record. A tier derived
+after the fact from an older card is in-sample, however recent the card.
+
 Universe: every rule pick (side set, ladder units above 0) on a frozen card, every sport, CFB included (shown size 0, still logged). The log is
 `pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl` on `pm-holders-data`, append-only, one row per pick written when the card freezes (and repaired from the
 card's own stored block if an append was missed). The tier graded is the one on the frozen card, never a live preview.

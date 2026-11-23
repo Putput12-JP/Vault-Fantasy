@@ -328,6 +328,8 @@ stay under 250 KB of compact JSON; `scripts/sharps_v2/check_size.py` gains a `--
 
 ### 7.2 Records to fix: the per-tier record of every graded play (re-derived, in-sample; numbers as of the Nov 21 inputs, 166 plays)
 
+**Superseded 2026-11-23: the tables in this section are the Nov 21 numbers (166 plays, tier rule before the old-card "not derivable" change). The current per-tier record (205 plays, `dec770c0e7bb`, 10:26 AM CT Nov 23) is in `docs/side-card-record.md`.**
+
 Flat 1 unit at the stored price at the cut (the grader's own `flat`), variant `all`, 166 graded shown-size plays (3 voided CBB plays on
 one postponed game are excluded, as in the record). Pinnacle CLV = no-vig close minus the price at the cut, in points, last tape row at
 or before kickoff. Every row below is in-sample: the tier rule was written after these results.

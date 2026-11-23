@@ -247,6 +247,15 @@ class Conflict(unittest.TestCase):
         c = P.conflict(b, "A", False)
         self.assertEqual((c["past_winner_against"]["n"], c["beats_for"], c["loses_against"], c["money_share_for"]), (0, 1, 1, round(1000 / 2150, 3)))
 
+    def test_money_share_is_none_not_zero_when_there_is_no_money(self):
+        zero = {"all": side_all(unproven=0)}
+        b = P.side_blocks("nba", {"A": zero, "B": {"all": side_all()}}, [], ["A", "B"])
+        self.assertEqual(b["A"]["usd"], 0)
+        self.assertIsNone(P.conflict(b, "A", False)["money_share_for"])
+        ws = [self.holder("a", "A", 300)]
+        b2 = P.side_blocks("nba", {"A": {"all": side_all(unproven=1, usd=300)}, "B": {"all": side_all()}}, ws, ["A", "B"])
+        self.assertEqual(P.conflict(b2, "A", False)["money_share_for"], 1.0)                      # all the money on the shown side: 1.0, a real share
+
     def test_college_holders_are_all_few(self):
         ws = [self.holder("a", "A", 400, "sharp"), self.holder("b", "A", 300)]
         b = P.side_blocks("cbb", {"A": {"all": side_all(hc=1, unproven=1, usd=100)}}, ws, ["A"])["A"]
@@ -688,36 +697,81 @@ class HistoryMain(unittest.TestCase):
 
 
 class TierRecord(unittest.TestCase):
+    S16 = TR.SINCE_NOV16
+    FIRST = 1_795_200_000                                                  # the first logged lock in these fixtures
+
     def plays(self):
-        mk = lambda sp, tier, res, flat, cut, g="ml": {"sport": sp, "tier": tier, "res": res, "flat": flat, "cut": cut, "group": g}
-        f = TR.FORWARD_FROM
-        return [mk("nba", "contested", "win", 0.8, f + 10), mk("nba", "contested", "loss", -1.0, f - 10, "spread"), mk("nba", "none", "win", 1.0, f + 5),
-                mk("nfl", "contested", "push", 0.0, f + 1, "total"), mk("cfb", "thin", "win", 0.5, f + 1), mk("cbb", "thin", "loss", -1.0, f - 1)]
+        n = [0]
 
-    def test_forward_starts_at_nov_16_midnight_central(self):
-        self.assertEqual(TR.FORWARD_FROM, 1794808800)                                                # 2026-11-16 12:00 AM CT (06:00 UTC)
-        self.assertEqual(TR.build([], 1, "x")["forward_from"], 1794808800)
+        def mk(sp, tier, res, flat, cut, g="ml"):
+            n[0] += 1
+            return {"key": f"k{n[0]}", "sport": sp, "tier": tier, "res": res, "flat": flat, "cut": cut, "group": g}
+        f = self.FIRST
+        return [mk("nba", "contested", "win", 0.8, f + 10), mk("nba", "contested", "loss", -1.0, f - 10, "spread"), mk("nba", "none", "win", 1.0, f - 5),
+                mk("nfl", "contested", "push", 0.0, f - 1, "total"), mk("cfb", "thin", "win", 0.5, f + 1), mk("cbb", "thin", "loss", -1.0, f - 1)]
 
-    def test_shape_and_zero_tiers(self):
+    def logged(self, keys, cut=None, tier="contested"):
+        return {k: {"key": k, "cut": cut if cut is not None else self.FIRST, "tier": tier} for k in keys}
+
+    def test_since_nov16_starts_at_midnight_central_and_is_not_forward(self):
+        self.assertEqual(TR.SINCE_NOV16, 1794808800)                                                  # 2026-11-16 12:00 AM CT (06:00 UTC)
+        ps = [{"key": "a", "sport": "nba", "tier": "contested", "res": "win", "flat": 1.0, "cut": TR.SINCE_NOV16, "group": "ml"},
+              {"key": "b", "sport": "nba", "tier": "contested", "res": "win", "flat": 1.0, "cut": TR.SINCE_NOV16 - 1, "group": "ml"}]
+        t = TR.build(ps, 1, "x")["sports"]["nba"]["tiers"]["contested"]
+        self.assertEqual((t["since_nov16"]["n"], t["forward"]["n"], t["all"]["n"]), (1, 0, 2))      # the boundary second is in (>=), and nothing is forward without a log
+
+    def test_without_a_log_everything_is_in_sample_and_forward_is_empty_with_a_note(self):
         d = TR.build(self.plays(), 123, "abc")
-        self.assertEqual((d["built"], d["data_ref"]), (123, "abc"))
+        self.assertEqual((d["built"], d["data_ref"], d["first_logged_cut"], d["logged_rows"], d["forward_graded"]), (123, "abc", None, 0, 0))
+        self.assertEqual(d["forward_note"], "forward starts at the first logged lock")
+        t = d["sports"]["nba"]["tiers"]["contested"]
+        self.assertEqual((t["all"]["n"], t["in_sample"]["n"], t["forward"]["n"]), (2, 2, 0))
+        z = t["forward"]
+        self.assertEqual((z["w"], z["l"], z["p"], z["n"], z["units"], z["roi"]), (0, 0, 0, 0, 0, None))
+        self.assertNotIn("forward_from", d)
+
+    def test_forward_is_only_what_the_log_holds_and_in_sample_is_strictly_before_the_first_lock(self):
+        ps = self.plays()
+        lg = self.logged([ps[0]["key"]], cut=self.FIRST)                                             # k1 (nba, cut FIRST+10) and k5 (cfb) were logged at lock
+        lg.update(self.logged([ps[4]["key"]], cut=self.FIRST + 1, tier="thin"))
+        d = TR.build(ps, 1, "x", lg)
+        self.assertEqual((d["first_logged_cut"], d["logged_rows"], d["forward_graded"]), (self.FIRST, 2, 2))
+        self.assertNotEqual(d["forward_note"], "forward starts at the first logged lock")
+        t = d["sports"]["nba"]["tiers"]["contested"]
+        self.assertEqual((t["all"]["n"], t["forward"]["n"], t["in_sample"]["n"]), (2, 1, 1))        # k1 forward; k2 (cut FIRST-10) in sample
+        self.assertEqual((t["forward"]["w"], t["in_sample"]["l"]), (1, 1))
+        self.assertEqual(d["sports"]["cfb"]["tiers"]["thin"]["forward"]["n"], 1)
+        self.assertEqual(d["sports"]["cfb"]["tiers"]["thin"]["in_sample"]["n"], 0)                  # k5 is cut after the first lock: not in sample
+        # a play cut exactly at the first logged lock and not logged is neither in sample nor forward (strict <)
+        edge = [{"key": "e", "sport": "nba", "tier": "contested", "res": "win", "flat": 1.0, "cut": self.FIRST, "group": "ml"}]
+        te = TR.build(edge, 1, "x", self.logged(["other"], cut=self.FIRST))["sports"]["nba"]["tiers"]["contested"]
+        self.assertEqual((te["all"]["n"], te["in_sample"]["n"], te["forward"]["n"]), (1, 0, 0))
+
+    def test_the_logged_tier_wins_for_a_forward_play(self):
+        ps = [{"key": "z", "sport": "nba", "tier": "clear", "res": "win", "flat": 1.0, "cut": self.FIRST + 5, "group": "ml"}]
+        d = TR.build(ps, 1, "x", self.logged(["z"], tier="contested"))["sports"]["nba"]["tiers"]
+        self.assertEqual((d["contested"]["forward"]["n"], d["clear"]["forward"]["n"]), (1, 0))
+
+    def test_in_sample_counts_pushes(self):
+        ps = self.plays()
+        t = TR.build(ps, 1, "x", self.logged(["nothing"]))["sports"]["nfl"]["tiers"]["contested"]  # nfl: one push, cut before the first lock
+        self.assertEqual((t["in_sample"]["p"], t["in_sample"]["n"], t["in_sample"]["w"], t["in_sample"]["l"]), (1, 1, 0, 0))
+        self.assertEqual((t["in_sample"]["units"], t["in_sample"]["roi"]), (0, 0.0))
+
+    def test_shape_zero_tiers_and_by_market(self):
+        d = TR.build(self.plays(), 123, "abc")
         self.assertEqual(set(d["sports"]), {"nba", "nfl", "cfb", "cbb"})
-        for sp in d["sports"].values():
+        for sp in list(d["sports"].values()) + [d["all"]]:
             self.assertEqual(set(sp["tiers"]), {"clear", "mixed", "thin", "contested", "none"})
             for t in sp["tiers"].values():
-                self.assertEqual(set(t), {"all", "forward", "in_sample", "by_market"})
+                self.assertEqual(set(t), {"all", "in_sample", "forward", "since_nov16", "by_market"})
                 self.assertEqual(set(t["by_market"]), {"ml", "spread", "total"})
                 self.assertEqual(set(t["all"]), {"w", "l", "p", "n", "units", "roi"})
         z = d["sports"]["nba"]["tiers"]["clear"]["all"]
         self.assertEqual((z["w"], z["l"], z["p"], z["n"], z["units"], z["roi"]), (0, 0, 0, 0, 0, None))   # present with zeros; no roi invented
-
-    def test_forward_vs_in_sample_and_by_market(self):
-        t = TR.build(self.plays(), 1, "x")["sports"]["nba"]["tiers"]["contested"]
-        self.assertEqual((t["all"]["n"], t["forward"]["n"], t["in_sample"]["n"]), (2, 1, 1))
-        self.assertEqual((t["forward"]["w"], t["in_sample"]["l"]), (1, 1))
+        t = d["sports"]["nba"]["tiers"]["contested"]
         self.assertEqual((t["by_market"]["ml"]["n"], t["by_market"]["spread"]["n"], t["by_market"]["total"]["n"]), (1, 1, 0))
         self.assertEqual((t["all"]["units"], t["all"]["roi"]), (-0.2, -0.1))
-        self.assertEqual(TR.build([dict(p, cut=TR.FORWARD_FROM) for p in self.plays()], 1, "x")["sports"]["nba"]["tiers"]["contested"]["in_sample"]["n"], 0)
 
     def test_none_is_kept_apart_and_all_excludes_cfb(self):
         d = TR.build(self.plays(), 1, "x")
@@ -727,16 +781,21 @@ class TierRecord(unittest.TestCase):
         self.assertEqual(sum(t["all"]["n"] for t in d["all"]["tiers"].values()), 5)
         self.assertEqual(d["sports"]["cfb"]["tiers"]["thin"]["all"]["n"], 1)
 
-    def test_the_command_writes_a_small_file_from_a_checkout(self):
+    def test_the_command_reads_the_log_and_writes_a_small_file(self):
         with tempfile.TemporaryDirectory() as d:
             fx = Fixture(d)
-            fx.add(tcard("nba", "k1", TR.FORWARD_FROM + 100, o=side_all(hc=1, rk=(0, 0))), res="loss", flat=-1.0)
+            rel1 = fx.add(tcard("nba", "k1", self.S16 + 100, o=side_all(hc=1, rk=(0, 0))), res="loss", flat=-1.0)
+            fx.add(tcard("nba", "k2", self.S16 + 200, o=side_all(hc=1, rk=(0, 0))), res="win", flat=0.5)
+            os.makedirs(os.path.join(d, "pm_cards", "nba", "v2_tier"))
+            with open(os.path.join(d, "pm_cards", "nba", "v2_tier", "2026-11.jsonl"), "w") as f:
+                f.write(json.dumps({"key": rel1 + "|ml|all|sf", "cut": self.S16 + 100, "tier": "contested"}) + "\nnot json\n[1]\n")
             fx.commit()
             out = os.path.join(d, "o", "tier_record.json")
             TR.main(["--data-dir", d, "--book-tape", os.path.join(d, "tape"), "--out", out, "--data-ref", "deadbeef", "--now", "5"])
             doc = json.load(open(out))
-            self.assertEqual((doc["data_ref"], doc["built"]), ("deadbeef", 5))
-            self.assertEqual(doc["sports"]["nba"]["tiers"]["contested"]["forward"]["l"], 1)
+            t = doc["sports"]["nba"]["tiers"]["contested"]
+            self.assertEqual((doc["data_ref"], doc["built"], doc["logged_rows"], doc["first_logged_cut"]), ("deadbeef", 5, 1, self.S16 + 100))
+            self.assertEqual((t["forward"]["n"], t["forward"]["l"], t["in_sample"]["n"], t["since_nov16"]["n"], t["all"]["n"]), (1, 1, 0, 2, 2))
             self.assertLess(os.path.getsize(out), 20_000)
 
 
