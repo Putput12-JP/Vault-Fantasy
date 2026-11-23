@@ -302,3 +302,37 @@ With them in `since.json` it is **1,242 KB, V2 fields 295 KB**, inside both; `si
 reads it). The budget is enforced, not warned: `build_side_cards.py` exits 3 when the wallets file is over, and the pm-cards workflow runs
 `scripts/sharps_v2/check_size.py` before its publish step, so an over-budget file is never published and the last good file stays live.
 `SHARPS_V2_WALLETS=file python3 -m unittest tests.test_sharps_v2_wallets` runs the same check as a test.
+
+## V2 plays data (`markets[g].v2`, `markets[g].splits`)
+
+Spec: `docs/sharps-v2-plays-spec.md`. Code: `scripts/sharps_v2/plays_v2.py`, called from `card()` in `scripts/build_side_cards.py`. **Additive only:**
+no existing key of `live.json`, a frozen card or the shadow logs changes its name, shape or value, and `scripts/sf_rungs.py` and every gate and lock
+are untouched. On the Nov 23 inputs the new builder's `live.json` with the new keys stripped equals the old builder's byte for byte (games matched
+by event and start; same-start games come out in a hash-seed order in both builders), and so do all 923 frozen cards rebuilt from the keyframes
+(`tests.test_sharps_v2_plays` runs the same strip-and-compare against `origin/main`). Sharp money is context only; the tier never changes the size.
+
+| Key | What |
+|---|---|
+| `v2.shown_units`, `v2.shown_rule`, `v2.untested` | the size the page shows: flat 1u on NBA, NFL and CBB plays, 0 on CFB or without a pick, always "untested rule". The ladder stays in `sf.all.units`. Never reads the tier |
+| `v2.tier`, `v2.facts`, `v2.facts_na` | evidence tier (`clear`, `mixed`, `thin`, `contested`, rule `v2t-1`, `docs/sharp-tier-v2-prereg.md`) and the eight facts behind it, from fields stored at the cut. On a live card it is a preview |
+| `v2.sides[<side>]` | per side: holders, money, past winners, losing record, and (NBA, NFL) holders whose CLV tier at the cut beats, loses to or is even with the close, plus `few`; college is all `few` |
+| `v2.conflict`, `v2.lead`, `v2.past_winners_for` | the shown side against the other side(s); the largest past-winner wallet; every past-winner wallet on the side (the card's `list` keeps the top 4) |
+| `v2.price_src`, `v2.pm` | whether `sf.all.price` is Polymarket's displayed price (`pm`) or Pinnacle's vig-included price (`pin`), with its time and age. Never a price you pay |
+| `v2.exec` | best US book on the same line (DraftKings, FanDuel, BetMGM, BetRivers, bet365), Kalshi, Novig, Pinnacle, from the book tape, each with its last-change time and age (tape rows are written on change: "unchanged since", never "read at"). Reads stop at the cut. No Polymarket ask is stored, so there is no `pm_ask` yet |
+| `v2.vs_fair` | `sf.all.signals.ev` plus the Pinnacle row time and ticket line, with the reason when not readable |
+| `splits` | Action Network public split joined by `vault.key`, both sides as stored (live) or the last history row at or before the cut with the other side 100 minus it, marked `comp` (frozen). Absent when the feed has none, never 0. Context only |
+| top `v2_slate`, `v2_plays`, `v2_tier_record` | live only: shown plays by tier, wallets that are past winners on 2 or more shown plays, field list, and the per-tier forward record when `--v2-tier-record` is given |
+
+**Shadow log.** `pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl` on `pm-holders-data`: one append-only row per rule pick on each new frozen card (key = the
+graded `sf` row's key), a projection of the card's own stored `v2` block, repaired on the next run if an append was missed. Committed by the existing
+`commit_push("pmdata", "pm_cards", ...)` step.
+
+**History.** `python3 -I scripts/sharps_v2/tier_history.py` re-derives the tier of every graded shown play from its card at the cut and prints the
+record per tier, the Nov 20 CBB numbers and the close-monitoring list (`docs/side-card-record.md`). In-sample.
+
+**Size.** The V2 keys add 54 KB to a 839 KB `live.json` (183 games). `scripts/sharps_v2/check_size.py --live live/live.json` fails the publish step over
+250 KB and the last good file stays live.
+
+**Not built yet (forward only, said explicitly):** `exec.pm_ask` (needs `bestBid` and `bestAsk` in the holders scan, spec D-P1); the grader's
+`pinclose` rows, per-tier `cards_record.json` sections and `v2_tier_record.json` (the builder already reads that file when present); a one-time splits
+backfill from `state.json` (spec D-P4); the splits and tape quotes of games already pruned from `sharp-data`. Tests: `python3 -m unittest tests.test_sharps_v2_plays`.

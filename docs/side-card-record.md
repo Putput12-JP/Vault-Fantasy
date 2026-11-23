@@ -150,3 +150,59 @@ grader still writes the same rows. The page keeps the ladder as `units_ladder` a
 
 The headline moved from -9.05u to +1.95u (28-19, 47 plays) **only because the rule moved the college plays and the ladder out of it**. The rule was
 chosen after seeing the results, so it is in-sample and flagged for close monitoring at n = 47. It is not evidence of an edge.
+
+## Change on 2026-11-20: CBB plays shown again (#534, 4:47 PM CT)
+
+At the user's request the page shows CBB plays again at a flat 1u with "untested rule", against the Nov 18 audit's read of CBB (-8.0% forward
+on its signal). Nothing stored changes; the headline now adds CBB over all history. This entry was missing until 2026-11-23. Every number is
+re-measured from the graded rows on `pm-holders-data` by `scripts/sharps_v2/tier_history.py` (flat 1u at the stored price at the cut,
+variant `all`, voided plays left out).
+
+| Line | Before (NBA + NFL) | After (NBA + NFL + CBB) |
+|---|---|---|
+| Plays cut before Nov 20, 12:00 AM CT | 37-23, +4.56u, +7.6%, n=60 | 62-42, +9.37u, +9.0%, n=104 |
+| Rows graded before #534 merged (Nov 20, 4:47 PM CT) | 37-23, +4.56u, n=60 | 62-43, +8.37u, n=105 |
+| Record read on Nov 23 (all history) | 56-35, +7.98u, +8.8%, n=91 | 85-59, +11.98u, +8.3%, n=144 |
+
+The headline rose on Nov 20 **only because CBB plays were added after CBB plays cut Nov 18 to 19 went 12-2 (+9.03u, n=14)**. That is a choice made
+on results: in-sample, flagged for close monitoring at n = 53 CBB plays (29-24, +4.00u, +7.5%).
+
+CBB by cut time: before Nov 18 8:31 AM CT 13-17, -4.23u (n=30; the Nov 18 audit's -6.30u was the ladder); Nov 18 to the change, when CBB was hidden,
+13-3, +9.10u (n=16); cut on or after Nov 20 12:00 AM CT 4-5, -0.81u (n=9; it was 2-3, -1.07u, n=5 on Nov 21); cut after the merge 3-4, -0.87u (n=7).
+
+At the size the page actually showed at each cut (ladder before Nov 18 8:31 AM CT, flat 1u on NBA and NFL from then, CBB flat from Nov 20 4:47 PM CT,
+CFB none): 91-79, -3.89u on 211u staked, n=170 (NBA -0.49u, NFL +11.43u, CBB -7.17u on the 37 plays shown, CFB -7.65u). The headline the page
+shows (+11.98u) is the current rule applied to all history, not what a reader following the page would have had.
+
+## Sharps V2 plays data: evidence tier and the record by tier (2026-11-23)
+
+`scripts/build_side_cards.py` now publishes an evidence tier and the price you would get beside each play (`markets[g].v2`, `markets[g].splits`,
+`docs/side-cards.md` "V2 plays data"). Nothing already stored changes: `scripts/sharps_v2/tier_history.py` re-derives the tier of every graded shown
+play from its own card at its cut (nothing from the outcome) and prints the record per tier. The tiers are in-sample (the rule was written after
+these results) and are not a signal. Forward test: `docs/sharp-tier-v2-prereg.md` (PROPOSED).
+
+| Old (the record today, no tier) | Record | n |
+|---|---|---|
+| NBA | 34-24, +0.10u, +0.2% | 58 |
+| NFL | 22-11, +7.88u, +23.9% | 33 |
+| CBB | 29-24, +4.00u, +7.5% | 53 |
+| CFB (no size shown) | 29-32, -9.33u, -15.3% | 61 |
+| Headline NBA + NFL + CBB | 85-59, +11.98u, +8.3% | 144 |
+
+| New (the same plays by tier; headline totals unchanged) | Clear | Mixed | Thin | Contested | Not derivable |
+|---|---|---|---|---|---|
+| NBA | 0 | 0 | 0 | 30-20, +0.96u, n=50 | 4-4, -0.86u, n=8 |
+| NFL | 0 | 0 | 0 | 19-11, +4.89u, n=30 | 3-0, +2.99u, n=3 |
+| CBB | 1-0, +1.20u, n=1 | 0-2, -2.00u, n=2 | 24-21, +2.94u, n=45 | 4-1, +1.86u, n=5 | 0 |
+| CFB (no size) | 0 | 6-10, -4.56u, n=16 | 15-9, +3.22u, n=24 | 8-13, -7.98u, n=21 | 0 |
+| Headline | 1-0, +1.20u, n=1 | 0-2, -2.00u, n=2 | 24-21, +2.94u, +6.5%, n=45 | 53-32, +7.72u, +9.1%, n=85 | 7-4, +2.13u, n=11 |
+
+"Not derivable" means a fact the tier needs was not stored on the card at its cut (the CLV tiers were first stored on cards cut Nov 18, the
+fade rule on cards cut from Nov 19) and no stored fact against the side was already true. It is left empty, never guessed. Pinnacle CLV (no-vig
+close minus the price at the cut, last tape row before kickoff): NBA +0.12 pts (n=47), NFL -0.59 (n=18), CBB -0.26 (n=4), CFB -0.19 (n=23),
+headline -0.09 (n=69).
+
+**Flagged for close monitoring (a record that improves; all in-sample, none promoted):** NBA Contested 30-20 +0.96u (n=50); NBA Pinnacle CLV +0.12 pts
+(n=47); NFL Contested 19-11 +4.89u (n=30, but Pinnacle CLV -0.59, n=18); CBB Thin 24-21 +2.94u (n=45); CFB Thin 15-9 +3.22u (n=24, no size
+shown); headline Contested 53-32 +7.72u (n=85) and Thin (n=45). The tiers do not separate on these samples: Contested +9.1% at se 9.8 against Thin
++6.5% at se 15.2.

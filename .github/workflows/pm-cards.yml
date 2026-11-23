@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit tests
-        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets
+        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets tests.test_sharps_v2_plays
       - name: Inputs (holders, ledger, Vault games)
         run: |
           if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then
@@ -60,6 +60,7 @@ jobs:
           python3 scripts/build_side_cards.py --holders pmdata/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
             --frozen-out pmdata/pm_cards --live-out live/live.json --closes data/pm_closes.json --prev-live prev_live.json \
             --sf-excluded sf_excluded.json --scorecard-dir data --wallets-out live/wallets.json --prev-wallets prev_wallets.json \
+            --v2-tier-record pmdata/pm_record/v2_tier_record.json \
             --no-budget-exit     # the size gate is its own step below, after the frozen cards are committed
       - name: Commit frozen cards (append-only)
         if: env.SKIP != '1'
@@ -75,7 +76,9 @@ jobs:
           PY
       - name: Wallets file size gate
         if: env.SKIP != '1'
-        run: python3 -I scripts/sharps_v2/check_size.py live/wallets.json
+        run: |
+          python3 -I scripts/sharps_v2/check_size.py live/wallets.json
+          python3 -I scripts/sharps_v2/check_size.py --live live/live.json       # the V2 plays keys, budget 250 KB
       - name: Publish live cards (single commit, force-pushed)
         if: env.SKIP != '1'
         run: |

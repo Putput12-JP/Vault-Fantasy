@@ -60,6 +60,10 @@ usage: build_side_cards.py --holders DIR --ledger DIR [--sharp-data data.json] -
 Wallets file V2 (docs/sharps-v2-accounts-spec.md, docs/side-cards.md "Wallets file"): additive fields only, every V1 key keeps its name, shape and
 value. `--prev-wallets` is the last published wallets.json (carries `retained` forward); `--now` pins the build time (reproducible runs);
 `--wallets-only` skips the frozen and live cards (a local wallets run).
+
+V2 plays data (docs/sharps-v2-plays-spec.md, scripts/sharps_v2/plays_v2.py): every card also carries `markets[g].v2` (evidence tier, conflict, shown size,
+price you would get) and `markets[g].splits`, live.json carries `v2_slate`, `v2_plays` and, with `--v2-tier-record`, `v2_tier_record`, and each new frozen card
+adds a row per rule pick to pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl. Additive keys only; every pre-existing key is unchanged.
 """
 import argparse, bisect, datetime as dt, glob, json, math, os, re, statistics, sys, time
 from zoneinfo import ZoneInfo
@@ -71,6 +75,7 @@ import sf_signals as SIG  # noqa: E402
 import sf_publish as PUB  # noqa: E402
 import pm_clv_tiers as CT  # noqa: E402
 import sf_tiers as TIERS  # noqa: E402
+from sharps_v2 import plays_v2 as P2  # noqa: E402   # the V2 plays data (docs/sharps-v2-plays-spec.md), additive
 
 PROVEN_N, PROVEN_WR, PROVEN_ROI = 6, 0.55, 0.03
 FLOOR_USD = 250
@@ -515,8 +520,10 @@ def holder_groups(kf, ledger):
     return groups, dust, best
 
 
-def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
-    """One game's card from a keyframe (step 2) and the ledger as of its cut."""
+def card(kf, ledger, sport, vault=None, frozen=True, tape=None, quotes=None, feed=None):
+    """One game's card from a keyframe (step 2) and the ledger as of its cut. `quotes` (a QuoteTape) and `feed` ({"games": {Vault key: sharp-data
+    game}, "ts": epoch}) feed only the additive V2 plays block (markets[g].v2 and .splits, docs/sharps-v2-plays-spec.md); without them
+    those reads are simply absent."""
     groups, dust, best = holder_groups(kf, ledger)
     cut = kf["cut"]
     rk = ledger.clv_tiers(cut)                       # cached per cut; the tier plays below read it
@@ -593,6 +600,18 @@ def card(kf, ledger, sport, vault=None, frozen=True, tape=None):
             sg = card_signals(out, g, variant, tape)               # the limit and price reads of the shown side (scripts/sf_signals.py)
             if sg is not None:
                 out["markets"][g]["sf"][variant]["signals"] = sg
+        # V2 plays data: additive keys, every read stopped at the cut (a live card: at the build time); nothing above changes
+        asof = cut if frozen else min(cut, built)
+        names = team_names(vault, kf["ev"], sport)
+        norms = side_norms(g, sorted(out["markets"][g]["sides"]), names)
+        rows = quotes.game(sport, vault, kf["ev"], kf["gst"])[0] if quotes is not None else None
+        gm = ((feed or {}).get("games") or {}).get((vault or {}).get("key")) if feed else None
+        cls_all = {x["w"]: classify(x, "all") for x in ws}
+        v2, sp = P2.market_v2(sport, g, out["markets"][g], ws, cls_all, kf, asof, norms, rows=rows, game=gm,
+                              feed_ts=(feed or {}).get("ts"), frozen=frozen, cut=cut)
+        out["markets"][g]["v2"] = v2
+        if sp is not None:
+            out["markets"][g]["splits"] = sp
     return out
 
 
@@ -850,6 +869,33 @@ class BookTape:
             pair = slug_teams(ev, sport)
         rows = [r for r in teams.get(pair, []) if r.get("start") is not None and abs(r["start"] - gst) <= TAPE_START_GAP] if pair else []
         return (rows, "teams") if rows else ([], "no_tape_rows_for_game")
+
+
+class QuoteTape(BookTape):
+    """Every book of the same tape files, for what a follower could get (scripts/sharps_v2/plays_v2.py exec_block): the five US books, Kalshi,
+    Novig and Pinnacle, rows at any time (the caller stops its reads at the cut). Same game matching as BookTape; backfill rows carry no
+    prices and are not read."""
+    BOOKS = frozenset(P2.US_BOOKS + ("Kalshi", "Novig", "Pinnacle"))
+
+    def _load(self, sport):
+        if sport not in self.idx:
+            gk, teams = {}, {}
+            for fn in sorted(glob.glob(os.path.join(self.root or "", sport, "[0-9][0-9][0-9][0-9]-[0-9][0-9].jsonl"))):
+                with open(fn) as f:
+                    for line in f:
+                        try:
+                            r = json.loads(line)
+                        except ValueError:
+                            continue
+                        if r.get("book") not in self.BOOKS or r.get("t") is None or r.get("bf"):
+                            continue
+                        c = {k: r[k] for k in ("t", "book", "ml", "sp", "tot", "px", "nsp", "ntot", "start") if k in r}
+                        if r.get("gk"):
+                            gk.setdefault(r["gk"], []).append(c)
+                        a, h = NFL_ALIAS.get(r.get("away"), r.get("away")), NFL_ALIAS.get(r.get("home"), r.get("home"))
+                        teams.setdefault((a, h), []).append(c)
+            self.idx[sport] = (gk, teams)
+        return self.idx[sport]
 
 
 def card_signals(c, g, variant, tape):
@@ -1453,6 +1499,8 @@ def main():
     ap.add_argument("--book-tape", default="data/book_tape", help="Vault's book tape (Pinnacle rows), for the steam read of the `sf` size")
     ap.add_argument("--prev-wallets", help="the last published wallets.json: `retained` (wallets that left the list) carries forward from it; "
                                            "without V2 keys in it the first V2 build seeds `retained` from a 60 day replay")
+    ap.add_argument("--v2-tier-record", help="pm_record/v2_tier_record.json: the per-tier forward record, copied unchanged into live.json "
+                                             "`v2_tier_record` when it parses (absent otherwise; docs/sharps-v2-plays-spec.md section 5.3)")
     ap.add_argument("--now", type=int, help="pin the build time (epoch seconds) for a reproducible local run; default the clock")
     ap.add_argument("--since-out", help="the since.json path (each wallet's dated settled list); default: beside --wallets-out")
     ap.add_argument("--no-budget-exit", action="store_true",
@@ -1461,10 +1509,18 @@ def main():
     ap.add_argument("--wallets-only", action="store_true", help="skip the frozen and live cards (a local run that only needs the wallets file)")
     a = ap.parse_args()
     import scan_pm_holders as H
-    games = []
+    games, feed = [], None
     if a.sharp_data and os.path.exists(a.sharp_data):
         with open(a.sharp_data) as f:
-            games = json.load(f).get("games") or []
+            sd = json.load(f)
+        games = sd.get("games") or []
+        feed_ts = sd.get("ts") if isinstance(sd.get("ts"), int) else None
+        if feed_ts is None and isinstance(sd.get("generated"), str):
+            try:
+                feed_ts = int(dt.datetime.fromisoformat(sd["generated"].replace("Z", "+00:00")).timestamp())
+            except ValueError:
+                feed_ts = None
+        feed = {"games": {g["key"]: g for g in games if g.get("key")}, "ts": feed_ts}   # public splits for the V2 plays block
     now = int(a.now or time.time())
     live, wrote = {"built": now, "context_only": True, "games": []}, []
     pm_closes = {}
@@ -1510,6 +1566,7 @@ def main():
     if a.wallets_out:
         name_hist = name_history(a.ledger, a.holders)
     tape = BookTape(a.book_tape)
+    quotes = QuoteTape(a.book_tape)                  # every book of the same files, for the V2 exec block
     for sport in [s for s in a.sports.split(",") if s in H.SERIES]:
         ledger = Ledger.load(a.ledger, sport, a.holders, pm_closes)
         ledger.sf_excluded = sf_ex
@@ -1525,7 +1582,7 @@ def main():
                 continue
             with open(kpath) as f:
                 kf = json.load(f)
-            c = card(kf, ledger, sport, vault_join(games, kf["ev"], kf["gst"]), frozen=True, tape=tape)
+            c = card(kf, ledger, sport, vault_join(games, kf["ev"], kf["gst"]), frozen=True, tape=tape, quotes=quotes, feed=feed)
             carry_flagged(c, prev.get((kf["ev"], kf["gst"])), None)
             # one card per game for the test: a postponed game can have several; the earliest cut is the one that counts
             earlier = sorted(x for x in glob.glob(os.path.join(a.frozen_out, sport, "frozen", "*", f"{kf['ev']}@*.json"))
@@ -1539,6 +1596,8 @@ def main():
                 json.dump(c, f, separators=(",", ":"))
             os.replace(out + ".tmp", out)
             wrote.append(os.path.relpath(out, a.frozen_out))
+        if not a.wallets_only:                       # the V2 tier shadow log: a row per rule pick on each new frozen card (+ repair of a missed append)
+            P2.sync_log(a.frozen_out, sport, now, extra=[w for w in wrote if w.startswith(sport + "/")])
         # live: every game not yet at its cut, from the replayed holder logs
         st, _ = H.replay(a.holders, sport, now)
         rk = fl.clv_tiers(now) if a.wallets_out and sport in TIERS.TIER_SPORTS else {}     # price-sharp wallets join the directory (docs/pm-clv-tiers.md)
@@ -1548,7 +1607,7 @@ def main():
             kf = H.keyframe(st, ev, gst, now)
             if kf:
                 if not a.wallets_only:
-                    c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape)
+                    c = card(kf, ledger, sport, vault_join(games, ev, gst), frozen=False, tape=tape, quotes=quotes, feed=feed)
                     carry_flagged(c, prev.get((ev, gst)), now)
                     live["games"].append(c)
                 if a.wallets_out:
@@ -1581,6 +1640,15 @@ def main():
                 retained.setdefault(sport, {})[w] = retained_entry(w, left_at, st, now, fl.first_seen_pub.get(w), rk.get(w), names.get(w), nd)
                 since_ret.setdefault(sport, {})[w] = since_list(st["all"].get("_ps") or [], floor, now)
     live["locked"] = locked_plays(a.frozen_out, now)
+    if not a.wallets_only:                           # V2 plays data (docs/sharps-v2-plays-spec.md): top-level keys, all new
+        live["v2_slate"] = P2.v2_slate(live["games"])
+        live["v2_plays"] = P2.plays_fields()
+        if a.v2_tier_record and os.path.exists(a.v2_tier_record):
+            try:
+                with open(a.v2_tier_record) as f:
+                    live["v2_tier_record"] = json.load(f)
+            except (OSError, ValueError):
+                pass                                 # no record file this run: the key is absent, never an empty record
     os.makedirs(os.path.dirname(os.path.abspath(a.live_out)), exist_ok=True)
     with open(a.live_out + ".tmp", "w") as f:
         json.dump(live, f, separators=(",", ":"))
