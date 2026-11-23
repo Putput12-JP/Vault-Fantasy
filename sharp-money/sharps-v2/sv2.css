@@ -123,6 +123,52 @@ html[data-sv2-skin="apple"][data-theme="light"] {
   }
 }
 
+/* glass tokens (card surface, ring, wash, orb, pill, inset panel, bar track). Decoration only: no text colour depends on them being visible. */
+:root {
+  --sv2-glass-fill: rgb(255 255 255 / .04);
+  --sv2-glass-ring: rgb(255 255 255 / .10);
+  --sv2-glass-hi: rgb(255 255 255 / .10);
+  --sv2-glass-pill: rgb(255 255 255 / .05);
+  --sv2-glass-track: rgb(255 255 255 / .10);
+  --sv2-glass-in-a: rgb(255 255 255 / .05);
+  --sv2-glass-in-b: rgb(255 255 255 / .03);
+  --sv2-glass-row: rgb(255 255 255 / .04);
+  --sv2-glass-wash: .10;
+  --sv2-glass-orb: .10;
+  --sv2-r-card: 24px;
+  --sv2-r-inset: 16px;
+  --sv2-r-inrow: 12px;
+  --sv2-r-row: 20px;
+  --sv2-accent-rgb: var(--sv2-price-rgb);
+}
+html[data-theme="light"] {
+  --sv2-glass-fill: rgb(0 0 0 / .03);
+  --sv2-glass-ring: rgb(0 0 0 / .08);
+  --sv2-glass-hi: rgb(255 255 255 / .70);
+  --sv2-glass-pill: rgb(255 255 255 / .55);
+  --sv2-glass-track: rgb(0 0 0 / .08);
+  --sv2-glass-in-a: rgb(0 0 0 / .03);
+  --sv2-glass-in-b: rgb(0 0 0 / .02);
+  --sv2-glass-row: rgb(0 0 0 / .03);
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --sv2-glass-fill: rgb(0 0 0 / .03);
+    --sv2-glass-ring: rgb(0 0 0 / .08);
+    --sv2-glass-hi: rgb(255 255 255 / .70);
+    --sv2-glass-pill: rgb(255 255 255 / .55);
+    --sv2-glass-track: rgb(0 0 0 / .08);
+    --sv2-glass-in-a: rgb(0 0 0 / .03);
+    --sv2-glass-in-b: rgb(0 0 0 / .02);
+    --sv2-glass-row: rgb(0 0 0 / .03);
+  }
+}
+/* Apple light: the grouped grey page, so the glass is a white frost (a black 3% card would sit darker than the page, which is backwards there) */
+html[data-sv2-skin="apple"][data-theme="light"] { --sv2-glass-fill: rgb(255 255 255 / .62); --sv2-glass-in-a: rgb(255 255 255 / .55); --sv2-glass-in-b: rgb(255 255 255 / .40); --sv2-glass-row: rgb(255 255 255 / .55); }
+@media (prefers-color-scheme: light) {
+  html[data-sv2-skin="apple"]:not([data-theme]) { --sv2-glass-fill: rgb(255 255 255 / .62); --sv2-glass-in-a: rgb(255 255 255 / .55); --sv2-glass-in-b: rgb(255 255 255 / .40); --sv2-glass-row: rgb(255 255 255 / .55); }
+}
+
 html:has(> body.sv2) { background: var(--sv2-page); -webkit-text-size-adjust: 100%; }   /* standalone page only: never repaint a host page */
 body.sv2 {
   margin: 0;
@@ -971,4 +1017,107 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
   .sv2-rec-c::before { content: attr(data-k); font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
   .sv2-rec-hero { grid-template-columns: auto auto auto; justify-content: space-between; }
   .sv2-rec-v { font-size: 20px; white-space: nowrap; }
+}
+
+/* ===== 11. Glass cards (2026-11-23). Top-level cards only get the full treatment: a ring, a 10% accent wash (::before) and a soft corner glow
+   (::after, a radial gradient, so no blur filter to repaint). List rows stay flat (fill and ring, nothing else) because the Sharps list can
+   hold 100+ rows. Only the inset panel uses backdrop-filter. The accent is decoration: the words always carry the meaning.
+   Accent kinds: price (default), win (beats the close), caution (contested), ink (neutral). ===== */
+.sv2-acc-price { --sv2-accent-rgb: var(--sv2-price-rgb); }
+.sv2-acc-win { --sv2-accent-rgb: var(--sv2-win-rgb); }
+.sv2-acc-caution { --sv2-accent-rgb: var(--sv2-caution-rgb); }
+.sv2-acc-ink { --sv2-accent-rgb: var(--sv2-ink-rgb); }
+
+.sv2-card, .sv2 .sv2-fw-game, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini), .sv2-box.sv2-sp-rb {
+  position: relative; isolation: isolate;
+  background: var(--sv2-glass-fill); border: 0; border-radius: var(--sv2-r-card);
+  box-shadow: inset 0 0 0 1px var(--sv2-glass-ring);
+}
+.sv2-card::before, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini)::before, .sv2-box.sv2-sp-rb::before,
+.sv2-card::after, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini)::after, .sv2-box.sv2-sp-rb::after,
+.sv2-sheet::before, .sv2-sheet::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+}
+.sv2-card::before, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini)::before, .sv2-box.sv2-sp-rb::before, .sv2-sheet::before {
+  background: linear-gradient(135deg, rgb(var(--sv2-accent-rgb) / var(--sv2-glass-wash)), transparent 62%);
+}
+.sv2-card::after, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini)::after, .sv2-box.sv2-sp-rb::after, .sv2-sheet::after {
+  background: radial-gradient(circle 190px at calc(100% + 36px) -36px, rgb(var(--sv2-accent-rgb) / var(--sv2-glass-orb)), transparent 100%);
+}
+.sv2-rec-sec:nth-child(even)::after, .sv2-sp-rail .sv2-sp-rb:nth-child(even)::after {
+  background: radial-gradient(circle 190px at -36px calc(100% + 36px), rgb(var(--sv2-accent-rgb) / var(--sv2-glass-orb)), transparent 100%);
+}
+/* accent per kind (CSS only) */
+.sv2-rec-sec[aria-labelledby="rec-h-tiers"] { --sv2-accent-rgb: var(--sv2-caution-rgb); }
+.sv2-rec-sec[aria-labelledby="rec-h-accts"] { --sv2-accent-rgb: var(--sv2-win-rgb); }
+.sv2-sp-rb:has(.sv2-sp-tl) { --sv2-accent-rgb: var(--sv2-caution-rgb); }
+.sv2-sp-rb:has([data-sp-ctxgo]) { --sv2-accent-rgb: var(--sv2-ink-rgb); }
+.sv2 .sv2-fw-railcard, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini) { --sv2-accent-rgb: var(--sv2-ink-rgb); }
+.sv2-acc-ink, .sv2-sp-rb:has([data-sp-ctxgo]), .sv2 .sv2-fw-railcard, .sv2 .sv2-fw-list:not(.sv2-fw-list--mini) { --sv2-glass-wash: .05; --sv2-glass-orb: .05; }   /* a neutral wash is ink: at 10% it would dim the card in light */
+.sv2-sheet { --sv2-accent-rgb: var(--sv2-price-rgb); }
+.sv2-sheet { border: 0; box-shadow: inset 0 0 0 1px var(--sv2-glass-ring); isolation: isolate; }
+@media (min-width: 768px) { .sv2-sheet { border-bottom: 0; } }
+.sv2-sheet-grab { background: var(--sv2-glass-ring); }
+
+/* flat glass: list rows (play rows, gone rows). Fill, ring, no pseudo layers, no blur. */
+.sv2-sp-item, .sv2 .sv2-fw-gone-row {
+  background: var(--sv2-glass-fill); border: 0; border-radius: var(--sv2-r-row);
+  box-shadow: inset 0 0 0 1px var(--sv2-glass-ring);
+}
+.sv2 .sv2-sp-row, .sv2 .sv2-fw-gone-main { border-radius: var(--sv2-r-row); }
+.sv2 .sv2-fw-list--mini { background: var(--sv2-glass-row); border: 0; border-radius: var(--sv2-r-inset); box-shadow: inset 0 0 0 1px var(--sv2-glass-ring); }
+.sv2-sp-rb { padding: 14px 16px; }
+
+/* inset preview panel: the only place a backdrop blur is used (a handful per page, never per row) */
+.sv2-card-inset, .sv2 .sv2-fw-ch, .sv2-info, .sv2-embedded .sv2-info {
+  min-width: 0; padding: 14px 16px; border: 0; border-radius: var(--sv2-r-inset);
+  background: linear-gradient(180deg, var(--sv2-glass-in-a), var(--sv2-glass-in-b));
+  box-shadow: inset 0 0 0 1px var(--sv2-glass-ring);
+}
+@supports ((-webkit-backdrop-filter: blur(8px)) or (backdrop-filter: blur(8px))) {
+  .sv2-card-inset, .sv2 .sv2-fw-ch { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+}
+/* popovers stay opaque (text over live content) and take the glass ring */
+.sv2 .sv2-sp-pop, .sv2-menu, .sv2-embedded .sv2-info { border-color: var(--sv2-glass-ring); }
+.sv2-embedded .sv2-info { background: var(--sv2-card); }
+/* inner rows of a panel and the sheet's rows: 12px, 4% fill, 10% ring */
+.sv2 .sv2-fw-cut, .sv2 .sv2-fw-rl li, .sv2 .sv2-fw-wh, .sv2 .sv2-fw-sh3w, .sv2 .sv2-fw-pick {
+  border-radius: var(--sv2-r-inrow); background: var(--sv2-glass-row); box-shadow: inset 0 0 0 1px var(--sv2-glass-ring);
+}
+.sv2 .sv2-fw-cut[aria-pressed="true"], .sv2 .sv2-fw-wh.is-mine { box-shadow: inset 0 0 0 2px var(--sv2-ink); }
+
+/* neutral chips take the glass fill only: an ink tint on top of it would lift the background under the muted text */
+.sv2-chip--muted, .sv2-chip--ink { --chip-t: 0; }
+/* pill badges: ring, 5% fill with the role tint kept at 8%, a top highlight, 12px text */
+.sv2-chip {
+  background: linear-gradient(rgb(var(--c-rgb) / var(--chip-t, .06)), rgb(var(--c-rgb) / var(--chip-t, .06))), var(--sv2-glass-pill);
+  box-shadow: inset 0 0 0 1px var(--sv2-glass-ring), inset 0 1px 0 var(--sv2-glass-hi);
+}
+.sv2-tier { padding: 2px 10px 2px 8px; border-radius: 999px; background: var(--sv2-glass-pill); box-shadow: inset 0 0 0 1px var(--sv2-glass-ring), inset 0 1px 0 var(--sv2-glass-hi); }
+.sv2-tier--contested { border: 0; box-shadow: inset 0 0 0 1.5px var(--sv2-caution), inset 0 1px 0 var(--sv2-glass-hi); }
+.sv2-play { background: var(--sv2-glass-pill); color: var(--sv2-ink); box-shadow: inset 0 0 0 1px rgb(var(--sv2-ink-rgb) / .22), inset 0 1px 0 var(--sv2-glass-hi); }
+.sv2 .sv2-fw-sp { background: var(--sv2-glass-pill); box-shadow: inset 0 0 0 1px var(--sv2-glass-ring), inset 0 1px 0 var(--sv2-glass-hi); }
+
+/* money bar: 8px, round, glass track, accent gradient fill. The three segments stay distinguishable without colour (fill, plain, hatch). */
+.sv2-bar { height: 8px; border-radius: 999px; background: var(--sv2-glass-track); gap: 2px; }
+.sv2-bar > i { transform-origin: left center; }
+.sv2-bar .s-win, .sv2-sp-sw.s-win { background: linear-gradient(90deg, rgb(var(--sv2-accent-rgb) / .55), rgb(var(--sv2-accent-rgb))); }
+.sv2-bar .s-oth, .sv2-sp-sw.s-oth { background: rgb(var(--sv2-ink-rgb) / .45); }
+.sv2-bar .s-los { background: repeating-linear-gradient(135deg, rgb(var(--sv2-loss-rgb) / .7) 0 3px, transparent 3px 6px); }
+.sv2-bar[data-bar="new"] > i { animation: sv2-fill 1000ms var(--sv2-ease-out) both; }
+@keyframes sv2-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.sv2-sp-mrow { --sv2-accent-rgb: var(--sv2-price-rgb); }
+
+/* type on cards: 20px titles, 11px labels in the muted token (a 50% ink label would be about 4.0:1 in dark and 3.4:1 in light) */
+.sv2-rec-h .sv2-h2 { font: 600 20px/1.2 var(--sv2-sans); letter-spacing: -.01em; text-transform: none; color: var(--sv2-ink); }
+.sv2 .sv2-fw-gt { font-size: 20px; line-height: 1.2; letter-spacing: -.01em; }
+.sv2 .sv2-fw-railh { font: 600 20px/1.2 var(--sv2-sans); letter-spacing: -.01em; text-transform: none; color: var(--sv2-ink); }
+.sv2-sp-rb .sv2-h2, .sv2-rec-k, .sv2-rec-h3, .sv2-rec-th { font-size: 11px; letter-spacing: .04em; }
+.sv2-sp-rb p, .sv2-sp-rb li { color: var(--sv2-mut); }
+.sv2-sp-rb p b, .sv2-sp-rb .sv2-num { color: var(--sv2-ink); }
+
+@media (max-width: 480px) { .sv2 .sv2-fw-gt { font-size: 17px; } }   /* a 20px title wraps "MEM at CHA" on a 375px phone */
+
+@media (prefers-reduced-motion: reduce) {
+  .sv2-bar[data-bar="new"] > i { animation: none; }
 }
