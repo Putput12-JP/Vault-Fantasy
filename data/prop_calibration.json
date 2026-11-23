@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "generated": "2026-11-23T03:32:47.259157+00:00",
+  "generated": "2026-11-23T03:47:47.884027+00:00",
   "line_basis": "close",
   "latest_week": 11,
   "skipped": 1101,
@@ -2271,6 +2271,51 @@
         ]
       },
       "by_market": {
+        "rec_yd": {
+          "n": 198,
+          "pred_avg": 52.0,
+          "actual_avg": 51.0,
+          "brier": 0.2559,
+          "logloss": 0.7052,
+          "ece": 8.0,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 70,
+              "pred": 44.4,
+              "actual": 54.3,
+              "gap": 9.9
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 64,
+              "pred": 52.6,
+              "actual": 48.4,
+              "gap": -4.2
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 36,
+              "pred": 57.7,
+              "actual": 44.4,
+              "gap": -13.3
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 23,
+              "pred": 61.3,
+              "actual": 56.5,
+              "gap": -4.8
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 5,
+              "pred": 66.4,
+              "actual": 60.0,
+              "gap": -6.4
+            }
+          ]
+        },
         "rec": {
           "n": 198,
           "pred_avg": 53.5,
@@ -2327,51 +2372,6 @@
               "pred": 76.2,
               "actual": 50.0,
               "gap": -26.2
-            }
-          ]
-        },
-        "rec_yd": {
-          "n": 198,
-          "pred_avg": 52.0,
-          "actual_avg": 51.0,
-          "brier": 0.2559,
-          "logloss": 0.7052,
-          "ece": 8.0,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 70,
-              "pred": 44.4,
-              "actual": 54.3,
-              "gap": 9.9
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 64,
-              "pred": 52.6,
-              "actual": 48.4,
-              "gap": -4.2
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 36,
-              "pred": 57.7,
-              "actual": 44.4,
-              "gap": -13.3
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 23,
-              "pred": 61.3,
-              "actual": 56.5,
-              "gap": -4.8
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 5,
-              "pred": 66.4,
-              "actual": 60.0,
-              "gap": -6.4
             }
           ]
         },
@@ -5492,6 +5492,51 @@
         ]
       },
       "by_market": {
+        "rec_yd": {
+          "n": 182,
+          "pred_avg": 54.1,
+          "actual_avg": 52.7,
+          "brier": 0.2479,
+          "logloss": 0.689,
+          "ece": 2.8,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 40,
+              "pred": 45.1,
+              "actual": 47.5,
+              "gap": 2.4
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 61,
+              "pred": 52.5,
+              "actual": 50.8,
+              "gap": -1.7
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 48,
+              "pred": 58.0,
+              "actual": 56.2,
+              "gap": -1.7
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 32,
+              "pred": 62.3,
+              "actual": 56.2,
+              "gap": -6.1
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 1,
+              "pred": 69.5,
+              "actual": 100.0,
+              "gap": 30.5
+            }
+          ]
+        },
         "rec": {
           "n": 182,
           "pred_avg": 55.5,
@@ -5555,51 +5600,6 @@
               "pred": 80.2,
               "actual": 100.0,
               "gap": 19.8
-            }
-          ]
-        },
-        "rec_yd": {
-          "n": 182,
-          "pred_avg": 54.1,
-          "actual_avg": 52.7,
-          "brier": 0.2479,
-          "logloss": 0.689,
-          "ece": 2.8,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 40,
-              "pred": 45.1,
-              "actual": 47.5,
-              "gap": 2.4
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 61,
-              "pred": 52.5,
-              "actual": 50.8,
-              "gap": -1.7
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 48,
-              "pred": 58.0,
-              "actual": 56.2,
-              "gap": -1.7
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 32,
-              "pred": 62.3,
-              "actual": 56.2,
-              "gap": -6.1
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 1,
-              "pred": 69.5,
-              "actual": 100.0,
-              "gap": 30.5
             }
           ]
         },
@@ -5974,58 +5974,6 @@
         ]
       },
       "by_market": {
-        "rec": {
-          "n": 145,
-          "pred_avg": 55.6,
-          "actual_avg": 53.8,
-          "brier": 0.2486,
-          "logloss": 0.6915,
-          "ece": 8.9,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 18,
-              "pred": 45.4,
-              "actual": 44.4,
-              "gap": -0.9
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 58,
-              "pred": 52.3,
-              "actual": 48.3,
-              "gap": -4.0
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 40,
-              "pred": 57.2,
-              "actual": 70.0,
-              "gap": 12.8
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 13,
-              "pred": 62.0,
-              "actual": 53.8,
-              "gap": -8.1
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 5,
-              "pred": 66.1,
-              "actual": 40.0,
-              "gap": -26.1
-            },
-            {
-              "bucket": "70\u201375%",
-              "n": 11,
-              "pred": 71.7,
-              "actual": 45.5,
-              "gap": -26.3
-            }
-          ]
-        },
         "rec_yd": {
           "n": 145,
           "pred_avg": 54.3,
@@ -6075,6 +6023,58 @@
               "pred": 76.4,
               "actual": 100.0,
               "gap": 23.6
+            }
+          ]
+        },
+        "rec": {
+          "n": 145,
+          "pred_avg": 55.6,
+          "actual_avg": 53.8,
+          "brier": 0.2486,
+          "logloss": 0.6915,
+          "ece": 8.9,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 18,
+              "pred": 45.4,
+              "actual": 44.4,
+              "gap": -0.9
+            },
+            {
+              "bucket": "50\u201355%",
+              "n": 58,
+              "pred": 52.3,
+              "actual": 48.3,
+              "gap": -4.0
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 40,
+              "pred": 57.2,
+              "actual": 70.0,
+              "gap": 12.8
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 13,
+              "pred": 62.0,
+              "actual": 53.8,
+              "gap": -8.1
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 5,
+              "pred": 66.1,
+              "actual": 40.0,
+              "gap": -26.1
+            },
+            {
+              "bucket": "70\u201375%",
+              "n": 11,
+              "pred": 71.7,
+              "actual": 45.5,
+              "gap": -26.3
             }
           ]
         },
