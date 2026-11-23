@@ -1135,3 +1135,22 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 .sv2 .sv2-sp-row { border-radius: var(--sv2-r-card); }
 .sv2-embedded .sv2-sp-row { padding: 14px var(--sv2-pad); }
 .sv2-embedded .sv2-sp-rows { gap: 10px; }
+
+/* ===== tier colours (2026-11-23). Clear is gold and pops (stronger wash, a gold ring, a soft lift); Mixed takes the price colour; Thin is neutral
+   slate; Contested is violet (amber stays the warning colour). Decoration only: the tier word and the pips always carry the meaning, and the
+   tier is context, never a bet signal or a size. ===== */
+:root { --sv2-gold: #F5C542; --sv2-gold-rgb: 245 197 66; --sv2-violet: #A78BFA; --sv2-violet-rgb: 167 139 250; }
+html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2-violet: #5B3FD0; --sv2-violet-rgb: 91 63 208; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2-violet: #5B3FD0; --sv2-violet-rgb: 91 63 208; } }
+.sv2 .sv2-sp-item[data-tier="contested"] { --sv2-accent-rgb: var(--sv2-violet-rgb); }
+.sv2 .sv2-sp-item[data-tier="mixed"] { --sv2-accent-rgb: var(--sv2-price-rgb); }
+.sv2 .sv2-sp-item[data-tier="thin"] { --sv2-accent-rgb: var(--sv2-ink-rgb); --sv2-glass-wash: .05; --sv2-glass-orb: .05; }
+.sv2 .sv2-sp-item[data-tier="clear"] { --sv2-accent-rgb: var(--sv2-gold-rgb); --sv2-glass-wash: .20; --sv2-glass-orb: .26;
+  box-shadow: inset 0 0 0 1.5px rgb(var(--sv2-gold-rgb) / .60), 0 8px 26px rgb(var(--sv2-gold-rgb) / .16); }
+.sv2-tier--clear { background: rgb(var(--sv2-gold-rgb) / .16); box-shadow: inset 0 0 0 1.5px var(--sv2-gold), inset 0 1px 0 var(--sv2-glass-hi); }
+.sv2-tier--clear .sv2-pips i { border-color: var(--sv2-gold); }
+.sv2-tier--clear .sv2-pips i.on { background: var(--sv2-gold); border-color: var(--sv2-gold); }
+.sv2-tier--mixed .sv2-pips i.on { background: var(--sv2-price); border-color: var(--sv2-price); }
+.sv2-tier--mixed .sv2-pips i:not(.on) { border-color: var(--sv2-price); }
+.sv2-tier--contested { box-shadow: inset 0 0 0 1.5px var(--sv2-violet), inset 0 1px 0 var(--sv2-glass-hi); }
+.sv2-tier--contested .sv2-pips i { border-color: var(--sv2-violet); }
