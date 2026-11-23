@@ -34,7 +34,7 @@
   var MIN_FWD = 20;         /* Since tracked sort: rows below this many forward bets sort after the rest */
   var SMALL = 30;           /* any record under n = 30 carries "small sample" (spec 6) */
   var SMALL_CUT = 20;       /* a cut tile under n = 20 carries "small sample" (spec 4.5) */
-  var MIN_GAMES = 20;       /* the "20+ games" directory filter */
+  var MIN_GAMES = 20;       /* the "20+ bets" directory filter: graded bets in the record shown */
   var DAY = 86400;
   var COLLEGE = 'No price tier in college: no tested closing-price model there.';
   /* entry-price bands for the "at these odds" cut: the same cut points as ODDS_BANDS in scripts/build_side_cards.py */
@@ -98,6 +98,8 @@
     row.rk = r.rk || null;
     row.rkn = row.rk && isNum(row.rk.n) ? row.rk.n : 0;
     row.n = isNum(r.n) ? r.n : null;
+    row.usual = isNum(r.usual) && r.usual > 0 ? r.usual : null;
+    row.clv = r.clv && isNum(r.clv.n) && r.clv.n > 0 && isNum(r.clv.beat) ? { beat: r.clv.beat, n: r.clv.n } : null;
     /* closing-line value in price units: the shrunk estimate when published, else the raw average (labelled raw) */
     row.cents = null;
     if (row.tier !== 'few' && row.rk) {
@@ -181,7 +183,31 @@
   /* directory sorts. Every key is a visible column (spec 4.4). */
   function cmpName(a, b) { return cmpStr(a.name.toLowerCase(), b.name.toLowerCase()) || cmpStr(a.k, b.k); }
   function cmpAct(a, b) { return numDesc(a.n30, b.n30) || numDesc(a.last, b.last); }
+  /* the past record a row shows: the wallet's whole sport record, or one market when a market is picked. [wins, losses, dollar ROI]
+     from dive.lane; no lane cell means no graded bets in that market (null, never a zero). */
+  function recOf(row, mkt) {
+    var r = row.r || {};
+    if (!mkt || mkt === 'all') return isNum(r.w_) && isNum(r.l_) && isNum(row.n) ? { w: r.w_, l: r.l_, roi: isNum(r.roi) ? r.roi : null, n: row.n } : null;
+    var c = r.dive && r.dive.lane && r.dive.lane[mkt];
+    return c && isNum(c[0]) && isNum(c[1]) && c[0] + c[1] > 0 ? { w: c[0], l: c[1], roi: isNum(c[2]) ? c[2] : null, n: c[0] + c[1] } : null;
+  }
+  function recPct(rec) { return rec && rec.n > 0 ? rec.w / rec.n : null; }
+  /* last 10 graded results, newest first (legs are stored newest first) */
+  function lastTen(row) {
+    var l = Array.isArray(row.r.legs) ? row.r.legs : [];
+    return l.filter(function (x) { return x && (x[1] === 'win' || x[1] === 'loss'); }).slice(0, 10);
+  }
+  function thinRank(a, b) { var qa = !!(a._rec && a._rec.n >= 20), qb = !!(b._rec && b._rec.n >= 20); return qa === qb ? 0 : qa ? -1 : 1; }
+  function clvRank(a, b) { var qa = !!(a.clv && a.clv.n >= 20), qb = !!(b.clv && b.clv.n >= 20); return qa === qb ? 0 : qa ? -1 : 1; }
+  function clvPct(row) { return row.clv ? row.clv.beat / row.clv.n : null; }
   var SORTS = {
+    name: cmpName,
+    /* record and ROI: rows with 20+ graded bets lead, thin rows follow (a 6-0 record is not a leader) */
+    rec: function (a, b) { return thinRank(a, b) || numDesc(recPct(a._rec), recPct(b._rec)) || numDesc(a._rec && a._rec.n, b._rec && b._rec.n) || cmpName(a, b); },
+    roi: function (a, b) { return thinRank(a, b) || numDesc(a._rec && a._rec.roi, b._rec && b._rec.roi) || numDesc(a._rec && a._rec.n, b._rec && b._rec.n) || cmpName(a, b); },
+    n: function (a, b) { return numDesc(a._rec && a._rec.n, b._rec && b._rec.n) || cmpName(a, b); },
+    usual: function (a, b) { return numDesc(a.usual, b.usual) || cmpName(a, b); },
+    clv: function (a, b) { return clvRank(a, b) || numDesc(clvPct(a), clvPct(b)) || numDesc(a.clv && a.clv.n, b.clv && b.clv.n) || cmpName(a, b); },
     /* tier order beats, even, few, loses (loses sort last); inside a tier by the cents shown; "few" has no cents, so by games then activity */
     price: function (a, b) {
       var d = TIER_RANK[a.tier] - TIER_RANK[b.tier]; if (d) return d;
@@ -236,7 +262,7 @@
   /* ------------------------------------------------------------------ state */
   var S = {
     el: null, built: null, idx: {}, rows: [], ret: {},
-    sport: 'all', sort: 'price', sortUser: false, q: '', min20: false, inactive: false, shown: PAGE,
+    sport: 'all', mkt: 'all', sort: 'price', sortUser: false, q: '', min20: false, inactive: false, shown: PAGE,
     openRungs: {}, railOpen: false, sh: null, opener: null, lastOpened: null, pendingRoute: null, nextCut: null, mounted: false
   };
   function now() { return SV2.now(); }
@@ -311,6 +337,25 @@
     var x = actInner(row);
     return '<span class="sv2-fw-cell"><span class="sv2-fw-c1">' + x.a + '</span>' + (x.b ? '<span class="sv2-fw-c2">' + x.b + '</span>' : '') + '</span>';
   }
+  var THIN = 20;            /* a past record under 20 graded bets carries "thin" */
+  function thinTag(n) { return isNum(n) && n < THIN ? '<span class="sv2-fw-thin" title="Under 20 graded bets: treat this record as thin">thin</span>' : ''; }
+  function cell1(h, h2) { return '<span class="sv2-fw-cell"><span class="sv2-fw-c1">' + h + '</span>' + (h2 ? '<span class="sv2-fw-c2">' + h2 + '</span>' : '') + '</span>'; }
+  var NONE = '<span class="sv2-fw-mut">none</span>';
+  function recCell(row) { var r = row._rec; return cell1(r ? '<span class="sv2-num">' + esc(fmt.wl(r.w, r.l)) + '</span>' : NONE); }
+  function roiCell(row) { var r = row._rec; return cell1(r && isNum(r.roi) ? roiHtml(r.roi) : NONE); }
+  function betsCell(row) { var r = row._rec; return cell1(r ? '<span class="sv2-num">' + fmt.n(r.n) + '</span>' : NONE, r ? thinTag(r.n) : ''); }
+  function dotsHtml(row) {
+    var l = lastTen(row); if (!l.length) return '';
+    var wn = l.filter(function (x) { return x[1] === 'win'; }).length;
+    return '<span class="sv2-fw-dots" role="img" aria-label="Last ' + l.length + ' graded bets, newest first: ' + wn + ' won, ' + (l.length - wn) + ' lost">' +
+      l.map(function (x) { return '<i class="' + (x[1] === 'win' ? 'is-w' : 'is-l') + '"></i>'; }).join('') + '</span>';
+  }
+  function dotsCell(row) { return cell1(dotsHtml(row) || NONE); }
+  function usualCell(row) { return cell1(row.usual != null ? '<span class="sv2-num">' + esc(fmt.usd(row.usual)) + '</span>' : NONE); }
+  function clvCell(row) {
+    if (!row.clv) return cell1(NONE);
+    return cell1('<span class="sv2-num">' + fmt.pct(clvPct(row), { d: 0 }) + '</span>', 'of <span class="sv2-num">' + fmt.n(row.clv.n) + '</span>' + (row.clv.n < THIN ? ' ' + thinTag(row.clv.n) : ''));
+  }
   function openInner(row) {
     if (!row._n) return '<span class="sv2-fw-mut">None</span>';
     return '<span class="sv2-num">' + row._n + '</span>' + dot() + '<span class="sv2-num">' + esc(fmt.usd(row._usd)) + '</span>';
@@ -338,11 +383,13 @@
 
   /* ------------------------------------------------------------------ directory */
   function dirRow(row) {
-    var line2 = [];
-    line2.push('<span class="sv2-fw-sp">' + esc(sportName(row.sp)) + '</span>');
+    var line2 = [], rc = row._rec;
+    if (S.sport === 'all') line2.push('<span class="sv2-fw-sp">' + esc(sportName(row.sp)) + '</span>');
     line2.push(tierWord(row));
     if (row.cents) line2.push(centsCell(row));
-    if (row.rkn && row.tier !== 'few') line2.push('<span class="sv2-num">' + row.rkn + '</span> games');
+    /* phone second line: the past record in this sport, with its sample size */
+    line2.push('<span class="sv2-fw-rec2">' + (rc ? '<span class="sv2-num">' + esc(fmt.wl(rc.w, rc.l)) + '</span>' + (isNum(rc.roi) ? ' ' + roiHtml(rc.roi) : '') +
+      ' <span class="sv2-fw-n2">n=<span class="sv2-num">' + fmt.n(rc.n) + '</span></span>' + (rc.n < THIN ? ' ' + thinTag(rc.n) : '') : '<span class="sv2-fw-mut">no graded bets</span>') + '</span>');
     if (S.sort === 'fwd') { var x = fwdInner(row); line2.push(x.a + (x.b ? ' ' + x.b : '')); }
     if (S.sort === 'act') { var y = actInner(row); line2.push(y.a + (y.b ? ' ' + y.b : '')); }
     var chips = chipsFor(row);
@@ -351,11 +398,15 @@
       '<span class="sv2-fw-who"><span class="sv2-fw-whol1">' + nm(row.name, 'sv2-ell') + '<span class="sv2-fw-sp sv2-fw-sp--d">' + esc(sportName(row.sp)) + '</span>' +
       (row._n ? '<span class="sv2-fw-openpill">' + openInner(row) + '</span>' : '') + '</span>' +
       ((chips || alsoNote(row)) ? '<span class="sv2-fw-chips-l">' + chips + alsoNote(row) + '</span>' : '') + '</span>' +
-      '<span class="sv2-fw-cells">' + priceCell(row) + fwdCell(row) + actCell(row) + openCell(row) + '</span>' +
+      '<span class="sv2-fw-cells">' + priceCell(row) + fwdCell(row) + recCell(row) + roiCell(row) + betsCell(row) + dotsCell(row) + usualCell(row) + clvCell(row) + actCell(row) + openCell(row) + '</span>' +
       '<span class="sv2-fw-l2">' + line2.map(function (x) { return '<span>' + x + '</span>'; }).join(dot()) + '</span>' +
       '</button></li>';
   }
-  var COLS = [['price', 'Price edge'], ['fwd', 'Since tracked'], ['act', 'Activity'], ['open', 'Open now']];
+  var MKTS = [['all', 'All bets'], ['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']];
+  var COLHEAD_TITLE = { rec: 'Past record in this sport, picked after the fact', roi: 'Dollar return on past bets in this sport, picked after the fact',
+    n: 'Graded bets behind the past record. Under 20 is thin', clv: 'Share of bets bought below the closing price' };
+  var COLS = [['price', 'Price edge'], ['fwd', 'Since tracked'], ['rec', 'Record'], ['roi', 'ROI'], ['n', 'Bets'], ['dots', 'Last 10'], ['usual', 'Usual stake'], ['clv', 'Beat the close'], ['act', 'Activity'], ['open', 'Open now']];
+  var NOSORT = { dots: 1 };
   function sortStrip() { return document.querySelector('[data-rail-id="fw-sortseg"]'); }
   function sortAvailable(key) { return key !== 'fwd' || S.rows.some(function (r) { return r.fwdPub; }); }
   function paintDir() {
@@ -364,13 +415,15 @@
     if (!f) return;
     var t = now(), q = S.q.trim(), base = S.rows.filter(function (r) { return S.sport === 'all' || r.sp === S.sport; });
     annotate(base, t);
+    base.forEach(function (r) { r._rec = recOf(r, S.mkt); });
     var nInactive = base.filter(function (r) { return r.inactive && !follows.has(r.sp, r.w); }).length;
     var rows;
     if (q) rows = base.filter(function (r) { return matches(r, q); });      /* a search ignores the filters: you can find any wallet */
     else rows = base.filter(function (r) {
       if (follows.has(r.sp, r.w)) return true;                              /* a wallet you follow is never hidden */
       if (r.inactive && !S.inactive) return false;
-      if (S.min20 && !(r.n >= MIN_GAMES)) return false;
+      if (S.min20 && !(r._rec && r._rec.n >= MIN_GAMES)) return false;
+      if (S.mkt !== 'all' && !r._rec) return false;                         /* no graded bets in this market */
       return true;
     });
     var key = sortAvailable(S.sort) ? S.sort : defaultSort(S.sport);
@@ -386,6 +439,7 @@
     var cn = document.getElementById('fw-college'); if (cn) cn.hidden = !(S.sport === 'cfb' || S.sport === 'cbb');
     $$('#fw-colhead [data-fw-sort]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-fw-sort') === key)); });
     var strip = sortStrip(); if (strip) seg.set(strip, key);
+    var ms = document.querySelector('[data-rail-id="fw-mkt"]'); if (ms && SV2.seg.value(ms) !== S.mkt) seg.set(ms, S.mkt);
     S.sortKey = key;
     var live = document.getElementById('sv2-live'); if (live && q) live.textContent = total + (total === 1 ? ' wallet matches' : ' wallets match');
   }
@@ -857,10 +911,14 @@
       '<div class="sv2-fw-dirh"><h2 class="sv2-h2 sv2-fw-h" id="fw-h-dir">Wallets <span class="sv2-num" id="fw-count"></span></h2><span class="sv2-fw-note" id="fw-match"></span></div>' +
       '<div class="sv2-fw-tools"><label class="sv2-fw-search"><span class="sv2-sr">Search name or address</span><input type="search" id="fw-q" placeholder="Search name or address" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></label>' +
       '<div class="sv2-fw-sortw"><span class="sv2-fw-sortl" id="fw-sortl">Sort</span><div id="fw-sorts"></div></div>' +
-      '<div class="sv2-fw-togs"><button type="button" class="sv2-fw-tog sv2-press sv2-press-chip" id="fw-tog-min" aria-pressed="false">20+ games</button>' +
+      '<div class="sv2-fw-mktw" id="fw-mkts">' + seg.html({ id: 'fw-mkt', label: 'Bet type', value: S.mkt, size: 'sm', scroll: true, items: MKTS.map(function (m) { return { v: m[0], label: m[1] }; }) }) + '</div>' +
+      '<div class="sv2-fw-togs"><button type="button" class="sv2-fw-tog sv2-press sv2-press-chip" id="fw-tog-min" aria-pressed="false">20+ bets</button>' +
       '<button type="button" class="sv2-fw-tog sv2-press sv2-press-chip" id="fw-tog-inactive" aria-pressed="false">Show inactive</button></div></div>' +
       '<p class="sv2-fw-note" id="fw-college" hidden>' + esc(COLLEGE) + '</p>' +
-      '<div class="sv2-fw-head" id="fw-colhead"><span class="sv2-fw-hc0">Wallet</span>' + COLS.map(function (c) { return '<button type="button" class="sv2-fw-hc" data-fw-sort="' + c[0] + '" aria-pressed="false"' + (sortAvailable(c[0]) ? '' : ' aria-disabled="true"') + '><span>' + esc(c[1]) + '</span>' + ui.icon('chevron', 'sv2-fw-arrow') + '</button>'; }).join('') + '</div>' +
+      '<p class="sv2-fw-note sv2-fw-pastnote" id="fw-pastnote">Record, ROI and bets: past record in this sport, picked after the fact. Thin means under 20 graded bets.</p>' +
+      '<div class="sv2-fw-head" id="fw-colhead"><button type="button" class="sv2-fw-hc sv2-fw-hc0" data-fw-sort="name" aria-pressed="false"><span>Wallet</span>' + ui.icon('chevron', 'sv2-fw-arrow') + '</button>' + COLS.map(function (c) {
+        if (NOSORT[c[0]]) return '<span class="sv2-fw-hc sv2-fw-hc--plain">' + esc(c[1]) + '</span>';
+        return '<button type="button" class="sv2-fw-hc" data-fw-sort="' + c[0] + '" aria-pressed="false"' + (COLHEAD_TITLE[c[0]] ? ' title="' + esc(COLHEAD_TITLE[c[0]]) + '"' : '') + (sortAvailable(c[0]) ? '' : ' aria-disabled="true"') + '><span>' + esc(c[1]) + '</span>' + ui.icon('chevron', 'sv2-fw-arrow') + '</button>'; }).join('') + '</div>' +
       '<ul class="sv2-fw-list" id="fw-list"></ul>' +
       '<div class="sv2-fw-morew"><button type="button" class="sv2-btn sv2-press sv2-press-btn" id="fw-more" hidden>Show 24 more</button></div></section></div>';
     paintSortStrip();
@@ -869,7 +927,7 @@
     var box = document.getElementById('fw-sorts'); if (!box) return;
     var key = S.sortKey || S.sort;
     box.innerHTML = seg.html({ id: 'fw-sortseg', label: 'Sort wallets by', value: key, size: 'sm', scroll: true,
-      items: COLS.map(function (c) { return { v: c[0], label: c[1] }; }) });
+      items: COLS.filter(function (c) { return !NOSORT[c[0]]; }).map(function (c) { return { v: c[0], label: c[1] }; }) });
     var strip = sortStrip();
     if (strip) $$('button[data-v]', strip).forEach(function (b) {
       if (!sortAvailable(b.getAttribute('data-v'))) { b.setAttribute('aria-disabled', 'true'); b.title = 'Not published yet'; }
@@ -938,6 +996,7 @@
       return;
     }
     if ((b = t.closest('[data-fw-sort]'))) { setSort(b.getAttribute('data-fw-sort')); return; }
+    if ((b = t.closest('[data-rail-id="fw-mkt"] button[data-v]'))) { var mv = b.getAttribute('data-v'); if (mv !== S.mkt) { S.mkt = mv; S.shown = PAGE; paintDir(); } return; }
     if ((b = t.closest('[data-rail-id="fw-sortseg"] button[data-v]'))) { setSort(b.getAttribute('data-v')); return; }
     if ((b = t.closest('#fw-tog-min'))) { S.min20 = !S.min20; S.shown = PAGE; paintDir(); return; }
     if ((b = t.closest('#fw-tog-inactive'))) { S.inactive = !S.inactive; S.shown = PAGE; paintDir(); return; }
@@ -1021,7 +1080,7 @@
          whether its row shows (or when the change came from another tab) */
       if (file()) {
         var row = ev && ev.w ? S.idx[ev.sport + '|' + ev.w] : null;
-        if (!ev || !ev.w || (row && ((row.inactive && !S.inactive) || (S.min20 && !(row.n >= MIN_GAMES))))) withFocus(paintDir);
+        if (!ev || !ev.w || (row && ((row.inactive && !S.inactive) || S.min20 || S.mkt !== 'all'))) withFocus(paintDir);
       }
       paintFollowLabels();
     });
@@ -1049,6 +1108,6 @@
   /* pure functions for the node tests */
   SV2.fw = {
     declared: declared, ageText: ageText, pxAgeMin: pxAgeMin, pastWinner: pastWinner, mkRow: mkRow, buildFeed: buildFeed, liveGroups: liveGroups,
-    sortRows: sortRows, matches: matches, defaultSort: defaultSort, cutsOf: cutsOf, teamsOf: teamsOf, oddsBand: oddsBand, sizeBand: sizeBand, betKey: betKey
+    sortRows: sortRows, recOf: recOf, lastTen: lastTen, matches: matches, defaultSort: defaultSort, cutsOf: cutsOf, teamsOf: teamsOf, oddsBand: oddsBand, sizeBand: sizeBand, betKey: betKey
   };
 })();

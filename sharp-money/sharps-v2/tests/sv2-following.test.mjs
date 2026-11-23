@@ -156,5 +156,20 @@ if (!wV2) { skip('feed'); skip('directory'); } else {
   ok('every cut cell is a stored dive cell [w, l, roi]', cuts.every((c) => !c.cell || (c.cell.length >= 3)));
 }
 
+/* the past-record columns: record, ROI, bets, last 10, market lane */
+{
+  const r = { w_: 12, l_: 8, roi: 0.05, n: 20, dive: { lane: { ml: [3, 1, 0.4], spread: [0, 0, 0] } },
+    legs: [[5, 'win'], [4, 'push'], [3, 'loss'], [2, 'win'], [1, 'win']] };
+  const row = fw.mkRow({ built: 100 }, 'nba', '0xabc', r, false);
+  eq('record, all bets: stored w_ l_ roi n', fw.recOf(row, 'all'), { w: 12, l: 8, roi: 0.05, n: 20 });
+  eq('record by market reads dive.lane [w, l, roi]', fw.recOf(row, 'ml'), { w: 3, l: 1, roi: 0.4, n: 4 });
+  ok('a market with no graded bets is null, never a zero', fw.recOf(row, 'spread') === null && fw.recOf(row, 'total') === null);
+  eq('last 10: graded legs only, newest first', fw.lastTen(row).map((x) => x[1]), ['win', 'loss', 'win', 'win']);
+  const mk = (n, roi, name) => { const x = fw.mkRow({ built: 100 }, 'nba', name, { w_: n, l_: 0, roi, n, name }, false); x._rec = fw.recOf(x, 'all'); return x; };
+  const rows = [mk(6, 1.0, 'thin6'), mk(40, 0.1, 'big'), mk(25, 0.3, 'mid')];
+  eq('ROI sort: 20+ bets lead, thin rows follow', fw.sortRows(rows, 'roi').map((x) => x.name), ['mid', 'big', 'thin6']);
+  eq('Wallet sort is by name', fw.sortRows(rows, 'name').map((x) => x.name), ['big', 'mid', 'thin6']);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed, ' + skipped + ' skipped');
 process.exit(fail ? 1 : 0);
