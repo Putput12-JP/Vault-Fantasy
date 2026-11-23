@@ -1,30 +1,30 @@
 {
- "generated": "2026-11-22T14:15:26.677148+00:00",
+ "generated": "2026-11-23T17:37:22.866638+00:00",
  "since": 2007,
  "min_events": 40,
  "note": "median teammate market multiplier when the team's primary QB is out; measured from nflverse weekly stats, sign- and stability-gated",
  "buckets": {
   "QB|pass_yd": {
    "mult": 0.902,
-   "n": 624,
+   "n": 627,
    "iqr": [
     0.662,
-    1.184
+    1.183
    ]
   },
   "WR|rec_yd": {
-   "mult": 0.821,
-   "n": 245,
+   "mult": 0.853,
+   "n": 250,
    "iqr": [
-    0.397,
-    1.467
+    0.412,
+    1.471
    ]
   }
  },
  "rejected": {
   "QB|pass_att": {
    "mult": 0.973,
-   "n": 652,
+   "n": 655,
    "iqr": [
     0.761,
     1.2
@@ -35,7 +35,7 @@
   },
   "QB|pass_td": {
    "mult": 1.0,
-   "n": 568,
+   "n": 571,
    "iqr": [
     0.0,
     1.0
@@ -46,7 +46,7 @@
   },
   "RB|rec": {
    "mult": 1.0,
-   "n": 636,
+   "n": 644,
    "iqr": [
     0.5,
     1.5
@@ -68,36 +68,36 @@
   },
   "RB|rush_att": {
    "mult": 1.0,
-   "n": 934,
+   "n": 942,
    "iqr": [
     0.615,
-    1.36
+    1.355
    ],
    "even": 1.0,
    "odd": 0.944,
    "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding"
   },
   "RB|rush_yd": {
-   "mult": 0.935,
-   "n": 875,
+   "mult": 0.933,
+   "n": 880,
    "iqr": [
     0.463,
-    1.474
+    1.481
    ],
-   "even": 0.933,
+   "even": 0.931,
    "odd": 0.944,
-   "rejected": "median 0.935<1 (expected up)"
+   "rejected": "median 0.933<1 (expected up)"
   },
   "TE|rec": {
    "mult": 1.0,
-   "n": 656,
+   "n": 658,
    "iqr": [
     0.5,
     1.333
    ],
-   "even": 0.817,
+   "even": 0.845,
    "odd": 1.0,
-   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.183>0.1"
+   "rejected": "no material effect (|1.0-1|<0.05) \u2014 keep withholding; unstable |\u0394|=0.155>0.1"
   },
   "TE|rec_td": {
    "mult": 0.0,
@@ -111,19 +111,19 @@
    "rejected": "n=5<40; unstable |\u0394|=0.500>0.1"
   },
   "TE|rec_yd": {
-   "mult": 0.846,
-   "n": 84,
+   "mult": 0.868,
+   "n": 87,
    "iqr": [
-    0.455,
+    0.432,
     1.378
    ],
-   "even": 0.654,
+   "even": 0.66,
    "odd": 1.139,
-   "rejected": "unstable sign even=0.654 odd=1.139"
+   "rejected": "unstable sign even=0.660 odd=1.139"
   },
   "WR|rec": {
    "mult": 1.0,
-   "n": 1614,
+   "n": 1620,
    "iqr": [
     0.5,
     1.429
@@ -134,14 +134,14 @@
   },
   "WR|rec_td": {
    "mult": 0.0,
-   "n": 31,
+   "n": 28,
    "iqr": [
     0.0,
     2.0
    ],
    "even": 0.0,
    "odd": 1.0,
-   "rejected": "n=31<40; unstable |\u0394|=1.000>0.1"
+   "rejected": "n=28<40; unstable |\u0394|=1.000>0.1"
   }
  }
 }
