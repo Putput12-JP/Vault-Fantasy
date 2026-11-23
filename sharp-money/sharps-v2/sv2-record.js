@@ -157,6 +157,88 @@
     return null;
   };
 
+  /* ---- Tier record table, from tier_record.json (docs/side-cards.md). Context only: a record, not a signal.
+     in_sample: the tier rule was written after those results. forward: only plays whose tier was logged at lock (zeros until the first
+     logged lock is graded). since_nov16: informational, tier still derived after the fact. none: not derivable, kept apart, never in a tier. */
+  var TIER_ROWS = ['clear', 'mixed', 'thin', 'contested', 'none'];
+  var BUCKETS = ['all', 'in_sample', 'forward', 'since_nov16'];
+  var BUCKET_NAME = { all: 'All plays', in_sample: 'In-sample', forward: 'Forward', since_nov16: 'Since Nov 16' };
+  var TIER_FOOT = 'In-sample: the tier rule was written after these results. Forward counts start at the first logged lock.';
+  /* cells: zero plays read 0-0 and 0u, and a null roi is a dash, never "0%" */
+  rec.fmtWl = function (t) { return t && t.n ? (fmt.wl(t.w, t.l, t.p) || '0-0') : '0-0'; };
+  rec.fmtUnits = function (t) { return t && isNum(t.units) && t.n ? fmt.units(t.units, { signed: true }) : '0u'; };
+  rec.fmtRoi = function (t) { return t && isNum(t.roi) && t.n ? fmt.pct(t.roi, { signed: true }) : '-'; };
+  function zeroTally() { return { w: 0, l: 0, p: 0, n: 0, units: 0, roi: null }; }
+  /* one stored {w,l,p,n,units,roi} as a tally. Missing or malformed is zeros. roi is null unless n > 0 and the stored roi is a number. */
+  rec.tierTally = function (o) {
+    if (!o || typeof o !== 'object' || !isNum(o.n) || o.n < 0) return zeroTally();
+    var n = o.n, units = isNum(o.units) ? o.units : 0;
+    return { w: isNum(o.w) ? o.w : 0, l: isNum(o.l) ? o.l : 0, p: isNum(o.p) ? o.p : 0, n: n, units: units, roi: n > 0 && isNum(o.roi) ? o.roi : (n > 0 ? units / n : null) };
+  };
+  /* the file is usable when it has a tier object for the pooled set or any sport */
+  rec.tierFileOk = function (f) {
+    return !!(f && typeof f === 'object' && ((f.all && f.all.tiers) || (f.sports && typeof f.sports === 'object')));
+  };
+  /* the tiers object for a sport: 'all' is the file's pooled NBA+NFL+CBB set (CFB is never pooled); when the file lacks it, the three sports are summed here.
+     null when the sport is not in the file. */
+  rec.tierSlice = function (f, sport) {
+    if (!rec.tierFileOk(f)) return null;
+    var s = sport == null ? 'all' : lc(sport);
+    if (s !== 'all') return f.sports && f.sports[s] && f.sports[s].tiers ? f.sports[s].tiers : null;
+    if (f.all && f.all.tiers) return f.all.tiers;
+    var out = {}, any = false;
+    TIER_ROWS.forEach(function (t) {
+      var o = { by_market: {} };
+      BUCKETS.forEach(function (b) { o[b] = rec.tierPool(SHOWN.map(function (sp) { var x = f.sports && f.sports[sp] && f.sports[sp].tiers && f.sports[sp].tiers[t]; return x && x[b]; })); });
+      MARKETS.forEach(function (m) { o.by_market[m[0]] = rec.tierPool(SHOWN.map(function (sp) { var x = f.sports && f.sports[sp] && f.sports[sp].tiers && f.sports[sp].tiers[t]; return x && x.by_market && x.by_market[m[0]]; })); });
+      if (o.all.n) any = true;
+      out[t] = o;
+    });
+    return any ? out : null;
+  };
+  /* pool stored tallies: counts and units add, roi is units / n, null at n 0 */
+  rec.tierPool = function (list) {
+    var o = zeroTally();
+    (list || []).forEach(function (x) { var t = rec.tierTally(x); o.w += t.w; o.l += t.l; o.p += t.p; o.n += t.n; o.units += t.units; });
+    o.units = Math.round(o.units * 1000) / 1000;
+    o.roi = o.n > 0 ? o.units / o.n : null;
+    return o;
+  };
+  /* which bucket of a tier to read. Anything unknown reads as all. */
+  rec.pickBucket = function (tierObj, bucket) {
+    var b = BUCKETS.indexOf(bucket) >= 0 ? bucket : 'all';
+    return rec.tierTally(tierObj && tierObj[b]);
+  };
+  /* the table for a sport and a bucket: five rows in order (four tiers, then Not derivable on its own row), each with its tally, its share of the
+     bucket's n (null when the bucket is empty), the monitor flags, and the market split. The split is stored for all plays only: it is shown when
+     the bucket holds exactly the same plays (same n as all), else null. Zero-play tiers stay in as zeros. */
+  rec.tierTable = function (f, sport, bucket) {
+    var sl = rec.tierSlice(f, sport);
+    if (!sl) return null;
+    var b = BUCKETS.indexOf(bucket) >= 0 ? bucket : 'all';
+    var rows = TIER_ROWS.map(function (t) {
+      var o = sl[t] || {}, tally = rec.pickBucket(o, b), all = rec.pickBucket(o, 'all'), markets = null;
+      if (o.by_market && tally.n > 0 && tally.n === all.n) {
+        markets = MARKETS.map(function (m) { return { k: m[0], label: m[1], t: rec.tierTally(o.by_market[m[0]]) }; });
+      }
+      return { tier: t, derived: t !== 'none', t: tally, share: null, flag: rec.monitor(tally), markets: markets };
+    });
+    var total = rec.tierPool(rows.map(function (r) { return r.t; }));
+    rows.forEach(function (r) { r.share = total.n > 0 ? r.t.n / total.n : null; });
+    var derived = rec.tierPool(rows.filter(function (r) { return r.derived; }).map(function (r) { return r.t; }));
+    return { bucket: b, rows: rows, total: total, derived: derived };
+  };
+  /* "Record so far (in-sample): Contested 30-20": one entry per tier with plays, Not derivable last and named as such. */
+  rec.railLine = function (f, sport) {
+    var tb = rec.tierTable(f, sport, 'all');
+    if (!tb || !tb.total.n) return null;
+    var fw = rec.tierTable(f, sport, 'forward');   /* a forward n above zero means the lock log has started and graded plays */
+    var items = tb.rows.filter(function (r) { return r.t.n > 0; }).map(function (r) {
+      return { tier: r.tier, word: r.derived ? copy.tier[r.tier].word : 'Not derivable', wl: fmt.wl(r.t.w, r.t.l, r.t.p), n: r.t.n };
+    });
+    return { items: items, label: fw && fw.total.n > 0 ? 'Record so far (in-sample and forward)' : 'Record so far (in-sample)', total: tb.total.n };
+  };
+
   /* Accounts: the wallets file by account tier. Forward = fwd {w,l,p,n,pnl,flat_roi,clv_n,clv_mean}, settled since the wallet was first tracked
      (published only when v2_fields names fwd). Past = w_ and l_, the record before it was picked: picked after the fact. */
   function declared(file, key) {
@@ -207,19 +289,42 @@
     var k = ct.dateKey(nowT), first = k.slice(0, 7) + '-01', prev = ct.addDays(first, -1).slice(0, 7), cur = k.slice(0, 7);
     return prev >= FIRST_MONTH ? [prev, cur] : [cur];
   };
-  rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
+  rec.TIER_ROWS = TIER_ROWS; rec.BUCKETS = BUCKETS; rec.TIER_FOOT = TIER_FOOT; rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
   SV2.rec = rec;
 
   /* ------------------------------------------------------------------ browser side */
   if (typeof document === 'undefined') return;
-  var S = { sport: 'all', view: 'main', file: null, rows: null, state: 'idle', loadedAt: 0, main: null, page: null, sw: null, swPage: null, busy: false };
+  var S = { sport: 'all', view: 'main', file: null, rows: null, state: 'idle', loadedAt: 0, main: null, page: null, sw: null, swPage: null, busy: false,
+    tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, tb: 'all', tSince: false, tOpen: {} };
 
   function get(p, txt, force) {
     var k = force ? Date.now() : Math.floor(Date.now() / 300000);
     return fetch(BASE + p + '?t=' + k, { cache: force ? 'no-store' : 'default' })
       .then(function (r) { return r.ok ? (txt ? r.text() : r.json()) : null; }).catch(function () { return null; });
   }
+  /* tier_record.json: published beside live.json on pm-cards-live, rebuilt about every 10 minutes. Same 5 minute cache key as the files above.
+     Dev: ?tierrecord=/path on localhost. A failed fetch keeps the file held (stale); an older build never replaces a newer one. */
+  var TIER_URL = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/tier_record.json';
+  function tierSrc() { var d = SV2.dev && SV2.dev.param ? SV2.dev.param('tierrecord') : null; return d || TIER_URL; }
+  function loadTier(force) {
+    var T = S.tier;
+    if (T.busy) return T.busy;
+    if (!force && T.state === 'ok' && Date.now() - T.loadedAt < 300000) return Promise.resolve();
+    if (T.state !== 'ok') T.state = 'loading';
+    var u = tierSrc(), k = force ? Date.now() : Math.floor(Date.now() / 300000);
+    T.busy = fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 't=' + k, { cache: force ? 'no-store' : 'default' })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) {
+        if (!j || !rec.tierFileOk(j)) { if (T.data) T.stale = true; else T.state = 'none'; }
+        else if (T.data && isNum(T.data.built) && isNum(j.built) && j.built < T.data.built) { T.stale = false; T.loadedAt = Date.now(); }
+        else { T.data = j; T.state = 'ok'; T.stale = false; T.loadedAt = Date.now(); }
+        T.busy = null; SV2.emit('tierrecord', T.data); paint();
+      });
+    return T.busy;
+  }
+  rec.tierFile = function () { return S.tier.data; };
   function load(force) {
+    loadTier(force);
     if (S.busy) return S.busy;
     if (!force && S.state === 'ok' && Date.now() - S.loadedAt < 300000) return Promise.resolve();
     S.busy = true; if (S.state !== 'ok') S.state = 'loading';
@@ -317,17 +422,64 @@
     return html + '</section>';
   }
 
-  /* ---- section 2: tier record (play evidence tiers) */
+  /* ---- section 2: tier record (evidence tiers), from tier_record.json */
+  function tUnits(t) { return '<span class="sv2-num' + signCls(t.units) + '">' + esc(rec.fmtUnits(t)) + '</span>'; }
+  function tRoi(t) { return '<span class="sv2-num' + signCls(t.roi) + '">' + esc(rec.fmtRoi(t)) + '</span>'; }
+  function tCells(t) {
+    return '<span class="sv2-rec-c" data-k="W-L">' + num(rec.fmtWl(t)) + '</span><span class="sv2-rec-c" data-k="Units">' + tUnits(t) + '</span>' +
+      '<span class="sv2-rec-c" data-k="ROI">' + tRoi(t) + '</span><span class="sv2-rec-c" data-k="n">' + num(fmt.n(t.n)) + '</span>';
+  }
+  function tLabel(r) {
+    return r.derived ? ui.tier(r.tier) : '<span class="sv2-chip sv2-chip--muted" data-tier="none"><span>Not derivable</span></span>';
+  }
+  function tierRow(r) {
+    var open = !!S.tOpen[r.tier], id = 'sv2-tt-' + r.tier, hasX = !!r.markets;
+    var head = '<span class="sv2-rec-tl">' + tLabel(r) + (r.derived ? '' : '<span class="sv2-rec-tag">no stored facts at the cut</span>') + '</span>' + tCells(r.t);
+    var share = r.share == null ? 0 : r.share * 100;
+    var line = '<span class="sv2-rec-tx">' + flagHtml(r.t) +
+      '<span class="sv2-rec-share"><span class="sv2-rec-bar" data-tier="' + r.tier + '" aria-hidden="true"><i style="width:' + share.toFixed(1) + '%"></i></span>' +
+      '<span class="sv2-rec-sharet">' + (r.share == null ? 'no plays' : esc(fmt.pct(r.share, { d: 0 })) + ' of the total') + '</span></span></span>';
+    var inner = head + line;
+    var top = hasX
+      ? '<button type="button" class="sv2-rec-tbtn sv2-press sv2-press-row" data-sv2-tt-x="' + r.tier + '" aria-expanded="' + open + '" aria-controls="' + id + '">' + inner + '<span class="sv2-rec-tchev" aria-hidden="true">' + ui.icon('chevron', 'sv2-chev') + '</span><span class="sv2-sr">By market</span></button>'
+      : '<div class="sv2-rec-tbtn sv2-rec-tbtn--flat">' + inner + '</div>';
+    var sub = '';
+    if (hasX) {
+      sub = '<div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc((r.derived ? copy.tier[r.tier].word : 'Not derivable') + ' by market') + '"><ul class="sv2-rec-sub">' +
+        r.markets.map(function (m) { return '<li class="sv2-rec-subrow"><span class="sv2-rec-tl">' + esc(m.label) + '</span>' + tCells(m.t) + '</li>'; }).join('') + '</ul></div></div>';
+    }
+    return '<li class="sv2-rec-trow" data-tier="' + r.tier + '">' + top + sub + '</li>';
+  }
   function tiersSection(sport) {
-    var tr = rec.tierRecord(S.rows || [], S.file, sport, S.closes);
-    var html = '<section class="sv2-card sv2-rec-sec" aria-labelledby="rec-h-tiers">' + head('rec-h-tiers', 'Tier record', 'Clear, Mixed, Thin and Contested plays, read apart');
-    if (!tr) return html + '<p class="sv2-empty-line">' + esc(TIER_NONE) + '</p><p class="sv2-rec-note">The tier is a label of the facts stored for and against a play. It is never worked out afterwards for plays already played.</p></section>';
-    var rs = copy.tierOrder.map(function (t) {
-      var tt = tr.byTier[t]; if (!tt || !tt.n) return '';
-      return row(ui.tier(t), tt);
-    }).join('');
-    return html + (rs ? table('Tier record', rs) : '<p class="sv2-empty-line">No graded plays with a tier yet.</p>') +
-      '<p class="sv2-rec-note">Tiers do not change the size, which stays a flat 1u (' + esc(copy.play.label) + ').</p></section>';
+    var T = S.tier, html = '<section class="sv2-card sv2-rec-sec" aria-labelledby="rec-h-tiers">' + head('rec-h-tiers', 'Tier record', 'Each tier read apart, at a flat 1u');
+    if (T.state === 'loading' || T.state === 'idle') return html + ui.skel(2, 'Loading the tier record') + '</section>';
+    if (!T.data) return html + '<p class="sv2-empty-line">Could not load the tier record. <button type="button" class="sv2-link" data-sv2-rec-retry>Try again</button></p></section>';
+    var f = T.data, bucket = S.tSince ? 'since_nov16' : S.tb, tb = rec.tierTable(f, sport, bucket);
+    if (!tb) return html + '<p class="sv2-empty-line">No tier record for ' + esc(sportName(sport)) + ' yet.</p></section>';
+    var sw = '<div class="sv2-rec-tsw">' + seg.html({ id: 'rec-tbucket', label: 'Which plays', value: S.tSince ? '' : S.tb, size: 'sm', scroll: true,
+      items: [{ v: 'all', label: BUCKET_NAME.all }, { v: 'in_sample', label: BUCKET_NAME.in_sample }, { v: 'forward', label: BUCKET_NAME.forward }] }) +
+      '<button type="button" class="sv2-rec-since sv2-press sv2-press-btn" data-sv2-tt-since aria-pressed="' + S.tSince + '">Since Nov 16 (tier derived after the fact)</button></div>';
+    var note = '';
+    if (bucket === 'forward') {
+      var fn = String(f.forward_note || 'forward starts at the first logged lock');
+      note = '<div class="sv2-card-inset sv2-rec-tnote"><p class="sv2-rec-note"><b>Forward.</b> ' + esc(fn.charAt(0).toUpperCase() + fn.slice(1)) + '. ' +
+        (tb.total.n ? '' : 'No tier has been logged at a lock and graded yet, so every row below is zero. Zero is not a record.') +
+        ' Logged rows so far: <span class="sv2-num">' + esc(fmt.n(isNum(f.logged_rows) ? f.logged_rows : 0)) + '</span>.</p></div>';
+    } else if (bucket === 'since_nov16') {
+      note = '<div class="sv2-card-inset sv2-rec-tnote"><p class="sv2-rec-note"><b>Informational only.</b> These are plays cut on or after Nov 16, 12:00 AM Central. Their tier was derived after the fact, so this is not forward.</p></div>';
+    } else if (bucket === 'in_sample') {
+      note = '<div class="sv2-card-inset sv2-rec-tnote"><p class="sv2-rec-note"><b>In-sample.</b> The tier rule was written after these results. Read it as history, not a test.</p></div>';
+    }
+    var hero = tb.derived.n ? '<div class="sv2-card-inset sv2-rec-hero">' + stat('Units', tUnits(tb.derived)) + stat('ROI', tRoi(tb.derived)) + stat('Record', num(rec.fmtWl(tb.derived)), 'n=' + num(fmt.n(tb.derived.n)) + ', tiers only') + '</div>' : '';
+    var th = '<div class="sv2-rec-th sv2-rec-tth" aria-hidden="true"><span></span><span>W-L</span><span>Units</span><span>ROI</span><span>n</span></div>';
+    var tbl = '<div class="sv2-rec-tbl sv2-rec-ttbl" role="group" aria-label="Tier record, ' + esc(BUCKET_NAME[bucket]) + '">' + th + '<ul class="sv2-rec-list">' + tb.rows.map(tierRow).join('') + '</ul></div>';
+    var foot = '<p class="sv2-rec-note">' + esc(TIER_FOOT) + '</p>' +
+      (bucket !== 'all' && bucket !== 'in_sample' ? '' : '<p class="sv2-rec-note">The market split opens under a tier. It is stored for all plays, so it shows when the bucket holds the same plays.</p>') +
+      (sport === 'all' ? '<p class="sv2-rec-note">All pools NBA, NFL and CBB. CFB is not pooled.</p>' : '') +
+      (sport === 'cfb' ? '<p class="sv2-rec-note">CFB shows no size on the page. This is a flat 1u record for reference.</p>' : '') +
+      '<p class="sv2-rec-note">Units and ROI are flat 1u at the stored price at the cut, not the size the page shows (' + esc(copy.play.label) + '). Not derivable means no stored facts at the cut, so it is never counted in a tier. At n under ' + NEED_N + ' per sport no edge can be read. A record is context, not proof.' +
+      (isNum(f.built) ? ' Tier record built ' + esc(ct.md(f.built) + ', ' + ct.time(f.built, true)) + (T.stale ? '. Last refresh failed, showing the earlier file.' : '.') : '') + '</p>';
+    return html + sw + note + hero + tbl + foot + '</section>';
   }
 
   /* ---- section 3: accounts record */
@@ -382,12 +534,17 @@
     if (!S.page || !document.contains(S.page)) return;
     var sport = sportNow();
     if (S.state === 'loading' || (S.state === 'idle' && S.view === 'record')) { S.page.innerHTML = ui.skel(3, 'Loading the record'); return; }
-    if (S.state === 'none') { S.page.innerHTML = '<p class="sv2-err">Could not load the record. <button type="button" class="sv2-link" data-sv2-rec-retry>Try again</button></p>'; return; }
+    if (S.state === 'none') { S.page.innerHTML = '<div class="sv2-rec"><p class="sv2-err">Could not load the record. <button type="button" class="sv2-link" data-sv2-rec-retry>Try again</button></p>' + (S.tier.data ? tiersSection(sport) : '') + '</div>'; bindTier(); return; }
     if (S.state !== 'ok') return;
     var secs = pageNow() === 'following' ? [acctsSection, playsSection, tiersSection] : [playsSection, tiersSection, acctsSection];
     S.page.innerHTML = '<div class="sv2-rec">' + sportStrip() + freshLine() + secs.map(function (f) { return f(sport); }).join('') + '</div>';
     if (SV2.rail && SV2.rail.scan) SV2.rail.scan(S.page);
     var st = S.page.querySelector('.sv2-rec-sports .sv2-seg'); if (st) seg.bind(st, function (v) { S.sport = v; paint(); });
+    bindTier(); scrollToTier();
+  }
+  function bindTier() {
+    var b = S.page && S.page.querySelector('.sv2-rec-tsw .sv2-seg');
+    if (b) seg.bind(b, function (v) { S.tb = v; S.tSince = false; paint(); });
   }
   function paintSwitch() {
     if (!S.sw) return;
@@ -406,6 +563,20 @@
     var live = document.getElementById('sv2-live'); if (live) live.textContent = v === 'record' ? 'Record' : (pageNow() === 'following' ? 'Accounts' : 'Plays');
   }
 
+  /* the Sharps rail TIERS card links here: switch to the Record view and bring the tier table into view */
+  function scrollToTier() {
+    if (!S.toTier) return;
+    var h = document.getElementById('rec-h-tiers'); if (!h) return;   /* the record is still loading: paint() calls this again */
+    S.toTier = false;
+    try { h.scrollIntoView({ block: 'start' }); } catch (e) { /* ignore */ }
+  }
+  rec.openRecord = function () {
+    if (!S.main || !document.contains(S.main)) return;
+    paintSwitch(); S.toTier = true; setView('record'); paintSwitch();
+    scrollToTier();
+    var b = S.sw && S.sw.querySelector('button[aria-pressed="true"]'); if (b) { try { b.focus({ preventScroll: true }); } catch (e2) { /* ignore */ } }
+  };
+
   /* called after boot by embed.js and by the standalone page; safe to call again (one wiring per #sv2-main) */
   rec.init = function () {
     var main = document.getElementById('sv2-main'); if (!main) return;
@@ -413,13 +584,28 @@
     if (!page || !sw) return;
     if (S.main !== main) { S.main = main; S.page = page; S.sw = sw; S.swPage = null; S.view = 'main'; main.setAttribute('data-view', 'main'); page.hidden = true; }
     paintSwitch();
+    loadTier(false);
     if (!rec._wired) {
       rec._wired = true;
       SV2.on('sport', function () { if (S.view === 'record') paint(); });
       SV2.on('wallets', function () { if (S.view === 'record' && S.state === 'ok') paint(); });
       SV2.on('route', function () { if (S.main && document.contains(S.main)) { paintSwitch(); if (S.view === 'record') paint(); } });
       SV2.on('refresh', function () { if (S.view === 'record') load(true); });
-      document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-sv2-rec-retry]')) { S.state = 'loading'; paint(); load(true); } });
+      document.addEventListener('click', function (e) {
+        var t = e.target; if (!t || !t.closest) return;
+        if (t.closest('[data-sv2-rec-retry]')) { S.state = 'loading'; if (!S.tier.data) S.tier.state = 'loading'; paint(); load(true); return; }
+        var x = t.closest('[data-sv2-tt-x]');
+        if (x && S.page && S.page.contains(x)) {
+          var k = x.getAttribute('data-sv2-tt-x'), li = x.closest('.sv2-rec-trow'), box = li && li.querySelector('.sv2-x');
+          if (!box) return;
+          var open = !box.hasAttribute('data-open');
+          if (open) box.setAttribute('data-open', ''); else box.removeAttribute('data-open');
+          x.setAttribute('aria-expanded', String(open)); S.tOpen[k] = open; return;
+        }
+        var sn = t.closest('[data-sv2-tt-since]');
+        if (sn && S.page && S.page.contains(sn)) { S.tSince = !S.tSince; paint(); var again = S.page.querySelector('[data-sv2-tt-since]'); if (again) { try { again.focus({ preventScroll: true }); } catch (er) { /* ignore */ } } return; }
+        if (t.closest('[data-sv2-open-record]')) { e.preventDefault(); rec.openRecord(); }
+      });
     }
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(rec.init, 0); }); else setTimeout(rec.init, 0);

@@ -195,6 +195,88 @@ console.log('months (Central)');
   eq('never before the first month of the record (Oct 2026 has no files)', R.months(1793000000), ['2026-10']);
 }
 
+console.log('tier table (tier_record.json)');
+{
+  const T = (w, l, p, units) => { const n = w + l + p; return { w, l, p, n, units, roi: n ? Math.round(units / n * 10000) / 10000 : null }; };
+  const Z = T(0, 0, 0, 0);
+  const tier = (all, ins, fwd, since, bm) => ({ all, in_sample: ins || all, forward: fwd || Z, since_nov16: since || Z, by_market: bm || { ml: all, spread: Z, total: Z } });
+  const nba = { tiers: { clear: tier(T(1, 0, 0, 1.2)), mixed: tier(T(2, 1, 0, 0.5)), thin: tier(Z), contested: tier(T(30, 20, 0, 0.96), null, null, T(19, 16, 0, -1.55), { ml: T(27, 14, 0, 3.73), spread: T(2, 4, 0, -1.83), total: T(1, 2, 0, -0.94) }), none: tier(T(5, 5, 0, -0.5)) } };
+  const nfl = { tiers: { clear: tier(Z), mixed: tier(T(1, 3, 0, -1)), thin: tier(T(0, 2, 0, -2)), contested: tier(T(19, 11, 0, 2), null, null, null, { ml: T(10, 5, 0, 1), spread: T(9, 6, 0, 1), total: Z }), none: tier(Z) } };
+  const cbb = { tiers: { clear: tier(Z), mixed: tier(Z), thin: tier(Z), contested: tier(T(4, 1, 0, 1)), none: tier(T(24, 19, 0, 4.94)) } };
+  const cfb = { tiers: { clear: tier(Z), mixed: tier(T(4, 9, 0, -3)), thin: tier(T(9, 5, 0, 2)), contested: tier(T(8, 13, 0, -4)), none: tier(Z) } };
+  const file = { built: NOW, forward_note: 'forward starts at the first logged lock', logged_rows: 0, forward_graded: 0, sports: { nba, nfl, cbb, cfb } };
+  const pooled = (t) => R.tierPool(['nba', 'nfl', 'cbb'].map((sp) => file.sports[sp].tiers[t].all));
+  const withAll = Object.assign({}, file, { all: { tiers: Object.fromEntries(['clear', 'mixed', 'thin', 'contested', 'none'].map((t) => [t, Object.assign({}, tier(pooled(t)), {})])) } });
+
+  /* bucket selection */
+  eq('all bucket', R.pickBucket(nba.tiers.contested, 'all').n, 50);
+  eq('since_nov16 bucket', R.pickBucket(nba.tiers.contested, 'since_nov16').w, 19);
+  eq('forward bucket is zeros with a null roi', R.pickBucket(nba.tiers.contested, 'forward'), { w: 0, l: 0, p: 0, n: 0, units: 0, roi: null });
+  eq('an unknown bucket reads as all', R.pickBucket(nba.tiers.contested, 'bogus').n, 50);
+  eq('a missing tier is zeros, not a throw', R.pickBucket(undefined, 'all'), { w: 0, l: 0, p: 0, n: 0, units: 0, roi: null });
+  near('roi is stored as a fraction', R.pickBucket(nba.tiers.contested, 'all').roi, 0.0192, 1e-6);
+  ok('roi null stays null even when units is a number at n 0', R.tierTally({ w: 0, l: 0, p: 0, n: 0, units: 0, roi: 0.5 }).roi === null);
+
+  /* sports and pooling */
+  eq('NBA contested 30-20', R.fmtWl(R.tierTable(file, 'nba', 'all').rows[3].t), '30-20');
+  eq('NFL contested 19-11', R.fmtWl(R.tierTable(file, 'nfl', 'all').rows[3].t), '19-11');
+  eq('CBB contested 4-1', R.fmtWl(R.tierTable(file, 'cbb', 'all').rows[3].t), '4-1');
+  eq('CFB has its own rows', ['mixed', 'thin', 'contested'].map((t) => R.fmtWl(R.tierTable(file, 'cfb', 'all').rows[R.TIER_ROWS.indexOf(t)].t)), ['4-9', '9-5', '8-13']);
+  eq('all pools NBA + NFL + CBB (contested 53-32)', R.fmtWl(R.tierTable(file, 'all', 'all').rows[3].t), '53-32');
+  eq('all, when the file has no pooled block, equals the file pooled block', R.tierTable(file, 'all', 'all').rows.map((r) => r.t), R.tierTable(withAll, 'all', 'all').rows.map((r) => r.t));
+  eq('CFB is never pooled into all (mixed is NBA 3 + NFL 4, not the CFB 13)', R.tierTable(file, 'all', 'all').rows[1].t.n, 7);
+  eq('a sport missing from the file: null', R.tierTable(file, 'nhl', 'all'), null);
+  eq('a bad file: null', R.tierTable({}, 'all', 'all'), null);
+  near('pooled units add up', R.tierTable(file, 'all', 'all').rows[3].t.units, 0.96 + 2 + 1, 1e-9);
+
+  /* not derivable stays apart */
+  const tb = R.tierTable(file, 'cbb', 'all');
+  eq('five rows, Not derivable last', tb.rows.map((r) => r.tier), ['clear', 'mixed', 'thin', 'contested', 'none']);
+  eq('CBB not derivable 24-19', R.fmtWl(tb.rows[4].t), '24-19');
+  ok('the none row is flagged not derived', tb.rows[4].derived === false && tb.rows.slice(0, 4).every((r) => r.derived));
+  eq('the tiers-only total leaves Not derivable out', [tb.derived.n, tb.total.n], [5, 48]);
+  near('shares sum to 1 across the five rows', tb.rows.reduce((a, r) => a + r.share, 0), 1, 1e-9);
+  eq('a tier with none of the plays has a zero share', tb.rows[0].share, 0);
+
+  /* zero-play tiers and dashes */
+  const nbaT = R.tierTable(file, 'nba', 'all');
+  eq('Thin with no plays is still a row', nbaT.rows[2].t.n, 0);
+  eq('zero-play cells: 0-0, 0u, dash', [R.fmtWl(nbaT.rows[2].t), R.fmtUnits(nbaT.rows[2].t), R.fmtRoi(nbaT.rows[2].t)], ['0-0', '0u', '-']);
+  eq('real cells: signed units and signed percent', [R.fmtUnits(nbaT.rows[3].t), R.fmtRoi(nbaT.rows[3].t)], ['+0.96u', '+1.9%']);
+  eq('a loss reads negative', [R.fmtUnits(nbaT.rows[4].t), R.fmtRoi(nbaT.rows[4].t)], ['-0.5u', '-5.0%']);
+  eq('a push shows as the third number', R.fmtWl({ w: 3, l: 2, p: 1, n: 6 }), '3-2-1');
+  const fw = R.tierTable(file, 'nba', 'forward');
+  eq('forward is zeros in every row', fw.rows.every((r) => r.t.n === 0 && r.t.roi === null && r.share === null), true);
+  eq('forward total is zero', fw.total.n, 0);
+  eq('zero-play rows carry no monitor flag', fw.rows.some((r) => r.flag.watch || r.flag.tiny), false);
+
+  /* improving slices */
+  eq('Contested NBA improves (units above 0): watch, small, not tiny', [nbaT.rows[3].flag.watch, nbaT.rows[3].flag.small, nbaT.rows[3].flag.tiny, nbaT.rows[3].flag.n], [true, true, false, 50]);
+  eq('NBA Clear n=1 improves: watch and tiny', [nbaT.rows[0].flag.watch, nbaT.rows[0].flag.tiny], [true, true]);
+  eq('a losing slice is not watched', R.tierTable(file, 'nfl', 'all').rows[2].flag.watch, false);
+  eq('a losing slice under 30 still says small sample', R.tierTable(file, 'nfl', 'all').rows[2].flag.tiny, true);
+  eq('since Nov 16 contested is losing: not watched', R.tierTable(file, 'nba', 'since_nov16').rows[3].flag.watch, false);
+
+  /* market split */
+  eq('market split on the all bucket', nbaT.rows[3].markets.map((m) => [m.k, R.fmtWl(m.t)]), [['ml', '27-14'], ['spread', '2-4'], ['total', '1-2']]);
+  eq('in-sample holds the same plays today, so the split shows', R.tierTable(file, 'nba', 'in_sample').rows[3].markets !== null, true);
+  eq('since Nov 16 is a subset: no stored split, none shown', R.tierTable(file, 'nba', 'since_nov16').rows[3].markets, null);
+  eq('forward has no split', fw.rows[3].markets, null);
+  eq('a tier with no plays has no split', nbaT.rows[2].markets, null);
+
+  /* the rail line */
+  const rl = R.railLine(file, 'nba');
+  eq('rail line names the bucket honestly', rl.label, 'Record so far (in-sample)');
+  eq('rail line lists tiers with plays, Contested 30-20', rl.items.find((i) => i.tier === 'contested').wl, '30-20');
+  eq('rail line drops zero-play tiers', rl.items.some((i) => i.tier === 'thin'), false);
+  eq('rail line keeps Not derivable separate and named', rl.items[rl.items.length - 1], { tier: 'none', word: 'Not derivable', wl: '5-5', n: 10 });
+  eq('rail line for all sums the three sports', R.railLine(file, 'all').items.find((i) => i.tier === 'contested').wl, '53-32');
+  const logged = JSON.parse(JSON.stringify(file)); logged.sports.nba.tiers.contested.forward = { w: 1, l: 0, p: 0, n: 1, units: 0.9, roi: 0.9 };
+  eq('once forward has graded plays the rail label says so', R.railLine(logged, 'nba').label, 'Record so far (in-sample and forward)');
+  eq('rail line is null with no file', R.railLine(null, 'nba'), null);
+  ok('the footer text is the audited sentence', R.TIER_FOOT === 'In-sample: the tier rule was written after these results. Forward counts start at the first logged lock.');
+}
+
 console.log('copy rules');
 {
   const src = fs.readFileSync(path.join(ROOT, 'sv2-record.js'), 'utf8');
