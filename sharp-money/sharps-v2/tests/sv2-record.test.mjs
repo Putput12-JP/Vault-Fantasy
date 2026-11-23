@@ -277,6 +277,95 @@ console.log('tier table (tier_record.json)');
   ok('the footer text is the audited sentence', R.TIER_FOOT === 'In-sample: the tier rule was written after these results. Forward counts start at the first logged lock.');
 }
 
+console.log('shadow size v2s-1 (tier_record.json shadow cells)');
+{
+  const S = (staked, units) => ({ units_staked: staked, units, roi: staked ? Math.round(units / staked * 10000) / 10000 : null });
+  const T = (w, l, p, units, shadow) => { const n = w + l + p; return { w, l, p, n, units, roi: n ? Math.round(units / n * 10000) / 10000 : null, shadow }; };
+  const Z = T(0, 0, 0, 0, S(0, 0));
+  const ZN = Object.assign({}, Z, { shadow: null });
+  const tier = (all, ins, fwd, since, bm) => ({ all, in_sample: ins || all, forward: fwd || Z, since_nov16: since || Z, by_market: bm || { ml: all, spread: Z, total: Z } });
+  const nba = { tiers: {
+    clear: tier(T(1, 0, 0, 1.2, S(1.5, 1.8))), mixed: tier(T(0, 1, 0, -1, S(1, -1))), thin: tier(Z),
+    contested: tier(T(30, 20, 0, 0.96, S(25, 0.48)), null, null, T(19, 16, 0, -1.55, S(17.5, -0.77)),
+      { ml: T(27, 14, 0, 3.73, S(20.5, 1.86)), spread: T(2, 4, 0, -1.83, S(3, -0.92)), total: T(1, 2, 0, -0.94, S(1.5, -0.47)) }),
+    none: tier(T(4, 4, 0, -0.86, null), null, null, null, { ml: T(4, 4, 0, -0.86, null), spread: ZN, total: ZN }) } };
+  const cfb = { tiers: { clear: tier(Z), mixed: tier(T(4, 9, 0, -3, S(0, 0))), thin: tier(T(9, 5, 0, 2, S(0, 0))), contested: tier(T(8, 13, 0, -4, S(0, 0))), none: tier(ZN) } };
+  const nfl = { tiers: { clear: tier(Z), mixed: tier(T(1, 3, 0, -1, S(4, -1))), thin: tier(T(0, 2, 0, -2, S(1, -1))), contested: tier(T(19, 11, 0, 2, S(15, 1)), null, null, T(10, 6, 0, 4.28, S(8, 2.14))), none: tier(ZN) } };
+  const file = { built: NOW, sports: { nba, nfl, cfb } };
+
+  /* the size rule table */
+  eq('sizes by tier', ['clear', 'mixed', 'thin', 'contested'].map((t) => R.shadowSize(t, 'nba')), [1.5, 1, 0.5, 0.5]);
+  eq('Not derivable has no size', R.shadowSize('none', 'nba'), null);
+  eq('CFB has size 0, shown as none', [R.shadowSize('clear', 'cfb'), R.fmtSize(R.shadowSize('clear', 'cfb'))], [0, 'none']);
+  eq('size labels as displayed', [1.5, 1, 0.5, null, 0].map(R.fmtSize), ['1.5u', '1u', '0.5u', 'none', 'none']);
+  eq('table rows carry the size', R.tierTable(file, 'nba', 'all').rows.map((r) => r.size), [1.5, 1, 0.5, 0.5, null]);
+  eq('CFB rows carry size 0 for a tiered row and null for Not derivable', R.tierTable(file, 'cfb', 'all').rows.map((r) => r.size), [0, 0, 0, 0, null]);
+
+  /* null shadow handling */
+  eq('a cell with shadow null reads null (Not derivable)', R.shadowTally(nba.tiers.none.all), null);
+  eq('a cell with no shadow field reads null', R.shadowTally({ w: 1, n: 1, units: 1 }), null);
+  eq('a malformed shadow reads null', R.shadowTally({ shadow: { units_staked: 'x' } }), null);
+  eq('zero staked: units 0, roi null', R.shadowTally(Z), { staked: 0, units: 0, roi: null });
+  eq('zero staked renders as a dash, never 0%', [R.fmtShadowUnits(R.shadowTally(Z)), R.fmtShadowRoi(R.shadowTally(Z)), R.fmtStaked(R.shadowTally(Z))], ['-', '-', '-']);
+  eq('a null shadow renders as dashes', [R.fmtShadowUnits(null), R.fmtShadowRoi(null)], ['-', '-']);
+  eq('CFB shadow stakes nothing and shows dashes', R.tierTable(file, 'cfb', 'all').rows.map((r) => R.fmtShadowUnits(r.shadow)), ['-', '-', '-', '-', '-']);
+  eq('Not derivable row has a null shadow', R.tierTable(file, 'nba', 'all').rows[4].shadow, null);
+
+  /* rounding as displayed */
+  const c = R.tierTable(file, 'nba', 'all').rows[3];
+  eq('NBA contested shadow units as displayed', R.fmtShadowUnits(c.shadow), '+0.48u');
+  eq('NBA contested shadow roi as displayed', R.fmtShadowRoi(c.shadow), '+1.9%');
+  eq('NBA contested staked as displayed', R.fmtStaked(c.shadow), '25u');
+  eq('flat beside it is unchanged', [R.fmtUnits(c.t), R.fmtRoi(c.t)], ['+0.96u', '+1.9%']);
+  eq('a whole-unit loss has no trailing zeros', R.fmtShadowUnits(R.shadowTally(nba.tiers.mixed.all)), '-1u');
+  eq('clear shadow units', R.fmtShadowUnits(R.shadowTally(nba.tiers.clear.all)), '+1.8u');
+  eq('1.5u staked reads 1.5u', R.fmtStaked(R.shadowTally(nba.tiers.clear.all)), '1.5u');
+
+  /* by-market rows */
+  eq('market rows carry the shadow', c.markets.map((m) => R.fmtShadowUnits(m.shadow)), ['+1.86u', '-0.92u', '-0.47u']);
+  eq('market staked adds up to the tier staked', R.shadowPool(c.markets.map((m) => m.shadow)).staked, 25);
+
+  /* bucket switching */
+  eq('in-sample reads the same plays today', R.fmtShadowUnits(R.tierTable(file, 'nba', 'in_sample').rows[3].shadow), '+0.48u');
+  eq('since Nov 16 reads its own cell', R.fmtShadowUnits(R.tierTable(file, 'nba', 'since_nov16').rows[3].shadow), '-0.77u');
+  eq('forward is zeros and dashes', R.tierTable(file, 'nba', 'forward').rows.map((r) => R.fmtShadowUnits(r.shadow)), ['-', '-', '-', '-', '-']);
+  eq('an unknown bucket reads as all', R.fmtShadowUnits(R.tierTable(file, 'nba', 'bogus').rows[3].shadow), '+0.48u');
+  eq('forward has no like-for-like line', R.tierTable(file, 'nba', 'forward').like, null);
+
+  /* like-for-like: tier rows only, Not derivable out of both sides */
+  const l = R.tierTable(file, 'nba', 'all').like;
+  near('flat is the sum of the tier rows, Not derivable excluded', l.flat_units, 1.2 - 1 + 0.96, 1e-9);
+  eq('n is the tier rows only', l.n, 1 + 1 + 50);
+  near('shadow is the sum of the shadow cells', l.shadow_units, 1.8 - 1 + 0.48, 1e-9);
+  near('staked is the sum of the sizes', l.staked, 1.5 + 1 + 25, 1e-9);
+  near('shadow roi is units on staked', l.shadow_roi, 1.28 / 27.5, 1e-9);
+  const withNone = JSON.parse(JSON.stringify(file)); withNone.sports.nba.tiers.none.all.units = 99;
+  near('changing Not derivable changes neither side of the line', R.tierTable(withNone, 'nba', 'all').like.flat_units, 1.16, 1e-9);
+  eq('the like line, exact text',
+    R.likeLine(l, 'all'),
+    'Shadow vs flat, plays with a tier only: flat +1.16u (n=52) vs shadow +1.28u on 27.5u staked. Not derivable plays are not staked by the shadow. In-sample, inside the noise.');
+  ok('the like line never calls the shadow better or a signal', !/\b(better|edge|recommend|go|best)\b/i.test(R.likeLine(l, 'all')));
+  eq('since Nov 16 line says informational', /Informational/.test(R.likeLine(R.tierTable(file, 'nba', 'since_nov16').like, 'since_nov16')), true);
+  eq('CFB has no like-for-like (the shadow stakes nothing)', R.tierTable(file, 'cfb', 'all').like, null);
+  eq('a null like gives no line', R.likeLine(null, 'all'), null);
+
+  /* pooled all: no pooled block in the file, so the shadow cells are summed across NBA + NFL (CFB never pooled) */
+  const all = R.tierTable(file, 'all', 'all');
+  eq('pooled contested shadow units (NBA 0.48 + NFL 1)', R.fmtShadowUnits(all.rows[3].shadow), '+1.48u');
+  eq('pooled contested staked (25 + 15)', R.fmtStaked(all.rows[3].shadow), '40u');
+  eq('pooled Not derivable stays null', all.rows[4].shadow, null);
+  eq('pooled mixed staked (NBA 1 + NFL 4)', R.shadowTally({ shadow: all.rows[1].shadow && { units_staked: all.rows[1].shadow.staked, units: all.rows[1].shadow.units } }).staked, 5);
+  eq('pooled CFB is not in it (clear row is NBA only)', R.fmtStaked(all.rows[0].shadow), '1.5u');
+  const withAll = Object.assign({}, file, { all: { tiers: nba.tiers } });
+  eq('a stored pooled block is read as given', R.fmtStaked(R.tierTable(withAll, 'all', 'all').rows[3].shadow), '25u');
+  eq('shadowPool of nothing is null, of nulls is null', [R.shadowPool([]), R.shadowPool([null, null])], [null, null]);
+  eq('shadowPool skips nulls', R.shadowPool([null, { staked: 1, units: 0.5 }, { staked: 2, units: -1 }]).staked, 3);
+
+  /* the copy */
+  ok('tooltip text is the specified sentence', R.SHADOW_TIP === 'What the same plays would have returned at the tier-scaled size. In-sample, not shown on the page.');
+  eq('the size table matches the rule v2s-1', R.SHADOW_SIZE, { clear: 1.5, mixed: 1, thin: 0.5, contested: 0.5, none: null });
+}
+
 console.log('copy rules');
 {
   const src = fs.readFileSync(path.join(ROOT, 'sv2-record.js'), 'utf8');

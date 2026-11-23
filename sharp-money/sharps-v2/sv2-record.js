@@ -198,12 +198,44 @@
   };
   /* pool stored tallies: counts and units add, roi is units / n, null at n 0 */
   rec.tierPool = function (list) {
-    var o = zeroTally();
-    (list || []).forEach(function (x) { var t = rec.tierTally(x); o.w += t.w; o.l += t.l; o.p += t.p; o.n += t.n; o.units += t.units; });
+    var o = zeroTally(), sh = [];
+    (list || []).forEach(function (x) { var t = rec.tierTally(x); o.w += t.w; o.l += t.l; o.p += t.p; o.n += t.n; o.units += t.units; sh.push(rec.shadowTally(x)); });
     o.units = Math.round(o.units * 1000) / 1000;
     o.roi = o.n > 0 ? o.units / o.n : null;
+    var sp = rec.shadowPool(sh); if (sp) o.shadow = { units_staked: sp.staked, units: sp.units, roi: sp.roi };
     return o;
   };
+  /* ---- Shadow size v2s-1 (docs/sharp-tier-v2-prereg.md, Shadow size). A SHADOW: the same plays at the tier-scaled size beside the flat 1u, never shown
+     on the page and never a recommendation. The sizes are an ordering by evidence, not fitted to results. In-sample. The Not derivable plays are not
+     staked by the shadow, so the like-for-like comparison is the plays that have a tier. */
+  var SHADOW_SIZE = { clear: 1.5, mixed: 1, thin: 0.5, contested: 0.5, none: null };
+  var SHADOW_TIP = 'What the same plays would have returned at the tier-scaled size. In-sample, not shown on the page.';
+  /* the size for a tier: null for Not derivable, 0 for CFB (no size is shown there), else the rule table */
+  rec.shadowSize = function (tier, sport) {
+    var t = lc(tier);
+    if (!(t in SHADOW_SIZE) || SHADOW_SIZE[t] == null) return null;
+    return lc(sport) === 'cfb' ? 0 : SHADOW_SIZE[t];
+  };
+  rec.fmtSize = function (x) { return isNum(x) && x > 0 ? String(x) + 'u' : 'none'; };
+  /* one stored cell's shadow {units_staked, units, roi} as {staked, units, roi}; null when the cell has none (Not derivable, or no size applies).
+     Nothing staked reads 0 units and a null roi, never 0%. */
+  rec.shadowTally = function (o) {
+    var s = o && typeof o === 'object' ? o.shadow : null;
+    if (!s || typeof s !== 'object' || !isNum(s.units_staked) || s.units_staked < 0) return null;
+    var st = s.units_staked, u = isNum(s.units) ? s.units : 0;
+    return { staked: st, units: st > 0 ? u : 0, roi: st > 0 ? (isNum(s.roi) ? s.roi : u / st) : null };
+  };
+  /* pooled shadow: staked and units add, roi = units / staked. Null cells are skipped; null when every cell is null. */
+  rec.shadowPool = function (list) {
+    var st = 0, u = 0, any = false;
+    (list || []).forEach(function (x) { if (x && isNum(x.staked)) { any = true; st += x.staked; u += isNum(x.units) ? x.units : 0; } });
+    if (!any) return null;
+    st = Math.round(st * 1000) / 1000; u = Math.round(u * 1000) / 1000;
+    return { staked: st, units: u, roi: st > 0 ? u / st : null };
+  };
+  rec.fmtShadowUnits = function (sh) { return sh && sh.staked > 0 && isNum(sh.units) ? fmt.units(sh.units, { signed: true }) : '-'; };
+  rec.fmtShadowRoi = function (sh) { return sh && sh.staked > 0 && isNum(sh.roi) ? fmt.pct(sh.roi, { signed: true }) : '-'; };
+  rec.fmtStaked = function (sh) { return sh && sh.staked > 0 ? fmt.units(sh.staked) : '-'; };
   /* which bucket of a tier to read. Anything unknown reads as all. */
   rec.pickBucket = function (tierObj, bucket) {
     var b = BUCKETS.indexOf(bucket) >= 0 ? bucket : 'all';
@@ -219,14 +251,29 @@
     var rows = TIER_ROWS.map(function (t) {
       var o = sl[t] || {}, tally = rec.pickBucket(o, b), all = rec.pickBucket(o, 'all'), markets = null;
       if (o.by_market && tally.n > 0 && tally.n === all.n) {
-        markets = MARKETS.map(function (m) { return { k: m[0], label: m[1], t: rec.tierTally(o.by_market[m[0]]) }; });
+        markets = MARKETS.map(function (m) { return { k: m[0], label: m[1], t: rec.tierTally(o.by_market[m[0]]), shadow: rec.shadowTally(o.by_market[m[0]]) }; });
       }
-      return { tier: t, derived: t !== 'none', t: tally, share: null, flag: rec.monitor(tally), markets: markets };
+      return { tier: t, derived: t !== 'none', t: tally, share: null, flag: rec.monitor(tally), markets: markets,
+               size: rec.shadowSize(t, sport), shadow: rec.shadowTally(o[b]) };
     });
     var total = rec.tierPool(rows.map(function (r) { return r.t; }));
     rows.forEach(function (r) { r.share = total.n > 0 ? r.t.n / total.n : null; });
     var derived = rec.tierPool(rows.filter(function (r) { return r.derived; }).map(function (r) { return r.t; }));
-    return { bucket: b, rows: rows, total: total, derived: derived };
+    return { bucket: b, rows: rows, total: total, derived: derived, like: rec.likeForLike(rows) };
+  };
+  /* Shadow vs flat on the plays that have a tier only (Not derivable is excluded from both): flat units and n are summed from the tier rows,
+     the shadow from the tier rows' shadow cells. Null when the shadow stakes nothing (CFB, an empty bucket): there is nothing to compare. */
+  rec.likeForLike = function (rows) {
+    var d = (rows || []).filter(function (r) { return r.derived; });
+    var flat = rec.tierPool(d.map(function (r) { return r.t; })), sh = rec.shadowPool(d.map(function (r) { return r.shadow; }));
+    if (!flat.n || !sh || !(sh.staked > 0)) return null;
+    return { n: flat.n, flat_units: flat.units, flat_roi: flat.roi, staked: sh.staked, shadow_units: sh.units, shadow_roi: sh.roi };
+  };
+  rec.likeLine = function (l, bucket) {
+    if (!l) return null;
+    var tail = bucket === 'forward' ? 'Forward, inside the noise.' : bucket === 'since_nov16' ? 'Informational, tier derived after the fact, inside the noise.' : 'In-sample, inside the noise.';
+    return 'Shadow vs flat, plays with a tier only: flat ' + fmt.units(l.flat_units, { signed: true }) + ' (n=' + fmt.n(l.n) + ') vs shadow ' +
+      fmt.units(l.shadow_units, { signed: true }) + ' on ' + fmt.units(l.staked) + ' staked. Not derivable plays are not staked by the shadow. ' + tail;
   };
   /* "Record so far (in-sample): Contested 30-20": one entry per tier with plays, Not derivable last and named as such. */
   rec.railLine = function (f, sport) {
@@ -289,7 +336,7 @@
     var k = ct.dateKey(nowT), first = k.slice(0, 7) + '-01', prev = ct.addDays(first, -1).slice(0, 7), cur = k.slice(0, 7);
     return prev >= FIRST_MONTH ? [prev, cur] : [cur];
   };
-  rec.TIER_ROWS = TIER_ROWS; rec.BUCKETS = BUCKETS; rec.TIER_FOOT = TIER_FOOT; rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
+  rec.SHADOW_SIZE = SHADOW_SIZE; rec.SHADOW_TIP = SHADOW_TIP; rec.TIER_ROWS = TIER_ROWS; rec.BUCKETS = BUCKETS; rec.TIER_FOOT = TIER_FOOT; rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
   SV2.rec = rec;
 
   /* ------------------------------------------------------------------ browser side */
@@ -425,6 +472,14 @@
   /* ---- section 2: tier record (evidence tiers), from tier_record.json */
   function tUnits(t) { return '<span class="sv2-num' + signCls(t.units) + '">' + esc(rec.fmtUnits(t)) + '</span>'; }
   function tRoi(t) { return '<span class="sv2-num' + signCls(t.roi) + '">' + esc(rec.fmtRoi(t)) + '</span>'; }
+  /* shadow cells: muted and tagged, never coloured as a result. Size, then units with the ROI on staked units. */
+  function shCells(size, sh) {
+    var ss = rec.fmtSize(size), un = rec.fmtShadowUnits(sh), ro = rec.fmtShadowRoi(sh), st = rec.fmtStaked(sh);
+    return '<span class="sv2-rec-shw">' +
+      '<span class="sv2-rec-c sv2-rec-sh" data-k="Shadow size" data-m="size" title="' + esc(rec.SHADOW_TIP) + '"><span class="sv2-sr">Shadow size, </span>' + num(ss) + '</span>' +
+      '<span class="sv2-rec-c sv2-rec-sh" data-k="Shadow units" data-m="units" title="' + esc(rec.SHADOW_TIP + (st !== '-' ? ' Staked ' + st + '.' : '')) + '"><span class="sv2-sr">Shadow units and ROI on staked units, </span>' +
+      num(un) + (ro !== '-' ? ' <span class="sv2-rec-shr">' + esc(ro) + '</span>' : '') + '</span></span>';
+  }
   function tCells(t) {
     return '<span class="sv2-rec-c" data-k="W-L">' + num(rec.fmtWl(t)) + '</span><span class="sv2-rec-c" data-k="Units">' + tUnits(t) + '</span>' +
       '<span class="sv2-rec-c" data-k="ROI">' + tRoi(t) + '</span><span class="sv2-rec-c" data-k="n">' + num(fmt.n(t.n)) + '</span>';
@@ -434,7 +489,7 @@
   }
   function tierRow(r) {
     var open = !!S.tOpen[r.tier], id = 'sv2-tt-' + r.tier, hasX = !!r.markets;
-    var head = '<span class="sv2-rec-tl">' + tLabel(r) + (r.derived ? '' : '<span class="sv2-rec-tag">no stored facts at the cut</span>') + '</span>' + tCells(r.t);
+    var head = '<span class="sv2-rec-tl">' + tLabel(r) + (r.derived ? '' : '<span class="sv2-rec-tag">no stored facts at the cut</span>') + '</span>' + tCells(r.t) + shCells(r.size, r.shadow);
     var share = r.share == null ? 0 : r.share * 100;
     var line = '<span class="sv2-rec-tx">' + flagHtml(r.t) +
       '<span class="sv2-rec-share"><span class="sv2-rec-bar" data-tier="' + r.tier + '" aria-hidden="true"><i style="width:' + share.toFixed(1) + '%"></i></span>' +
@@ -446,7 +501,7 @@
     var sub = '';
     if (hasX) {
       sub = '<div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc((r.derived ? copy.tier[r.tier].word : 'Not derivable') + ' by market') + '"><ul class="sv2-rec-sub">' +
-        r.markets.map(function (m) { return '<li class="sv2-rec-subrow"><span class="sv2-rec-tl">' + esc(m.label) + '</span>' + tCells(m.t) + '</li>'; }).join('') + '</ul></div></div>';
+        r.markets.map(function (m) { return '<li class="sv2-rec-subrow"><span class="sv2-rec-tl">' + esc(m.label) + '</span>' + tCells(m.t) + shCells(r.size, m.shadow) + '</li>'; }).join('') + '</ul></div></div>';
     }
     return '<li class="sv2-rec-trow" data-tier="' + r.tier + '">' + top + sub + '</li>';
   }
@@ -471,9 +526,13 @@
       note = '<div class="sv2-card-inset sv2-rec-tnote"><p class="sv2-rec-note"><b>In-sample.</b> The tier rule was written after these results. Read it as history, not a test.</p></div>';
     }
     var hero = tb.derived.n ? '<div class="sv2-card-inset sv2-rec-hero">' + stat('Units', tUnits(tb.derived)) + stat('ROI', tRoi(tb.derived)) + stat('Record', num(rec.fmtWl(tb.derived)), 'n=' + num(fmt.n(tb.derived.n)) + ', tiers only') + '</div>' : '';
-    var th = '<div class="sv2-rec-th sv2-rec-tth" aria-hidden="true"><span></span><span>W-L</span><span>Units</span><span>ROI</span><span>n</span></div>';
+    var th = '<div class="sv2-rec-th sv2-rec-tth" aria-hidden="true"><span></span><span>W-L</span><span>Units</span><span>ROI</span><span>n</span><span class="sv2-rec-shh"><i class="sv2-rec-shtag" title="' + esc(rec.SHADOW_TIP) + '">shadow</i>Size</span><span class="sv2-rec-shh"><i class="sv2-rec-shtag" title="' + esc(rec.SHADOW_TIP) + '">shadow</i>Units, ROI</span></div>';
     var tbl = '<div class="sv2-rec-tbl sv2-rec-ttbl" role="group" aria-label="Tier record, ' + esc(BUCKET_NAME[bucket]) + '">' + th + '<ul class="sv2-rec-list">' + tb.rows.map(tierRow).join('') + '</ul></div>';
-    var foot = '<p class="sv2-rec-note">' + esc(TIER_FOOT) + '</p>' +
+    var likeTxt = rec.likeLine(tb.like, bucket);
+    var cfbNote = sport === 'cfb' ? 'CFB: the shadow stakes nothing, no size shown.' : '';
+    var like = likeTxt || cfbNote ? '<p class="sv2-rec-note sv2-rec-like">' + esc(likeTxt || cfbNote) + '</p>' : '';
+    var foot = like + '<p class="sv2-rec-note">Shadow columns: ' + esc(rec.SHADOW_TIP) + ' Sizes by tier (rule v2s-1): Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, none for CFB and Not derivable. An ordering by evidence, not fitted to results. The page and the suggested size stay a flat 1u. Per-tier ROI is the same under both rules, only the pooled lines differ. At these samples no difference can be read.</p>' +
+      '<p class="sv2-rec-note">' + esc(TIER_FOOT) + '</p>' +
       (bucket !== 'all' && bucket !== 'in_sample' ? '' : '<p class="sv2-rec-note">The market split opens under a tier. It is stored for all plays, so it shows when the bucket holds the same plays.</p>') +
       (sport === 'all' ? '<p class="sv2-rec-note">All pools NBA, NFL and CBB. CFB is not pooled.</p>' : '') +
       (sport === 'cfb' ? '<p class="sv2-rec-note">CFB shows no size on the page. This is a flat 1u record for reference.</p>' : '') +

@@ -1122,14 +1122,14 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2 .sv2-rec-since[aria-pressed="true"] { border-color: var(--sv2-ink); box-shadow: inset 0 0 0 1px var(--sv2-ink); font-weight: 600; }
 .sv2-rec-tnote { padding: 10px 14px; }
 .sv2-rec-ttbl .sv2-rec-list { display: grid; }
-.sv2-rec-tth, .sv2-rec-tbtn, .sv2-rec-subrow { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px 64px 44px 24px; column-gap: 8px; align-items: baseline; }
-.sv2-rec-tth { grid-template-columns: minmax(0, 1fr) 64px 64px 64px 44px 24px; }
+.sv2-rec-tth, .sv2-rec-tbtn, .sv2-rec-subrow { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px 64px 44px 56px 112px 24px; column-gap: 8px; align-items: baseline; }
+.sv2-rec-tth { grid-template-columns: minmax(0, 1fr) 64px 64px 64px 44px 56px 112px 24px; }
 .sv2-rec-tth > span + span { text-align: right; }
 .sv2-rec-trow { border-top: 1px solid var(--sv2-line); min-width: 0; }
 .sv2 .sv2-rec-tbtn { position: relative; width: 100%; min-height: 44px; padding: 10px 0; margin: 0; border: 0; background: transparent; color: var(--sv2-ink); font: 500 14px/1.35 var(--sv2-sans); text-align: left; row-gap: 6px; cursor: pointer; }
 .sv2-rec-tbtn--flat { cursor: default; }
 .sv2-rec-tl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
-.sv2-rec-tchev { grid-column: 6; grid-row: 1; align-self: center; justify-self: end; display: inline-flex; color: var(--sv2-mut); }
+.sv2-rec-tchev { grid-column: 8; grid-row: 1; align-self: center; justify-self: end; display: inline-flex; color: var(--sv2-mut); }
 .sv2-rec-tchev svg { width: 20px; height: 20px; }
 .sv2-rec-tbtn .sv2-rec-c { text-align: right; }
 .sv2-rec-tx { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
@@ -1153,7 +1153,19 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
   .sv2-rec-tbtn .sv2-rec-tl, .sv2-rec-subrow .sv2-rec-tl { grid-column: 1 / -1; }
   .sv2-rec-tchev { position: absolute; top: 10px; right: 0; grid-column: auto; grid-row: auto; }
   .sv2-rec-tbtn .sv2-rec-c, .sv2-rec-subrow .sv2-rec-c { text-align: left; }
+  .sv2-rec-shw { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; grid-column: 1 / -1; min-width: 0; }
+  .sv2-rec-shw::before { content: 'shadow'; padding: 0 6px; border: 1px solid var(--sv2-line); border-radius: 999px; font: 600 10px/1.5 var(--sv2-sans); letter-spacing: .04em; color: var(--sv2-mut); }
+  .sv2-rec-shw .sv2-rec-c { display: inline-flex; align-items: baseline; gap: 5px; }
+  .sv2-rec-shw .sv2-rec-c::before { content: attr(data-m); font: 400 12.5px/1.3 var(--sv2-sans); letter-spacing: 0; text-transform: none; }
 }
+/* shadow size columns (v2s-1, 2026-11-23): muted, tagged 'shadow', never coloured as a result. Desktop: the wrapper dissolves so its two cells join the row
+   grid. Phone: it becomes one line under the flat figures, with each cell's own small heading. */
+.sv2-rec-shw { display: contents; }
+.sv2-rec-sh, .sv2-rec-sh .sv2-num { color: var(--sv2-mut); font-weight: 400; }
+.sv2-rec-shr { color: var(--sv2-mut); font-size: 12.5px; }
+.sv2-rec-tth .sv2-rec-shh { display: grid; justify-items: end; gap: 2px; }
+.sv2-rec-shtag { display: inline-block; padding: 0 6px; border: 1px solid var(--sv2-line); border-radius: 999px; font: 600 10px/1.5 var(--sv2-sans); font-style: normal; letter-spacing: .04em; text-transform: lowercase; color: var(--sv2-mut); }
+.sv2-rec-like { margin-top: 8px; }
 #rec-h-tiers { scroll-margin-top: 88px; }
 
 
