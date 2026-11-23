@@ -260,9 +260,8 @@ def downsample(pts, n=FLAGS_SERIES_N):
         ded.append(pts[-1])
     if len(ded) <= n:
         return ded
-    keep = {0, len(ded) - 1}
-    keep.add(min(range(len(ded)), key=lambda i: (ded[i][1], i)))
-    keep.add(max(range(len(ded)), key=lambda i: (ded[i][1], -i)))
+    prio = [0, len(ded) - 1, min(range(len(ded)), key=lambda i: (ded[i][1], i)), max(range(len(ded)), key=lambda i: (ded[i][1], -i))]
+    keep = set(prio[:max(n, 0)])                                 # priority: first, last, lowest, highest (a tiny `n` never exceeds itself)
     free = n - len(keep)
     rest = [i for i in range(len(ded)) if i not in keep]
     if free > 0 and rest:

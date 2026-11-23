@@ -403,6 +403,11 @@ v2_plays.flags = {thresholds t_a and t_c, window_min, stale_min, series_points, 
   `rule, asof, span_min, src_age_min, pin_state, pin_pts, pin_from, pin_to, pin_line, lim_from, lim_to, line_kind, line_state, line_pin_from, line_pin_to,
   line_books, line_same_way, line_extreme_book, line_extreme, why`), so the repair pass equals the on-time row. A card built before the flags gets a row with **no**
   `mf` key ("not logged", never quiet); a dropped flag block logs `mf: null`. Old rows are never rewritten and every reader tolerates both.
+- **Coverage and size on the Nov 23 inputs** (a pinned `--now` of Nov 23, 1:15 PM CT, the heartbeat 9 minutes old). Live slate, 12 shown plays: every play has a flag block and a limit fact; Flag A and Flag C are readable on
+  11 (NBA 7 of 7, NFL 1 of 1, CBB 2 of 2, CFB 1 of 2; the other CFB play's side did not map to a team: `side_unmapped`) and the charts on 11. The 205 graded plays,
+  re-derived from the tape at each cut: NBA 58 of 58 and NFL 33 of 33 readable, CFB 46 of 61, CBB 7 of 53 (the CBB tape began 2026-11-19 9:08 AM CT; earlier plays are
+  null for good). `live.json` grew by 10.9 KB (1,228,550 to 1,239,413 bytes) on 12 plays, about 0.9 KB a play, so the 90 KB sub-budget holds about 100 plays. The 238
+  shown plays of the rebuilt frozen cards added 129 KB across the cards (0.5 KB a play) and the 238 forward log rows 105 KB (0.4 KB a row).
 - **Differences from the spec, said plainly:** the extra convenience keys `a`, `c`, `direction`, `books_moved`, `extreme` repeat values of `pin` and `line`; the limit has
   no `pct` or `rising` (D1); the flag block's own guard sits in `market_v2` (not in `build_side_cards.py`) so a flag failure keeps the rest of `v2`; the history
   record is `flag_record.json` beside `tier_record.json` (below), not a `v2_flag_record` key of `live.json`; `flag_history.py` (the measuring script) is not committed:

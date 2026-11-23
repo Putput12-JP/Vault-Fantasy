@@ -406,6 +406,14 @@ class Downsampling(unittest.TestCase):
             self.assertEqual([p[0] for p in out], sorted(p[0] for p in out))
             self.assertTrue(all(p in pts for p in out))                                     # values and times are never invented
 
+    def test_a_tiny_cap_keeps_the_endpoints_first_and_never_exceeds_itself(self):
+        pts = self.series(50)
+        for n in (2, 3, 4):
+            out = F.downsample(pts, n)
+            self.assertLessEqual(len(out), n)
+            self.assertEqual((out[0], out[-1]), (pts[0], pts[-1]))
+        self.assertEqual(F.downsample(pts, 0), [])
+
     def test_a_spike_in_the_middle_survives(self):
         pts = [[i, 20 + (i * 37) % 23] for i in range(100)]
         pts[47][1] = 99
