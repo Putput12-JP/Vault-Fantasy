@@ -153,3 +153,38 @@ size (null, never 0). The values are an **ordering by evidence, not fitted to re
 - **In-sample record (not evidence):** on the Nov 23 history the headline derivable plays were flat +4.91u on 90u (+5.5%) against shadow +3.15u on 46.5u
   (+6.8%), and 85 of those 90 plays are Contested (`docs/side-card-record.md`, "Tier-scaled size shadow v2s-1 (2026-11-23)"). A better-looking slice found
   along the way is flagged for close monitoring with its n and is never promoted on the same data.
+
+## Market-move flags v2f-1 (shadow, added 2026-11-23, PROPOSED)
+
+Added by the user's decisions of 2026-11-23 (D1 to D5, D7 of `docs/sharps-v2-flags-spec.md`). It stays **PROPOSED** with the rest of this file: the
+commit that changes the status line to Registered is the registration, and the first play that can count is the first one cut after it. The status line
+above is unchanged.
+
+Flags A (Pinnacle's price, fixed line, 24 h) and C (the market's number, or the books' price on a moneyline) are defined in
+`docs/sharps-v2-flags-spec.md` section 1, thresholds frozen in `scripts/sharps_v2/flags_v2.py` (`FLAGS_T_A`, `FLAGS_T_C`, re-exported by
+`scripts/sharps_v2/plays_v2.py`) at the registering commit: per sport and market, the 80th percentile of the 24-hour move (the table in the spec,
+user decision D2). Logged at lock as `mf` on the `v2_tier` rows. Context only; they change no size, tier, gate or agree total. The books are the ones in
+the tape (Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365): BookMaker and Circa are never read or shown, and Fanatics and Caesars are not added
+(D4).
+
+**Pinnacle's limit is not a flag and not a slice (D1).** It is published as a fact line (the first and the last stored limit for the market, copied
+from `sf_signals.limit_read`), with no "limit rose" rule, no chip and no verdict, because Pinnacle raises limits toward the start of almost every game
+(95% to 99% of markets, by sport). Nothing about it is tested here.
+
+**Primary metric:** Pinnacle CLV = Pinnacle's no-vig fair for the side at the last tape row at or before game start (the `pinclose` row) minus the stored
+Polymarket price at the cut, in points, per flag state, per sport, never pooled. Plays with `price_src == "pin"` are left out and reported apart.
+**Slices:** A toward, A away, A quiet; C toward, C away, C quiet. **Comparison:** mean CLV of "toward" minus mean CLV of "quiet", and "away" minus "quiet",
+95% percentile bootstrap, 10,000 resamples, seed 20261111, resampling plays.
+
+**Minimum n:** 300 plays per sport with a readable flag and a readable close before any verdict; under 300 at the final read is Underpowered (neither
+pass nor fail). **Final reads:** the same dates as the tier registration (NBA: first Monday after the 2026-27 regular season; NFL: Tuesday after Week
+18; CFB: Monday after conference championship weekend; CBB: Monday after the 2027 national championship game). Monthly interim reads are report-only.
+
+**Pass** (per sport, per flag): the lower 95% bound of "toward minus quiet" is above 0 with n met. A pass lets the user *consider* calling the flag
+tested; the page keeps "context only" until then. **Secondary:** flat 1u ROI per slice (a win pays 1 / price - 1), kept as `flag_record.json`
+(`scripts/sharps_v2/flag_record.py`: in_sample before the first logged lock that carries `mf`, forward only for plays whose flags were logged at lock).
+**Expected:** "toward" holds about one play in ten, so 300 per sport with a toward group big enough is unlikely this season; the honest expectation is
+Underpowered, said in advance. A slice that improves is flagged for close monitoring with its n and is never promoted on the same data.
+
+**In-sample record (not evidence):** 205 graded shown plays read point in time from the tape at each cut are in `docs/side-card-record.md`, "Market-move
+flags v2f-1 (2026-11-23)". Every slice there is small (the largest flagged slice with a toward or away state is n=14) and none separates from zero.

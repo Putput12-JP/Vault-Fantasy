@@ -36,9 +36,11 @@ FLAGS_T_A = {"nba": {"ml": 4.0, "spread": 1.5, "total": 1.5}, "nfl": {"ml": 1.5,
              "cbb": {"ml": 3.0, "spread": 1.5, "total": 1.0}, "cfb": {"ml": 2.0, "spread": 1.5, "total": 1.5}}
 FLAGS_T_C = {"nba": {"spread": 2.0, "total": 3.0}, "nfl": {"spread": 1.0, "total": 1.0},
              "cbb": {"spread": 1.0, "total": 2.5}, "cfb": {"spread": 1.0, "total": 1.0}}
-# The share of Pinnacle markets whose limit at the cut was above the first stored limit, per sport (spec 1.3, measured 2026-11-23 on the
-# book tape; recomputed from the tape with the same definition before shipping). The page words it "Pinnacle raises limits toward start".
-LIMIT_SCHEDULE_SHARE = {"nba": 0.99, "nfl": 0.98, "cbb": 0.97, "cfb": 0.96}
+# The share of Pinnacle markets (a game's moneyline, spread or total) whose limit at the cut (15 minutes before start) was above the first stored limit,
+# per sport: the spec's 1.3 definition recomputed on the book tape at origin/main afd35efe (2026-11-23 1:30 PM CT, started games only): NBA 744 markets
+# 99.2%, NFL 252 98.0%, CBB 477 96.9%, CFB 1,012 95.0% (the spec's CFB 96% was read on a smaller tape). The page words it "Pinnacle raises limits
+# toward start". A description, never a flag.
+LIMIT_SCHEDULE_SHARE = {"nba": 0.99, "nfl": 0.98, "cbb": 0.97, "cfb": 0.95}
 TAPE_KEY = {"ml": "ml", "spread": "sp", "total": "tot"}
 LINE_EPS = SIG.PIN_LINE_EPS
 SIDES = ("home", "away", "over", "under")

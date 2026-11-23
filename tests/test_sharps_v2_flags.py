@@ -67,6 +67,7 @@ class Constants(unittest.TestCase):
         self.assertEqual(F.FLAGS_T_A, EXPECT_T_A)
         self.assertEqual(F.FLAGS_T_C, EXPECT_T_C)
         self.assertEqual((F.FLAGS_RULE, F.FLAGS_WINDOW, F.FLAGS_STALE, F.FLAGS_SERIES_N), ("v2f-1", 86400, 1800, 16))
+        self.assertEqual(F.LIMIT_SCHEDULE_SHARE, {"nba": 0.99, "nfl": 0.98, "cbb": 0.97, "cfb": 0.95})
         self.assertEqual(F.FLAGS_C_BOOK_MOVE, 1.0)
         self.assertEqual(F.FLAGS_C_MIN_US, 2)
 
@@ -313,11 +314,26 @@ class NullsAndPointInTime(unittest.TestCase):
             fl, _ = flags(r, "spread")
             self.assertNotEqual(fl["line"]["same_way"], 0 if fl["line"]["state"] == "quiet" else -1)
 
+    def test_a_row_with_a_line_and_no_price_is_not_a_price_reading(self):
+        rows = [{"t": ASOF - 7200, "book": "Pinnacle", "sp": [-3.5, -110, -110]}, {"t": ASOF - 600, "book": "Pinnacle", "sp": [-3.5, None, None]}]
+        fl, se = flags(rows, "spread")
+        self.assertIsNone(fl["pin"])
+        self.assertEqual(fl["why"]["pin"], "no_pinnacle_history")                    # one priced row is not a history; the unpriced one is not a 0
+        self.assertEqual(se["pin_px"], [[0, -110]])
+        self.assertIn("Pinnacle", se["lines"])                                        # its line is still a stored number
+
+    def test_the_limit_never_reads_a_row_after_the_cut_even_if_handed_one(self):
+        future = [dict(sp("Pinnacle", ASOF - 100, -3.5), lim=[1, 3000, 1]), dict(sp("Pinnacle", ASOF + 100, -3.5), lim=[1, 99999, 1])]
+        with mock.patch.object(F, "_by_book", return_value={"Pinnacle": future}):
+            self.assertEqual(F.flag_limit(future, "spread", ASOF)[0]["to"], 3000)
+
     def test_a_stale_feed_is_unreadable_not_quiet(self):
         rows = self.full()
         fresh = flags(rows, "spread", hb={"pinnacle": ASOF - 600, "us": ASOF - 1800})[0]
         self.assertIsNotNone(fresh["pin"])
         self.assertEqual(fresh["src_age_min"], {"pinnacle": 10, "us": 30})              # exactly 30 minutes is still readable
+        self.assertIsNotNone(fresh["line"])
+        self.assertIsNotNone(flags(rows, "spread", hb={"pinnacle": ASOF - 1800, "us": ASOF})[0]["pin"])
         stale = flags(rows, "spread", hb={"pinnacle": ASOF - 1801, "us": ASOF - 60})[0]
         self.assertEqual((stale["pin"], stale["line"]), (None, None))
         self.assertEqual((stale["why"]["pin"], stale["why"]["line"]), ("pinnacle_feed_stale", "pinnacle_feed_stale"))
@@ -373,8 +389,11 @@ class LimitFact(unittest.TestCase):
 
 
 class Downsampling(unittest.TestCase):
-    def series(self, n, f=lambda i: (i * 7) % 11):
-        return [[i * 10, f(i)] for i in range(n)]
+    def series(self, n, f=lambda i: 20 + (i * 37) % 23):
+        """Values 20..42 with neither the first nor the last point at an extreme, so a dropped endpoint is not rescued by an extreme."""
+        pts = [[i * 10, f(i)] for i in range(n)]
+        pts[n // 3][1], pts[2 * n // 3][1] = 500, -500
+        return pts
 
     def test_at_most_n_points_endpoints_extremes_and_order_kept(self):
         pts = self.series(200)
@@ -388,12 +407,14 @@ class Downsampling(unittest.TestCase):
             self.assertTrue(all(p in pts for p in out))                                     # values and times are never invented
 
     def test_a_spike_in_the_middle_survives(self):
-        pts = [[i, 5] for i in range(100)]
+        pts = [[i, 20 + (i * 37) % 23] for i in range(100)]
         pts[47][1] = 99
         pts[63][1] = -40
         out = F.downsample(pts, 16)
+        self.assertEqual(len(out), 16)
         self.assertIn([47, 99], out)
         self.assertIn([63, -40], out)
+        self.assertEqual((out[0], out[-1]), (pts[0], pts[-1]))
 
     def test_consecutive_duplicates_dropped_but_the_end_is_kept(self):
         self.assertEqual(F.downsample([[0, 1], [1, 1], [2, 1], [3, 2], [4, 2], [5, 2]], 16), [[0, 1], [3, 2], [5, 2]])
@@ -797,6 +818,16 @@ class FlagRecord(unittest.TestCase):
         for needle in ("OLD (no flags, every play)", "NEW A toward", "FLAGGED FOR CLOSE MONITORING", "NFL A away (flat ROI, n=1)  [small sample]"):
             self.assertIn(needle, text)
         self.assertNotRegex(text.split("FLAGGED")[1], "NBA A toward")
+
+    def test_a_flat_record_is_not_improving_and_the_small_sample_tag_is_at_30(self):
+        ps = [self.play("nba", "p1", "toward", None, "push", 0.0)]
+        self.assertEqual([f for f in FR.compute(ps)["flagged"] if f["slice"] == "NBA A toward"], [])        # 0.00u is not an improvement
+        seven = [self.play("nba", "s%d" % i, "away", None, "win", 0.5) for i in range(7)]
+        thirty = [self.play("nfl", "t%d" % i, "away", None, "win", 0.5) for i in range(30)]
+        names = {f["slice"]: f for f in FR.compute(seven + thirty)["flagged"]}
+        self.assertEqual((names["NBA A away"]["n"], names["NBA A away"]["small_sample"]), (7, True))
+        self.assertEqual((names["NFL A away"]["n"], names["NFL A away"]["small_sample"]), (30, False))
+        self.assertEqual(FR.SMALL_N, 30)
 
     def test_the_headline_totals_equal_the_old_record(self):
         ps = [self.play("nba", str(i), a, c, "win" if i % 2 else "loss", 0.9 if i % 2 else -1.0) for i, (a, c) in enumerate([("toward", None), (None, None), ("quiet", "quiet"), ("away", "toward")])]
