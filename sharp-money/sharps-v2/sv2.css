@@ -1121,3 +1121,17 @@ html[data-sv2-skin="apple"] .sv2-root { margin: 0 16px 12px; }   /* the phone sh
 @media (prefers-reduced-motion: reduce) {
   .sv2-bar[data-bar="new"] > i { animation: none; }
 }
+
+/* ===== glass play cards (2026-11-23): the play rows get the same card surface as the rest. The wash and the corner glow are plain gradients
+   (no blur, no filter), so 100+ rows stay cheap to paint; only the card layers are added, nothing inside a row changes. The accent follows
+   the evidence tier and is decoration only: the tier word and the pips carry the meaning. ===== */
+.sv2 .sv2-sp-item { position: relative; isolation: isolate; border-radius: var(--sv2-r-card); --sv2-accent-rgb: var(--sv2-price-rgb); }
+.sv2 .sv2-sp-item[data-tier="contested"] { --sv2-accent-rgb: var(--sv2-caution-rgb); }
+.sv2 .sv2-sp-item[data-tier="clear"] { --sv2-accent-rgb: var(--sv2-win-rgb); }
+.sv2 .sv2-sp-item[data-tier="mixed"], .sv2 .sv2-sp-item[data-tier="thin"] { --sv2-accent-rgb: var(--sv2-price-rgb); }
+.sv2 .sv2-sp-item::before, .sv2 .sv2-sp-item::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; }
+.sv2 .sv2-sp-item::before { background: linear-gradient(135deg, rgb(var(--sv2-accent-rgb) / var(--sv2-glass-wash)), transparent 62%); }
+.sv2 .sv2-sp-item::after { background: radial-gradient(circle 190px at calc(100% + 36px) -36px, rgb(var(--sv2-accent-rgb) / var(--sv2-glass-orb)), transparent 100%); }
+.sv2 .sv2-sp-row { border-radius: var(--sv2-r-card); }
+.sv2-embedded .sv2-sp-row { padding: 14px var(--sv2-pad); }
+.sv2-embedded .sv2-sp-rows { gap: 10px; }
