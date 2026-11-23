@@ -3,6 +3,23 @@
 Written 2026-11-21 (Central). Planner spec for the V2 plays data. It is the data contract the V2 page (`docs/sharps-v2-spec.md`)
 reads for plays. Where the two disagree, this file wins and section 8 says exactly what the page must change.
 
+**Amendments of 2026-11-23 (after implementation and review; where they differ from the text below, they win):**
+
+- **Numbers are dated.** Every measured number in sections 3.3, 6, 7.1, 7.2 and 7.3 (the 166 graded shown plays, 71 readable price checks, the 54 KB and
+  tier tables) is as of the Nov 21 inputs named below (`origin/pm-holders-data` at `d48a3dc0bd`). The Nov 23 re-run (205 graded rule picks, 144 in NBA,
+  NFL and CBB, at `dec770c0e7bb`) is in `docs/side-card-record.md`, reproduced by `scripts/sharps_v2/tier_history.py`; the build measured 54 KB of V2
+  keys on an 839 KB `live.json` (183 games).
+- **Old cards (history only):** where no price check was possible at the cut because the tape did not exist yet (`no_tape_rows_for_game`,
+  `no_pinnacle_before_cut`, or no stored read and no tape row at the cut), a4 and b2 are unknown and the play is "not derivable", not Thin.
+  Forward cards keep the rule of section 3.2 as written, so forward Thin is a different group.
+- **Never fail the build (section 1):** the V2 block, the quote tape, the log sync and the slate each run in a guard: on an exception that card or
+  step has no V2 keys and a `::warning::` is printed. Short or `null` tape rows are skipped.
+- **Size gate (section 6):** the 250 KB live V2 budget is a soft gate. Over it, `check_size.py --live` rewrites `live.json` without the V2 keys and
+  warns; it never fails the publish. Only `wallets.json` keeps the hard gate.
+- **Log month (section 5.2):** the Central date of game start, not UTC.
+- **`--now`** reaches `card()`: `built` and a live card's `asof` use it in pinned runs.
+- **`tier_record.json`** (new, beside `live.json`; schema in `docs/side-cards.md`) publishes the per-sport, per-tier flat-1u record for the page.
+
 Inputs measured (all stdlib, all times Central):
 
 - `live.json` built 1795278075 (Sat Nov 21, 10:21 AM CT), the plays audit and UI audit of 2026-11-21.
@@ -225,7 +242,7 @@ changes; the byte-compare test (section 9) covers frozen output too.
 ### 5.2 The shadow log `pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl`
 
 Append-only, one row per rule pick (`sf.all.side` set and `sf.all.units > 0`) on each newly frozen card, every sport (CFB rows carry
-`shown_units: 0`). Month by the game start in UTC (the grader's `append_rows` convention). Rows are sorted by key within a run and never
+`shown_units: 0`). Month by the Central date of game start. Rows are sorted by key within a run and never
 rewritten. A row is a projection of the frozen card's own stored `v2` block, so a run that wrote a card but died before the log append
 is healed on the next run: the builder appends a row for any frozen card that has a `v2` block and no log row with its key. That repair
 copies stored values only.
@@ -309,7 +326,9 @@ stay under 250 KB of compact JSON; `scripts/sharps_v2/check_size.py` gains a `--
 | `pinclose` | yes, 71 of 166 graded | tape rows at or before kickoff; 57 have no tape for the game (mostly CBB before Nov 19), 37 are off Pinnacle's main line, 1 side unmapped |
 | the **logged** tier (shadow log) | **no, forward only** | the log starts at registration; everything before is a derivation, marked `in_sample` |
 
-### 7.2 Records to fix: the per-tier record of every graded play (re-derived, in-sample)
+### 7.2 Records to fix: the per-tier record of every graded play (re-derived, in-sample; numbers as of the Nov 21 inputs, 166 plays)
+
+**Superseded 2026-11-23: the tables in this section are the Nov 21 numbers (166 plays, tier rule before the old-card "not derivable" change). The current per-tier record (205 plays, `dec770c0e7bb`, 10:26 AM CT Nov 23) is in `docs/side-card-record.md`.**
 
 Flat 1 unit at the stored price at the cut (the grader's own `flat`), variant `all`, 166 graded shown-size plays (3 voided CBB plays on
 one postponed game are excluded, as in the record). Pinnacle CLV = no-vig close minus the price at the cut, in points, last tape row at
