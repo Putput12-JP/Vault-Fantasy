@@ -12,7 +12,7 @@
     if (sessionStorage.getItem('sm-legacy') === '1') return;
   } catch (e) {}
   var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
-  var V = { css: 10, core: 4, sharps: 2, following: 3 };
+  var V = { css: 12, core: 4, sharps: 2, following: 3, record: 4 };
   var tpl = null, assets = null, pending = null;
   /* A wallet link on the Sharps tab points at #following/acct/<sport>/<wallet>, an address the Sharp Money shell does not know (it would land
      on the plays tab). Take the shell to its Following tab and open that wallet's popup there. */
@@ -36,7 +36,7 @@
 
   function loadTemplate() {
     if (tpl) return Promise.resolve(tpl);
-    return fetch(BASE + 'index.html').then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+    return fetch(BASE + 'index.html?v=' + V.css).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
       var d = new DOMParser().parseFromString(t, 'text/html');
       var main = d.getElementById('sv2-main');
       if (!main) throw new Error('V2 template missing');
@@ -54,7 +54,8 @@
       var l = document.createElement('link'); l.id = 'sv2-css'; l.rel = 'stylesheet'; l.href = BASE + 'sv2.css?v=' + V.css; document.head.appendChild(l);
     }
     assets = script(BASE + 'sv2-core.js?v=' + V.core).then(function () { return script(BASE + 'sv2-sharps.js?v=' + V.sharps); })
-      .then(function () { return script(BASE + 'sv2-following.js?v=' + V.following); });
+      .then(function () { return script(BASE + 'sv2-following.js?v=' + V.following); })
+      .then(function () { return script(BASE + 'sv2-record.js?v=' + V.record); });
     assets.catch(function () { assets = null; });
     return assets;
   }
@@ -78,6 +79,7 @@
       window.SV2.setSport(sport);            /* before boot, so the page's first paint already follows the host's sport */
       var start = pending; pending = null;
       window.SV2.boot(route, route === 'following' ? start : undefined);
+      if (window.SV2.rec && window.SV2.rec.init) window.SV2.rec.init();   /* the Plays or Accounts | Record switch */
     }).catch(function () {
       root.innerHTML = '<p class="sv2-empty-line" style="padding:16px 0">Could not load this page. <a href="?legacy=1">Open the previous version</a></p>';
     });

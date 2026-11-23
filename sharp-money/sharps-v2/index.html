@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Geist+Mono:wght@500;600&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sv2.css?v=10">
+<link rel="stylesheet" href="sv2.css?v=12">
 <script>try{if(/[?&]embed=1/.test(location.search))document.documentElement.classList.add('sv2-embed')}catch(e){}</script>
 <script>
 /* first paint: theme and skin before the body renders. Every storage access is guarded; the page works without storage.
@@ -80,8 +80,10 @@
 
 <main id="sv2-main" tabindex="-1">
   <div class="sv2-wrap">
+    <div class="sv2-rec-sw" id="sv2-rec-sw"></div>
     <section class="sv2-page" id="sv2-page-sharps" data-sv2-page="sharps" aria-labelledby="sv2-title" hidden></section>
     <section class="sv2-page" id="sv2-page-following" data-sv2-page="following" aria-labelledby="sv2-title" hidden></section>
+    <section class="sv2-page sv2-rec-page" id="sv2-page-record" aria-label="Record" hidden></section>
     <noscript><p class="sv2-empty-line">This page needs JavaScript.</p></noscript>
   </div>
 </main>
@@ -100,5 +102,6 @@
 <script src="sv2-core.js?v=4"></script>
 <script src="sv2-sharps.js?v=2"></script>
 <script src="sv2-following.js?v=3"></script>
+<script src="sv2-record.js?v=4"></script>
 </body>
 </html>
