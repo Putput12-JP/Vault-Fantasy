@@ -984,12 +984,17 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         held_bets_days = track.get('held_bets_days')
     try:                                          # the model's lean on every priced prop, graded against the result (lean_record.py, docs/lean-tracking.md)
         import lean_record as LR
-        leans_days = LR.record(root, now, track.get('leans_days'), rescan_days, season, me)
+        lrep = track.get('leans_repaired') or []
+        lmend = sorted(d for d in os.listdir(os.path.join(root, 'snapshots')) if d not in lrep and os.path.exists(os.path.join(root, 'snapshots', d, 'lean_repair.json'))) if os.path.isdir(os.path.join(root, 'snapshots')) else []
+        lean_rescan = max(rescan_days, (dt.date.fromisoformat(tip_day(now)) - dt.date.fromisoformat(lmend[0])).days + 1) if lmend else rescan_days   # a repaired day (repair_shop_lines.py) is re-recorded once, however old
+        leans_days = LR.record(root, now, track.get('leans_days'), lean_rescan, season, me)
+        leans_repaired = sorted(set(lrep) | set(lmend))
         leans_pre = LR.record(root, now, (track.get('preseason') or {}).get('leans_days'), rescan_days, lambda g: not season(g), me, sub='leans/pre')
     except Exception as e:
         SETTLE_ERR['lean record'] = f'{type(e).__name__}: {e}'[:120]
         print('lean record failed:', e, flush=True)
         leans_days, leans_pre = track.get('leans_days'), (track.get('preseason') or {}).get('leans_days')
+        leans_repaired = track.get('leans_repaired') or []
     try:                                          # the Vault line's ATS and winner picks, locked before tip and graded against the final (game_pick_record.py, docs/game-picks.md)
         import game_pick_record as GPR
         gpick_days = GPR.record(root, now, track.get('gpick_days'), rescan_days, season, me)
@@ -1039,7 +1044,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = track.get('signals')
     box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
     STUCK[:] = stuck_games(root, now, tips, changed)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'near_v': getattr(sys.modules.get('near_record'), 'VERSION', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'favu_days': favu_days, 'favu_locks': favu_locks, 'favu_cfg': favu_cfg, 'favu_v': (favu_cfg or {}).get('v'),'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_v': getattr(sys.modules.get('prop_sim_record'), 'VERSION', None) if 'props simulation record' not in SETTLE_ERR else track.get('psim_v'), 'vault_w': getattr(sys.modules.get('prop_sim_record'), 'VAULT_W', None), 'conf_cfg': {'cuts': list(sys.modules['conf_ladder'].MODEL_CUTS), 'fwd': sys.modules['conf_ladder'].FORWARD_FROM, 'rules': sys.modules['conf_ladder'].CHALLENGERS} if 'conf_ladder' in sys.modules else None, 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'xstat_days': xstat_days, 'near_days': near_days, 'near_prop': getattr(sys.modules.get('near_record'), 'NEAR_PROP', None), 'near_v': getattr(sys.modules.get('near_record'), 'VERSION', None), 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'gap_locks': gap_locks, 'favu_days': favu_days, 'favu_locks': favu_locks, 'favu_cfg': favu_cfg, 'favu_v': (favu_cfg or {}).get('v'),'gap_lock_min': getattr(sys.modules.get('prop_sim_record'), 'LOCK_MIN', None), 'psim_v': getattr(sys.modules.get('prop_sim_record'), 'VERSION', None) if 'props simulation record' not in SETTLE_ERR else track.get('psim_v'), 'vault_w': getattr(sys.modules.get('prop_sim_record'), 'VAULT_W', None), 'conf_cfg': {'cuts': list(sys.modules['conf_ladder'].MODEL_CUTS), 'fwd': sys.modules['conf_ladder'].FORWARD_FROM, 'rules': sys.modules['conf_ladder'].CHALLENGERS} if 'conf_ladder' in sys.modules else None, 'psim_repaired': sorted(set(repaired) | set(mend)) if 'props simulation record' not in SETTLE_ERR else repaired, 'leans_repaired': leans_repaired, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:

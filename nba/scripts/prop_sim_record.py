@@ -94,19 +94,31 @@ def modal_line(rows):
     return sorted(cnt, key=lambda k: (-cnt[k], k not in first, k not in priced, k))[0]
 
 
-def main_line(e):
-    """(line, p_over from the price or None, source) for one board prop: sportsbooks first, then the pick'em apps.
-    Polymarket's threshold ladder is not a sportsbook line and is left out (NOT_A_LINE)."""
+def _book_rows(rows, skip=()):
     import pricing as PX
-    bk = []
-    for r in e.get('books', []):
-        if r[0] in NOT_A_LINE:
+    out = []
+    for r in rows or []:
+        if r[0] in skip:
             continue
         po, pu = PX.am_p(r[2]), PX.am_p(r[3])
         if r[1] is not None and po is not None and pu is not None:
-            bk.append({'n': r[0], 'line': r[1], 'p': po / (po + pu)})
-    if bk:
-        line = modal_line(bk); at = [x for x in bk if x['line'] == line]
+            out.append({'n': r[0], 'line': r[1], 'p': po / (po + pu)})
+    return out
+
+
+def main_line(e):
+    """(line, p_over from the price or None, source) for one board prop: sportsbooks first, then the pick'em apps.
+    Polymarket's threshold ladder is not a sportsbook line and is left out (NOT_A_LINE).
+    Sportsbooks are e['books'] (DraftKings, Pinnacle) AND e['shop'] (FanDuel, BetMGM, BetRivers, bet365, Caesars, Fanatics): all of them vote on the
+    line. The price is the books' no-vig chance at that line as before; only when none of e['books'] posts the line does it come from e['shop'], so the
+    consensus the shop books were kept out of is unchanged. (Before 2026-11-24 e['shop'] was ignored: a prop only FanDuel and Fanatics posted took a
+    pick'em line, or Polymarket's rung nearest even, or no line at all.)"""
+    import pricing as PX
+    bk = _book_rows(e.get('books'), NOT_A_LINE)
+    sh = _book_rows(e.get('shop'))
+    if bk or sh:
+        line = modal_line(bk + sh)
+        at = [x for x in bk if x['line'] == line] or [x for x in sh if x['line'] == line]
         return line, sum(x['p'] for x in at) / len(at), 'books'
     pk = []
     for r in e.get('pk', []):

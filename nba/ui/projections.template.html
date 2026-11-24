@@ -4728,8 +4728,11 @@ function priceRow(e, cache){
   const r = {e, name: P[0], team: P[1], inj: P[2], lu: P[3], tm: mm && mm.team, extra: mm && mm.extra, src: mm && mm.src, mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
   const kc = PR.kalshi[e.s] || PR.book[e.s] || (EXTRA.has(e.s) ? EXTRA_BLEND : undefined), bc = PR.book[e.s] || (EXTRA.has(e.s) ? EXTRA_BLEND : undefined);
   const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line, mm.extra)) : null;
-  // books: fair over at each book's line
-  r.books = e.books.map(([bk, line, o, u, l0, o0, t, dp]) => {
+  // books: fair over at each book's line. e.shop (FanDuel, BetMGM, BetRivers, bet365, Caesars, Fanatics) is priced like any book here: it votes on the
+  // headline line, shows in the price tables and can be the best price. The consensus (quotesOf, e.books) still never reads it, and DraftKings and
+  // Pinnacle come first, so they win a tie for the line's source. Before 2026-11-24 the page ignored e.shop: a prop only FanDuel posted showed a
+  // Polymarket rung or a pick'em line.
+  r.books = [...e.books, ...(e.shop || [])].map(([bk, line, o, u, l0, o0, t, dp]) => {
     const po = amP(o), pu = amP(u); if (po == null || pu == null || line == null) return null;
     const mkt = po / (po + pu), pm = model(line), fair = pm != null && bc ? blendP(bc, mkt, pm) : null;
     const b = {bk, line, o, u, l0, o0, mkt, pm, fair, dp};
@@ -4781,9 +4784,12 @@ function priceRow(e, cache){
     const k = [...r.kal].filter(k => k.mid != null).sort((a, b) => Math.abs(a.mid - .5) - Math.abs(b.mid - .5))[0];
     if (k){ r.line = k.line; r.lineFrom = 'Kalshi'; r.mkt = k.mid; r.pm = k.pm; r.fair = k.fair; }
   }
-  else if (r.books.length){   // Polymarket alone: its rung nearest even, the same fallback as a Kalshi-only prop
-    const b = [...r.books].sort((a, z) => Math.abs(a.mkt - .5) - Math.abs(z.mkt - .5))[0];
-    r.line = b.line; r.lineFrom = b.bk; r.mkt = b.mkt; r.pm = b.pm; r.fair = b.fair;
+  else if (r.books.length){   // Polymarket alone: its rung whose over price sits nearest even, the same fallback as a Kalshi-only prop.
+    // A rung with no bid on the under carries the clamp (-10421), which made its no-vig chance a made-up number: the rung with the most likely over
+    // always looked "nearest even" (Bam Adebayo assists showed Over 1.5 at -646 with $6 behind it). Those rungs rank by the over price alone.
+    const near = b => { const po = amP(b.o), pu = amP(b.u); return Math.abs((pu != null && pu >= .98 ? po : b.mkt) - .5); };
+    const b = [...r.books].sort((a, z) => near(a) - near(z))[0], oneSided = (amP(b.u) ?? 0) >= .98;
+    r.line = b.line; r.lineFrom = b.bk; r.mkt = oneSided ? null : b.mkt; r.pm = b.pm; r.fair = oneSided ? b.pm : b.fair;   // no bid on the under: there is no market chance to show, so the fair is the model's alone
   }
   // pick'em lines as candidates too (never a best bet), then the consensus for every candidate (same order as pricing.py)
   r.pkc = r.pk.filter(k => k.fair != null).flatMap(k => [
@@ -7161,7 +7167,8 @@ function psOpen(B, pick){
 // pick'em apps (Underdog prices both sides; PrizePicks is a flat line with no price to read a chance from). Same rule as prop_sim_record.main_line:
 // Polymarket lists a ladder of thresholds, not one line, so its rungs are never the main line; a tie goes to the line Pinnacle posts, then to a line
 // that carries a two-sided price, then to the lower line. (Before 2026-10-26 a tie went to the lowest line alone, so a Polymarket rung won whenever one
-// sportsbook posted a prop: 4.5 points for a player the books had at 10.5, 1.5 rebounds for one at 6.5.)
+// sportsbook posted a prop: 4.5 points for a player the books had at 10.5, 1.5 rebounds for one at 6.5.) Since 2026-11-24 FanDuel, BetMGM, BetRivers,
+// bet365, Caesars and Fanatics (e.shop) vote on the line too.
 function psMarket(B, pid, s, gid){
   const e = (B.props || []).find(x => String(x.p) === String(pid) && x.s === s && String(x.g) === String(gid));
   if (!e) return null;
@@ -7169,8 +7176,9 @@ function psMarket(B, pid, s, gid){
     rows.forEach(x => { cnt[x.line] = (cnt[x.line] || 0) + 1; if (x.n === 'Pinnacle') first.add(x.line); if (x.po != null && x.pu != null) priced.add(x.line); });
     const rank = (set, k) => set.has(+k) ? 0 : 1;
     return +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || rank(first, a) - rank(first, b) || rank(priced, a) - rank(priced, b) || a - b)[0]; };
-  const bk = (e.books || []).filter(r => r[0] !== 'Polymarket').map(([n, line, o, u]) => ({n, line, po: amP(o), pu: amP(u)})).filter(x => x.line != null && x.po != null && x.pu != null);
-  if (bk.length){ const line = modal(bk), at = bk.filter(x => x.line === line); return {line, pOver: at.reduce((a, x) => a + x.po / (x.po + x.pu), 0) / at.length, src: at.length > 1 ? `${at.length} sportsbooks` : at[0].n}; }
+  const rowsOf = l => (l || []).filter(r => r[0] !== 'Polymarket').map(([n, line, o, u]) => ({n, line, po: amP(o), pu: amP(u)})).filter(x => x.line != null && x.po != null && x.pu != null);
+  const bk = rowsOf(e.books), sh = rowsOf(e.shop);                     // e.shop (FanDuel and the other Action Network books) votes on the line; the price is e.books' when it posts that line
+  if (bk.length || sh.length){ const line = modal([...bk, ...sh]), at = bk.filter(x => x.line === line).length ? bk.filter(x => x.line === line) : sh.filter(x => x.line === line); return {line, pOver: at.reduce((a, x) => a + x.po / (x.po + x.pu), 0) / at.length, src: at.length > 1 ? `${at.length} sportsbooks` : at[0].n}; }
   const pk = (e.pk || []).map(([n, line, o, u]) => ({n, line, po: o != null ? amP(o) : null, pu: u != null ? amP(u) : null})).filter(x => x.line != null);
   if (!pk.length) return null;
   const line = modal(pk), at = pk.filter(x => x.line === line), pr = at.find(x => x.po != null && x.pu != null);
