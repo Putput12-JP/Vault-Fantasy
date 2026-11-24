@@ -11,8 +11,11 @@
     if (/[?&]legacy=1/.test(location.search)) sessionStorage.setItem('sm-legacy', '1');
     if (sessionStorage.getItem('sm-legacy') === '1') return;
   } catch (e) {}
+  /* The phone shell (new/) has no light mode: its page, cards and the theme-color are always dark. V2 follows the OS by default, so on a light phone it drew
+     dark ink on that black page (2026-11-24 audit: 2.3:1 to 3.5:1). Pin V2's dark tokens there. The desktop shell sets its own data-theme and is left alone. */
+  try { if (/\/new\//.test(location.pathname) && !document.documentElement.hasAttribute('data-theme')) document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
   var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
-  var V = { css: 30, core: 6, sharps: 11, following: 3, record: 14 };
+  var V = { css: 31, core: 6, sharps: 12, following: 3, record: 15 };
   var tpl = null, assets = null, pending = null;
   /* A wallet link on the Sharps tab points at #following/acct/<sport>/<wallet>, an address the Sharp Money shell does not know (it would land
      on the plays tab). Take the shell to its Following tab and open that wallet's popup there. */

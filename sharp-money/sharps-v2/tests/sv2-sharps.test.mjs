@@ -292,6 +292,11 @@ console.log('money share formatting');
   ok('equal money: no tag', !/sv2-wu-mtag/.test(eqHtml));
   eq('no sides: no panels', /Who is on each side/.test(P.writeupHtml(mk(F(PIN('toward'), null)), {})), false);
   const totalP = mk(F(null, null)); totalP.g = 'total'; totalP.sf = { side: 'Over', line: 221.5, price: 0.5 }; totalP.game.markets.total = { v2: { side: 'Over', sides: { Under: side(9000, 9), Over: side(8000, 9) } } };
+  /* the plays table fit tiers (sv2.css section 17): the narrow tier drops Sport and Market from the row and shows them under the play name */
+  const rowP = Object.assign({}, totalP, { facts: { tiered: false, side: 'Over' } });
+  const rowH = P.rowHtml(rowP, { open: {}, more: {} }, {});
+  ok('the play cell carries the sport and market line the narrow tier shows', /<span class="sv2-tb-sm">NBA \u00B7 Total<\/span>/.test(rowH), rowH.slice(0, 600));
+  eq('a row still has one cell per column', (rowH.split('<tr class="sv2-tb-d"')[0].match(/<td /g) || []).length, 11);
   const th = P.writeupHtml(totalP, {});
   ok('totals run over then under', th.indexOf('>Over<') < th.indexOf('>Under<'));
 }
@@ -369,6 +374,17 @@ console.log('the card');
   ok('card text has no banned word or em dash', !/\b(agree|proven|elite|lock|follow|lean|strong|weak|confidence|edge)\b/i.test(h.replace(/<[^>]+>/g, ' ')) && h.indexOf(String.fromCharCode(8212)) < 0);
   eq('eyebrow sport names', ['nba', 'nfl', 'cbb', 'cfb'].map(P.eyebrowOf), ['NBA', 'NFL', 'College basketball', 'College football']);
   eq('date pill is Central', P.dateWords(1795478400), 'MON NOV 23');
+}
+
+console.log('plays table fit tiers (css)');
+{
+  const css = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'sv2.css'), 'utf8');
+  ok('the wide columns leave by card width (container query), not viewport', /@container \(max-width: 999px\) \{\s*\.sv2 \.sv2-tb \.c-spl, \.sv2 \.sv2-tb \.c-wal \{ display: none; \}/.test(css) && !/@media \(max-width: 1100px\) \{\s*\.sv2 \.sv2-tb \.c-spl/.test(css));
+  ok('Sport and Market leave under 830 and the stacked row starts under 700, both by card width', /@container \(max-width: 829px\) \{[^}]*\.c-sport, \.sv2 \.sv2-tb \.c-mkt \{ display: none; \}/.test(css) && /@container \(max-width: 699px\) \{\s*\.sv2 \.sv2-tb \.sv2-tb-sm \{ display: none; \}\s*\.sv2 \.sv2-tb, \.sv2 \.sv2-tb tbody/.test(css));
+  ok('no viewport media query still stacks a table row', !/@media \(max-width: 760px\) \{\s*\.sv2 \.sv2-tb, \.sv2 \.sv2-tb tbody/.test(css) && !/@media \(max-width: 760px\) \{\s*\.sv2 \.sv2-rec-tb/.test(css));
+  const emb = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'embed.js'), 'utf8');
+  ok('the phone shell pins the dark theme (it has no light mode) and leaves the desktop shell alone', emb.includes("location.pathname) && !document.documentElement.hasAttribute('data-theme')) document.documentElement.setAttribute('data-theme', 'dark')"));
+  ok('the rail is 272px up to 1600 and sits beside the table from 1280', /@media \(min-width: 1280px\) \{\s*\.sv2-embedded \.sv2-cols\.sv2-sp \{ grid-template-columns: minmax\(0, 1fr\) clamp\(272px, 17vw, 360px\); \}/.test(css));
 }
 
 console.log('\n' + pass + ' pass, ' + fail + ' fail, ' + skipped + ' skipped');

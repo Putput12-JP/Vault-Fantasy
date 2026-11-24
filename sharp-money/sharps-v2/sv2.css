@@ -1105,7 +1105,7 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
    grid. Phone: it becomes one line under the flat figures, with each cell's own small heading. */
 .sv2-rec-sh, .sv2-rec-sh .sv2-num { color: var(--sv2-mut); font-weight: 400; }
 .sv2-rec-shr { color: var(--sv2-mut); font-size: 12.5px; }
-.sv2-rec-shtag { display: inline-block; padding: 0 6px; border: 1px solid var(--sv2-line); border-radius: 999px; font: 600 10px/1.5 var(--sv2-sans); font-style: normal; letter-spacing: .04em; text-transform: lowercase; color: var(--sv2-mut); }
+.sv2-rec-shtag { display: inline-block; flex: none; white-space: nowrap; padding: 0 6px; border: 1px solid var(--sv2-line); border-radius: 999px; font: 600 10px/1.5 var(--sv2-sans); font-style: normal; letter-spacing: .04em; text-transform: lowercase; color: var(--sv2-mut); }
 .sv2-rec-like { margin-top: 8px; }
 #rec-h-tiers { scroll-margin-top: 88px; }
 
@@ -1150,6 +1150,7 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2 .sv2-tb-title b { font-weight: 600; }
 .sv2 .sv2-tb-title .sv2-chip { margin-left: 6px; vertical-align: 1px; }
 .sv2 .sv2-tb-mu { display: block; margin-top: 2px; font-size: 13px; color: var(--sv2-mut); }
+.sv2 .sv2-tb-sm { display: none; margin-top: 2px; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--sv2-mut); }
 .sv2 .sv2-tb .sv2-mu-at { color: var(--sv2-mut); }
 .sv2 .sv2-tb .sv2-chip--muted { color: var(--sv2-ink); }
 .sv2 .sv2-tb-c.c-px { font: 600 15px/1.2 var(--sv2-num); font-variant-numeric: tabular-nums; letter-spacing: var(--sv2-num-ls); white-space: nowrap; }
@@ -1178,14 +1179,18 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 .sv2 .sv2-tb-skelcard { padding: 12px; }
 .sv2 .sv2-tb-skel { height: 56px; border-radius: 12px; }
 
-/* the two wide columns drop out of the row when the card is too narrow for them (the shell's side rail takes space at 1440), and always at 1100px and below; both stay in the dropdown */
-@container (max-width: 1130px) {
+/* Fit tiers, by the width of the card (container query), never by the viewport: the shell's side rail and left nav change what the card gets.
+   1000px and up: all eleven columns (the table needs about 990). 830 to 999: the two wide columns (bets vs money, wallets) leave the row and stay in the dropdown. 700 to 829: Sport and
+   Market also leave the row and move under the play name (.sv2-tb-sm). Under 700: the stacked row below. */
+@container (max-width: 999px) {
   .sv2 .sv2-tb .c-spl, .sv2 .sv2-tb .c-wal { display: none; }
 }
-@media (max-width: 1100px) {
-  .sv2 .sv2-tb .c-spl, .sv2 .sv2-tb .c-wal { display: none; }
+@container (max-width: 829px) {
+  .sv2 .sv2-tb .c-sport, .sv2 .sv2-tb .c-mkt { display: none; }
+  .sv2 .sv2-tb .sv2-tb-sm { display: block; }
 }
-@media (max-width: 760px) {
+@container (max-width: 699px) {
+  .sv2 .sv2-tb .sv2-tb-sm { display: none; }
   .sv2 .sv2-tb, .sv2 .sv2-tb tbody, .sv2 .sv2-tb-d, .sv2 .sv2-tb-d > td, .sv2 .sv2-tb-band, .sv2 .sv2-tb-band th { display: block; }
   .sv2 .sv2-tb thead { display: none; }
   .sv2 .sv2-tb-band th { padding: 12px 16px 4px; }
@@ -1279,20 +1284,24 @@ html[data-theme="light"] .sv2 .sv2-tb-r:hover { background: rgb(255 255 255 / .6
 .sv2-rec-dd { padding: 4px 20px 14px; display: grid; gap: 10px; }
 .sv2-rec-dl { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 28px; }
 .sv2-rec-dl > div { display: grid; gap: 2px; min-width: 0; }
-.sv2-rec-dl dt { font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2-rec-dl dt { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
 .sv2-rec-dl dd { margin: 0; font: 500 14px/1.35 var(--sv2-sans); color: var(--sv2-ink); }
 .sv2-rec-dl .is-past dd, .sv2-rec-dl .is-past dd .sv2-num { color: var(--sv2-mut); font-weight: 400; }
 .sv2-rec-st { width: 100%; max-width: 760px; border-collapse: collapse; font: 500 13.5px/1.35 var(--sv2-sans); color: var(--sv2-ink); }
 .sv2-rec-st th, .sv2-rec-st td { padding: 7px 8px; border-top: 1px dashed var(--sv2-line); text-align: left; font-weight: 500; }
 .sv2-rec-st thead th { border-top: 0; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--sv2-mut); }
 .sv2-rec-st .c-num { text-align: right; white-space: nowrap; }
+/* the By account tier table (10 columns, 987px) overflowed its card from 761 to 999px: its past-record columns leave the row below 1000px and stay in the dropdown */
+@container (max-width: 999px) {
+  .sv2 .sv2-rec-tb .c-past, .sv2 .sv2-rec-tb .sv2-rec-pst, .sv2 .sv2-rec-grp:has(.is-past) { display: none; }
+}
 @container (max-width: 760px) {
   .sv2 .sv2-rec-tb .c-s1, .sv2 .sv2-rec-grp { display: none; }
 }
 @container (max-width: 560px) {
   .sv2 .sv2-rec-tb .c-s2 { display: none; }
 }
-@media (max-width: 760px) {
+@container (max-width: 699px) {
   .sv2 .sv2-rec-tb .sv2-tb-r > .c-lab { display: block; order: 1; flex: 1 1 calc(100% - 44px - 12px); min-width: 0; }
   .sv2 .sv2-rec-tb .sv2-tb-r > .c-chev { display: block; order: 2; flex: 0 0 44px; width: 44px; padding: 0; text-align: center; }
   .sv2 .sv2-rec-tb .sv2-tb-r > .c-bar { padding-left: 0; }
@@ -1304,6 +1313,8 @@ html[data-theme="light"] .sv2 .sv2-tb-r:hover { background: rgb(255 255 255 / .6
   .sv2 .sv2-rec-tb .sv2-rec-none > .c-lab { flex: 1 1 100%; }
   .sv2 .sv2-rec-tb .sv2-rec-none > .c-msg { display: block; order: 3; flex: 1 1 100%; }
   .sv2 .sv2-rec-tb .sv2-rec-flat > .c-p { display: block; }
+}
+@media (max-width: 760px) {
   .sv2-rec-dd { padding: 4px 16px 14px; }
   .sv2-rec-st thead { display: none; }
   .sv2-rec-st, .sv2-rec-st tbody { display: block; }
@@ -1404,9 +1415,11 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
 .sv2-wu-ft .sv2-play { vertical-align: middle; }
 
 @media (max-width: 1100px) { .sv2-wu-line.has-chart { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 760px) {
+@container (max-width: 699px) {
   .sv2 .sv2-tb-fl { order: 7; flex: 0 0 100%; margin: 4px 0 0; }
   .sv2 .sv2-tb-fl .sv2-fl { max-width: 100%; }
+}
+@media (max-width: 760px) {
   .sv2-wu-wrap { padding: 6px 16px 2px; }
   .sv2 .sv2-wu { gap: 12px; padding: 14px; }
   .sv2-wu-t { font-size: 21px; }
@@ -1463,10 +1476,38 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
 .sv2-wu .sv2-wu-fact.sv2-mg-say { margin-top: 2px; font-size: 14px; color: var(--sv2-ink); }
 .sv2-wu .sv2-mg-why { font: 400 13px/1.45 var(--sv2-sans); color: var(--sv2-mut); }
 .sv2-wu .sv2-mg-why b { font-weight: 600; color: var(--sv2-ink); }
-@media (max-width: 760px) {
+@container (max-width: 699px) {
   .sv2 .sv2-tb-c.c-tier .sv2-mg { display: inline-flex; margin: 4px 0 0 6px; gap: 5px; padding: 2px 8px 2px 6px; letter-spacing: .05em; max-width: calc(100% - 8px); }
   .sv2 .sv2-tb-c.c-tier .sv2-mg--against { letter-spacing: 0; }
+  /* the tier cell is nowrap on a desktop row; on the stacked row it may wrap, so "Market moved the other way" drops under the tier pill instead of running 3px past the card on a 360px phone */
+  .sv2 .sv2-tb-r > .c-tier { min-width: 0; max-width: 100%; white-space: normal; }
+  .sv2 .sv2-tb-c.c-tier .sv2-mg--against { white-space: normal; }
 }
 .sv2-rec-mgd { margin-top: 4px; }
 .sv2-rec-mgd summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font: 600 13px/1.2 var(--sv2-sans); color: var(--sv2-ink); }
 .sv2-rec-mgd ul { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }
+
+/* ===== 17. Plays table fit (2026-11-24). Two causes of clipping and of the hidden columns at 1440: (1) the table needed about 887px for its nine core columns and
+   the card was narrower than that from 761 to 1100px, and (2) the right rail took 345px at 1440, leaving a 946px card, under the 1130px the eleven-column
+   table needed. Fixes, all scoped to the Plays page (.sv2-sp): the rail is 272px wide at 1440 and sits BESIDE the table only from 1280px (below that it goes under the
+   table, as it already does under 1024px, so the table keeps the width); cell padding is 5px a side (only while the card is 700px or wider; the stacked row keeps its own); and the table steps down by the width of its card
+   (tiers in section 13). Nothing is dropped: every column that leaves a row is still in the dropdown. ===== */
+@container (min-width: 700px) {
+  .sv2 .sv2-sp .sv2-tb-c:not(.c-time):not(.c-chev), .sv2 .sv2-sp .sv2-tb thead th:not(.c-time):not(.c-chev) { padding-left: 5px; padding-right: 5px; }
+  .sv2 .sv2-sp .sv2-tb-c.c-time, .sv2 .sv2-sp .sv2-tb thead th.c-time, .sv2 .sv2-sp .sv2-tb-r > .c-time { padding-left: 16px; padding-right: 5px; }
+  .sv2 .sv2-sp .sv2-tb-c.c-chev, .sv2 .sv2-sp .sv2-tb thead th.c-chev { width: 44px; padding: 0 2px 0 0; }
+  .sv2 .sv2-sp .sv2-tb-c.c-play { min-width: 150px; }
+  .sv2 .sv2-sp .sv2-tb-spl { min-width: 104px; }
+  .sv2 .sv2-sp .sv2-tb-st { flex-wrap: wrap; gap: 0 8px; }
+  .sv2 .sv2-sp .sv2-tb-c.c-sport .sv2-chip { padding: 2px 7px; }
+  .sv2 .sv2-sp .sv2-tb-c.c-size .sv2-play { padding: 4px 8px; }
+  .sv2 .sv2-sp .sv2-tb-sub { white-space: normal; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .sv2-embedded .sv2-cols.sv2-sp { grid-template-columns: minmax(0, 1fr); }
+  .sv2-embedded .sv2-sp .sv2-col-rail { position: static; }
+  .sv2-embedded .sv2-sp .sv2-col-rail:has(.sv2-fz) { max-height: none; overflow: visible; }
+}
+@media (min-width: 1280px) {
+  .sv2-embedded .sv2-cols.sv2-sp { grid-template-columns: minmax(0, 1fr) clamp(272px, 17vw, 360px); }
+}

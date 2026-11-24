@@ -1111,7 +1111,7 @@
     var tr = '<tr class="sv2-tb-r' + (open ? ' is-open' : '') + '" data-key="' + esc(p.key) + '" data-tier="' + esc(p.tier) + '">' +
       '<td class="sv2-tb-c c-time sv2-num">' + esc(timeText(p)) + '</td>' +
       '<td class="sv2-tb-c c-sport">' + ui.chip(SV2.sportName(p.sport), 'muted') + '</td>' +
-      '<td class="sv2-tb-c c-play"><span class="sv2-tb-title"><b>' + esc(title) + '</b>' + (sameKeys[p.key] ? ' ' + ui.chip(T.sameTag, 'muted') : '') + '</span><span class="sv2-tb-mu">' + ui.matchup(p.game, gameLabel(p.game)) + '</span>' + chipsHtml(p) + '</td>' +
+      '<td class="sv2-tb-c c-play"><span class="sv2-tb-title"><b>' + esc(title) + '</b>' + (sameKeys[p.key] ? ' ' + ui.chip(T.sameTag, 'muted') : '') + '</span><span class="sv2-tb-sm">' + esc(SV2.sportName(p.sport) + ' \u00B7 ' + marketLabel(p.g)) + '</span><span class="sv2-tb-mu">' + ui.matchup(p.game, gameLabel(p.game)) + '</span>' + chipsHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-mkt">' + esc(marketLabel(p.g)) + '</td>' +
       '<td class="sv2-tb-c c-px sv2-num">' + esc(c || '') + '</td>' +
       '<td class="sv2-tb-c c-fair sv2-num' + (vf.tone ? ' is-' + vf.tone : '') + '">' + esc(vf.text) + '</td>' +

@@ -510,6 +510,30 @@ console.log('frozen list: live.json locked entries');
 
 console.log('copy rules');
 {
+  /* the flat ROI shown beside the shadow ROI: same plays, same ROI. Numbers are the live tier_record.json of 2026-11-24 (Clear 1-0 +1.2u stored, shadow 1.5u staked +1.8u roi 1.1978) */
+  {
+    const sh = (st, u, r) => ({ units_staked: st, units: u, roi: r });
+    const cell = (w, l, n, u, r, s) => ({ w, l, p: 0, n, units: u, roi: r, shadow: s });
+    const mk = (tiers) => ({ built: NOW, sports: { cbb: { tiers } } });
+    const clear = cell(1, 0, 1, 1.2, 1.2, sh(1.5, 1.8, 1.1978));
+    const f = mk({ clear: { all: clear, in_sample: clear, forward: cell(0, 0, 0, 0, null, sh(0, 0, null)), since_nov16: clear, by_market: { ml: clear } },
+      mixed: { all: cell(0, 4, 4, -4, -1, sh(4, -4, -1)) }, thin: { all: cell(3, 5, 8, -1.58, -0.1975, sh(4, -0.79, -0.1978)) },
+      contested: { all: cell(5, 1, 6, 2.73, 0.455, sh(3, 1.37, 0.4567)) }, none: { all: cell(24, 19, 43, 4.94, 0.1149, null) } });
+    const rows = R.tierTable(f, 'cbb', 'all').rows;
+    near('Clear flat ROI shows the unrounded 1.1978, not units/n of the rounded 1.2', rows[0].t.roi, 1.1978, 1e-9);
+    eq('Clear flat and shadow ROI print the same', [R.fmtRoi(rows[0].t), R.fmtShadowRoi(rows[0].shadow)], ['+119.8%', '+119.8%']);
+    eq('the stored units are not touched (+1.2u)', [rows[0].t.units, R.fmtUnits(rows[0].t)], [1.2, '+1.2u']);
+    near('the Clear market split takes the same unrounded ROI', rows[0].markets[0].t.roi, 1.1978, 1e-9);
+    near('Mixed (shadow roi equals stored) is unchanged', rows[1].t.roi, -1, 1e-9);
+    eq('Thin: flat and shadow print the same', [R.fmtRoi(rows[2].t), R.fmtShadowRoi(rows[2].shadow)], [R.fmtShadowRoi(rows[2].shadow), '-19.8%']);
+    eq('Not derivable has no shadow: stored roi kept', rows[4].t.roi, 0.1149);
+    /* a cell that is not fully sized (CFB stakes nothing, or staked differs from size x n) keeps the stored flat roi */
+    const partial = R.exactRoi({ n: 4, units: 1, roi: 0.25 }, { staked: 1, units: 0.1, roi: 0.1 }, 1);
+    eq('staked not equal to size x n: stored roi kept', partial.roi, 0.25);
+    eq('no size: stored roi kept', R.exactRoi({ n: 1, units: 1, roi: 1 }, { staked: 0, units: 0, roi: null }, 0).roi, 1);
+    eq('null shadow: tally returned as is', R.exactRoi({ n: 1, units: 1, roi: 1 }, null, 1).roi, 1);
+    near('the pooled hero ROI is still units / n', R.tierTable(f, 'cbb', 'all').total.roi, (1.2 - 4 - 1.58 + 2.73 + 4.94) / (1 + 4 + 8 + 6 + 43), 1e-9);
+  }
   const src = fs.readFileSync(path.join(ROOT, 'sv2-record.js'), 'utf8');
   ok('no em dash', !src.includes(String.fromCharCode(0x2014)));
   ok('no em dash in the stylesheet', !fs.readFileSync(path.join(ROOT, 'sv2.css'), 'utf8').includes(String.fromCharCode(0x2014)));
