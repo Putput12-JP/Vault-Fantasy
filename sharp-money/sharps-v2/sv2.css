@@ -1087,8 +1087,8 @@ html[data-theme="light"] { --sv2-gold: #8A6400; --sv2-gold-rgb: 196 140 0; --sv2
 /* ===== 12. Tier record controls and share bar (sv2-rec-t*, 2026-11-23). Layout and type only: surfaces are .sv2-card, tier chips are the
    existing .sv2-tier ones. Motion reuses .sv2-x, .sv2-chev and .sv2-press (their reduced-motion rules are in section 7). The bar is a share of
    the total n: decoration only, the figures carry the meaning. ===== */
-.sv2-rec-tsw { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
-.sv2-rec-tsw .sv2-seg { max-width: 100%; }
+.sv2-rec-tsw, .sv2-rec-mgsw { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
+.sv2-rec-tsw .sv2-seg, .sv2-rec-mgsw .sv2-seg { max-width: 100%; }
 .sv2 .sv2-rec-since { min-height: 44px; padding: 0 14px; border: 1px solid var(--sv2-line); border-radius: 999px; background: transparent; color: var(--sv2-ink); font: 500 13px/1.2 var(--sv2-sans); text-align: left; }
 .sv2 .sv2-rec-since[aria-pressed="true"] { border-color: var(--sv2-ink); box-shadow: inset 0 0 0 1px var(--sv2-ink); font-weight: 600; }
 .sv2-rec-tnote { padding: 10px 14px; }
@@ -1439,3 +1439,34 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
 .sv2-fz-skel { height: 44px; }
 /* the box makes the rail tall: on the two-column layout the sticky rail scrolls inside the viewport so its last boxes stay reachable */
 @media (min-width: 1024px) { .sv2-col-rail:has(.sv2-fz) { max-height: calc(100vh - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } }
+
+/* ===== 16. Move grade label (sv2-mg-, 2026-11-24). A description of how far the market moved toward the play (rule mg-1): ink only, so it can never collide with the tier colours
+   (gold, teal, slate, violet) or read as win or loss. Order is carried by weight and by the signal bars, never by hue: three bars on a solid ink fill, two bars in a heavy ring, one bar in a
+   light ring. "Market moved the other way" is a neutral outlined chip with the drawn away arrow. No motion of its own (nothing to add to the reduced-motion block). Text is --sv2-ink on the
+   chip, or --sv2-page on the solid fill: both pairs are 14:1 or more in every theme and skin. ===== */
+.sv2 .sv2-mg, .sv2 .sv2-mg-badge { display: inline-flex; align-items: center; gap: 6px; min-height: 22px; padding: 2px 10px 2px 8px; border-radius: 999px; background: var(--sv2-glass-pill); color: var(--sv2-ink); font: 700 11px/1.2 var(--sv2-sans); letter-spacing: .08em; text-transform: uppercase; white-space: normal; max-width: 100%; }
+.sv2 .sv2-mg--a { background: var(--sv2-ink); color: var(--sv2-page); box-shadow: none; }
+.sv2 .sv2-mg--b { box-shadow: inset 0 0 0 1.5px var(--sv2-ink), inset 0 1px 0 var(--sv2-glass-hi); }
+.sv2 .sv2-mg--c { box-shadow: inset 0 0 0 1px var(--sv2-mut), inset 0 1px 0 var(--sv2-glass-hi); }
+.sv2 .sv2-mg--against { gap: 5px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--sv2-mut), inset 0 1px 0 var(--sv2-glass-hi); font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; }
+.sv2 .sv2-mg--against .sv2-fl-i { margin-top: 0; }
+.sv2-mg-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; flex: none; }
+.sv2-mg-bars i { display: block; width: 3px; border-radius: 1px; background: currentColor; opacity: .3; }
+.sv2-mg-bars i.on { opacity: 1; }
+.sv2-mg-bars i:nth-child(1) { height: 5px; } .sv2-mg-bars i:nth-child(2) { height: 8px; } .sv2-mg-bars i:nth-child(3) { height: 11px; }
+.sv2-mg-k { font-weight: 600; opacity: .8; }
+.sv2 .sv2-mg--b .sv2-mg-k, .sv2 .sv2-mg--c .sv2-mg-k, .sv2 .sv2-mg--against .sv2-mg-k { color: var(--sv2-mut); opacity: 1; }
+.sv2 .sv2-tb-c.c-tier .sv2-mg { display: flex; width: fit-content; max-width: 150px; margin-top: 6px; white-space: normal; }
+.sv2-wu .sv2-mg-badge-row { margin: 0 0 2px; }
+.sv2 .sv2-mg-badge { min-height: 26px; padding: 3px 12px 3px 10px; font-size: 12px; }
+.sv2 .sv2-mg-badge.sv2-mg--against { font-size: 13px; }
+.sv2-wu .sv2-wu-fact.sv2-mg-say { margin-top: 2px; font-size: 14px; color: var(--sv2-ink); }
+.sv2-wu .sv2-mg-why { font: 400 13px/1.45 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-wu .sv2-mg-why b { font-weight: 600; color: var(--sv2-ink); }
+@media (max-width: 760px) {
+  .sv2 .sv2-tb-c.c-tier .sv2-mg { display: inline-flex; margin: 4px 0 0 6px; gap: 5px; padding: 2px 8px 2px 6px; letter-spacing: .05em; max-width: calc(100% - 8px); }
+  .sv2 .sv2-tb-c.c-tier .sv2-mg--against { letter-spacing: 0; }
+}
+.sv2-rec-mgd { margin-top: 4px; }
+.sv2-rec-mgd summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font: 600 13px/1.2 var(--sv2-sans); color: var(--sv2-ink); }
+.sv2-rec-mgd ul { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; }

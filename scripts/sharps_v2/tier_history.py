@@ -17,6 +17,10 @@ Flat units: 1 unit at the stored price at the cut, a win pays 1 / price - 1. Voi
 Also prints the market-move flag record (scripts/sharps_v2/flag_record.py, docs/sharps-v2-flags-spec.md): the same plays by Flag A and Flag C state beside the
 old record with no flags, derived point in time from the tape rows at or before each cut, with every improving slice flagged with its n.
 
+Also prints the Move grade record (scripts/sharps_v2/move_grade_record.py, rule mg-1, docs/sharp-movegrade-prereg.md): the same plays by letter A to D, "moved against" and no
+grade, each play's grade derived point in time from the tape rows at or before its cut, beside the old record with no grade, with every improving slice flagged with its n. It
+is the last block of the output, so everything above it is exactly what it was.
+
 Also prints the tier-scaled size SHADOW v2s-1 (plays_v2.SHADOW, user decision 2026-11-23) beside the flat record: each play's flat result times
 its shadow size (Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, CFB 0, no tier no size). In-sample, an ordering by evidence and not fitted to
 results; the flat 1u stays the size the page shows.
@@ -137,9 +141,13 @@ def play_rows(git, rows, tape, quotes=None):
     market-move flag states `fa` (Flag A) and `fc` (Flag C) at its cut, from its card's stored v2.flags or re-derived from the tape (`fsrc`);
     without it they are None (not readable) and the record is exactly what it was. The flag module is imported only when `quotes` is given, so a
     problem in it can never reach the tier record."""
-    FR = None
+    FR = MGR = None
     if quotes is not None:
         from sharps_v2 import flag_record as FR
+        try:                                         # the Move grade is context on top of the flags: a problem in it leaves the flag and tier records as they were
+            from sharps_v2 import move_grade_record as MGR
+        except Exception as e:
+            print("::warning::move grade record skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
     out, cards = [], {}
     for r in rows:
         if r.get("kind") != "result" or r.get("play") != "sf" or r.get("variant") != "all" or r.get("status") != "graded":
@@ -155,7 +163,8 @@ def play_rows(git, rows, tape, quotes=None):
         sf = c["markets"][r["group"]]["sf"]["all"]
         clv, _ = pin_close_pts(c, r["group"], sf, tape)
         fl = FR.derive_flags(c, r["group"], r["side"], quotes) if quotes is not None else {"a": None, "c": None, "src": None}
-        out.append({"fa": fl["a"], "fc": fl["c"], "fsrc": fl["src"], "key": r["key"], "sport": r["sport"], "group": r["group"], "cut": r["cut"], "gst": r["gst"], "graded_at": r.get("graded_at") or 0,
+        gr = MGR.derive_grade(c, r["group"], r["side"], quotes) if MGR is not None else {"mg": None, "src": None}
+        out.append({"fa": fl["a"], "fc": fl["c"], "fsrc": fl["src"], "mg": gr["mg"], "msrc": gr["src"], "key": r["key"], "sport": r["sport"], "group": r["group"], "cut": r["cut"], "gst": r["gst"], "graded_at": r.get("graded_at") or 0,
                     "res": r["res"], "flat": r["flat"], "tier": d["tier"] or "none", "why": d["why"], "src": d["src"], "facts": d["facts"],
                     "ladder": r.get("units") or 0, "clv": clv})
     return out
@@ -346,12 +355,18 @@ def main(argv=None):
     sha = git.sha
     tape = BSC.BookTape(a.book_tape)
     rows = graded_rows(git)
-    quotes = None
+    quotes = MGR = None
     try:                                             # the flag record is context: a problem there leaves the tier record exactly as it was
         from sharps_v2 import flag_record as FR      # noqa: F401  (checked here so play_rows is only given quotes when the module imports)
         quotes = BSC.QuoteTape(a.book_tape)
     except Exception as e:
         print("::warning::flag record skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
+    if quotes is not None:                           # imported only when the flag module imports, so a problem there can never reach the tier record
+        try:
+            from sharps_v2 import move_grade_record as MGR
+        except Exception as e:
+            MGR = None
+            print("::warning::move grade record skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
     ps = play_rows(git, rows, tape, quotes)
     voided = sum(1 for r in rows if r.get("play") == "sf" and r.get("variant") == "all" and r.get("status") == "void")
     git.close()
@@ -396,6 +411,13 @@ def main(argv=None):
     for f in out["flagged"]:
         tag = "  [small sample]" if f["small_sample"] else ""
         print(f"  {f['slice']} ({f['metric']}, n={f['n']}){tag}: {fmt(f['stats'])}")
+    if MGR is not None:                              # the last block: every line above is exactly what it was; a problem in it never stops the --json write below
+        try:
+            out["move_grade"] = MGR.compute(ps)
+            MGR.print_report(out["move_grade"])
+        except Exception as e:
+            out.pop("move_grade", None)
+            print("::warning::move grade report skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
     if a.json:
         with open(a.json, "w") as fh:
             json.dump(out, fh, indent=1)

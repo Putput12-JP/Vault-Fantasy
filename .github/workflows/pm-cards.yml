@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit tests
-        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets tests.test_sharps_v2_plays tests.test_sharps_v2_flags
+        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets tests.test_sharps_v2_plays tests.test_sharps_v2_flags tests.test_sharps_v2_movegrade
       - name: Inputs (holders, ledger, Vault games)
         run: |
           if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then
@@ -89,6 +89,13 @@ jobs:
         run: |
           python3 -I scripts/sharps_v2/flag_record.py --data-dir pmdata --book-tape data/book_tape --out live/flag_record.json \
             --data-ref "$(git -C pmdata rev-parse HEAD)" || { echo "::warning::flag_record.json not built this run"; rm -f live/flag_record.json; }
+      - name: Move grade record (context only, never blocks the publish)
+        if: env.SKIP != '1'
+        # per-sport record of the Move grade mg-1 by letter (docs/side-cards.md "move_grade_record.json"), mirrored on the flag record step above.
+        # Any failure drops the file for this run: the V1 files and the other records still publish.
+        run: |
+          python3 -I scripts/sharps_v2/move_grade_record.py --data-dir pmdata --book-tape data/book_tape --out live/move_grade_record.json \
+            --data-ref "$(git -C pmdata rev-parse HEAD)" || { echo "::warning::move_grade_record.json not built this run"; rm -f live/move_grade_record.json; }
       - name: Wallets file size gate
         if: env.SKIP != '1'
         run: python3 -I scripts/sharps_v2/check_size.py live/wallets.json
@@ -113,6 +120,10 @@ jobs:
           if [ -s live/flag_record.json ] && python3 -c "import json; json.load(open('live/flag_record.json'))"; then
             fblob=$(git hash-object -w live/flag_record.json)  # the per-sport market-move flag record, beside tier_record.json (not read by the classic page)
             entries=$(printf '%s\n100644 blob %s\tflag_record.json\n' "$entries" "$fblob")
+          fi
+          if [ -s live/move_grade_record.json ] && python3 -c "import json; json.load(open('live/move_grade_record.json'))"; then
+            mblob=$(git hash-object -w live/move_grade_record.json)  # the per-sport Move grade record, beside flag_record.json (not read by the classic page)
+            entries=$(printf '%s\n100644 blob %s\tmove_grade_record.json\n' "$entries" "$mblob")
           fi
           tree=$(printf '%s\n' "$entries" | git mktree)
           c=$(git commit-tree "$tree" -m "pm cards live $(date -u +%FT%TZ)")

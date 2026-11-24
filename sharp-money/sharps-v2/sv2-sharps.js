@@ -247,7 +247,7 @@
   }
 
   /* extra price lines, each only when plays-data publishes the field */
-  function execLines(sf) {
+  function execLines(sf, fair, o) {
     var L = [], ex = sf.exec || {}, t;
     if (ex.pm_ask && isNum(ex.pm_ask.px)) { t = ct.time(ex.pm_ask.t, true); L.push('Polymarket ask ' + fmt.cents(ex.pm_ask.px) + (t ? ' (' + t + ')' : '')); }
     if (ex.us_best && isNum(ex.us_best.odds)) {
@@ -255,7 +255,7 @@
       L.push('Best US book on this line: ' + (ex.us_best.odds > 0 ? '+' : '') + Math.round(ex.us_best.odds) + (ex.us_best.book ? ' at ' + ex.us_best.book : '') + (t ? ' (' + t + ')' : ''));
     }
     if (ex.kalshi && isNum(ex.kalshi.px)) { t = ct.time(ex.kalshi.t, true); L.push('Kalshi ' + fmt.cents(ex.kalshi.px) + (t ? ' (' + t + ')' : '')); }
-    if (ex.novig && isNum(ex.novig.px)) { t = ct.time(ex.novig.t, true); L.push('Novig ' + fmt.cents(ex.novig.px) + (t ? ' (' + t + ')' : '')); }
+    if (ex.novig && validP(ex.novig.px)) L.push(novigText(ex.novig, fair, o));
     if (sf.close_vs_fair && isNum(sf.close_vs_fair.pts)) L.push('Pinnacle close vs fair: ' + fmt.line(sf.close_vs_fair.pts, { signed: true }) + ' pts');
     return L;
   }
@@ -370,6 +370,184 @@
     var f = flagsOf(p), a = f && flagState(f.pin), c = f && flagState(f.line);
     return { pin: a === 'toward' || a === 'away', line: c === 'toward' || c === 'away', any: !!f };
   }
+
+  /* ---- the Move grade label (rule mg-1, docs/sharp-movegrade-prereg.md): a description of how far the market moved toward the play, read from the stored v2.move_grade.
+     The letter stays in the data and on the Record page; here it is a label with signal bars: A = LARGE (3 bars), B = NOTABLE (2), C = ROUTINE (1), D and no grade show
+     nothing, and a flag fired against the play is the neutral "Market moved the other way". Ink only, never a tier colour, never green or red. Context only: it changes no size,
+     no tier and no total, and it never says the play will win. */
+  var MGC = {
+    A: { word: 'LARGE', bars: 3, tip: 'A market-move flag fired toward this side and the move passed the top mark, a size only the largest moves on the tape through Nov 23 reach in that sport and market (the marks are frozen from it).' },
+    B: { word: 'NOTABLE', bars: 2, tip: 'A market-move flag fired toward this side: Pinnacle\'s price, or the market\'s number (the books\' price on a moneyline).' },
+    C: { word: 'ROUTINE', bars: 1, tip: 'No flag fired, but Pinnacle\'s price or line drifted toward this side by more than a typical day\'s move, and not that far the other way.' },
+    against: { word: 'Market moved the other way', tip: 'A market-move flag fired against this side. It describes the market and is shown instead of a label.' },
+    note: 'Describes what the market did. Context only, not a bet signal.'
+  };
+  function mgBlock(p) {
+    var m = mktOf(p.game, p.g), b = m && m.v2 && m.v2.move_grade;
+    return isObj(b) ? b : null;
+  }
+  /* -> { kind: 'letter', letter, b } | { kind: 'against', b } | null. D, a null grade and an absent block all show nothing (a clean row). */
+  function mgOf(p) {
+    var b = mgBlock(p);
+    if (!b) return null;
+    if (b.against === true) return { kind: 'against', b: b };
+    if (b.letter === 'A' || b.letter === 'B' || b.letter === 'C') return { kind: 'letter', letter: b.letter, b: b };
+    return null;
+  }
+  function mgWord(g) { return g.kind === 'against' ? MGC.against.word : MGC[g.letter].word; }
+  function mgTip(g) { return (g.kind === 'against' ? MGC.against.tip : MGC[g.letter].tip) + ' ' + MGC.note; }
+  function mgBars(g) {
+    var n = g.kind === 'letter' ? MGC[g.letter].bars : 0, i, h = '';
+    for (i = 0; i < 3; i++) h += '<i' + (i < n ? ' class="on"' : '') + '></i>';
+    return '<span class="sv2-mg-bars" aria-hidden="true">' + h + '</span>';
+  }
+  function mgKey(g) { return g.kind === 'against' ? 'against' : g.letter.toLowerCase(); }
+  /* the small chip in the table's Tier cell: bars and the word (letter-less), or the icon and the neutral sentence */
+  function mgChipHtml(p) {
+    var g = mgOf(p);
+    if (!g) return '';
+    return '<span class="sv2-mg sv2-mg--' + mgKey(g) + '" data-mg="' + mgKey(g) + '" title="' + esc(mgTip(g)) + '">' + (g.kind === 'against' ? flagIcon('away') : mgBars(g)) +
+      '<span class="sv2-mg-w" aria-hidden="true">' + esc(mgWord(g)) + '</span><span class="sv2-sr">. Move: ' + esc(mgWord(g)) + '. ' + esc(mgTip(g)) + '</span></span>';
+  }
+  /* the badge at the top of the dropdown's flags area: the same label, a little larger, with the words "Move" in front */
+  function mgBadgeHtml(p) {
+    var g = mgOf(p);
+    if (!g) return '';
+    return '<p class="sv2-mg-badge-row"><span class="sv2-mg-badge sv2-mg--' + mgKey(g) + '" data-mg="' + mgKey(g) + '"><span class="sv2-mg-k">Move</span>' + (g.kind === 'against' ? flagIcon('away') : mgBars(g)) +
+      '<span class="sv2-mg-w">' + esc(mgWord(g)) + '</span></span><span class="sv2-sr"> ' + esc(mgTip(g)) + '</span></p>';
+  }
+  function num2(x) { return isNum(x) ? String(Math.round(x * 100) / 100) : null; }
+  /* "Pinnacle moved this side from X to Y while its limit rose from A to B": stored numbers only, each clause only when its numbers are stored. The limit clause needs two
+     different stored limits; with none the sentence stops after the move. Null when the label is not shown or no Pinnacle number is stored. */
+  function mgSentence(p) {
+    var g = mgOf(p), f = flagsOf(p);
+    if (!g || !f) return null;
+    var pn = pinNums(f), ln = lineNums(f, p.g), mv = null, l = isObj(f.limit) ? f.limit : null;
+    if (pn) mv = 'Pinnacle moved this side from ' + pn.from + ' to ' + pn.to;
+    else if (ln && p.g !== 'ml' && f.line.kind !== 'price') mv = 'Pinnacle moved the number on this side from ' + ln.from + ' to ' + ln.to;
+    else if (ln) mv = 'Pinnacle moved this side from ' + ln.from + ' to ' + ln.to;
+    if (!mv) return null;
+    if (l && isNum(l.from) && isNum(l.to) && l.from !== l.to) mv += ' while its limit ' + (l.to > l.from ? 'rose' : 'fell') + ' from ' + limitMoney(l.from) + ' to ' + limitMoney(l.to);
+    mv += '.';
+    var nv = novigOf(p);
+    if (nv) mv += ' ' + novigSentence(nv, !!p.game.frozen);
+    return mv;
+  }
+  /* "How this label was earned": a deterministic template over the stored numbers in v2.move_grade and v2.flags. A placeholder with no stored value forces the template that
+     does not print it. Null for D, no grade or an absent block. */
+  function mgWhy(p, words) {
+    var g = mgOf(p);
+    if (!g) return null;
+    var b = g.b, f = flagsOf(p), side = words.side, cut = isObj(b.cut) ? b.cut : {}, span = spanPhrase(f, false);
+    var pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null, price = b.c_kind === 'price' || !!(f && f.line && f.line.kind === 'price');
+    var ap = num2(b.a_pts), cp = num2(b.c_pts), xa = num2(cut.x_a), xc = num2(cut.x_c), ta = num2(cut.t_a), tc = num2(cut.t_c), ma = num2(cut.m_a), mc = num2(cut.m_c);
+    var bk = isNum(b.c_same_way) && isNum(b.c_books) && b.c_books > 0 ? b.c_same_way + ' of ' + b.c_books + ' books' : null;
+    var w = mgWord(g), s;
+    if (g.kind === 'against') {
+      var parts = flagChips(p).filter(function (c) { return c.state === 'away'; }).map(function (c) { return c.tip; });
+      return w + ': ' + (parts.length ? parts.join('. ') + '. ' : '') + 'A move against the play is shown instead of a label. It describes the market and changes nothing about the play.';
+    }
+    if (b.basis === 'a_mark') {
+      s = 'Pinnacle\'s price for ' + side + ' ' + (pn ? 'went ' + pn.from + ' to ' + pn.to : 'moved') + (span ? ' ' + span : '') + (ap ? ', ' + ap + ' points of no-vig price' : '') + (xa ? ', past the top mark of ' + xa : '') + '.';
+    } else if (b.basis === 'c_mark') {
+      s = price ? 'The books moved the price toward ' + side + (bk ? ', ' + bk + ' the same way' : '') + '.' :
+        'The market moved the number toward ' + side + (ln ? ', ' + ln.from + ' to ' + ln.to + ' at Pinnacle' : '') + (cp ? ' (' + cp + ' points' + (xc ? ', top mark ' + xc : '') + ')' : '') + (bk ? ', ' + bk + ' the same way' : '') + '.';
+    } else if (b.basis === 'fired' && b.a === 'toward') {
+      s = 'Pinnacle\'s price for ' + side + ' ' + (pn ? 'went ' + pn.from + ' to ' + pn.to : 'moved') + (ap ? ', ' + ap + ' points' : '') + (ta && xa ? ' (the flag mark is ' + ta + ', the top mark ' + xa + ')' : '') + '.' +
+        (b.c === 'toward' ? ' The market\'s ' + (price ? 'price' : 'number') + ' moved the same way.' : '');
+    } else if (b.basis === 'fired') {
+      s = price ? 'The books moved the price toward ' + side + (bk ? ', ' + bk + ' past the flag mark' : '') + '.' :
+        'The market moved the number toward ' + side + (ln ? ', ' + ln.from + ' to ' + ln.to + ' at Pinnacle' : '') + (bk ? ', ' + bk + ' the same way' : '') + (xc ? ' (top mark ' + xc + ' points)' : '') + '.';
+    } else if (b.basis === 'drift') {
+      var d = [];
+      if (ap && isNum(b.a_pts) && b.a_pts >= cut.m_a) d.push('Pinnacle\'s price for ' + side + ' drifted ' + ap + ' points toward it');
+      if (cp && isNum(b.c_pts) && b.c_pts >= cut.m_c) d.push('its line ' + cp + ' points toward it');
+      s = 'No flag fired; ' + (d.length ? d.join(' and ') : 'the market drifted toward ' + side) + (ma ? ' (typical-day mark ' + ma + (mc ? ' / ' + mc : '') + (ta ? ', flag mark ' + ta + (tc ? ' / ' + tc : '') : '') + ')' : '') + '.';
+    } else return null;
+    return w + ' move: ' + s;
+  }
+
+  /* ---- Novig beside cents, and the gap against Pinnacle's fair. All stored numbers: v2.exec.novig {px, t, since_min} (px is the ASK, the cost of this side per $1, as for Kalshi) and
+     v2.vs_fair.fair (Pinnacle's no-vig fair probability for the shown side, readable only while vs_fair.why is null). The American price is a plain conversion of the stored price
+     (fmt.american). gap = fair / px - 1: a Novig price BELOW Pinnacle's fair is a positive gap, ABOVE it a negative one, and the sign, the words and the chip all follow the ROUNDED
+     percent (one decimal), so a gap that rounds to 0.0 shows no sign and no chip. Novig is an exchange with fees and we do not know that px includes them, so a gap is always written
+     "before fees". The gap, its chip and the word "shows" are used only when the quote is recent (30 minutes or less, the same rule as the flags) and the card is not frozen; an older or
+     frozen quote shows the plain price with when it last changed, no gap, no chip. A missing or out of range number gives nothing, never a guess. Tape times are change times:
+     "unchanged since" or "last changed", never "read at". Context only: no signal, no size, no tier. */
+  var NOVIG_FEES = 'before fees';
+  var NOVIG_FRESH_MIN = 30;
+  function validP(x) { return isNum(x) && x > 0 && x < 1; }
+  function novigGap(px, fair) { return validP(px) && validP(fair) ? fair / px - 1 : null; }
+  /* the gap in percent, one decimal, or null */
+  function gapPct(g) { return isNum(g) ? Math.round(g * 1000) / 10 : null; }
+  function gapTxt(g) {
+    var r = gapPct(g);
+    if (r === null) return null;
+    return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + '%';
+  }
+  /* sign-clear words: a price below the fair price (a positive gap) is "below", above it "above" */
+  function gapWords(g) {
+    var r = gapPct(g);
+    if (r === null) return null;
+    return r === 0 ? 'level with Pinnacle\'s fair price' : Math.abs(r).toFixed(1) + '% ' + (r > 0 ? 'below' : 'above') + ' Pinnacle\'s fair price';
+  }
+  function vsFairOf(p) {
+    var m = mktOf(p.game, p.g), vf = m && m.v2 && m.v2.vs_fair;
+    return isObj(vf) && vf.why == null && validP(vf.fair) ? vf.fair : null;
+  }
+  function novigFresh(nv, frozen) { return !frozen && isNum(nv.since_min) && nv.since_min <= NOVIG_FRESH_MIN; }
+  /* -> { px, nv, fresh, gap } for a stored quote, null without one. gap is null unless the quote is fresh and the card is live. */
+  function novigOf(p) {
+    var m = mktOf(p.game, p.g), ex = m && m.v2 && m.v2.exec, nv = ex && ex.novig;
+    if (!isObj(nv) || !validP(nv.px)) return null;
+    var fresh = novigFresh(nv, !!(p.game && p.game.frozen));
+    return { px: nv.px, nv: nv, fresh: fresh, gap: fresh ? novigGap(nv.px, vsFairOf(p)) : null };
+  }
+  /* when the quote last changed: a clock time, and the date too past 12 hours */
+  function novigWhen(nv) {
+    if (!isNum(nv.t)) return null;
+    return isNum(nv.since_min) && nv.since_min > 720 ? ct.md(nv.t) + ', ' + ct.time(nv.t, true) : ct.time(nv.t, true);
+  }
+  /* "unchanged since 6:42 PM CT (14 min old)", or past 12 hours "last changed Nov 22, 5:27 PM CT, 38 hours before this read". Never both an unchanged-since and a contradicting age. */
+  function ageWords(m) { return m < 120 ? Math.round(m) + ' min old' : Math.round(m / 60) + ' hours old'; }
+  function novigAge(nv, frozen) {
+    var w = novigWhen(nv), m = nv.since_min;
+    if (!w) return isNum(m) ? ageWords(m) : null;
+    if (isNum(m) && m > 720) return 'last changed ' + w + ', ' + Math.round(m / 60) + ' hours before ' + (frozen ? 'the freeze' : 'this read');
+    return 'unchanged since ' + w + (isNum(m) ? ' (' + ageWords(m) + ')' : '');
+  }
+  /* the Novig line of the Price section: "Novig 73.5c (-277), unchanged since 6:42 PM CT (14 min old); 0.5% below Pinnacle's fair price, before fees". o: { fresh, frozen }. */
+  function novigText(nv, fair, o) {
+    o = o || {};
+    var am = fmt.american(nv.px), age = novigAge(nv, o.frozen), gw = o.fresh ? gapWords(novigGap(nv.px, fair)) : null;
+    return 'Novig ' + fmt.cents(nv.px) + (am ? ' (' + am + ')' : '') + (age ? ', ' + age : '') + (gw ? '; ' + gw + ', ' + NOVIG_FEES : '');
+  }
+  /* the Price tile: the price with its age, or nothing, never a bare price from an old quote */
+  function novigTile(nvq, frozen) {
+    var am = fmt.american(nvq.px), age = novigAge(nvq.nv, frozen);
+    if (!age) return nvq.fresh ? 'Novig ' + fmt.cents(nvq.px) + (am ? ' (' + am + ')' : '') : null;
+    return 'Novig ' + fmt.cents(nvq.px) + (am ? ' (' + am + ')' : '') + ', ' + age;
+  }
+  /* the one Novig sentence of the write-up. Fresh: "Novig shows -277, which is 1.7% above Pinnacle's fair price (before fees)." Old or frozen: "Novig's last price was -277 (last changed ...)." with no gap. */
+  function novigSentence(nvq, frozen) {
+    var am = fmt.american(nvq.px), w = novigWhen(nvq.nv);
+    if (!am) return null;
+    if (nvq.fresh) { var gw = gapWords(nvq.gap); return 'Novig shows ' + am + (gw ? ', which is ' + gw + ' (' + NOVIG_FEES + ')' : '') + '.'; }
+    return 'Novig\'s last price was ' + am + (w ? ' (last changed ' + w + ')' : '') + '.';
+  }
+  /* the one descriptive chip of the flags chip row: Novig's price is below Pinnacle's fair (before fees), fresh quote and live card only, and only while the ROUNDED gap is above 0 */
+  function priceChips(p) {
+    var nv = novigOf(p), out = [];
+    if (nv && gapPct(nv.gap) > 0) {   /* nv.gap is null unless the quote is fresh and the card is live */
+      var am = fmt.american(nv.px), age = novigAge(nv.nv, false);
+      out.push({ k: 'novig', state: 'quiet', text: 'Novig under fair (' + NOVIG_FEES + ')', tip: 'Novig ' + fmt.cents(nv.px) + (am ? ' (' + am + ')' : '') + ' is ' + gapWords(nv.gap) + ', ' + NOVIG_FEES + (age ? ', ' + age : '') + '. ' + MGC.note });
+    }
+    return out;
+  }
+  /* one line for the "why" area, shown when the label or a Novig price is shown. The 47.3% on 203 plays against 54.5% expected is NBA player props at DraftKings
+     (nba/docs/steam-chaser-backtest.md), a different market from these plays. */
+  var PRICE_WHY = 'A price that looks better than Pinnacle\'s at one moment has not paid on its own in our tests. In an earlier test on NBA player props at DraftKings, plays that looked +EV against Pinnacle hit 47.3% on 203 plays against 54.5% expected. That is a different market, so treat it as a caution about the idea, not a measure of this label. The label does not predict results.';
+  function priceWhy(p) { return mgOf(p) || novigOf(p) ? PRICE_WHY : null; }
 
   /* ---- series: points, step paths, table ---- */
   function cleanPts(a) {
@@ -660,6 +838,8 @@
     var priceSub = [];
     if (am) priceSub.push(am + ' in American');
     if (ex.us_best && isNum(ex.us_best.odds)) priceSub.push('Best US book ' + amer(ex.us_best.odds) + (ex.us_best.book && BOOKS.indexOf(ex.us_best.book) >= 0 ? ' at ' + ex.us_best.book : ''));
+    var nvq = novigOf(p), nvt = nvq ? novigTile(nvq, !!p.game.frozen) : null;
+    if (nvt) priceSub.push(nvt);
     var fairV = isNum(vf.fair) ? 'Fair ' + fmt.cents(vf.fair) : '';
     var fp = fairPts(p), fairSub = fp == null ? (vf.why === 'ticket_line_not_main_at_cut' ? 'Off Pinnacle\'s main line' : 'No fair price stored') : fp === 0 ? 'Level with fair' : fmt.line(Math.abs(fp)) + ' pts ' + (fp > 0 ? 'better' : 'worse') + ' than fair';
     if (isNum(vf.line)) fairSub += ', line ' + lineTxt(vf.line, p.g);
@@ -674,7 +854,9 @@
 
     /* the takeaway */
     var tk = takeaway({ flags: f, side: words.side, other: words.other || (money ? money.other : null), g: p.g, money: money, size: p.units > 0, graded: gr });
-    var take = '<div class="sv2-card-inset sv2-wu-take"><p class="sv2-h2">The takeaway</p><p class="sv2-wu-tk">' + tk.map(function (s) { return esc(s); }).join(' ') + '</p></div>';
+    var why = mgWhy(p, words), pw = priceWhy(p);
+    var take = '<div class="sv2-card-inset sv2-wu-take"><p class="sv2-h2">The takeaway</p><p class="sv2-wu-tk">' + tk.map(function (s) { return esc(s); }).join(' ') + '</p>' +
+      (why ? '<p class="sv2-mg-why"><b>How this label was earned.</b> ' + esc(why) + '</p>' : '') + (pw ? '<p class="sv2-mg-why sv2-mg-evid">' + esc(pw) + '</p>' : '') + '</div>';
 
     /* section 1: who is on each side */
     var sec1 = '';
@@ -684,15 +866,16 @@
     }
     /* section 2: where the line went */
     var sec2 = '', pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null;
-    if (f || series) {
-      var head = '';
+    var mgb = mgBadgeHtml(p), mgs = mgSentence(p);
+    if (f || series || mgb || priceChips(p).length) {
+      var head = mgb + (mgs ? '<p class="sv2-wu-fact sv2-mg-say">' + esc(mgs) + '</p>' : '');
       if (pn) head += '<p class="sv2-h2">Pinnacle ' + esc(words.side) + ' price</p><p class="sv2-wu-big sv2-num">' + fromTo(pn.from, pn.to) + '</p>';
       if (ln && f.line.kind !== 'price') {
         head += '<p class="sv2-h2">Market line</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
         var xt = f.line.extreme, nm = isObj(f.line.pin) ? f.line.pin : null;
         if (isObj(xt) && isNum(xt.value) && BOOKS.indexOf(xt.book) >= 0) head += '<p class="sv2-wu-s">' + (nm && isNum(nm.from) && isNum(nm.to) ? (nm.to < nm.from ? 'Lowest: ' : nm.to > nm.from ? 'Highest: ' : 'Furthest: ') : 'Furthest: ') + esc(xt.book + ' ' + lineTxt(xt.value, p.g)) + '</p>';
       } else if (ln) head += '<p class="sv2-h2">Books\' price</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
-      var chips = fullChips(p, words).map(function (ch) {
+      var chips = fullChips(p, words).concat(priceChips(p)).map(function (ch) {
         return '<span class="sv2-fl" data-flag="' + ch.k + '"' + (ch.tip ? ' title="' + esc(ch.tip) + '"' : '') + '>' + flagIcon(ch.state) + '<span>' + esc(ch.text) + '</span>' + (ch.tip ? '<span class="sv2-sr">. ' + esc(ch.tip) + '</span>' : '') + '</span>';
       }).join('');
       var byBook = '';
@@ -725,6 +908,7 @@
     vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell,
     flagsOf: flagsOf, flagChips: flagChips, chipsHtml: chipsHtml, movesOf: movesOf, chartPoints: chartPoints, stepPath: stepPath, extremes: extremes, seriesOf: seriesOf,
     chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml,
+    rowHtml: rowHtml, theadHtml: theadHtml, priceHtml: priceHtml, COLS: COLS, novigGap: novigGap, gapTxt: gapTxt, gapWords: gapWords, gapPct: gapPct, novigAge: novigAge, novigTile: novigTile, novigSentence: novigSentence, novigText: novigText, novigOf: novigOf, vsFairOf: vsFairOf, priceChips: priceChips, priceWhy: priceWhy, PRICE_WHY: PRICE_WHY, mgOf: mgOf, mgChipHtml: mgChipHtml, mgBadgeHtml: mgBadgeHtml, mgSentence: mgSentence, mgWhy: mgWhy, MGC: MGC,
     marketOrder: marketOrder, dateWords: dateWords, eyebrowOf: eyebrowOf, sideLabelWords: sideLabelWords, BOOKS: BOOKS
   };
 
@@ -858,7 +1042,9 @@
     var when = [];
     if (isNum(gst)) when.push('Game starts ' + ct.day(gst) + ' ' + ct.time(gst, true));
     if (isNum(p.cut)) when.push('freezes ' + ct.time(p.cut, true));
-    var ex = execLines(sf);
+    var nv = novigOf(p), exSf = sf;
+    if (nv && !(sf.exec && sf.exec.novig)) exSf = Object.assign({}, sf, { exec: Object.assign({}, sf.exec || {}, { novig: nv.nv }) });   /* the Novig quote lives on v2.exec, the other price lines on sf */
+    var ex = execLines(exSf, vsFairOf(p), { fresh: !!(nv && nv.fresh), frozen: !!p.game.frozen });
     return line + (when.length ? '<p class="sv2-sp-note">' + esc(when.join(', ')) + '</p>' : '') +
       (ex.length ? '<ul class="sv2-sp-ex">' + ex.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' : '');
   }
@@ -886,7 +1072,7 @@
   /* ---- the plays table ---- */
   var COLS = [
     { c: 'time', label: 'Freezes', k: 'freeze' }, { c: 'sport', label: 'Sport' }, { c: 'play', label: 'Play' }, { c: 'mkt', label: 'Market' },
-    { c: 'px', label: 'Price', k: 'price' }, { c: 'fair', label: 'vs fair (pts)', k: 'fair' }, { c: 'tier', label: 'Tier', k: 'tier' },
+    { c: 'px', label: 'Price', k: 'price' }, { c: 'fair', label: 'vs fair (pts)', k: 'fair' }, { c: 'tier', label: 'Tier and move', k: 'tier' },
     { c: 'spl', label: 'Bets vs money on the play' }, { c: 'wal', label: 'Wallets that beat the close' }, { c: 'size', label: 'Size', k: 'size' },
     { c: 'chev', label: '', sr: 'Details' }
   ];
@@ -929,7 +1115,7 @@
       '<td class="sv2-tb-c c-mkt">' + esc(marketLabel(p.g)) + '</td>' +
       '<td class="sv2-tb-c c-px sv2-num">' + esc(c || '') + '</td>' +
       '<td class="sv2-tb-c c-fair sv2-num' + (vf.tone ? ' is-' + vf.tone : '') + '">' + esc(vf.text) + '</td>' +
-      '<td class="sv2-tb-c c-tier">' + ui.tier(p.tier) + '</td>' +
+      '<td class="sv2-tb-c c-tier">' + ui.tier(p.tier) + mgChipHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-spl">' + splitCellHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-wal">' + walletsCellHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-size">' + sizeCellHtml(p) + '</td>' +

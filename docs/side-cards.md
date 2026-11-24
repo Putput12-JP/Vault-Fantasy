@@ -448,6 +448,54 @@ cell = {"w", "l", "p", "n", "units", "roi" (fraction, null at n = 0)}
 lock, joined to the graded record, with the states the log holds: zero until a logged play is graded. `python3 -I scripts/sharps_v2/tier_history.py` prints the same
 plays by slice beside the old record with no flags, and the list of every improving slice with its n ("small sample" under 30). Context only: a record, not a signal.
 
+### Move grade (`markets[g].v2.move_grade`, forward log key `mg`)
+
+Rule `mg-1` (`scripts/sharps_v2/move_grade.py`, spec `docs/sharps-v2-movegrade-spec.md`, text `docs/sharp-movegrade-prereg.md`, **PROPOSED, not registered**). A letter A to D for how far the market moved
+**toward** a shown play in the 24 hours before the cut. Inputs: the play's stored `v2.flags` (Flag A `pin.state` and `pin.pts`; Flag C `line.state` and `line.pin` from and to) and the side's direction, nothing else:
+not Pinnacle's limit, the tier, the wallets, the price, the result or anything after the cut. A pure read, computed in `plays_v2.market_v2` right after the flags in its own `try` (a failure sets `move_grade: null` and
+`move_grade_error` and leaves every other key as it was). Shadow only: it never changes the shown size, `shadow_units`, the tier, the ladder, `sf_rungs`, the gates, the locks, Top Reads, SM_GATE or an agree total, and none of
+those modules reads it (a test greps for it).
+
+- **A**: a flag fired toward and the move passed the A mark (`MG_X_A` Flag A points, or `MG_X_C` Pinnacle line points); **B**: a flag fired toward; **C**: no flag fired, Pinnacle's price (`MG_M_A`) or line (`MG_M_C`) moved
+  toward by at least the median 24 hour move and not that far the other way; **D**: otherwise. A value exactly at a mark takes the higher letter. A flag fired **against** gives `against: true`, `letter: null`
+  (it wins over a flag fired toward) and no letter, never a low one. No flag readable gives `letter: null, against: null` and `why`: `side_unmapped`, `no_flags`, `flags_unreadable` (with `flags_why`) or `no_cutoff`. A flag
+  state with no stored number is `flags_unreadable`, never a guessed D. On a moneyline `c_pts` is null and Flag C toward gives at most B.
+- The marks are literal tables in `move_grade.py` (`MG_M_A`, `MG_M_C`, `MG_X_A`, `MG_X_C`), set from the tape population by `scripts/sharps_v2/move_grade_history.py`, and listed on `live.json` `v2_plays.move_grade`
+  (`rule`, `spec`, `m_a`, `m_c`, `x_a`, `x_c`, `letters`, `shown`, `context_only`). `v2_plays` is an existing top key, so `V2_TOP_KEYS` does not change.
+- The stored block carries its own inputs and marks, so a page can explain a letter even when the flags sub-budget dropped `v2.flags`:
+
+```
+v2.move_grade = { "rule": "mg-1", "letter": "A"|"B"|"C"|"D"|null, "against": true|false|null, "basis": "a_mark"|"c_mark"|"fired"|"drift"|"flat"|"against"|null,
+  "against_by": ["a","c"]|null, "a": "toward"|"away"|"quiet"|null, "c": same, "a_pts": 2.31|null, "c_pts": -0.5|null (Pinnacle's main-line move toward the side, points; null on a moneyline),
+  "c_kind": "line"|"price"|null, "c_same_way": 4|null, "c_books": 6|null, "cut": {"m_a","t_a","x_a","m_c","t_c","x_c"}|null, "why": null|"side_unmapped"|"no_flags"|"flags_unreadable"|"no_cutoff",
+  "flags_why": {...}|null }
+```
+
+- **Frozen at lock, never recomputed.** A frozen card stores `v2.move_grade` computed at its cut from the flags computed at its cut. Rows of `pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl` written after this build carry
+  `mg = {"rule","letter","against","basis","against_by","a_pts","c_pts","why"}`, a projection of the card's stored block written by `plays_v2.log_row` beside `mf`; the repair pass re-projects from the same block, so a
+  late append equals an on-time one. A card built before the grade has no `mg` ("not logged", never D); a dropped grade logs `mg: null`.
+- **Size.** The block is its own key, outside `v2.flags` and `v2.series`, so the 90 KB flags sub-budget does not count it and `check_size.enforce_flags` never drops it (a test checks every drop step). If V2 as a whole
+  goes over 250 KB, `strip_plays_v2` removes it with the rest of `v2`.
+
+### `move_grade_record.json` (beside `flag_record.json` on `pm-cards-live`)
+
+Written by `scripts/sharps_v2/move_grade_record.py` every run (workflow step "Move grade record", never blocking: a failure drops the file for that run) from the frozen cards, the graded rows and the book tape, **point in
+time**. Flat 1u at the stored price at the cut (as `tier_record.json`; not the size the page shows), variant `all`, voided left out. Slices (a play is in exactly one): `a`, `b`, `c`, `d`, `against` (the marker, no letter) and
+`unreadable` (no grade; kept apart so it never pads D). Each play's grade comes from, in order (`src`): the log row's `mg` (`logged`, never recomputed), the card's stored `v2.move_grade` (`frozen`), `move_grade()` on the card's
+stored `v2.flags` (`frozen_flags`), or `move_grade()` on flags re-derived from the tape rows at or before the cut (`derived`). A failure is `unreadable` with a warning, never a guess.
+
+```
+{ "built", "data_ref", "rule", "mg_rule": "mg-1", "units_basis", "slices": [...], "first_logged_cut": epoch|null, "logged_rows": n (rows with mg), "forward_graded": n (counted), "registered_cut": epoch|null, "logged_not_counted": n, "forward_note",
+  "all_sports": ["nba", "nfl", "cbb"], "sports": {"nba|nfl|cfb|cbb": {"<slice>": {"all": cell, "in_sample": cell, "forward": cell}}}, "all": same (NBA+NFL+CBB; CFB is a flat-1u reference) }
+cell = {"w", "l", "p", "n", "units" (flat sum, 2 places), "roi" (fraction: the UNROUNDED sum over n, 6 places, null at n = 0), "se" (one standard error of the per-play result, fraction of 1u, null under 2 plays)}
+```
+
+`in_sample` = every play cut strictly before the first log row that carries `mg` (all plays when none). `forward` = only plays whose grade was logged at lock AND whose cut is after `REGISTERED_CUT`
+(a constant in `move_grade_record.py`, None until the user registers `docs/sharp-movegrade-prereg.md`), joined to the graded record. While it is None `forward` is zero and `forward_note` reads "The forward test is
+proposed, not registered. Plays logged before registration do not count."; the `mg` rows keep being written, a play logged but not counted sits in `all` only (`logged_not_counted`), and `registered_cut` is published.
+The Record page reads these two fields, shows "small sample" under 30 plays (one definition, as in `docs/side-card-record.md`) and the standard errors. `python3 -I scripts/sharps_v2/tier_history.py` prints the same plays by slice beside the old record with no grade as its last block, with every improving slice flagged with its n ("small sample" under 30).
+Context only: a record, not a signal. The classic page does not read it.
+
 ### `tier_record.json` (beside `live.json` on `pm-cards-live`)
 
 Written by `scripts/sharps_v2/tier_record.py` every run from the frozen cards and the graded rows of the `pm-holders-data` checkout, point in time (a

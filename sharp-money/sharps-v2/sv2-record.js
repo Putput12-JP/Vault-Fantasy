@@ -465,13 +465,69 @@
     return m;
   };
   rec.FROZEN_SHOW = 12;
+  /* ---- Move grade record (rule mg-1, docs/sharp-movegrade-prereg.md): the record by slice from move_grade_record.json. A description of how far the market moved toward the play before it froze, never a signal.
+     Every play is in exactly one slice; the letters live here (the Sharps page shows them as labels). In-sample = the rule was written after those results; forward = only plays whose grade was logged at lock. */
+  var MG_ROWS = ['a', 'b', 'c', 'd', 'against', 'unreadable'];
+  var MG_BUCKETS = ['in_sample', 'forward'];
+  var MG_NAME = { in_sample: 'In-sample', forward: 'Forward' };
+  var MG_LABEL = { a: 'A', b: 'B', c: 'C', d: 'D', against: 'Moved against', unreadable: 'No grade' };
+  var MG_SHOWN = { a: 'Shown as LARGE', b: 'Shown as NOTABLE', c: 'Shown as ROUTINE', d: 'No label shown', against: 'Shown as "Market moved the other way"', unreadable: 'No grade, nothing shown' };
+  var MG_NOTE = { in_sample: 'The grade rule was written after these results. Read it as history, not a test.', forward: 'The forward test is proposed, not registered. Plays logged before registration do not count.' };
+  /* one definition of a small sample for this table and the docs: under 30 plays */
+  var MG_SMALL = 30;
+  rec.MG_SMALL = MG_SMALL; rec.MG_ROWS = MG_ROWS; rec.MG_BUCKETS = MG_BUCKETS; rec.MG_LABEL = MG_LABEL; rec.MG_NOTE = MG_NOTE; rec.MG_SHOWN = MG_SHOWN;
+  /* the file is usable when it names the rule and has a slice object for the pooled set or any sport */
+  rec.mgFileOk = function (f) {
+    return !!(f && typeof f === 'object' && f.mg_rule && ((f.all && typeof f.all === 'object') || (f.sports && typeof f.sports === 'object')));
+  };
+  /* the slices of a sport: 'all' is the file's pooled NBA+NFL+CBB set (CFB is never pooled), summed here when the file lacks it; null when the sport is not in the file */
+  rec.mgSlice = function (f, sport) {
+    if (!rec.mgFileOk(f)) return null;
+    var s = sport == null ? 'all' : lc(sport);
+    if (s !== 'all') return f.sports && f.sports[s] && typeof f.sports[s] === 'object' ? f.sports[s] : null;
+    if (f.all && typeof f.all === 'object') return f.all;
+    var out = {}, any = false;
+    MG_ROWS.forEach(function (r) {
+      out[r] = {};
+      ['all'].concat(MG_BUCKETS).forEach(function (b) { out[r][b] = rec.tierPool(SHOWN.map(function (sp) { var x = f.sports && f.sports[sp] && f.sports[sp][r]; return x && x[b]; })); });
+      if (out[r].all.n) any = true;
+    });
+    return any ? out : null;
+  };
+  /* the table for a sport and a bucket: six rows in order, each with its tally and the monitor flags (zero-play rows stay in as zeros), and the pooled total. Unknown bucket reads as in-sample. */
+  /* the note under the bucket switch. Forward says the test is proposed while the file's registered_cut is null (rows logged before a registration never count). */
+  rec.mgNote = function (f, bucket) {
+    if (bucket !== 'forward') return MG_NOTE.in_sample;
+    return f && f.registered_cut != null ? 'Only plays cut after the registration and logged when the card froze. Starts at zero.' : MG_NOTE.forward;
+  };
+  /* one stored cell as a tally with its standard error (a fraction of 1u, null under 2 plays or when not stored) */
+  rec.mgTally = function (o) {
+    var t = rec.tierTally(o);
+    t.se = o && isNum(o.se) && t.n > 1 ? o.se : null;
+    return t;
+  };
+  /* the flags of a row: watch when the units are above 0, small sample under MG_SMALL (30) plays, the same rule the docs use */
+  rec.mgFlag = function (t) {
+    if (!t || !isNum(t.n) || t.n <= 0) return { watch: false, small: false, n: t && t.n || 0 };
+    return { watch: isNum(t.units) ? t.units > 0 : (isNum(t.roi) && t.roi > 0), small: t.n < MG_SMALL, n: t.n };
+  };
+  rec.mgTable = function (f, sport, bucket) {
+    var sl = rec.mgSlice(f, sport);
+    if (!sl) return null;
+    var b = MG_BUCKETS.indexOf(bucket) >= 0 ? bucket : 'in_sample';
+    var rows = MG_ROWS.map(function (k) {
+      var t = rec.mgTally(sl[k] && sl[k][b]);
+      return { k: k, label: MG_LABEL[k], shown: MG_SHOWN[k], t: t, flag: rec.mgFlag(t) };
+    });
+    return { bucket: b, rows: rows, total: rec.tierPool(rows.map(function (r) { return r.t; })) };
+  };
   rec.SORT_FIRST = SORT_FIRST; rec.SHADOW_SIZE = SHADOW_SIZE; rec.SHADOW_TIP = SHADOW_TIP; rec.TIER_ROWS = TIER_ROWS; rec.BUCKETS = BUCKETS; rec.TIER_FOOT = TIER_FOOT; rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
   SV2.rec = rec;
 
   /* ------------------------------------------------------------------ browser side */
   if (typeof document === 'undefined') return;
   var S = { sport: 'all', view: 'main', file: null, rows: null, state: 'idle', loadedAt: 0, main: null, page: null, sw: null, swPage: null, busy: false,
-    tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, tb: 'all', tSince: false, open: {}, sort: {},
+    tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, mg: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, mgb: 'in_sample', tb: 'all', tSince: false, open: {}, sort: {},
     fz: { sport: 'all', open: false }, tl: { map: {}, loadedAt: 0, busy: false } };
 
   /* Dev: ?recbase=/path/ on localhost reads the record files from a local folder (cards_record.json, cards/<sport>/<month>.jsonl, and the
@@ -504,8 +560,30 @@
     return T.busy;
   }
   rec.tierFile = function () { return S.tier.data; };
+  /* move_grade_record.json: published beside tier_record.json on pm-cards-live. Same 5 minute cache key. Dev: ?mgrecord=/path on localhost. A missing or invalid file
+     leaves the section saying it is not published yet, and nothing else changes. A failed refresh keeps the held file; an older build never replaces a newer one. */
+  var MG_URL = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/move_grade_record.json';
+  function mgSrc() { var d = SV2.dev && SV2.dev.param ? SV2.dev.param('mgrecord') : null; return d || MG_URL; }
+  function loadMg(force) {
+    var M = S.mg;
+    if (M.busy) return M.busy;
+    if (!force && M.state === 'ok' && Date.now() - M.loadedAt < 300000) return Promise.resolve();
+    if (M.state !== 'ok') M.state = 'loading';
+    var u = mgSrc(), k = force ? Date.now() : Math.floor(Date.now() / 300000);
+    M.busy = fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 't=' + k, { cache: force ? 'no-store' : 'default' })
+      .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      .then(function (j) {
+        if (!j || !rec.mgFileOk(j)) { if (M.data) M.stale = true; else M.state = 'none'; }
+        else if (M.data && isNum(M.data.built) && isNum(j.built) && j.built < M.data.built) { M.stale = false; M.loadedAt = Date.now(); }
+        else { M.data = j; M.state = 'ok'; M.stale = false; M.loadedAt = Date.now(); }
+        M.busy = null; paint();
+      });
+    return M.busy;
+  }
+  rec.mgFile = function () { return S.mg.data; };
   function load(force) {
     loadTier(force);
+    loadMg(force);
     if (S.busy) return S.busy;
     if (!force && S.state === 'ok' && Date.now() - S.loadedAt < 300000) return Promise.resolve();
     S.busy = true; if (S.state !== 'ok') S.state = 'loading';
@@ -832,6 +910,46 @@
     return html + sw + note + hero + tbl + foot + '</section>';
   }
 
+  /* ---- the Move grade record: A to D, moved against and no grade, in-sample and forward */
+  var MGCOLS = mcol('Move grade', { noClv: true }); MGCOLS.splice(MGCOLS.length - 1 + 1, 0, { c: 'se', label: 'SE', num: true, s: 1 });
+  function seText(t) { return isNum(t.se) && t.n > 1 ? '+/-' + (t.se * 100).toFixed(1) + ' pts' : '-'; }
+  function mgFlagHtml(r) {
+    var m = r.flag;
+    if (m.watch) return '<span class="sv2-chip sv2-chip--caution"><span>Watch closely' + (m.small ? ': small sample, n=' : ': n=') + '<span class="sv2-num">' + fmt.n(m.n) + '</span></span></span>';
+    if (m.small && m.n > 0) return '<span class="sv2-chip sv2-chip--muted"><span>small sample, n=<span class="sv2-num">' + m.n + '</span></span></span>';
+    return '';
+  }
+  function mgRow(m) {
+    var r = m.r, C = byC(MGCOLS), ncol = MGCOLS.length + 1, fl = mgFlagHtml(r);
+    var sub = '<span class="sv2-rec-tag">' + esc(r.shown) + '</span>' + (fl ? ' ' + fl : '');
+    var cells = cell(C.lab, '<span class="sv2-tb-title"><b>' + esc(r.label) + '</b></span><span class="sv2-tb-mu">' + sub + '</span>', { row: true, cls: 'c-bar' }) + tallyCells(C, r.t) + cell(C.se, '<span class="sv2-num">' + esc(seText(r.t)) + '</span>');
+    return rowHtml({ tid: 'mg', key: r.k, ncol: ncol, label: r.label + ', detail', attrs: ' data-mg="' + r.k + '"', cells: cells, detail: dl([['n', num(fmt.n(r.t.n))], ['Standard error of the ROI', num(seText(r.t))], ['Shown on the page as', esc(r.shown)]]) });
+  }
+  function mgSection(sport) {
+    var M = S.mg, html = '<section class="sv2-rec-sec" aria-labelledby="rec-h-mg">' + head('rec-h-mg', 'By Move grade', 'How far the market moved toward the play before it froze, at a flat 1u');
+    if (M.state === 'loading' || M.state === 'idle') return html + ui.skel(2, 'Loading the Move grade record') + '</section>';
+    if (!M.data) return html + '<p class="sv2-empty-line">Move grade record not published yet.</p></section>';
+    var f = M.data, b = MG_BUCKETS.indexOf(S.mgb) >= 0 ? S.mgb : 'in_sample', tb = rec.mgTable(f, sport, b);
+    if (!tb) return html + '<p class="sv2-empty-line">No Move grade record for ' + esc(sportName(sport)) + ' yet.</p></section>';
+    var sw = '<div class="sv2-rec-mgsw">' + seg.html({ id: 'rec-mgbucket', label: 'Which plays', value: b, size: 'sm', scroll: true, items: MG_BUCKETS.map(function (v) { return { v: v, label: MG_NAME[v] }; }) }) + '</div>';
+    var note = '<div class="sv2-card sv2-rec-tnote"><p class="sv2-rec-note"><b>' + esc(MG_NAME[b]) + '.</b> ' + esc(rec.mgNote(f, b)) + (b === 'forward' && !tb.total.n ? ' Every row below is zero. Zero is not a record.' : '') + '</p></div>';
+    var models = rec.sortRows(tb.rows.map(function (r, i) { return { idx: i, r: r, t: r.t }; }), S.sort.mg);
+    var tbl = tableHtml('mg', 'Move grade record, ' + MG_NAME[b], MGCOLS, models.map(mgRow).join(''));
+    var foot = '<p class="sv2-rec-note">The grade describes how far the market moved toward the play (Pinnacle\'s price, the market\'s number) in the 24 hours before it froze. It is not a bet signal and changes no size. In the history so far the letters did not order the results.</p>' +
+      '<p class="sv2-rec-note">Units and ROI are flat 1u at the stored price at the cut, not the size the page shows (' + esc(copy.play.label) + '). At n under ' + NEED_N + ' per sport no edge can be read. A record is context, not proof. SE is one standard error of the ROI in points. A small sample is under ' + MG_SMALL + ' plays, the same rule the docs use.' +
+      (sport === 'all' ? ' All pools NBA, NFL and CBB. CFB is not pooled.' : '') + (sport === 'cfb' ? ' CFB shows no size on the page. This is a flat 1u record for reference.' : '') +
+      (isNum(f.built) ? ' Built ' + esc(ct.md(f.built) + ', ' + ct.time(f.built, true)) + (M.stale ? '. Last refresh failed, showing the earlier file.' : '.') : '') + '</p>' +
+      '<details class="sv2-rec-mgd"><summary>What the Move grade means</summary><ul class="sv2-rec-note">' +
+      '<li>A: a market-move flag fired toward the play and the move passed the top mark, a size only the largest moves on the tape through Nov 23 reach in that sport and market.</li>' +
+      '<li>B: a market-move flag fired toward the play: Pinnacle\'s price, or the market\'s number (the books\' price on a moneyline).</li>' +
+      '<li>C: no flag fired, but Pinnacle\'s price or line drifted toward the play by more than a typical day\'s move, and not that far the other way.</li>' +
+      '<li>D: the market did not move toward the play by more than a typical day\'s move.</li>' +
+      '<li>Moved against: a market-move flag fired against the play. It is shown instead of a letter.</li>' +
+      '<li>No grade: neither flag could be read at the freeze.</li>' +
+      '<li>Marks are set from the size of 24 hour moves on every started game on the tape through Nov 23, per sport and market (the cutoffs are frozen from it), not from results.</li></ul></details>';
+    return html + sw + note + tbl + foot + '</section>';
+  }
+
   /* ---- section 3: accounts record */
   var PAST_NOTE = 'These records come from games before we picked the account, so they were chosen after the fact. They have not held up going forward.';
   function acctCols(first, past) {
@@ -908,7 +1026,7 @@
     if (S.state === 'loading' || (S.state === 'idle' && S.view === 'record')) { S.page.innerHTML = ui.skel(3, 'Loading the record'); return; }
     if (S.state === 'none') { S.page.innerHTML = '<div class="sv2-rec"><p class="sv2-err">Could not load the record. <button type="button" class="sv2-link" data-sv2-rec-retry>Try again</button></p>' + (S.tier.data ? tiersSection(sport) : '') + '</div>'; bindTier(); return; }
     if (S.state !== 'ok') return;
-    var secs = pageNow() === 'following' ? [acctsSection, playsSection, tiersSection] : [playsSection, tiersSection, acctsSection];
+    var secs = pageNow() === 'following' ? [acctsSection, playsSection, tiersSection, mgSection] : [playsSection, tiersSection, mgSection, acctsSection];
     S.page.innerHTML = '<div class="sv2-rec">' + sportStrip() + freshLine() + secs.map(function (f) { return f(sport); }).join('') + '</div>';
     if (SV2.rail && SV2.rail.scan) SV2.rail.scan(S.page);
     var st = S.page.querySelector('.sv2-rec-sports .sv2-seg'); if (st) seg.bind(st, function (v) { S.sport = v; paint(); });
@@ -917,6 +1035,8 @@
   function bindTier() {
     var b = S.page && S.page.querySelector('.sv2-rec-tsw .sv2-seg');
     if (b) seg.bind(b, function (v) { S.tb = v; S.tSince = false; paint(); });
+    var m = S.page && S.page.querySelector('.sv2-rec-mgsw .sv2-seg');
+    if (m) seg.bind(m, function (v) { S.mgb = v; paint(); });
   }
   function paintSwitch() {
     if (!S.sw) return;
@@ -957,6 +1077,7 @@
     if (S.main !== main) { S.main = main; S.page = page; S.sw = sw; S.swPage = null; S.view = 'main'; main.setAttribute('data-view', 'main'); page.hidden = true; }
     paintSwitch();
     loadTier(false);
+    loadMg(false);
     if (!rec._wired) {
       rec._wired = true;
       SV2.on('sport', function () { if (S.view === 'record') paint(); });

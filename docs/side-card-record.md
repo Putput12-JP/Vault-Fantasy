@@ -387,3 +387,94 @@ output of `tier_history.py`):
 Read it plainly: the flagged slices run both ways. NBA "C away" (the market moved the number against the play's side) is the best NBA slice at +3.75u, which is the opposite
 of reading a flag as a signal. The standard errors of the flagged slices run from 11.7 to 45.8 points of ROI (the CBB n=1 slice has none), so none separates from zero or from another
 slice, and no slice has a sample near the 300 plays per sport that the prereg needs. The flags describe what the market did; they say nothing about whether a play wins.
+
+## Move grade mg-1: the record by letter (2026-11-24)
+
+`scripts/sharps_v2/move_grade.py` now gives each shown play a **Move grade** (`markets[g].v2.move_grade`, `docs/side-cards.md` "Move grade"): a letter A to D for how far the market
+moved **toward** the play in the 24 hours before the cut, read only from the two registered market-move flags (Flag A, Pinnacle's no-vig price at the same line; Flag C, the market's number or the books'
+price on a moneyline). A flag fired **against** the play shows "moved against" and no letter; neither flag readable shows no grade. Pinnacle's limit is never an input. It is a shadow: it changes no size
+(flat 1u on NBA, NFL, CBB, none on CFB), no tier, no gate and no total. Nothing already stored changes: the history below is derived **point in time** from the tape rows at or before each play's cut
+(`scripts/sharps_v2/move_grade_record.py`, printed by `tier_history.py`, reproduced with `scripts/sharps_v2/move_grade_history.py`), nothing from the result. Every number is **in-sample** (the rule was written
+after these results), flat 1u at the stored price at the cut, and none of it is a signal. Forward test: `docs/sharp-movegrade-prereg.md` (**PROPOSED, not registered**). The forward record is zero by rule while it is proposed: a play counts as forward only when its grade was logged at lock
+AND its cut is after the registering commit (`REGISTERED_CUT` in `move_grade_record.py`, None until the user registers), so plays logged before registration never count. The page's Forward view says so.
+
+**Cutoffs (points), from the size of 24 hour moves on every started game of the tape, never from results** (C mark = median move, B mark = the registered flag threshold, A mark = 95th percentile and at least half a point past
+the flag threshold; `move_grade_history.py` prints the distribution and checks every mark equals the table in `move_grade.py`):
+
+| Sport, market | C mark (price) | B mark T_A | A mark (price) | C mark (line) | B mark T_C | A mark (line) |
+|---|---|---|---|---|---|---|
+| NBA moneyline | 2.0 | 4.0 | 9.0 | | | |
+| NBA spread | 0.5 | 1.5 | 2.0 | 1.0 | 2.0 | 3.5 |
+| NBA total | 1.0 | 1.5 | 2.5 | 1.5 | 3.0 | 4.0 |
+| NFL moneyline | 0.5 | 1.5 | 3.0 | | | |
+| NFL spread | 1.0 | 1.5 | 2.5 | 0.5 | 1.0 | 1.5 |
+| NFL total | 0.5 | 1.5 | 2.5 | 0.5 | 1.0 | 1.5 |
+| CBB moneyline | 1.0 | 3.0 | 4.5 | | | |
+| CBB spread | 1.0 | 1.5 | 2.5 | 0.5 | 1.0 | 2.0 |
+| CBB total | 0.5 | 1.5 | 2.5 | 1.0 | 2.5 | 4.0 |
+| CFB moneyline | 1.0 | 2.5 | 4.5 | | | |
+| CFB spread | 0.5 | 1.5 | 2.5 | 0.5 | 1.5 | 2.5 |
+| CFB total | 0.5 | 1.5 | 2.0 | 0.5 | 1.5 | 2.0 |
+
+**Letter shares on the population** (both sides of every started market, 5,454 sides, tape at `origin/main` `a6b75ea6c404`, % of sides with a grade or the marker): A 240 (4.6%), B 630 (12.0%), C 909 (17.3%), D 2,561 (48.8%),
+moved against 904 (17.2%), no grade 210. By sport A runs 3.3% to 5.1%, B 10.5% to 13.9%, C 15.4% to 19.0%, D 45.6% to 53.4%, moved against 13.8% to 19.5%.
+
+**Data read:** `origin/pm-holders-data` at commit `f2eac1ad6739dad7d1a827962eb8bab4bcfff2d7` (Nov 23, 6:32 PM CT); 205 graded shown plays (sf, variant all), 3 voided left out; all 205 grades re-derived from the tape (none stored yet).
+Reproduce with `python3 -I scripts/sharps_v2/move_grade_history.py --ref f2eac1ad6739 --book-tape <tape at a6b75ea6c404>`. The no-grade reasons: CBB 46 = 8 `side_unmapped` + 38 cut before Pinnacle rows existed for the game; CFB 15 = 9
+`side_unmapped` + 6 with no Pinnacle row at the cut. CBB is readable on only 7 of 53 plays; forward the CBB tape exists, so forward CBB plays will mostly get a letter.
+
+| Old (the record today, no grade) | Record | n |
+|---|---|---|
+| NBA | 34-24, +0.10u, +0.2% | 58 |
+| NFL | 22-11, +7.88u, +23.9% | 33 |
+| CBB | 29-24, +4.00u, +7.5% | 53 |
+| CFB (no size shown) | 29-32, -9.33u, -15.3% | 61 |
+| Headline NBA + NFL + CBB | 85-59, +11.98u, +8.3% | 144 |
+| All four | 114-91, +2.66u, +1.3% | 205 |
+
+| New (by Move grade) | NBA | NFL | CBB | CFB (no size) | Headline NBA+NFL+CBB | All four |
+|---|---|---|---|---|---|---|
+| A | 0-3, -3.00u, -100.0% (se 0.0), n=3 | 4-0, +3.22u, +80.6% (se 10.4), n=4 | n=0 | 2-2, -0.12u, -2.9% (se 56.1), n=4 | 4-3, +0.22u, +3.2% (se 36.9), n=7 | 6-5, +0.11u, +1.0% (se 29.4), n=11 |
+| B | 5-1, +2.27u, +37.9% (se 30.1), n=6 | 1-1, -0.43u, -21.3% (se 78.7), n=2 | 1-0, +1.06u, n=1 (no se) | 4-7, -4.65u, -42.3% (se 24.4), n=11 | 7-2, +2.91u, +32.3% (se 26.6), n=9 | 11-9, -1.74u, -8.7% (se 19.5), n=20 |
+| C | 3-3, +1.12u, +18.7% (se 54.0), n=6 | 5-1, +4.90u, +81.7% (se 37.4), n=6 | 2-0, +1.56u, +77.9% (se 41.9), n=2 | 5-3, +0.59u, +7.4% (se 31.7), n=8 | 10-4, +7.58u, +54.1% (se 28.3), n=14 | 15-7, +8.17u, +37.2% (se 21.5), n=22 |
+| D | 15-11, -3.61u, -13.9% (se 15.3), n=26 | 12-7, +2.19u, +11.5% (se 20.6), n=19 | 1-3, -1.94u, -48.5% (se 51.5), n=4 | 7-5, +0.81u, +6.8% (se 27.9), n=12 | 28-21, -3.37u, -6.9% (se 12.1), n=49 | 35-26, -2.55u, -4.2% (se 11.1), n=61 |
+| Moved against | 11-6, +3.32u, +19.5% (se 23.8), n=17 | 0-2, -2.00u, -100.0% (se 0.0), n=2 | n=0 | 3-8, -5.36u, -48.7% (se 26.5), n=11 | 11-8, +1.32u, +6.9% (se 22.9), n=19 | 14-16, -4.04u, -13.5% (se 17.9), n=30 |
+| No grade | n=0 | n=0 | 25-21, +3.32u, +7.2% (se 14.9), n=46 | 8-7, -0.61u, -4.1% (se 24.5), n=15 | 25-21, +3.32u, +7.2% (se 14.9), n=46 | 33-28, +2.71u, +4.4% (se 12.6), n=61 |
+
+Every play sits in exactly one row, so each column adds up to its old total (the headline: 7 + 9 + 14 + 49 + 19 + 46 = 144 plays, +0.22 + 2.91 + 7.58 - 3.37 + 1.32 + 3.32 = +11.98u).
+
+ROI in these tables and on the Record page is the flat sum of the unrounded results over n (A headline +3.2%, B +32.3%, moved against +6.9%), not the rounded units over n; the page shows the same numbers. SE is one standard error of the per-play result in points of ROI. "Small sample" is under 30 plays here and on the page, one definition.
+
+The prereg's metrics on the same plays (headline, in-sample, report only): market move after the cut, mean points (se), n with a same-line close: A 0.00 (0.00) n=7, B +0.10 (0.23) n=9, C +0.04 (0.04) n=14, D +0.05 (0.08) n=48,
+moved against -0.53 (0.23) n=19; Pinnacle CLV (overlaps the inputs by construction): A -1.40 n=5, B -0.04 n=8, C -0.13 n=9, D -0.37 n=33, moved against +1.05 n=14. The move after the cut covers only the 15 minutes from the cut to the start:
+91 of the 143 graded plays with a readable move moved exactly 0. Slope of that move on the letter (D=0, C=1, B=2, A=3), 95% bootstrap, 10,000 resamples, seed 20261111: NBA +0.065 [-0.077, +0.234] n=41; NFL -0.089 [-0.260, +0.054] n=30;
+CBB +0.027 [-0.007, +0.230] n=7; CFB +0.110 [-0.066, +0.296] n=35; headline -0.002 [-0.099, +0.098] n=78. Every interval spans 0.
+
+**Flagged for close monitoring: every cell that improves, with its n** ("improves" = units above 0; "small sample" under n=30; all in-sample, none promoted, none a signal; the list is the output of `tier_history.py`):
+
+| Cell | Record | n | se (points of ROI) |
+|---|---|---|---|
+| NBA B | 5-1, +2.27u | 6, small sample | 30.1 |
+| NBA C | 3-3, +1.12u | 6, small sample | 54.0 |
+| NBA moved against | 11-6, +3.32u | 17, small sample | 23.8 |
+| NFL A | 4-0, +3.22u | 4, small sample | 10.4 |
+| NFL C | 5-1, +4.90u | 6, small sample | 37.4 |
+| NFL D | 12-7, +2.19u | 19, small sample | 20.6 |
+| CBB B | 1-0, +1.06u | 1, small sample | none (n=1) |
+| CBB C | 2-0, +1.56u | 2, small sample | 41.9 |
+| CBB no grade | 25-21, +3.32u | 46 | 14.9 |
+| CFB (no size) C | 5-3, +0.59u | 8, small sample | 31.7 |
+| CFB (no size) D | 7-5, +0.81u | 12, small sample | 27.9 |
+| Headline A | 4-3, +0.22u | 7, small sample | 36.9 |
+| Headline B | 7-2, +2.91u | 9, small sample | 26.6 |
+| Headline C | 10-4, +7.58u | 14, small sample | 28.3 |
+| Headline moved against | 11-8, +1.32u | 19, small sample | 22.9 |
+| Headline no grade | 25-21, +3.32u | 46 | 14.9 |
+| All four A | 6-5, +0.11u | 11, small sample | 29.4 |
+| All four C | 15-7, +8.17u | 22, small sample | 21.5 |
+| All four no grade | 33-28, +2.71u | 61 | 12.6 |
+
+**The honest read: the letter does not order the results in-sample.** On the headline, C is the best letter (+7.58u, n=14), A is close to flat (+0.22u, n=7) and D is negative (-3.37u, n=49); in NBA, A went 0-3 while the plays the market moved **against** went 11-6,
++3.32u. Over all four sports A (+0.11u) sits below C (+8.17u) and B is negative (-1.74u). The after-cut move does not order either (headline slope -0.002, interval -0.099 to +0.098). The standard errors run from 10.4 to 78.7 points of ROI (the all-loss cells and the n=1 cell have none
+worth the name), so no cell separates from zero or from another. This matches what the flags already showed ("Market-move flags v2f-2" above): they describe the market and have not ordered results. The Move grade is a tidier way to read the same two flags, not new evidence, and the page must not
+present it as anything more.
