@@ -32,9 +32,10 @@ that clears break-even, found on one sample and confirmed on another?** It is no
 | S8 | A with an edge of 7 or more |
 | S9 | A on home picks; S10 on away picks |
 
-A rule PASSES when the win rate is >= 52.4% with n >= 60 in discovery AND >= 52.4% with n >= 60 in confirm. Followed and faded are separate rules (S1 is the opposite side of S0, and S2/S3 are tested
-followed only). Eleven rules are scored, so at most one passing by luck is expected under no effect at these n (each has about a 4% chance of passing both folds by chance); one pass is
-therefore read as a lead for the forward sample, not a result. Forward (n small) must point the same way (>= 50%) for a pass to be called WATCH.
+A rule PASSES when the win rate is >= 52.4% with n >= 60 in discovery AND in confirm, AND the two seasons pooled clear break-even by a multiple-comparison bar: a one-sided z of
+2.6 or more against 52.4% (p about 0.005, which is 0.05 divided by the eleven rules). Followed and faded are separate rules (S1 is the opposite side of S0, S2 and S3 are tested followed
+only). *Amended before any score:* the first draft said "52.4% in both folds", which a no-effect rule passes about 12% of the time at these n (a standard error of about 6 points per
+fold), so eleven rules would put one false pass in play. The pooled bar makes a false pass about 5% across all eleven. Forward (n small) must point the same way (>= 50%) for a pass to be WATCH.
 
 **Winner A** = the model's chance for its team >= 70%, straight up at the stored moneyline. Forward only (the stored moneyline exists only this season; no price is inferred for history):
 the record and units on the 80 games, the same teams on the spread at -110 instead, and the teams whose model chance exceeds the market's no-vig chance by 3 points or more (the price-aware
@@ -48,7 +49,7 @@ cut). **Descriptive, no verdict**: n is far under the 100-pick reading rule.
 
 ## Limits, stated before the numbers
 
-- A spread of 5 or more points between the model and the line is a rare event: about 140 a season. A subgroup of 60 is about 43% of a season's A picks, so a 52.4% rule has a standard error of about 6 points.
-  Passing both folds is a weak filter. That is the reason one pass is not a result.
+- A spread of 5 or more points between the model and the line is a rare event: about 140 a season. A subgroup of 60 is about 43% of a season's A picks, so a win rate has a standard error of about 6 points
+  per fold. Only a large, consistent effect can pass the pooled bar; a real effect of 2 points cannot be found at these n, and the result will say so rather than claim it.
 - "Underdog / favourite", "home / away" and "early" are properties known at the bet; the news part uses the 1pm and 30-minute reports as of those times.
 - The closing spread has no timestamp; the pick's edge is measured against it, as `game-model.md` does.
