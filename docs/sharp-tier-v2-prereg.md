@@ -1,8 +1,8 @@
 # Play evidence tiers (Clear, Mixed, Thin, Contested): pre-registered forward shadow
 
-**Status: PROPOSED (written 2026-11-23, Central).** Nothing below is registered until the user approves it. The commit that changes this line to
+**Status: Registered (written 2026-11-23, Central; approved by the user in chat on 2026-11-23).** The commit that changes this line to
 Registered is the registration: its hash and time are the proof that the rule came first, and the first card that can count is the first one cut
-after that commit. Nothing below may change after the first counted card is graded; a change is a new registration with its own date.
+after that commit. The tier rule v2t-1, the shadow size v2s-1 and the flags rule v2f-2 and its thresholds are frozen from this commit: any change needs a new rule id and a dated amendment. Nothing below may change after the first counted card is graded; a change is a new registration with its own date.
 
 Sharp money is context only (CLAUDE.md). The tier is a label made of a card's own stored facts. It is **never** a bet signal, never changes the
 shown size (flat 1u on NBA, NFL and CBB, nothing on CFB, always "untested rule"), and never feeds Top Reads, SM_GATE or an agree total. Passing
@@ -130,7 +130,7 @@ public split (context only, not a tier input, no record), and the account tiers 
 
 ## Shadow size v2s-1
 
-Added 2026-11-23 by the user's decision, still **PROPOSED** with the rest of this file. The flat 1u was an MVP, so a second sizing rule runs **beside** it:
+Added 2026-11-23 by the user's decision, registered with the rest of this file. The flat 1u was an MVP, so a second sizing rule runs **beside** it:
 **v2s-1** sizes a play by its evidence tier: **Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, CFB 0**, and a play with no derivable tier gets no shadow
 size (null, never 0). The values are an **ordering by evidence, not fitted to results**, and they are frozen in code (`SHADOW` in
 `scripts/sharps_v2/plays_v2.py`) at the registering commit. A different value is a new rule id (v2s-2) and a new registration.
@@ -153,3 +153,48 @@ size (null, never 0). The values are an **ordering by evidence, not fitted to re
 - **In-sample record (not evidence):** on the Nov 23 history the headline derivable plays were flat +4.91u on 90u (+5.5%) against shadow +3.15u on 46.5u
   (+6.8%), and 85 of those 90 plays are Contested (`docs/side-card-record.md`, "Tier-scaled size shadow v2s-1 (2026-11-23)"). A better-looking slice found
   along the way is flagged for close monitoring with its n and is never promoted on the same data.
+
+## Market-move flags v2f-2 (shadow, added 2026-11-23, Registered)
+
+Added by the user's decisions of 2026-11-23 (D1 to D5, D7 of `docs/sharps-v2-flags-spec.md`). It is registered with the rest of this file: the
+commit that changes the status line to Registered is the registration, and the first play that can count is the first one cut after it. The rule id is `v2f-2`: a first draft (`v2f-1`) read the start of the 24-hour window as the first stored row inside it, which dropped the first move of the window
+and read a first quote at a new line as a move of 0; review found it before anything shipped and the rule and its thresholds were re-measured (spec section 1). A second review fix, also before anything shipped, picks the row showing at the window start across all lines (so a quote at the current line from days ago is never "from" when a different line was showing when the window opened) and
+requires 2 or more rows of every book; no threshold moved because of it.
+
+Flags A (Pinnacle's price, fixed line, 24 h) and C (the market's number, or the books' price on a moneyline) are defined in
+`docs/sharps-v2-flags-spec.md` section 1, thresholds frozen in `scripts/sharps_v2/flags_v2.py` (`FLAGS_T_A`, `FLAGS_T_C`, re-exported by
+`scripts/sharps_v2/plays_v2.py`) at the registering commit: per sport and market, the 80th percentile of the 24-hour move under the v2f-2 window rule (the tables in the spec,
+user decision D2). Logged at lock as `mf` on the `v2_tier` rows. Context only; they change no size, tier, gate or agree total. The books are the ones in
+the tape (Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365): BookMaker and Circa are never read or shown, and Fanatics and Caesars are not added
+(D4).
+
+**Forward rows are read as written (no staleness rule).** A forward `mf` row is a projection of the frozen card's own stored flags, and a frozen card is built after its cut, so the
+live feed's heartbeat at that moment is not the cut's. The 30-minute freshness rule of the live card is therefore **not** applied to a frozen card, a forward row or the history
+(`src_age_min` is null on them); a stale feed at the cut is not detectable in the tape, which writes a row only on a change. Said here so nobody reads a forward row as stale-checked.
+
+**Pinnacle's limit is not a flag and not a slice (D1).** It is published as a fact line: the limit Pinnacle was showing when the 24-hour window opened and its last stored limit at the cut
+(from `sf_signals.limit_read`'s `now`), with no "limit rose" rule, no chip and no verdict, because Pinnacle raises limits toward the start of almost every game (89% to 99% of markets, by sport).
+Nothing about it is tested here.
+
+**Primary metric: the market move after the cut.** For a play, **after** = Pinnacle's no-vig fair for the side at the last tape row at or before game start (the `pinclose` row) minus Pinnacle's
+no-vig fair for the side at the cut, in points, both at the same line (a play whose close is at a different line is left out and counted apart), per flag state, per sport, never pooled.
+Plays with `price_src == "pin"` are left out and reported apart. **Why not CLV as the primary:** CLV (the close minus the stored Polymarket price at the cut) equals the move after the cut plus
+`(Pinnacle's fair at the cut minus the price)`, and Flag A is built from the same Pinnacle fair, so the second term moves with the flag by construction (the same overlap the tier section above already
+removed from its primary metric): a flag could "win" on CLV without the market moving after the cut. **CLV stays, as a secondary, labelled as overlapping by construction.**
+**Slices:** A toward, A away, A quiet; C toward, C away, C quiet. **Comparison:** mean after of "toward" minus mean after of "quiet", and "away" minus "quiet", 95% percentile bootstrap,
+10,000 resamples, seed 20261111, resampling plays.
+
+**Minimum n:** 300 plays per sport with a readable flag and a readable close, **and at least 100 plays in the "toward" group and 100 in the "quiet" group of that sport**, before any verdict; under either
+at the final read is Underpowered (neither pass nor fail). The 100 comes from the spread of the metric: on the 94 graded NBA, NFL and CBB plays with a same-line close the standard deviation of
+the move after the cut is 0.64 points, and 100 plays a group give 80% power at 95% confidence to see a difference of 0.25 points (n = 2 x 2.8 squared x 0.64 squared / 0.25 squared = 103). The toward group holds
+about one play in ten, so today it has 5 to 11 plays a sport: the honest expectation is Underpowered, said in advance. **Final reads:** the same dates as the tier registration (NBA: first Monday
+after the 2026-27 regular season; NFL: Tuesday after Week 18; CFB: Monday after conference championship weekend; CBB: Monday after the 2027 national championship game). Monthly interim reads are
+report-only.
+
+**Pass** (per sport, per flag): the lower 95% bound of "toward minus quiet" on the move after the cut is above 0 with both minimums met. A pass lets the user *consider* calling the flag
+tested; the page keeps "context only" until then. **Secondary:** CLV as above (overlapping), and flat 1u ROI per slice (a win pays 1 / price - 1), kept as `flag_record.json`
+(`scripts/sharps_v2/flag_record.py`: in_sample before the first logged lock that carries `mf`, forward only for plays whose flags were logged at lock). A slice whose record has units above 0 is
+flagged for close monitoring with its n and is never promoted on the same data ("improves" here means units above 0, not better than a baseline).
+
+**In-sample record (not evidence):** 205 graded shown plays read point in time from the tape at each cut are in `docs/side-card-record.md`, "Market-move
+flags v2f-2 (2026-11-23)". Every slice there is small (the largest slice with a toward or away state is n=14) and none separates from zero.

@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import sf_signals as SIG  # noqa: E402
+from sharps_v2 import flags_v2 as F  # noqa: E402
 
 RULE = "v2t-1"                                  # the tier rule version: a rule change is a new string and a new registration
 SHOWN_SPORTS = ("nba", "nfl", "cbb")             # the documented side-card exception: flat 1u here, nothing on CFB
@@ -28,6 +29,10 @@ PRICE_TIER_SPORTS = ("nba", "nfl")               # the CLV tiers (a2, b1) and th
 FACTS_NA = ["a2", "b1", "a3"]                    # facts that do not apply on a college card (published false)
 EV_PTS = SIG.EV_ON_PTS                           # 0.3, registered Nov 14 (scripts/sf_signals.py); no new threshold
 PIN_LINE_EPS = SIG.PIN_LINE_EPS
+# the market-move flags (docs/sharps-v2-flags-spec.md, rule v2f-2): the frozen constants live in flags_v2.py and are re-exported here, the one
+# source the docs, the prereg and the tests read. Context only: nothing in this file reads them for a tier, a size or a gate.
+FLAGS_RULE, FLAGS_T_A, FLAGS_T_C, FLAGS_WINDOW, FLAGS_STALE = F.FLAGS_RULE, F.FLAGS_T_A, F.FLAGS_T_C, F.FLAGS_WINDOW, F.FLAGS_STALE
+FLAGS_SERIES_N, FLAGS_US = F.FLAGS_SERIES_N, F.FLAGS_US
 US_BOOKS = ("BetMGM", "BetRivers", "DraftKings", "FanDuel", "bet365")
 SHOWN_RULE = "flat 1u on NBA, NFL, CBB; none on CFB; untested rule (since 2026-11-20 4:47 PM CT)"
 # The tier-scaled size SHADOW (user decision 2026-11-23). It runs BESIDE the flat 1u above and never replaces it: the page, `shown_units`, the
@@ -364,7 +369,7 @@ def splits_at(game, g, norms, cut):
 
 # ---------- the per-market block ----------
 
-def market_v2(sport, g, m, ws, cls, kf, asof, norms, rows=None, game=None, feed_ts=None, frozen=True, cut=None):
+def market_v2(sport, g, m, ws, cls, kf, asof, norms, rows=None, game=None, feed_ts=None, frozen=True, cut=None, heartbeat=None, ev=None):
     """-> (v2 block, splits or None) for one market group of a card. `m`: the market as the card built it (sides, sf, tp); `ws`: its
     holders; `cls`: {wallet: class} for variant all; `norms`: {side name: home|away|over|under|None}; `rows`: the book tape rows of the
     game (every book); `game`: the sharp-data feed game for the split. Reads stop at `asof`."""
@@ -392,6 +397,11 @@ def market_v2(sport, g, m, ws, cls, kf, asof, norms, rows=None, game=None, feed_
                 v2["pm"] = {"px": sf["price"], "t": sf.get("price_t"), "since_min": _since(asof, sf.get("price_t")), "kind": "displayed"}
         v2["exec"] = exec_block(rows, g, norms.get(side), sf.get("line"), sf.get("pinnacle_odds"), asof)
         v2["vs_fair"] = vs_fair(sf, rows, g, asof)
+        try:                                    # the market-move flags: context, additive, and a failure drops them for this card only
+            v2["flags"], v2["series"] = F.flags_block(rows, g, norms.get(side), asof, sport, heartbeat)
+        except Exception as e:
+            v2["flags"], v2["series"], v2["flags_error"] = None, None, type(e).__name__
+            print("::warning::v2 flags dropped for %s %s: %s: %s" % (ev, g, type(e).__name__, e), file=sys.stderr)
     sp = None
     if game:
         sp = splits_at(game, g, norms, cut) if frozen else splits_live(game, g, norms, feed_ts)
@@ -428,7 +438,7 @@ def plays_fields():
     """`live.json` v2_plays: the rule version and the names of everything this module adds."""
     return {"rule": RULE, "spec": "docs/sharps-v2-plays-spec.md", "market_keys": list(V2_MARKET_KEYS), "top_keys": list(V2_TOP_KEYS),
             "shown_rule": SHOWN_RULE, "shadow": {"rule": SHADOW_RULE, "sizes": dict(SHADOW["sizes"]), "cfb": SHADOW["cfb"], "shown": False},
-            "context_only": True}
+            "flags": F.flags_fields(), "context_only": True}
 
 
 # ---------- shadow log ----------
@@ -449,7 +459,7 @@ def log_row(rel, card, g, now):
     f = v2.get("facts") or {}
     ev = (v2.get("vs_fair") or {})
     tb = ((m.get("tp") or {}).get("tB") or {}).get("side")
-    return {"key": f"{rel}|{g}|all|sf", "v": 1, "rule": v2["rule"], "src": "frozen", "logged_at": now, "sport": card["sport"], "ev": card["ev"],
+    row = {"key": f"{rel}|{g}|all|sf", "v": 1, "rule": v2["rule"], "src": "frozen", "logged_at": now, "sport": card["sport"], "ev": card["ev"],
             "gst": card["gst"], "cut": card["cut"], "group": g, "side": side, "line": sf.get("line"), "outs": sf.get("outs"), "cid": sf.get("cid"),
             "price": sf.get("price"), "price_t": sf.get("price_t"), "price_src": v2.get("price_src"), "shown_units": v2["shown_units"],
             "shadow_units": v2.get("shadow_units", shadow_units(card["sport"], v2["tier"])), "shadow_rule": v2.get("shadow_rule", SHADOW_RULE),
@@ -463,6 +473,9 @@ def log_row(rel, card, g, now):
             "lead_w": (v2.get("lead") or {}).get("w"), "money_share_for": conf.get("money_share_for"),
             "exec": v2.get("exec"), "splits": m.get("splits"),
             "counts": (card.get("test") or {}).get("counts"), "why_not": (card.get("test") or {}).get("why_not")}
+    if "flags" in v2:                           # new rows only: a card built before the flags has no key, so its row has none ("not logged", never quiet)
+        row["mf"] = F.mf_of(v2["flags"])
+    return row
 
 
 def log_rows_of(rel, card, now):
