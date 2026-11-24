@@ -496,8 +496,9 @@ moved for the same side over the same 24 hours ending at the cut that Flag C rea
   +22 to +19, a favourite -3 to -4). Both 0 is "has not moved". **No threshold is invented:** any change counts and the page prints the numbers.
 - **Null, with a stored reason in `spread_ctx_why`:** `side_unmapped`, `no_tape_rows_for_game`, `no_spread_market`, `no_spread_history` (one row is never a move), `pinnacle_row_inconsistent`, `pinnacle_feed_stale`, `books_feed_stale`, `error_<Type>`.
   The page draws nothing for a null: never a guess, never "has not moved".
-- **On the page:** one row "Spread" in the alert card (`sv2-sharps.js` `spreadOf`), "-3.5 to -5.5, 5 of 6 books moved toward <side>" or "has not moved (6 books read)", and one line on the Share image under `moves.spread` (`sv2-sharps.js` `shareDataOf`, drawn by `sv2-share.js`): at every step of the poster's drop ladder it is tried first and, when it does not fit, tried again without
-  itself, so it is drawn only when it fits and never makes a block that would have been drawn without it disappear; with the flag sentences gone it goes too. A play without the key has exactly the share data and the poster it had. It is not in the grade sentence, the takeaway or the chips.
+- **On the page:** one row "Spread" in the alert card (`sv2-sharps.js` `spreadOf`), "-3.5 to -5.5, 5 of 6 books moved toward <side>" or "has not moved (6 books read)", and one line on the Share image under `moves.spread` (`sv2-sharps.js` `shareDataOf`, drawn by `sv2-share.js`) as one more flag fact: it is drawn with the flag sentences and left out with them, in the poster's unchanged
+  drop order (numbers, money, flag sentences, line section). A tall poster that now needs the extra line can therefore lose the money table one step sooner than before. A play without the key has exactly the share data and the poster it had.
+  It is not in the grade sentence, the takeaway or the chips.
 - **Size:** inside the V2 budget (250 KB soft) and outside the flags sub-budget (90 KB, `check_size.py` unchanged); a moneyline play adds about 130 bytes with its reason key.
 
 ### `move_grade_record.json` (beside `flag_record.json` on `pm-cards-live`)

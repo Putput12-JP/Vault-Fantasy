@@ -213,10 +213,11 @@
       };
     }
 
-    /* ---- where the line went: the move sentence, Pinnacle's price and the market line from and to, the flag facts, the Novig lines (fresh quote only: the data has none otherwise) */
+    /* ---- where the line went: the move sentence, Pinnacle's price and the market line from and to, the flag facts, the Novig lines (fresh quote only: the data has none otherwise)
+       The spread line of a moneyline play (moves.spread) is one more flag fact: it is drawn with the flag sentences and is left out with them, in the same drop order. */
     function market(o) {
       var mk = d.moves || {}, pr = d.price || {};
-      var say = S(mk.say), flags = o.flags ? (mk.flags || []).concat(o.spread && mk.spread ? [mk.spread] : []).map(S).filter(Boolean) : [], novig = [S(pr.novig), S(mk.novig)].filter(Boolean);
+      var say = S(mk.say), flags = o.flags ? (mk.flags || []).concat(mk.spread ? [mk.spread] : []).map(S).filter(Boolean) : [], novig = [S(pr.novig), S(mk.novig)].filter(Boolean);
       var nums = !o.nums ? [] : [mk.pin, mk.line].filter(function (n) { return n && S(n.label) && S(n.from) && S(n.to); });
       if (!say && !nums.length && !flags.length && !novig.length) return null;
       var sf = f(500, 25), lf = f(600, 20), nf = f(700, 38, NUM), ff = f(500, 24), LH = 32;
@@ -329,14 +330,10 @@
       };
     }
 
-    /* ---- put the blocks in order; when they do not fit, leave out the lowest ones first (money, then the flag sentences, then the whole line section).
-       The spread line of a moneyline play (moves.spread) is an addition: at every step it is tried first and, when it does not fit, tried again without it, so it is drawn only when
-       it fits and never makes a block that would have been drawn without it disappear. A play without the line has exactly the steps it always had. */
+    /* ---- put the blocks in order; when they do not fit, leave out the lowest ones first (money, then the flag sentences, then the whole line section) */
     var avail = H - MT - MB, blocks = null, dropped = [], si;
-    var base = [{ nums: true, money: true, flags: true, market: true }, { nums: false, money: true, flags: true, market: true }, { nums: true, money: false, flags: true, market: true }, { nums: false, money: false, flags: true, market: true },
+    var steps = [{ nums: true, money: true, flags: true, market: true }, { nums: false, money: true, flags: true, market: true }, { nums: true, money: false, flags: true, market: true }, { nums: false, money: false, flags: true, market: true },
       { nums: false, money: false, flags: false, market: true }, { nums: false, money: false, flags: false, market: false }];
-    var hasSpread = !!(d.moves && S(d.moves.spread)), steps = [];
-    base.forEach(function (b) { if (hasSpread && b.flags) steps.push(Object.assign({ spread: true }, b)); steps.push(Object.assign({ spread: false }, b)); });
     for (si = 0; si < steps.length; si++) {
       var st = steps[si], list = [header(), title(), chips(), tiles()];
       var mkt = st.market ? market(st) : null, mon = st.money ? money() : null;
@@ -346,7 +343,7 @@
       list = list.filter(function (b) { return b.h > 0; });
       var total = list.reduce(function (a, b) { return a + b.h; }, 0) + foot.h + GAP * list.length;
       blocks = { list: list, foot: foot, total: total };
-      dropped = ['nums', 'money', 'flags', 'market'].filter(function (k) { return !st[k]; }).concat(hasSpread && !st.spread ? ['spread'] : []);
+      dropped = ['nums', 'money', 'flags', 'market'].filter(function (k) { return !st[k]; });
       if (total <= avail) break;
     }
     var ops = [{ t: 'bg' }], y = MT;

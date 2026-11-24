@@ -129,22 +129,21 @@ console.log('share image: the spread line follows the flag sentences in the drop
   ok('drawn with the flag sentences', /Spread at Pinnacle went -3\.5 to -5\.5/.test(tx) && /5 of 6 books moved toward Hornets/.test(tx), tx.split('\n').filter((s) => /Spread/.test(s)));
   const d0 = P.shareDataOf(withSpread(undefined), { url: 'vaultfantasy.com/sharp-money', nowT: NOW });
   ok('a play without it draws exactly what it drew before (no spread text)', !/Spread at Pinnacle/.test(SH.buildOps(d0, measure).ops.filter((o) => o.t === 'text').map((o) => o.s).join('\n')));
-  /* the spread line is tried first at every step and tried again without itself, so it never makes a block that would have been drawn without it disappear */
+  /* the line is one more flag fact: it is drawn with the flag sentences and is left out with them, in the unchanged drop order (nums, money, flags, market) */
   const variant = (dd, extra) => { dd = JSON.parse(JSON.stringify(dd)); dd.moves.flags = (dd.moves.flags || []).concat(Array.from({ length: extra }, () => 'word '.repeat(12))); return dd; };
   const place = (dd, k) => { const rr = SH.buildOps(dd, (font, s) => String(s).length * px(font) * k); return { dropped: rr.dropped, spread: /Spread at Pinnacle/.test(rr.ops.filter((o) => o.t === 'text').map((o) => o.s).join('|')) }; };
   const noSpread = (dd) => { dd = JSON.parse(JSON.stringify(dd)); delete dd.moves.spread; return dd; };
-  eq('it fits beside the money table: only the money table is lower than it', place(variant(d, 0), 0.6), { dropped: ['money'], spread: true });
-  eq('it does not fit: it alone goes, and the blocks the play had before are the ones it had before', [place(variant(d, 0), 0.52), place(noSpread(variant(d, 0)), 0.52).dropped], [{ dropped: ['nums', 'spread'], spread: false }, ['nums']]);
-  eq('with the flag sentences dropped the spread line is dropped with them', place(variant(d, 10), 0.52), { dropped: ['nums', 'money', 'flags', 'spread'], spread: false });
-  let grid = 0, evicted = [];
-  for (const k of [0.52, 0.6, 0.64, 0.7, 0.8]) for (const extra of [0, 1, 2, 4, 6, 10]) {
+  eq('roomy: nothing is dropped and the line is drawn', place(variant(d, 0), 0.4), { dropped: [], spread: true });
+  eq('tight: the lowest block goes first and the line is still drawn with the flag sentences', place(variant(d, 0), 0.6), { dropped: ['money'], spread: true });
+  eq('tighter: with the flag sentences dropped the line is dropped with them', place(variant(d, 10), 0.52), { dropped: ['nums', 'money', 'flags'], spread: false });
+  let grid = 0, bad = [];
+  for (const k of [0.4, 0.52, 0.6, 0.64, 0.7, 0.8]) for (const extra of [0, 1, 2, 4, 6, 10]) {
     grid++;
-    const withS = place(variant(d, extra), k), without = place(noSpread(variant(d, extra)), k);
-    if (JSON.stringify(withS.dropped.filter((x) => x !== 'spread')) !== JSON.stringify(without.dropped)) evicted.push([k, extra, withS.dropped, without.dropped]);
-    if (withS.spread === (withS.dropped.indexOf('spread') >= 0 || withS.dropped.indexOf('flags') >= 0)) evicted.push(['spread flag disagrees with the dropped list', k, extra]);
+    const w = place(variant(d, extra), k);
+    if (w.spread !== (w.dropped.indexOf('flags') < 0 && w.dropped.indexOf('market') < 0)) bad.push([k, extra, w]);
   }
-  eq('never evicts: for ' + grid + ' widths and lengths the dropped blocks equal those of the same poster without the line', evicted, []);
-  ok('the dropped list never names a step that is not in the registered order', place(variant(d, 10), 0.52).dropped.every((k) => ['nums', 'money', 'flags', 'market', 'spread'].indexOf(k) >= 0));
+  eq('for ' + grid + ' widths and lengths the line is drawn exactly while the flag sentences are', bad, []);
+  ok('the dropped list names only the registered steps', place(variant(d, 10), 0.52).dropped.every((k) => ['nums', 'money', 'flags', 'market'].indexOf(k) >= 0));
   eq('a play without the line has exactly the old dropped list', SH.buildOps(P.shareDataOf(withSpread(undefined), { url: 'u', nowT: NOW }), measure).dropped, SH.buildOps(noSpread(d), measure).dropped);
   ok('the poster keeps its size', r.height === 1350 && r.used <= 1350 - 60 - 50, [r.used, r.height]);
 }
