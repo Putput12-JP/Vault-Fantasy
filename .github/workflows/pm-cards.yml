@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit tests
-        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets tests.test_sharps_v2_plays tests.test_sharps_v2_flags tests.test_sharps_v2_movegrade
+        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets tests.test_sharps_v2_plays tests.test_sharps_v2_flags tests.test_sharps_v2_movegrade tests.test_sharps_v2_spread_ctx
       - name: Inputs (holders, ledger, Vault games)
         run: |
           if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then

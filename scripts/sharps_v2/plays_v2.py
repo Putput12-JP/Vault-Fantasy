@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(HERE))
 import sf_signals as SIG  # noqa: E402
 from sharps_v2 import flags_v2 as F  # noqa: E402
 from sharps_v2 import move_grade as MG  # noqa: E402
+from sharps_v2 import spread_ctx as SC  # noqa: E402
 
 RULE = "v2t-1"                                  # the tier rule version: a rule change is a new string and a new registration
 SHOWN_SPORTS = ("nba", "nfl", "cbb")             # the documented side-card exception: flat 1u here, nothing on CFB
@@ -408,6 +409,12 @@ def market_v2(sport, g, m, ws, cls, kf, asof, norms, rows=None, game=None, feed_
         except Exception as e:
             v2["move_grade"], v2["move_grade_error"] = None, type(e).__name__
             print("::warning::v2 move grade dropped for %s %s: %s: %s" % (ev, g, type(e).__name__, e), file=sys.stderr)
+        if g == "ml":                           # the spread fact line of a moneyline play (docs/side-cards.md "Spread context"): a context fact, never a flag, grade or input; a failure drops it for this card only
+            try:
+                v2["spread_ctx"], v2["spread_ctx_why"] = SC.spread_ctx(rows, norms.get(side), asof, heartbeat)
+            except Exception as e:
+                v2["spread_ctx"], v2["spread_ctx_why"] = None, "error_" + type(e).__name__
+                print("::warning::v2 spread context dropped for %s %s: %s: %s" % (ev, g, type(e).__name__, e), file=sys.stderr)
     sp = None
     if game:
         sp = splits_at(game, g, norms, cut) if frozen else splits_live(game, g, norms, feed_ts)
@@ -483,6 +490,8 @@ def log_row(rel, card, g, now):
         row["mf"] = F.mf_of(v2["flags"])
     if "move_grade" in v2:                      # new rows only (rule mg-1): a card built before the grade has no key ("not logged", never D); a dropped grade logs null
         row["mg"] = MG.mg_of(v2["move_grade"])
+    if "spread_ctx" in v2:                      # new moneyline rows only: the spread fact line as the card froze it (a fact, never graded); null keeps its stored reason
+        row["sc"], row["sc_why"] = v2["spread_ctx"], v2.get("spread_ctx_why")
     return row
 
 

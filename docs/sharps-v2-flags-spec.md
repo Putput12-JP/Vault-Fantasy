@@ -426,6 +426,11 @@ so the same markup can later feed a share image.
 
 ### 4.1 Structure and strings
 
+> **Layout superseded 2026-11-24 (user request, mock `mocks/sharps-v2-alert-card.html`):** the eyebrow, the four tiles and the takeaway block below were replaced by one alert card at the top of the dropdown: a top row (dot, "Price move" or
+> "Play breakdown" when there is no label, the sport and market, the Move label at the right), the play as the title with the date pill, the game, market and tier chip, one plain sentence, the flag chips, the takeaway, the
+> context note (the takeaway's closer), stat rows (Pinnacle price, Pinnacle limit as a fact, Spread for a moneyline play, Novig, the price, fair, status) and a "Why this label" toggle holding "How this label was earned" and the price
+> caution. Every fact the tiles showed is in the card; sections 1 and 2 and the Share button are unchanged below it. See `docs/side-cards.md` "Spread context" for the new row. The text below is the original layout spec.
+
 - **Eyebrow:** `SHARP MONEY PLAY BREAKDOWN <SPORT>` (letter-spaced caps; the separators are spacing in the design, no commas or dots in
   the text). `<SPORT>` = NBA, NFL, COLLEGE BASKETBALL, COLLEGE FOOTBALL.
 - **Title:** `The read on <side label>` (for example "The read on Cornell +19.5", "The read on Under 221.5", "The read on Nuggets").
