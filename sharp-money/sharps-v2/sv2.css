@@ -1417,3 +1417,25 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
   .sv2-wu-sides { grid-template-columns: minmax(0, 1fr); }
   .sv2-wu-big { font-size: 22px; }
 }
+
+/* ---- Frozen plays box (Sharps rail, under Tiers; 2026-11-24). Same glass box as the other rail boxes (.sv2-box .sv2-sp-rb). Neutral wash.
+   The list is plain rows, the disclosure reuses .sv2-sp-ctxbtn (44px), the expanded list scrolls. No new motion. ---- */
+.sv2-fz { --sv2-accent-rgb: var(--sv2-ink-rgb); --sv2-glass-wash: .05; --sv2-glass-orb: .05; }
+.sv2-fz-sub { margin: 0 0 4px; font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-fz-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.sv2-fz-r { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 9px 0; border-top: 1px solid var(--sv2-line); }
+.sv2-fz-r:first-child { border-top: 0; }
+.sv2-fz-l { display: grid; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.sv2-fz-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.sv2-sp-rb .sv2-fz-title { font: 600 14px/1.3 var(--sv2-sans); color: var(--sv2-ink); overflow-wrap: anywhere; }
+.sv2-sp-rb .sv2-fz-px { font: 400 13px/1.3 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-fz-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font: 400 12.5px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-sp-rb .sv2-fz-meta .sv2-num { color: var(--sv2-mut); }
+.sv2-fz-rt { display: grid; justify-items: end; gap: 5px; flex: none; }
+.sv2-fz-rt .sv2-tier { gap: 5px; font-size: 12px; }
+.sv2-fz-res { white-space: nowrap; }
+.sv2-fz-scroll { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; margin-right: -6px; padding-right: 6px; border-radius: var(--sv2-r-sm); }
+.sv2-fz-more { border-top: 1px solid var(--sv2-line); border-radius: 0; }
+.sv2-fz-skel { height: 44px; }
+/* the box makes the rail tall: on the two-column layout the sticky rail scrolls inside the viewport so its last boxes stay reachable */
+@media (min-width: 1024px) { .sv2-col-rail:has(.sv2-fz) { max-height: calc(100vh - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; } }

@@ -408,6 +408,58 @@ console.log('table cells (record tables)');
   eq('latest row: a push is neither', R.latestModel(row({ res: 'push', flat: 0 }), null).kind, 'push');
 }
 
+console.log('frozen list (Sharps rail box)');
+{
+  const GST = CUT + 5000;
+  const open = (o) => { const r = Object.assign({ key: 'c' + (++k) + '|ml|all|sf', counts: true, sport: 'nba', ev: 'nba-aaa-bbb-2026-11-24', gst: GST, group: 'ml', play: 'sf', side: 'Hornets', line: null, outs: ['Grizzlies', 'Hornets'], units: 1, price: 0.425 }, o); if (r.key.indexOf('|') < 0) r.key += '|ml|all|sf'; return r; };   /* the real open rows carry no variant field; the variant is in the key */
+  const settled = [
+    row({ key: 'a', cut: CUT + 100, res: 'win', flat: 0.4, price: 0.7, side: 'Knicks' }),
+    row({ key: 'b', cut: CUT + 300, res: 'loss', flat: -1, sport: 'cbb', side: 'Duke' }),
+    row({ key: 'c', cut: CUT + 200, res: 'push', flat: 0, sport: 'nfl', side: 'Jets' }),
+    row({ key: 'd', cut: CUT + 400, status: 'unpriced', res: null, flat: null, price: 0.5 }),
+    row({ key: 'e', cut: CUT + 450, status: 'void', res: null, flat: null }),
+    row({ key: 'x1', cut: CUT + 999, sport: 'cfb' }), row({ key: 'x2', cut: CUT + 999, counts: false }), row({ key: 'x3', cut: CUT + 999, play: 'lock' }), row({ key: 'x4', cut: CUT + 999, variant: 'fwd' }),
+    { kind: 'close', of: 'a', clv: 0.01, key: 'a|close' },
+  ];
+  const file = { open: [open({ key: 'o1', gst: GST }), open({ key: 'o2', gst: GST + 1800, sport: 'cbb' }), open({ key: 'o1' }),
+    open({ key: 'cf', sport: 'cfb' }), open({ key: 'nc', counts: false }), open({ key: 'lk', play: 'lock' }), open({ key: 'fw|ml|fwd|sf' }), open({ key: 'pp', gst: GST - 50, postponed: true }), null, { play: 'sf' }] };
+  const L = R.frozenList(settled, file, {}, 'all');
+  eq('awaiting first, newest freeze first; then settled newest first', L.items.map((x) => x.key), ['o2|ml|all|sf', 'o1|ml|all|sf', 'pp|ml|all|sf', 'e', 'd', 'b', 'c', 'a']);
+  eq('counts: total, awaiting, settled', [L.total, L.awaiting, L.settled], [8, 3, 5]);
+  eq('the settled plays are exactly the Record Plays rows (cfb, uncounted, lock and fwd excluded)', L.items.filter((x) => x.state !== 'open').map((x) => x.key).sort(), R.playRows(settled, 'all').map((x) => x.key).sort());
+  eq('W-L-P is the Record tally of the same rows', [L.tally.w, L.tally.l, L.tally.p, L.tally.n], (() => { const t = R.tally(R.playRows(settled, 'all'), {}); return [t.w, t.l, t.p, t.n]; })());
+  const TW = R.frozenList([row({ key: 'tw|ml|all|sf' })], { open: [open({ key: 'tw' }), open({ key: 'tw2' }), open({ key: 'tw2' })] }, {}, 'all');
+  eq('an open row with a graded twin is not listed twice; a duplicate open key once', TW.items.map((x) => x.key + ':' + x.state), ['tw2|ml|all|sf:open', 'tw|ml|all|sf:win']);
+  eq('an open row of another variant (key) is not a shown play', L.items.some((x) => x.key.indexOf('|fwd|') >= 0), false);
+  eq('open: awaiting result, postponed says so', [L.items.find((x) => x.key === 'o1|ml|all|sf').word, L.items.find((x) => x.key === 'pp|ml|all|sf').word], ['Awaiting result', 'Postponed']);
+  eq('freeze time: stored cut, else the card rule (game start minus 15 minutes)', [L.items.find((x) => x.key === 'a').cut, L.items.find((x) => x.key === 'o1|ml|all|sf').cut], [CUT + 100, GST - 900]);
+  eq('freeze time: the tier log cut wins over the rule for an open play', R.frozenList([], { open: [open({ key: 'o9' })] }, { 'o9|ml|all|sf': { tier: 'clear', cut: GST - 840 } }, 'all').items[0].cut, GST - 840);
+  const a = L.items.find((x) => x.key === 'a'), b = L.items.find((x) => x.key === 'b'), c = L.items.find((x) => x.key === 'c');
+  eq('result words and units', [a.word + ' ' + a.units, b.word + ' ' + b.units, c.word + ' ' + c.units], ['W +0.4u', 'L -1u', 'P 0u']);
+  eq('title is the Record label', [a.label, L.items.find((x) => x.key === 'o1|ml|all|sf').label], ['Knicks ML', 'Hornets ML']);
+  eq('price: stored price as cents, none when missing or unpriced', [a.price, L.items.find((x) => x.key === 'd').price, R.frozenList([row({ key: 'np', price: null })], null, {}, 'all').items[0].price], [SV2.fmt.cents(0.7), null, null]);
+  eq('unpriced and void carry no units', [L.items.find((x) => x.key === 'd').units, L.items.find((x) => x.key === 'e').units, L.items.find((x) => x.key === 'e').word], [null, null, 'Void']);
+  /* tier at freeze: only from the stored log */
+  const T = R.frozenList(settled, file, R.tierLogMap([{ key: 'a', tier: 'clear' }, { key: 'o1|ml|all|sf', tier: 'Contested' }, { key: 'b', tier: 'none' }, { key: 'c', tier: 'bogus' }, { tier: 'clear' }]), 'all');
+  eq('tier shown when stored (case-insensitive); none, unknown and missing show nothing', [T.items.find((x) => x.key === 'a').tier, T.items.find((x) => x.key === 'o1|ml|all|sf').tier, T.items.find((x) => x.key === 'b').tier, T.items.find((x) => x.key === 'c').tier, T.items.find((x) => x.key === 'e').tier], ['clear', 'contested', null, null, null]);
+  eq('tierLogMap tolerates junk', [R.tierLogMap(null), R.tierLogMap([null, 5, {}])], [{}, {}]);
+  /* sport filter */
+  eq('one sport', R.frozenList(settled, file, {}, 'cbb').items.map((x) => x.key), ['o2|ml|all|sf', 'b']);
+  eq('sport filter is case-insensitive', R.frozenList(settled, file, {}, 'NBA').items.every((x) => x.sport === 'nba'), true);
+  const C = R.frozenList(settled, file, {}, 'cfb');
+  eq('CFB shows no size: nothing listed, flagged', [C.items.length, C.noSize, C.total], [0, true, 0]);
+  /* empty and bad input */
+  eq('empty inputs', [R.frozenList([], null, null, 'all').total, R.frozenList(null, { open: 'x' }, undefined, undefined).total, R.frozenList(undefined, undefined, undefined, 'nba').items], [0, 0, []]);
+  eq('subtitle is empty for an empty list', R.frozenSub(R.frozenList([], null, {}, 'all')), '');
+  eq('subtitle: total, record, flat 1u, awaiting', R.frozenSub(L), '8 frozen plays, ' + R.fmtWl(L.tally) + ', flat 1u, 3 awaiting, 2 not graded');
+  eq('subtitle with nothing settled omits the record', R.frozenSub(R.frozenList([], { open: [open({ key: 'z' })] }, {}, 'all')), '1 frozen play: 1 awaiting');
+  /* parity with the Record page across a bigger set */
+  const big = []; for (let i = 0; i < 40; i++) big.push(row({ key: 'big' + i, cut: CUT + i, res: i % 3 ? 'win' : 'loss', flat: i % 3 ? 0.5 : -1, sport: ['nba', 'nfl', 'cbb'][i % 3] }));
+  const LB = R.frozenList(big, { open: [] }, {}, 'all'), RT = R.tally(R.playRows(big, 'all'), {});
+  eq('list total equals the Record n when nothing is open or unpriced', [LB.total, LB.tally.n, LB.tally.units], [RT.n, RT.n, RT.units]);
+  eq('the box holds 12 first (FROZEN_SHOW), newest first', [R.FROZEN_SHOW, LB.items[0].key, LB.items[39].key], [12, 'big39', 'big0']);
+}
+
 console.log('copy rules');
 {
   const src = fs.readFileSync(path.join(ROOT, 'sv2-record.js'), 'utf8');
