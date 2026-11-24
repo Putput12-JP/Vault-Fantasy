@@ -3100,7 +3100,7 @@ rd-x.go>rd-n{opacity:1;transform:none}
       <div id="gp2hero"></div>
       <div class="gp2-dbar" id="gpdbar"></div>
       <div id="gpdsum"></div>
-      <div class="gp2-sec" id="gpsec1" hidden><h2>Next up</h2><p>Written once, 4 hours before tip. Until then the lean is live and not recorded.</p></div>
+      <div class="gp2-sec" id="gpsec1" hidden><h2>Next up</h2><p>Written once, when both starting fives are confirmed (20 minutes before tip at the latest). Until then the lean is live and not recorded.</p></div>
       <div class="gp2-board" id="gptonight"></div>
       <div class="gp2-sec" id="gpsec2" hidden><h2>Results</h2><p>First look. The full record is on <a href="#track" data-go="track">Track Record</a>.</p></div>
       <div class="gp2-list" id="gpres"></div>
@@ -3487,7 +3487,7 @@ const PAGES = [
   ]],
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
-    ['Game Picks', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 10.5 12 7l3.5 3.5"/>'), 'The Vault line\'s side against the spread and straight up, written 4 hours before tip and graded in public.', 'games'],
+    ['Game Picks', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 10.5 12 7l3.5 3.5"/>'), 'The Vault line\'s side against the spread and straight up, written once both starting lineups are confirmed, 20 minutes before tip at the latest, and graded in public.', 'games'],
     ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'propboard'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Opens on Sharps: who holds each side on Polymarket. Pinnacle, Kalshi and Polymarket as the sharp anchor, line moves and sharp-account flow are the other tabs.', 'sharps'],
   ]],
@@ -8446,11 +8446,13 @@ $('sdays').addEventListener('click', e => { const b = e.target.closest('button[d
 $('sgames').addEventListener('toggle', e => { const d = e.target.closest('details[data-g]'); if (d) sv.open[d.dataset.g] = d.open; }, true);
 
 // ── Game Picks (game_pick_record.py → nba-data gpicks/<day>.json + open.json; rules: docs/game-picks.md) ─────────────────────────────────────────
-// The Vault line's side against the spread and straight up, written ONCE when a game comes within 4 hours of tip and graded against the final. The first
-// look is the pick and never changes; the last look before tip is kept for closing-line value. Days before the recorder existed were rebuilt from the Game
-// Simulation rows already on the tape (backfill_game_picks.py): they are tagged, and the filter can leave them out. Not a bet signal: the game model adds
+// The Vault line's side against the spread and straight up, written ONCE when both teams' starting fives are confirmed (20 minutes before tip at the latest,
+// docs/game-pick-lock.md) and graded against the final. The first look is the pick and never changes; the last look before tip is kept for closing-line value.
+// Until 2026-11-23 the pick was written 4 hours before tip. Days before GP_LOCK_FROM were rebuilt at this lock from the Game Simulation rows already on the tape
+// (rebuild_game_picks_lineup_lock.py): they are tagged, and the filter can leave them out. Not a bet signal: the game model adds
 // nothing the closing spread has not priced (docs/game-model.md), so this page measures it in public. No rate is quoted under GP_MIN graded picks.
 const GP_MIN = 100, GP_TOL = 0.04, GP_BE = 110 / 210;
+const GP_LOCK_FALLBACK_MIN = 20, GP_LOCK_FROM = '2026-11-24';    // same as game_pick_record.LOCK_FALLBACK_MIN and LOCK_V2_FROM: older live day files were written at 4 hours and are not read
 const GP_COLS = ['game', 'clock', 'margin', 'total', 'p_home', 'book', 'spread', 'ats_side', 'ats_edge', 'ats_px', 'ats_res', 'ats_units',
   'ml_side', 'ml_px', 'ml_res', 'ml_units', 'ml_book', 'am', 'clv_pts', 'clv_p', 'src'];
 const GP_BOOKS = ['DraftKings', 'Pinnacle', 'FanDuel', 'BetMGM', 'bet365', 'Consensus'];       // same order as game_pick_record.BOOK_ORDER
@@ -8472,7 +8474,7 @@ async function loadGamePicks(){
     const get = u => fetch(u, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
     const [open, ...fs] = await Promise.all([get(base + 'open.json'), ...days.map(d => get(`${base}${d}.json`))]);
     if (open && open.cols && open.cols.join() === GP_COLS.join()) GPO = open;
-    for (const f of fs) if (f && f.cols && f.cols.join() === GP_COLS.join()) gpAbsorb({[f.day]: {games: f.games, rows: f.rows}});
+    for (const f of fs) if (f && f.cols && f.cols.join() === GP_COLS.join() && f.day >= GP_LOCK_FROM) gpAbsorb({[f.day]: {games: f.games, rows: f.rows}});   // earlier days: the rebuilt rows baked into GPICKS
   } finally { gpLoading = false; }
   if (view === 'games') renderGamePicks();
   if (view === 'summary') renderSummary();
@@ -8571,7 +8573,7 @@ function gp2Grades(items, note = true){
 }
 function gp2Hero(items, selDay){
   const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), F = gpFav(items), rb = items.filter(x => x.f.src === 'bf').length, games = A.n + A.p;
-  const sub = !items.length ? 'Picks are written 4 hours before tip and graded after the final.'
+  const sub = !items.length ? 'Picks are written once both lineups are confirmed, 20 minutes before tip at the latest, and graded after the final.'
     : `${games} ${games === 1 ? 'game' : 'games'}${rb ? `, ${rb === items.length ? 'all' : rb} rebuilt from the tape` : ''}${A.p ? `, ${A.p} pushed` : ''}`;
   const rate = A.n >= GP_MIN ? `${leanPct(A.hit)}${A.ci ? ` (${leanPct(A.ci[0], 0)} to ${leanPct(A.ci[1], 0)})` : ''}, break-even at ${DASH}110 is ${leanPct(GP_BE)}` : `${A.n} of ${GP_MIN} graded before a rate is quoted`;
   const d = F.n ? M.w - F.w : 0, gap = !F.n ? '' : d === 0 ? `Level with the market favourite on ${F.n} games` : `${Math.abs(d)} ${Math.abs(d) === 1 ? 'win' : 'wins'} ${d < 0 ? 'behind' : 'ahead of'} the market favourite on ${F.n} games`;
@@ -8638,9 +8640,9 @@ function gpUse(g, B, status){                                                   
   return {open, locked, live, use: locked || live};
 }
 function gp2Row(g, B, status, now, i, rk){
-  const {open, locked, live, use} = gpUse(g, B, status), home = g.home, away = g.away, lockAt = g.tip - 4 * 3600, started = g.tip <= now;
+  const {open, locked, live, use} = gpUse(g, B, status), home = g.home, away = g.away, lockBy = g.tip - GP_LOCK_FALLBACK_MIN * 60, started = g.tip <= now;
   const st = locked ? (started ? ['live', 'In progress, pick locked'] : ['lk', open.ft ? `Locked ${clock(open.ft)} ${TZL}` : 'Pick locked'])
-    : started ? ['warn', 'No pick recorded'] : now >= lockAt ? ['warn', 'Locking at the next poll'] : ['', `Locks ${clock(lockAt)} ${TZL}, in ${gpDur(lockAt - now)}`];
+    : started ? ['warn', 'No pick recorded'] : now >= lockBy ? ['warn', 'Locking at the next poll'] : ['', `Locks when lineups are in, by ${clock(lockBy)} ${TZL}`];
   const early = isEarly(g, B) ? '<span class="gp2-flag" title="The first 4 weeks of a season: the Vault line starts from last season\'s teams, so gaps against the market are larger and less trusted (docs/season-start-results.md)">Early season</span>' : '';
   const now2 = locked && live && (Math.abs(live.margin - locked.margin) >= .3 || live.spread !== locked.spread) ? `<p class="gp2-now">Now: model ${live.margin > 0 ? home : away} ${Math.abs(live.margin).toFixed(1)}${live.spread == null ? '' : `, line ${gpSpTxt(live, home, away)}`}</p>` : '';
   return `<article class="gp2-g" style="--i:${i}"><div class="gp2-when"><b>${clock(g.tip)}</b><span>${etFmt(g.tip, {weekday: 'short'})} ${TZL}</span><em class="gp2-st ${st[0]}">${st[1]}</em></div>
@@ -8673,9 +8675,9 @@ function renderTrackGames(){
   if (!gpTried) loadGamePicks();
   const all = gpItems(), items = all, A = gpStats(items, 'ats'), M = gpStats(items, 'ml');
   $('tgamestat').textContent = items.length ? `ATS ${gpRec(A)} · winner ${M.w}${DASH}${M.l} · ${items.length} games` : 'No games graded yet';
-  $('tgamesub').textContent = `Each pick is written once, 4 hours before tip, and graded on the final. Not a bet. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
+  $('tgamesub').textContent = `Each pick is written once, when both lineups are confirmed (20 minutes before tip at the latest), and graded on the final. Not a bet. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
   $('tgamek').innerHTML = gp2Hero(items);
-  const empty = '<tbody><tr><td class="l"><p class="empty">No game picks graded yet. They are written 4 hours before tip and graded after the final.</p></td></tr></tbody>';
+  const empty = '<tbody><tr><td class="l"><p class="empty">No game picks graded yet. They are written once both lineups are confirmed and graded after the final.</p></td></tr></tbody>';
   const ats = items.filter(x => x.r.ats_res), bin = (lo, hi) => ats.filter(x => x.r.ats_edge >= lo && x.r.ats_edge < hi);
   const row = (label, it, kind = 'ats') => { const a = gpStats(it, kind); if (!a.n && !a.p) return '';
     return `<tr><td class="l"><b>${label}</b></td><td class="num">${a.n}</td><td class="num">${gpRec(a)} ${gp2Bar(a.w, a.l, a.p)}</td><td class="num">${gpRate(a)}</td>${kind === 'ats' ? `<td class="num">${a.nu ? gpU(a.units) : ''}</td><td class="num">${a.nclv ? gpS(a.clv, 2) : ''}</td>` : ''}</tr>`; };
@@ -8748,7 +8750,7 @@ function renderGamePicks(){
   if (on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + on.clientWidth / 2;
   const items = all.filter(x => x.day === gpDay).sort((a, b) => a.tip - b.tip), G = gpDay ? upcoming(gpDay) : [];
   const locked = G.filter(g => GPO && GPO.games[String(g.id)]).length;
-  $('gpdsum').innerHTML = gpDay ? gp2DaySummary(gpDay, items, G.length, locked) : `<div class="gp2-empty"><b>No regular-season games to pick right now.</b><span>Picks are written 4 hours before each tip. ${noGamesWhy()}</span></div>`;
+  $('gpdsum').innerHTML = gpDay ? gp2DaySummary(gpDay, items, G.length, locked) : `<div class="gp2-empty"><b>No regular-season games to pick right now.</b><span>Picks are written once both lineups are confirmed, 20 minutes before each tip at the latest. ${noGamesWhy()}</span></div>`;
   $('gpsec1').hidden = !G.length; $('gpsec2').hidden = !items.length;
   $('gptonight').classList.toggle('gp2-anim', !gp2Seen && G.length > 0);
   const rk = gpRanks([...items.map(gpEnt), ...G.map(g => { const u = gpUse(g, B, status).use, pk = u ? gpPickOf(u) : {}; return {id: String(g.id), edge: pk.ats ? pk.ats.edge : null, p: pk.ml ? pk.ml.p : null}; })]);
@@ -8758,9 +8760,9 @@ function renderGamePicks(){
   $('gpfoot').innerHTML = `<div class="gp2-how">
     <div><b>1 &middot; The model</b><p>The Vault line from the Slate page: team ratings, home court, back-to-backs and the injury report, in points.</p></div>
     <div><b>2 &middot; The line</b><p>DraftKings' spread and moneyline, at the price it posted. The spread pick is the side the model likes against it; the winner pick is the team it gives better than even odds.</p></div>
-    <div><b>3 &middot; The lock</b><p>Written once, 4 hours before tip, never re-priced. The last look before tip is kept to measure closing-line value. No rate is quoted under ${GP_MIN} graded picks.</p></div></div>
+    <div><b>3 &middot; The lock</b><p>Written once, when both starting fives are confirmed (20 minutes before tip at the latest), so the injury report and the starters are settled. Never re-priced. The last look before tip is kept to measure closing-line value, which is close to zero by design now that the pick is written near tip. No rate is quoted under ${GP_MIN} graded picks.</p></div></div>
     <p class="gp2-fine"><b>Shadow grades.</b> Spread: A is an edge of 5 or more points, B is 3 to 5, C is under 3. Winner: A is a 70% chance or more, B is 60 to 70%, C is under 60%. #1 to #3 is the day's most confident. They are labels to track, fixed in advance, and the record by grade is on Track Record. Over 2,641 games against the closing line, spread A won 47.3% and the top 3 spread picks of each day 49.3%; winner A won 80.5% where the market implied 79.2%, and the top 3 of each day 76.1% where it implied 76.1% (nba/docs/pick-grades.md). So a grade says how far the model sits from the line, or how sure it is, not that the pick is better.</p>
-    <p class="gp2-fine">Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and against Kalshi's moneyline at 1pm it was no better than the price (Brier 0.2057 against 0.2008). Days before the recorder existed were rebuilt from the model rows and ESPN lines already on the tape, are labelled <i>rebuilt</i>, and can be left out on Track Record, where the full record lives.</p>`;
+    <p class="gp2-fine">Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and against Kalshi's moneyline at 1pm it was no better than the price (Brier 0.2057 against 0.2008). Days before the recorder existed, and every day before the lineup lock began (the pick used to be written 4 hours before tip), were rebuilt at the lineup lock from the model rows, lineups and ESPN lines already on the tape, are labelled <i>rebuilt</i>, and can be left out on Track Record, where the full record lives.</p>`;
 }
 function gpGoDay(d){ if (!d || d === gpDay) return; gpDay = d; gp2Seen = false; renderGamePicks(); }
 $('gpdbar').addEventListener('click', e => {
@@ -11558,7 +11560,7 @@ function smBest(X, now){
   const up = X.filter(x => !x.started);
   const a = up.filter(x => x.ats).sort((p, q) => q.ats.edge - p.ats.edge)[0], m = up.filter(x => x.ml).sort((p, q) => q.ml.p - p.ml.p)[0];
   const pl = up.flatMap(x => x.plays.map(p => ({x, p}))).sort((p, q) => (smEx(q.p).edge || 0) - (smEx(p.p).edge || 0))[0];
-  const lock = x => x.locked ? 'locked' : `live lean, locks ${clock(x.g.tip - 4 * 3600)}`;
+  const lock = x => x.locked ? 'locked' : `live lean, locks by ${clock(x.g.tip - GP_LOCK_FALLBACK_MIN * 60)}`;
   const card = (ic, k, title, sub, val, vsub, attrs) => `<button type="button" class="sm-b${attrs ? '' : ' none'}" ${attrs || 'disabled'}><span class="ic">${ic}</span><span class="w"><span class="sm-k">${k}</span><b>${title}</b><span>${sub}</span></span><span class="v">${val}<span>${vsub}</span></span></button>`;
   return `<div class="sm-best">
     ${a ? card(lgImg(a.ats.team, 28), `Top spread pick · ${clock(a.g.tip)}`, `${a.ats.team} ${smSp(a.ats.line)}${gpBadge('ats', a.ats.edge, null, `edge ${a.ats.edge.toFixed(1)} points`)}`, `${a.g.away} @ ${a.g.home} · Vault ${a.g.home} ${smSp(a.vl)} · ${lock(a)}`, `<b>${a.ats.edge.toFixed(1)}</b>`, 'pts edge', 'data-go="games"') : card('', 'Top spread pick', 'None yet', 'Waiting on lines and the Vault line', '', '', '')}
@@ -11582,7 +11584,7 @@ function smTile(x, now){
     <div class="hd"><b>${clock(g.tip)}</b>${x.fav ? '<span class="sm-tag">★ Your team</span>' : ''}<span class="sm-k">${g.total != null ? `O/U <rd-v data-k="ou">${g.total}</rd-v>` : ''}</span></div>
     <div class="tm h"><span></span><span>Book</span><span>Vault</span></div>
     ${[g.away, g.home].map(t => `<div class="tm"><span class="nm">${lgImg(t, 20)}${t}</span><span class="n">${bk(t)}</span><span class="n v">${vl(t)}</span></div>`).join('')}
-    <div class="pks"><div class="${x.locked ? '' : 'lean'}" title="${x.locked ? 'Locked 4 hours before tip' : 'Live lean: locks 4 hours before tip'}"><span class="sm-k">Spread${x.locked ? '' : ' · lean'}</span>${x.ats ? `<b>${x.ats.team} ${smSp(x.ats.line)}${gpBadge('ats', x.ats.edge, null, `edge ${x.ats.edge.toFixed(1)} points`)}</b>` : `<b class="dim">${x.sp == null ? 'No line' : 'No pick'}</b>`}</div>
+    <div class="pks"><div class="${x.locked ? '' : 'lean'}" title="${x.locked ? 'Locked once both lineups were confirmed' : 'Live lean: locks when both lineups are confirmed, 20 minutes before tip at the latest'}"><span class="sm-k">Spread${x.locked ? '' : ' · lean'}</span>${x.ats ? `<b>${x.ats.team} ${smSp(x.ats.line)}${gpBadge('ats', x.ats.edge, null, `edge ${x.ats.edge.toFixed(1)} points`)}</b>` : `<b class="dim">${x.sp == null ? 'No line' : 'No pick'}</b>`}</div>
       <div class="${x.locked ? '' : 'lean'}"><span class="sm-k">Winner</span>${x.ml ? `<b>${x.ml.team} ${leanPct(x.ml.p, 0)}${gpBadge('ml', x.ml.p, null, `${leanPct(x.ml.p, 0)} chance`)}</b>` : '<b class="dim">Even</b>'}</div></div>
     <div class="sm-sg">${dots.join('')}</div>
     ${x.plays.length || x.bets.length || fuP.length ? `<div class="sm-pl">${fuP.slice(0, 4).map(({t, p}) => fuRow(t, p)).join('')}${fuP.length > 4 ? `<span class="muted" style="font-size:11.5px">+${fuP.length - 4} more fav unders</span>` : ''}${x.plays.slice(0, 3).map(p => `<a class="sm-play" href="https://vaultfantasy.com/sharp-money/#plays" target="_blank" rel="noopener" title="${esc(smName(p))}"><b>${esc(smTitle(p))}</b>${on(p) ? '<span class="sm-tag warn">On it</span>' : ''}<span class="r">${smAm(p.first.price.am)} <span class="pos">+${((smEx(p).edge || 0) * 100).toFixed(1)}%</span></span></a>`).join('')}${x.plays.length > 3 ? `<span class="muted" style="font-size:11.5px">+${x.plays.length - 3} more on Sharp Money</span>` : ''}
@@ -11740,7 +11742,7 @@ function renderSummary(){
     <div class="sm-tiles">${shown.length ? shown.map(x => smTile(x, now)).join('') : '<section class="sm-mod sm-empty"><b>No games match.</b><p>Clear the filter to see every game.</p></section>'}</div>
     ${smLow(X, B, now)}`;
   smMotion(X.concat(favX), snap);
-  $('smfoot').innerHTML = `<div><b>How to read it.</b> Book is DraftKings' spread for each team; Vault is the Vault line from the Slate page. Spread and Winner are the Game Picks, locked 4 hours before tip (dashed until then). A, B and C are their shadow grades, labels fixed in advance, not recommendations. Sharp Plays are logged on Sharp Money and pass its strict price and timing gates; sharp-account money is context only and never counts toward a play. <span class="sm-tag fu">Fav under</span> marks a watch list, not a bet: the under on a player whose team is favored by 4.5 to 8.5, when the model gives the under 5+ points more than the price (the small number after the price). Fixed an hour before tip at the best DraftKings or Pinnacle price and tracked from Nov 4. It was found by searching many splits of 13 nights, so expect it to fade; a team's unders win or lose together.</div>`;
+  $('smfoot').innerHTML = `<div><b>How to read it.</b> Book is DraftKings' spread for each team; Vault is the Vault line from the Slate page. Spread and Winner are the Game Picks, locked when both lineups are confirmed, 20 minutes before tip at the latest (dashed until then). A, B and C are their shadow grades, labels fixed in advance, not recommendations. Sharp Plays are logged on Sharp Money and pass its strict price and timing gates; sharp-account money is context only and never counts toward a play. <span class="sm-tag fu">Fav under</span> marks a watch list, not a bet: the under on a player whose team is favored by 4.5 to 8.5, when the model gives the under 5+ points more than the price (the small number after the price). Fixed an hour before tip at the best DraftKings or Pinnacle price and tracked from Nov 4. It was found by searching many splits of 13 nights, so expect it to fade; a team's unders win or lose together.</div>`;
 }
 $('v-summary').addEventListener('change', e => { const s = e.target.closest('[data-smfav]'); if (!s || !s.value) return; PRO.team = s.value; proSave(); renderNav(); renderSummary(); });
 $('v-summary').addEventListener('click', e => {

@@ -1117,9 +1117,9 @@ def shadow(root, day, board, now, polls):
         except Exception as e:
             rec['leans_err'] = str(e)[:120]
             traceback.print_exc(limit=2)
-        try:                                                    # the Vault line's ATS and winner picks, locked within 4h of tip (game_pick_record.py, docs/game-picks.md); never stops the ledger
+        try:                                                    # the Vault line's ATS and winner picks, locked once both fives are confirmed, 20 min before tip at the latest (game_pick_record.py, docs/game-pick-lock.md); never stops the ledger
             import game_pick_record
-            grows, gmeta = game_pick_record.log(board, now)
+            grows, gmeta = game_pick_record.log(board, now, day.last.get('lineups'))
             rec['gpick'] = len(grows)
             day.record('gpick', now, grows, gmeta)
             rec['gpick_open'] = game_pick_record.write_open(root, day, now)

@@ -138,6 +138,72 @@ class Summary(unittest.TestCase):
         self.assertEqual(s["f"]["ml"], [2, 2, 0])
 
 
+class LockRule(unittest.TestCase):
+    """The pick is written once both fives are confirmed, or LOCK_FALLBACK_MIN before tip at the latest (docs/game-pick-lock.md)."""
+    DAY, TIP = "2026-11-22", 1_000_000
+
+    def lineup(self, team, status, n=5, drop=None):
+        rows = {f"{self.DAY}|{team}|p{i}": ["PG", status, "Active"] for i in range(n)}
+        rows[f"{self.DAY}|{team}|bench"] = ["", "Expected", "Active"]              # no slot: not a starter, never decides
+        if drop:
+            rows[f"{self.DAY}|{team}|p0"] = None                                    # a removed row counts for nothing
+        return rows
+
+    def game(self):
+        return {"id": "G1", "day": self.DAY, "tip": self.TIP, "away": "OKC", "home": "MIA"}
+
+    def test_a_five_needs_five_starters_all_confirmed(self):
+        c = G.fives_confirmed({**self.lineup("OKC", "Confirmed"), **self.lineup("MIA", "Expected")})
+        self.assertEqual((c[(self.DAY, "OKC")], c[(self.DAY, "MIA")]), (True, False))
+        self.assertFalse(G.fives_confirmed(self.lineup("OKC", "Confirmed", n=4))[(self.DAY, "OKC")])
+        self.assertFalse(G.fives_confirmed(self.lineup("OKC", "Confirmed", drop=True))[(self.DAY, "OKC")])
+
+    def test_both_fives_confirmed_opens_the_lock(self):
+        both = G.fives_confirmed({**self.lineup("OKC", "Confirmed"), **self.lineup("MIA", "Confirmed")})
+        self.assertTrue(G.lock_open(self.game(), self.TIP - 45 * 60, both))
+
+    def test_one_five_confirmed_waits(self):
+        one = G.fives_confirmed({**self.lineup("OKC", "Confirmed"), **self.lineup("MIA", "Expected")})
+        self.assertFalse(G.lock_open(self.game(), self.TIP - 45 * 60, one))
+
+    def test_no_lineups_waits_until_the_fallback(self):
+        self.assertFalse(G.lock_open(self.game(), self.TIP - 4 * 3600, {}))          # the old window: no longer a lock
+        self.assertFalse(G.lock_open(self.game(), self.TIP - (G.LOCK_FALLBACK_MIN + 1) * 60, {}))
+        self.assertTrue(G.lock_open(self.game(), self.TIP - G.LOCK_FALLBACK_MIN * 60, {}))
+
+    def test_never_after_tip(self):
+        both = G.fives_confirmed({**self.lineup("OKC", "Confirmed"), **self.lineup("MIA", "Confirmed")})
+        self.assertFalse(G.lock_open(self.game(), self.TIP, both))
+        self.assertFalse(G.lock_open(self.game(), self.TIP + 60, {}))
+
+    def test_a_different_days_lineup_does_not_count(self):
+        other = {k.replace(self.DAY, "2026-11-23"): v for k, v in {**self.lineup("OKC", "Confirmed"), **self.lineup("MIA", "Confirmed")}.items()}
+        self.assertFalse(G.lock_open(self.game(), self.TIP - 45 * 60, G.fives_confirmed(other)))
+
+
+class MergeCutover(unittest.TestCase):
+    """build_game_picks.merge: rebuilt rows win before LOCK_V2_FROM, live rows win from it (docs/game-pick-lock.md)."""
+    def day(self, gid, src):
+        return {"games": {gid: ["A @ B", 1, "A", "B", 100.0, 101.0]}, "rows": [[gid, "f", 1.0, 220.0, .5, "DraftKings", -1.5] + [None] * 13 + [src], [gid, "c", 1.0, 220.0, .5, "DraftKings", -1.5] + [None] * 13 + [src]]}
+
+    def test_before_the_cutover_the_rebuilt_row_replaces_the_live_one(self):
+        import build_game_picks as B
+        early = "2026-11-10"
+        out = B.merge({early: self.day("G1", "live")}, {early: self.day("G1", "bf")})
+        self.assertEqual({r[-1] for r in out[early]["rows"]}, {"bf"})
+
+    def test_before_the_cutover_a_live_game_with_no_rebuilt_row_stays(self):
+        import build_game_picks as B
+        early = "2026-11-10"
+        out = B.merge({early: self.day("G2", "live")}, {early: self.day("G1", "bf")})
+        self.assertEqual(sorted(out[early]["games"]), ["G1", "G2"])
+
+    def test_from_the_cutover_the_live_row_replaces_the_rebuilt_one(self):
+        import build_game_picks as B
+        out = B.merge({G.LOCK_V2_FROM: self.day("G1", "live")}, {G.LOCK_V2_FROM: self.day("G1", "bf")})
+        self.assertEqual({r[-1] for r in out[G.LOCK_V2_FROM]["rows"]}, {"live"})
+
+
 class SettleEndToEnd(unittest.TestCase):
     """record() on a fake nba-data folder: two polls for one game, a final score, and the real ledger helpers."""
 

@@ -107,7 +107,7 @@ live from the branch. The recorder also force-pushes `board.json` (current props
 minutes, so a minutes edit reprices the board. Row format and what each source holds: the docstring at the top of `snapshot.py`. The price of a key at
 time X is its last row at or before X; `polls.jsonl` says whether each source actually answered around X.
 
-**Game picks.** `scripts/game_pick_record.py` writes the Vault line's spread pick and winner pick for every regular-season game once, 4 hours before tip (source `gpick`, never re-priced), and
+**Game picks.** `scripts/game_pick_record.py` writes the Vault line's spread pick and winner pick for every regular-season game once, when both starting fives are confirmed (20 minutes before tip at the latest; it was 4 hours before tip until 2026-11-23, see [docs/game-pick-lock.md](docs/game-pick-lock.md)) (source `gpick`, never re-priced), and
 `ledger.settle` grades them from the final score into `gpicks/<tip ET day>.json` on `nba-data` (+ `gpick_days` in `track.json`). They show on the Game Picks page and in Track Record. Not an edge:
 the game model adds nothing the closing line has not priced. Rules, definitions, the rebuilt earlier days and their limits: [docs/game-picks.md](docs/game-picks.md). Tests: `python3 -m unittest tests.test_game_pick_record`.
 
