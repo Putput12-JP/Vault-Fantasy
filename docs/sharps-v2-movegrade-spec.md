@@ -1,6 +1,6 @@
 # Sharps V2: the Move grade (spec)
 
-**Status: PROPOSED. Docs only, nothing built.** Written 2026-11-23 (Central). Rule id for everything below: **`mg-1`**. A change to any
+**Status: built (PR 574) and registered 2026-11-24 (see docs/sharp-movegrade-prereg.md).** Written 2026-11-23 (Central). Rule id for everything below: **`mg-1`**. A change to any
 cutoff, branch or input after the registering commit is a new rule id (`mg-2`) and a new registration.
 
 The user's decision (2026-11-23, not relitigated here): each shown Sharps play gets a **Move grade**, a letter A to D that says how far the
@@ -432,7 +432,7 @@ appended to its end, and it does not edit any existing rule (`v2t-1`, `v2s-1`, `
 commit that appends it with the status word changed to Registered is the registration.
 
 ```
-## Move grade mg-1 (shadow, PROPOSED 2026-11-23, not registered)
+## Move grade mg-1 (shadow, proposed 2026-11-23, Registered 2026-11-24)
 
 Added by the user's decision of 2026-11-23. Rule id `mg-1`, spec `docs/sharps-v2-movegrade-spec.md`, code `scripts/sharps_v2/move_grade.py`
 (cutoff tables `MG_M_A`, `MG_M_C`, `MG_X_A`, `MG_X_C`, frozen at the registering commit). This amendment changes no earlier rule of this file:

@@ -1,16 +1,16 @@
 # Sharps V2 Move grade mg-1: pre-registration
 
-**Status: PROPOSED. Not registered.** The user has not approved this text. Nothing below is in force until a commit changes the status line to Registered; that commit is the
-registration, and the first play that can count is the first one cut after it. The registered `docs/sharp-tier-v2-prereg.md` is frozen and is **not edited** by this file: the
+**Status: Registered (approved by the user in chat, 2026-11-24).** The commit that changes this line to Registered is the
+registration, and the first play that can count is the first one cut after it (`REGISTERED_CUT` in `scripts/sharps_v2/move_grade_record.py` holds that commit's time in epoch seconds). The registered `docs/sharp-tier-v2-prereg.md` is frozen and is **not edited** by this file: the
 text below is a separate, dated section in its own file, so no registered rule changes (the user can ask for it to be appended there instead). The build that logs the grade at
-lock (`scripts/sharps_v2/move_grade.py`, the `mg` key of the `v2_tier` rows) exists before the registration, so a row logged before the registering commit exists but cannot count. In code, `REGISTERED_CUT` in `move_grade_record.py` is None until the user registers, which keeps the forward record at zero; registering means setting it to the registering commit's time.
+lock (`scripts/sharps_v2/move_grade.py`, the `mg` key of the `v2_tier` rows) exists before the registration, so a row logged before the registering commit exists but cannot count. In code, `REGISTERED_CUT` in `move_grade_record.py` was None until the user registered, which kept the forward record at zero; it is now the registering commit's time.
 
 Spec: `docs/sharps-v2-movegrade-spec.md`. Code: `scripts/sharps_v2/move_grade.py`; the cutoffs and the in-sample record are reproduced by `scripts/sharps_v2/move_grade_history.py`;
 the record file is `scripts/sharps_v2/move_grade_record.py`.
 
 ---
 
-## Move grade mg-1 (shadow, PROPOSED 2026-11-23, not registered)
+## Move grade mg-1 (shadow, proposed 2026-11-23, Registered 2026-11-24)
 
 Added by the user's decision of 2026-11-23. Rule id `mg-1`, spec `docs/sharps-v2-movegrade-spec.md`, code `scripts/sharps_v2/move_grade.py`
 (cutoff tables `MG_M_A`, `MG_M_C`, `MG_X_A`, `MG_X_C`, frozen at the registering commit). This registration changes no earlier rule of the registered

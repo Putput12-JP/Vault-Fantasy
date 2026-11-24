@@ -613,7 +613,7 @@ class RecordTests(unittest.TestCase):
         ps = [self.play("nba", "1", "a"), self.play("nfl", "2", "b")]
         d = MGR.build(ps, 1, "x", {"1": {"key": "1", "cut": 1000, "tier": "thin", "mf": {"pin_state": "toward"}}})     # a log row with mf but no mg: not forward for the grade
         self.assertEqual((d["first_logged_cut"], d["logged_rows"], d["forward_graded"]), (None, 0, 0))
-        self.assertEqual(d["forward_note"], MGR.FORWARD_NOTE)
+        self.assertEqual(d["forward_note"], MGR.FORWARD_NOTE_REGISTERED)                           # registered 2026-11-24: the note says what counts
         for s in SPORTS:
             for sl in MGR.SLICES:
                 self.assertEqual(d["sports"][s][sl]["forward"]["n"], 0)
@@ -635,8 +635,19 @@ class RecordTests(unittest.TestCase):
         self.assertEqual((dropped["unreadable"]["forward"]["n"], dropped["a"]["forward"]["n"]), (1, 0))   # an mg of null is a dropped block: unreadable
 
     def test_a_logged_mg_row_cannot_be_forward_while_the_registration_cut_is_none(self):
-        """The prereg is PROPOSED: rows logged before a registration cannot count, however they were logged."""
-        self.assertIsNone(MGR.REGISTERED_CUT)
+        """Before a registration, rows logged cannot count however they were logged. The constant is patched to None here (it was None until the user registered on 2026-11-24)."""
+        with mock.patch.object(MGR, "REGISTERED_CUT", None):
+            self._none_case()
+
+    def test_the_registration_cut_is_set_and_rows_logged_before_it_do_not_count(self):
+        self.assertIsInstance(MGR.REGISTERED_CUT, int)
+        self.assertGreater(MGR.REGISTERED_CUT, 1795500000)                                        # 2026-11-24, the registering commit
+        ps = [self.play("nba", "1", "a", cut=MGR.REGISTERED_CUT - 1), self.play("nba", "2", "a", cut=MGR.REGISTERED_CUT)]
+        logged = {k: {"key": k, "cut": ps[i]["cut"], "mg": {"letter": "A", "against": False, "why": None}} for i, k in enumerate(("1", "2"))}
+        d = MGR.build(ps, 1, "x", logged)
+        self.assertEqual((d["forward_graded"], d["logged_not_counted"], d["registered_cut"]), (0, 2, MGR.REGISTERED_CUT))   # a cut equal to or before the registration never counts
+
+    def _none_case(self):
         ps = [self.play("nba", "1", "a", cut=500), self.play("nba", "2", "b", cut=900), self.play("cfb", "3", "c", cut=2000)]
         logged = {"2": {"key": "2", "cut": 900, "mg": {"letter": "B", "against": False, "why": None}}, "3": {"key": "3", "cut": 2000, "mg": {"letter": "C", "against": False, "why": None}}}
         d = MGR.build(ps, 1, "x", logged)
