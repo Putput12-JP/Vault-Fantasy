@@ -179,7 +179,7 @@ shows (+11.98u) is the current rule applied to all history, not what a reader fo
 `scripts/build_side_cards.py` now publishes an evidence tier and the price you would get beside each play (`markets[g].v2`, `markets[g].splits`,
 `docs/side-cards.md` "V2 plays data"). Nothing already stored changes: `scripts/sharps_v2/tier_history.py` re-derives the tier of every graded shown
 play from its own card at its cut (nothing from the outcome) and prints the record per tier. The tiers are in-sample (the rule was written after
-these results) and are not a signal. Forward test: `docs/sharp-tier-v2-prereg.md` (PROPOSED).
+these results) and are not a signal. Forward test: `docs/sharp-tier-v2-prereg.md` (Registered 2026-11-23).
 
 **Data read:** `origin/pm-holders-data` at commit `dec770c0e7bb1292f7b2bc09d754ae6680b76387` (Nov 23, 10:26 AM CT). Every number in this entry is as of that
 commit and is reproduced by `python3 -I scripts/sharps_v2/tier_history.py --ref <commit>`, which prints the hash it read.
@@ -304,7 +304,7 @@ How to read it, plainly:
 | Headline derivable plays | +5.5% (+4.91u) | +6.8% (+3.15u) | 90 |
 
 The CBB line moves mostly because the one Clear play (a win) is sized up and the three Thin plays (all losses) are sized down; that is an ordering applied after
-the fact to ten plays and says nothing about forward results. The proposed forward read is in `docs/sharp-tier-v2-prereg.md`, "Shadow size v2s-1" (still PROPOSED).
+the fact to ten plays and says nothing about forward results. The registered forward read is in `docs/sharp-tier-v2-prereg.md`, "Shadow size v2s-1" (Registered 2026-11-23).
 
 ## Market-move flags v2f-2: the record by flag (2026-11-23)
 
@@ -313,7 +313,7 @@ Pinnacle's no-vig price for the side moved toward or away from it at the same li
 (spreads, totals) or the books moved the price (moneylines). Pinnacle's limit is a fact line (from, to), not a flag (user decision D1). Nothing already stored changes:
 the history below is derived **point in time** from the tape rows at or before each play's cut (`scripts/sharps_v2/flag_record.py`, printed by
 `tier_history.py`), nothing from the result. Every number is **in-sample** (the flag rule was written after these results), flat 1u at the stored price at the cut,
-and none of it is a signal. Forward test: `docs/sharp-tier-v2-prereg.md` "Market-move flags v2f-2" (PROPOSED); forward is zero until a play is logged at lock with its flags.
+and none of it is a signal. Forward test: `docs/sharp-tier-v2-prereg.md` "Market-move flags v2f-2" (Registered 2026-11-23); forward is zero until a play is logged at lock with its flags.
 
 **Rule change before anything shipped (v2f-1 to v2f-2).** The first draft read the start of the 24-hour window as the first stored row inside it. The tape writes a row only when a book's
 numbers change, so that dropped the first move of the window, and a first quote at a new line read as a move of 0 (an invented zero). v2f-2 starts the window at the row hanging when it

@@ -348,12 +348,12 @@ with no price check possible at the cut (the tape did not exist yet) the price f
 ### Market-move flags (`markets[g].v2.flags`, `markets[g].v2.series`, forward log key `mf`)
 
 Spec: `docs/sharps-v2-flags-spec.md` (rule `v2f-2`); code: `scripts/sharps_v2/flags_v2.py`, called from `plays_v2.market_v2`. Registration text:
-`docs/sharp-tier-v2-prereg.md` "Market-move flags v2f-2" (PROPOSED). **Additive only, shown plays only** (`v2.side` set): the keys sit inside `v2`, so
+`docs/sharp-tier-v2-prereg.md` "Market-move flags v2f-2" (Registered 2026-11-23). **Additive only, shown plays only** (`v2.side` set): the keys sit inside `v2`, so
 `strip_plays_v2` removes them with the rest and the V1 file is unchanged byte for byte. They are **context only**: they never feed Top Reads, SM_GATE, an agree
 total, `sf_rungs`, a gate, a lock, the evidence tier `v2t-1`, the shown size (flat 1u) or the shadow size `v2s-1`, and they read "what the market did", never
 "sharp action confirms". User decisions of 2026-11-23: D1 the Pinnacle limit is a **fact line only**, D2 thresholds per sport and market, D3 moneyline Flag C
 reads the US books' price, D4 only the books already in the tape (Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365; BookMaker and Circa are never
-read or shown, Fanatics and Caesars are not added), D5 the prereg stays PROPOSED, D7 the spec's title and eyebrow.
+read or shown, Fanatics and Caesars are not added), D5 the prereg is approved and registered, D7 the spec's title and eyebrow.
 
 ```
 v2.flags = {

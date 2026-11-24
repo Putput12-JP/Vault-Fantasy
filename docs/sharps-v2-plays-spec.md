@@ -55,7 +55,7 @@ Binding rules (CLAUDE.md, the workflow):
 | `scripts/grade_side_cards.py` | New append-only row kind `pinclose`; new record sections `v2_tier` and `shown` per sport; new file `pm_record/v2_tier_record.json`. `plays()`, `grade()`, `summarize()` and every existing record key unchanged. |
 | `.github/workflows/pm-cards.yml` | Pass `--v2-tier-record pmdata/pm_record/v2_tier_record.json`; run `tests.test_sharps_v2_plays` with the other unit tests. The shadow log sits under `pm_cards/<sport>/`, so the existing `commit_push("pmdata", "pm_cards", sports, ...)` already commits it. |
 | `tests/test_sharps_v2_plays.py` (new) | Section 9. |
-| `docs/sharp-tier-v2-prereg.md` (new) | The pre-registration of the tier shadow (PROPOSED until the user approves). |
+| `docs/sharp-tier-v2-prereg.md` (new) | The pre-registration of the tier shadow (Registered 2026-11-23, approved by the user). |
 | `docs/side-card-record.md` | The missing 2026-11-20 entry (section 7.3, text ready). Done in the same PR as the grader change. |
 
 Not edited: `sharp-money/side-cards.js`, `sharp-money/following.js` (other PRs), anything under `sharp-money/sharps-v2/` (the V2 page
@@ -468,7 +468,7 @@ Also:
 - **D-P1. Polymarket ask at the cut.** Add Gamma `bestBid` / `bestAsk` to the holders scan's price rows and to keyframe `mk` (additive
   keys; the frozen tests read `px` and `px_t` only). A separate PR on `scripts/scan_pm_holders.py`. Until then no ask is published.
   Grading at the ask would be a new line from its start date, beside the displayed-price line, never a rewrite.
-- **D-P2. Register the tier shadow.** `docs/sharp-tier-v2-prereg.md` is PROPOSED. Until the user approves it, the builder may write
+- **D-P2. Register the tier shadow.** `docs/sharp-tier-v2-prereg.md` was PROPOSED and is now approved and registered (2026-11-23). Before that approval, the builder may write
   `v2` blocks and the log, but `v2_tier_record` stays empty and the page shows "Tier record: not logged yet".
 - **D-P3. 1u on Contested plays** (the page spec's D1). Not part of this spec. Removing a size would change the headline and need a
   CLAUDE.md change and a full re-derivation with old and new numbers.

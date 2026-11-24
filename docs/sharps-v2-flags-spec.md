@@ -1,6 +1,6 @@
 # Sharps V2: market-move flags and the play write-up card (spec)
 
-**Status: data side built on branch `sharps-v2-flags` (nothing shipped, the prereg stays PROPOSED).** Written 2026-11-23 (Central). Rule id for everything below:
+**Status: data side built on branch `sharps-v2-flags` (nothing shipped yet; the prereg was approved and registered 2026-11-23).** Written 2026-11-23 (Central). Rule id for everything below:
 **`v2f-2`**. The first draft of this spec (`v2f-1`) read a book's "from" value as the first stored row inside the 24-hour window; because the tape writes a row only when
 something changes, that dropped the first move of the window and read a first quote at a new line as a move of 0. Review found both, nothing had shipped, so the
 rule was changed in place and every threshold re-measured (sections 1.1, 1.2, 1.4); the id is `v2f-2` everywhere. A change to any threshold, window or branch after the
@@ -323,7 +323,7 @@ The flags are a tracking change, so they ship as a **new shadow signal** in the 
 
 ### 2.3 Prereg section
 
-The registered text is the section "Market-move flags v2f-2" of `docs/sharp-tier-v2-prereg.md` (PROPOSED with the rest of that file). It replaces this spec's first-draft text: the primary metric
+The registered text is the section "Market-move flags v2f-2" of `docs/sharp-tier-v2-prereg.md` (Registered with the rest of that file). It replaces this spec's first-draft text: the primary metric
 for a flag slice is now **the market move after the cut** (Pinnacle's no-vig close minus its no-vig fair at the cut, same line), because the first draft's metric (the close minus the price at
 the cut) contains Pinnacle's fair at the cut minus that price, a term Flag A moves with by construction; CLV stays as a secondary that is labelled as overlapping. Pinnacle's limit is a fact
 line and not a slice (D1).
@@ -578,7 +578,7 @@ fixed 1080px width and reuse `vscShareCard`. Not in this build (decision D6).
 |---|---|---|---|---|
 | T1 | Commit the measurement as `flag_history.py`; regenerate every distribution and record table in this spec from it at a named data commit | Sonnet builds, Opus reviews the numbers against this spec | `scripts/sharps_v2/flag_history.py`, `docs/side-card-record.md` (new section "Market-move flags v2f-2") | the printed tables equal sections 1 and 2.4, or the spec is corrected first |
 | T2 | Flag functions, series, guard, `mf` log key, sub-budget | Sonnet builds; Opus reviews point-in-time reads, null rules and that nothing size-related reads the flags | `scripts/sharps_v2/plays_v2.py`, `scripts/build_side_cards.py`, `scripts/sharps_v2/check_size.py`, `tests/test_sharps_v2_plays.py` | Python tests in 4.6 pass; a local build on the live inputs shows the 3.1 byte numbers |
-| T3 | Prereg section added to `docs/sharp-tier-v2-prereg.md` (PROPOSED) | Opus writes, user approves (D5) | that file only | text of 2.3 present, status line unchanged |
+| T3 | Prereg section added to `docs/sharp-tier-v2-prereg.md` (Registered) | Opus writes, user approves (D5) | that file only | text of 2.3 present, status line unchanged |
 | T4 | History record: `pm_record/v2_flag_record.json` written by the record workflow, `v2_flag_record` in `live.json` | Sonnet builds, Opus reviews | `.github/workflows/pm-record.yml`, `plays_v2.V2_TOP_KEYS` | the file matches T1's tables |
 | T5 | Write-up card, chart, table, phone layout, contrast check | Sonnet builds; Opus reviews strings against 2.1 and 4.2 | `sharp-money/sharps-v2/sv2-sharps.js`, `sv2.css`, `tests/sv2-sharps.test.mjs` | JS tests pass; desktop and phone screenshots in both themes in the PR |
 | T6 | Optional: Fanatics and Caesars game lines on the tape (D4) | Sonnet builds, Opus reviews | `scripts/fetch-sharp-money.mjs` (`SOFT`, ids 2988 and 123 after confirming the scoreboard returns game markets for them), `scripts/book_tape.py` (`AN_BOOKS`) | new rows appear; forward only, no backfill exists |
@@ -596,7 +596,7 @@ edits `plays_v2.py` or `sv2-sharps.js`.
 - **D3 (moneyline Flag C):** the US books' price move (recommended), or no Flag C on moneylines.
 - **D4:** add Fanatics and Caesars game lines going forward. BookMaker and Circa cannot be shown (SmartStake terms), so the card can
   never show the "BookMaker touching +18.5" part of the example.
-- **D5:** approve the prereg section text in 2.3 (it stays PROPOSED with the rest of `docs/sharp-tier-v2-prereg.md` until registered).
+- **D5:** approve the prereg section text in 2.3 (approved by the user 2026-11-23; registered with the rest of `docs/sharp-tier-v2-prereg.md`).
 - **D6:** share-as-image later (4.5), yes or no.
 - **D7:** the title "The read on <side>" and the eyebrow wording.
 

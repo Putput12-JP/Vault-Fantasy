@@ -1,8 +1,8 @@
 # Play evidence tiers (Clear, Mixed, Thin, Contested): pre-registered forward shadow
 
-**Status: PROPOSED (written 2026-11-23, Central).** Nothing below is registered until the user approves it. The commit that changes this line to
+**Status: Registered (written 2026-11-23, Central; approved by the user in chat on 2026-11-23).** The commit that changes this line to
 Registered is the registration: its hash and time are the proof that the rule came first, and the first card that can count is the first one cut
-after that commit. Nothing below may change after the first counted card is graded; a change is a new registration with its own date.
+after that commit. The tier rule v2t-1, the shadow size v2s-1 and the flags rule v2f-2 and its thresholds are frozen from this commit: any change needs a new rule id and a dated amendment. Nothing below may change after the first counted card is graded; a change is a new registration with its own date.
 
 Sharp money is context only (CLAUDE.md). The tier is a label made of a card's own stored facts. It is **never** a bet signal, never changes the
 shown size (flat 1u on NBA, NFL and CBB, nothing on CFB, always "untested rule"), and never feeds Top Reads, SM_GATE or an agree total. Passing
@@ -130,7 +130,7 @@ public split (context only, not a tier input, no record), and the account tiers 
 
 ## Shadow size v2s-1
 
-Added 2026-11-23 by the user's decision, still **PROPOSED** with the rest of this file. The flat 1u was an MVP, so a second sizing rule runs **beside** it:
+Added 2026-11-23 by the user's decision, registered with the rest of this file. The flat 1u was an MVP, so a second sizing rule runs **beside** it:
 **v2s-1** sizes a play by its evidence tier: **Clear 1.5u, Mixed 1u, Thin 0.5u, Contested 0.5u, CFB 0**, and a play with no derivable tier gets no shadow
 size (null, never 0). The values are an **ordering by evidence, not fitted to results**, and they are frozen in code (`SHADOW` in
 `scripts/sharps_v2/plays_v2.py`) at the registering commit. A different value is a new rule id (v2s-2) and a new registration.
@@ -154,11 +154,10 @@ size (null, never 0). The values are an **ordering by evidence, not fitted to re
   (+6.8%), and 85 of those 90 plays are Contested (`docs/side-card-record.md`, "Tier-scaled size shadow v2s-1 (2026-11-23)"). A better-looking slice found
   along the way is flagged for close monitoring with its n and is never promoted on the same data.
 
-## Market-move flags v2f-2 (shadow, added 2026-11-23, PROPOSED)
+## Market-move flags v2f-2 (shadow, added 2026-11-23, Registered)
 
-Added by the user's decisions of 2026-11-23 (D1 to D5, D7 of `docs/sharps-v2-flags-spec.md`). It stays **PROPOSED** with the rest of this file: the
-commit that changes the status line to Registered is the registration, and the first play that can count is the first one cut after it. The status line
-above is unchanged. The rule id is `v2f-2`: a first draft (`v2f-1`) read the start of the 24-hour window as the first stored row inside it, which dropped the first move of the window
+Added by the user's decisions of 2026-11-23 (D1 to D5, D7 of `docs/sharps-v2-flags-spec.md`). It is registered with the rest of this file: the
+commit that changes the status line to Registered is the registration, and the first play that can count is the first one cut after it. The rule id is `v2f-2`: a first draft (`v2f-1`) read the start of the 24-hour window as the first stored row inside it, which dropped the first move of the window
 and read a first quote at a new line as a move of 0; review found it before anything shipped and the rule and its thresholds were re-measured (spec section 1). A second review fix, also before anything shipped, picks the row showing at the window start across all lines (so a quote at the current line from days ago is never "from" when a different line was showing when the window opened) and
 requires 2 or more rows of every book; no threshold moved because of it.
 
