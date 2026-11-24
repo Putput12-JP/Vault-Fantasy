@@ -658,7 +658,7 @@ class Guard(unittest.TestCase):
         self.assertEqual((v["flags"], v["series"], v["flags_error"]), (None, None, "TypeError"))
         self.assertIn("::warning::v2 flags dropped for nba-a-b-2027-01-15 spread: TypeError", err.getvalue())
         self.assertIn("exec", v)                                                              # every other V2 key is still built
-        drop = lambda c: {g: {k: x for k, x in m["v2"].items() if k not in ("flags", "series", "flags_error")} for g, m in c["markets"].items()}
+        drop = lambda c: {g: {k: x for k, x in m["v2"].items() if k not in ("flags", "series", "flags_error", "move_grade")} for g, m in c["markets"].items()}   # move_grade reads the flags (rule mg-1), so it follows them
         self.assertEqual(drop(c0), drop(c1))
         self.assertEqual(json.dumps(P.strip_plays_v2(c0)), json.dumps(P.strip_plays_v2(c1)))
 
@@ -694,7 +694,7 @@ class AdditiveOnly(unittest.TestCase):
         new = self.card()
         for c in (old, new):
             for m in c["markets"].values():
-                for k in ("flags", "series"):
+                for k in ("flags", "series", "move_grade"):                                  # move_grade reads the flags (rule mg-1), so it follows them
                     m["v2"].pop(k, None)
         self.assertEqual(json.dumps(old, sort_keys=True), json.dumps(new, sort_keys=True))
 

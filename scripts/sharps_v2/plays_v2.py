@@ -22,6 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import sf_signals as SIG  # noqa: E402
 from sharps_v2 import flags_v2 as F  # noqa: E402
+from sharps_v2 import move_grade as MG  # noqa: E402
 
 RULE = "v2t-1"                                  # the tier rule version: a rule change is a new string and a new registration
 SHOWN_SPORTS = ("nba", "nfl", "cbb")             # the documented side-card exception: flat 1u here, nothing on CFB
@@ -402,6 +403,11 @@ def market_v2(sport, g, m, ws, cls, kf, asof, norms, rows=None, game=None, feed_
         except Exception as e:
             v2["flags"], v2["series"], v2["flags_error"] = None, None, type(e).__name__
             print("::warning::v2 flags dropped for %s %s: %s: %s" % (ev, g, type(e).__name__, e), file=sys.stderr)
+        try:                                    # the Move grade (rule mg-1): a pure read of the flags block just built, context, additive; a failure drops it for this card only
+            v2["move_grade"] = MG.move_grade(v2.get("flags"), g, norms.get(side), sport)
+        except Exception as e:
+            v2["move_grade"], v2["move_grade_error"] = None, type(e).__name__
+            print("::warning::v2 move grade dropped for %s %s: %s: %s" % (ev, g, type(e).__name__, e), file=sys.stderr)
     sp = None
     if game:
         sp = splits_at(game, g, norms, cut) if frozen else splits_live(game, g, norms, feed_ts)
@@ -438,7 +444,7 @@ def plays_fields():
     """`live.json` v2_plays: the rule version and the names of everything this module adds."""
     return {"rule": RULE, "spec": "docs/sharps-v2-plays-spec.md", "market_keys": list(V2_MARKET_KEYS), "top_keys": list(V2_TOP_KEYS),
             "shown_rule": SHOWN_RULE, "shadow": {"rule": SHADOW_RULE, "sizes": dict(SHADOW["sizes"]), "cfb": SHADOW["cfb"], "shown": False},
-            "flags": F.flags_fields(), "context_only": True}
+            "flags": F.flags_fields(), "move_grade": MG.mg_fields(), "context_only": True}
 
 
 # ---------- shadow log ----------
@@ -475,6 +481,8 @@ def log_row(rel, card, g, now):
             "counts": (card.get("test") or {}).get("counts"), "why_not": (card.get("test") or {}).get("why_not")}
     if "flags" in v2:                           # new rows only: a card built before the flags has no key, so its row has none ("not logged", never quiet)
         row["mf"] = F.mf_of(v2["flags"])
+    if "move_grade" in v2:                      # new rows only (rule mg-1): a card built before the grade has no key ("not logged", never D); a dropped grade logs null
+        row["mg"] = MG.mg_of(v2["move_grade"])
     return row
 
 
