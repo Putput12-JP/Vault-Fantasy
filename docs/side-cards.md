@@ -450,7 +450,7 @@ plays by slice beside the old record with no flags, and the list of every improv
 
 ### Move grade (`markets[g].v2.move_grade`, forward log key `mg`)
 
-Rule `mg-1` (`scripts/sharps_v2/move_grade.py`, spec `docs/sharps-v2-movegrade-spec.md`, text `docs/sharp-movegrade-prereg.md`, **PROPOSED, not registered**). A letter A to D for how far the market moved
+Rule `mg-1` (`scripts/sharps_v2/move_grade.py`, spec `docs/sharps-v2-movegrade-spec.md`, text `docs/sharp-movegrade-prereg.md`, **Registered 2026-11-24**). A letter A to D for how far the market moved
 **toward** a shown play in the 24 hours before the cut. Inputs: the play's stored `v2.flags` (Flag A `pin.state` and `pin.pts`; Flag C `line.state` and `line.pin` from and to) and the side's direction, nothing else:
 not Pinnacle's limit, the tier, the wallets, the price, the result or anything after the cut. A pure read, computed in `plays_v2.market_v2` right after the flags in its own `try` (a failure sets `move_grade: null` and
 `move_grade_error` and leaves every other key as it was). Shadow only: it never changes the shown size, `shadow_units`, the tier, the ladder, `sf_rungs`, the gates, the locks, Top Reads, SM_GATE or an agree total, and none of

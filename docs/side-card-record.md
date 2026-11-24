@@ -395,8 +395,8 @@ moved **toward** the play in the 24 hours before the cut, read only from the two
 price on a moneyline). A flag fired **against** the play shows "moved against" and no letter; neither flag readable shows no grade. Pinnacle's limit is never an input. It is a shadow: it changes no size
 (flat 1u on NBA, NFL, CBB, none on CFB), no tier, no gate and no total. Nothing already stored changes: the history below is derived **point in time** from the tape rows at or before each play's cut
 (`scripts/sharps_v2/move_grade_record.py`, printed by `tier_history.py`, reproduced with `scripts/sharps_v2/move_grade_history.py`), nothing from the result. Every number is **in-sample** (the rule was written
-after these results), flat 1u at the stored price at the cut, and none of it is a signal. Forward test: `docs/sharp-movegrade-prereg.md` (**PROPOSED, not registered**). The forward record is zero by rule while it is proposed: a play counts as forward only when its grade was logged at lock
-AND its cut is after the registering commit (`REGISTERED_CUT` in `move_grade_record.py`, None until the user registers), so plays logged before registration never count. The page's Forward view says so.
+after these results), flat 1u at the stored price at the cut, and none of it is a signal. Forward test: `docs/sharp-movegrade-prereg.md` (**Registered 2026-11-24**). The forward record is zero by rule while it is proposed: a play counts as forward only when its grade was logged at lock
+AND its cut is after the registering commit (`REGISTERED_CUT` in `move_grade_record.py`, set when the user registered on 2026-11-24), so plays logged before registration never count. The page's Forward view says so.
 
 **Cutoffs (points), from the size of 24 hour moves on every started game of the tape, never from results** (C mark = median move, B mark = the registered flag threshold, A mark = 95th percentile and at least half a point past
 the flag threshold; `move_grade_history.py` prints the distribution and checks every mark equals the table in `move_grade.py`):

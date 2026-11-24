@@ -12,8 +12,7 @@ warning, never a guess.
 Flat 1 unit at the stored price at the cut (a win pays 1 / price - 1, a loss -1, a push 0), variant `all`, voided plays left out; `units` is that flat
 sum and `roi` is units / n as a fraction, null at n = 0. NOT the size the page shows (flat 1u on NBA, NFL, CBB; none on CFB: CFB is a flat-1u
 reference). Buckets: in_sample = cut strictly before the first log row that carries `mg` (all plays when none); forward = only plays whose grade was logged at
-lock (`mg` on the v2_tier row) AND whose cut is after REGISTERED_CUT, joined to the graded record. The prereg (docs/sharp-movegrade-prereg.md) is PROPOSED, so
-REGISTERED_CUT is None and `forward` is zero: rows logged before a registration cannot count, however they were logged. The `mg` rows keep being written; a
+lock (`mg` on the v2_tier row) AND whose cut is after REGISTERED_CUT, joined to the graded record. The prereg (docs/sharp-movegrade-prereg.md) was registered on 2026-11-24 and REGISTERED_CUT holds that time. Before that it was None and `forward` was zero: rows logged before a registration cannot count, however they were logged. The `mg` rows keep being written; a
 play logged but not counted sits in `all` only (`logged_not_counted`). Set REGISTERED_CUT to the registering commit's time (epoch seconds) when the user
 registers. Units are the flat sum of the unrounded results, `roi` = that sum / n to 6 places (not the rounded units, and not rounded early, so the page shows what the docs show), `se` = one standard error of the per-play result
 as a fraction of 1u (null under 2 plays). Context only: a record, never a signal, never an input to Top Reads, SM_GATE or an agree total.
@@ -36,7 +35,7 @@ ALL_SPORTS = TR.ALL_SPORTS                        # the sports that show a size 
 SLICES = ("a", "b", "c", "d", "against", "unreadable")
 LABEL = {"a": "A", "b": "B", "c": "C", "d": "D", "against": "moved against", "unreadable": "no grade"}
 SMALL_N = TH.SMALL_N                              # one definition for the page and the docs: a record under 30 plays is a small sample
-REGISTERED_CUT = None                             # epoch seconds of the registering commit; None until the user registers docs/sharp-movegrade-prereg.md
+REGISTERED_CUT = 1795544237                    # epoch seconds of the registering commit (2026-11-24, user approved docs/sharp-movegrade-prereg.md in chat); plays cut after it can count
 FORWARD_NOTE = "The forward test is proposed, not registered. Plays logged before registration do not count."
 FORWARD_NOTE_REGISTERED = "forward = plays cut after the registration whose grade was logged at lock by the live builder"
 RULE = ("Move grade mg-1 (docs/sharp-movegrade-prereg.md), read from each play's own card at its cut. Flat 1u at the stored price at the cut, not the size the "
