@@ -371,6 +371,104 @@
     return { pin: a === 'toward' || a === 'away', line: c === 'toward' || c === 'away', any: !!f };
   }
 
+  /* ---- the Move grade label (rule mg-1, docs/sharp-movegrade-prereg.md): a description of how far the market moved toward the play, read from the stored v2.move_grade.
+     The letter stays in the data and on the Record page; here it is a label with signal bars: A = STRONG (3 bars), B = NOTABLE (2), C = ROUTINE (1), D and no grade show
+     nothing, and a flag fired against the play is the neutral "Market moved the other way". Ink only, never a tier colour, never green or red. Context only: it changes no size,
+     no tier and no total, and it never says the play will win. STRONG is the word the user chose for the top label; the old copy deck bans that word, so it lives here, in this
+     label alone (sv2-core.js copy is untouched and its test still passes). */
+  var MGC = {
+    A: { word: 'STRONG', bars: 3, tip: 'A market-move flag fired toward this side and the move passed the top mark, a size only the largest moves of the season reach in that sport and market.' },
+    B: { word: 'NOTABLE', bars: 2, tip: 'A market-move flag fired toward this side: Pinnacle\'s price, or the market\'s number (the books\' price on a moneyline).' },
+    C: { word: 'ROUTINE', bars: 1, tip: 'No flag fired, but Pinnacle\'s price or line drifted toward this side by more than a typical day\'s move, and not that far away from it.' },
+    against: { word: 'Market moved the other way', tip: 'A market-move flag fired against this side. It describes the market and is shown instead of a label.' },
+    note: 'Describes what the market did. Context only, not a bet signal.'
+  };
+  function mgBlock(p) {
+    var m = mktOf(p.game, p.g), b = m && m.v2 && m.v2.move_grade;
+    return isObj(b) ? b : null;
+  }
+  /* -> { kind: 'letter', letter, b } | { kind: 'against', b } | null. D, a null grade and an absent block all show nothing (a clean row). */
+  function mgOf(p) {
+    var b = mgBlock(p);
+    if (!b) return null;
+    if (b.against === true) return { kind: 'against', b: b };
+    if (b.letter === 'A' || b.letter === 'B' || b.letter === 'C') return { kind: 'letter', letter: b.letter, b: b };
+    return null;
+  }
+  function mgWord(g) { return g.kind === 'against' ? MGC.against.word : MGC[g.letter].word; }
+  function mgTip(g) { return (g.kind === 'against' ? MGC.against.tip : MGC[g.letter].tip) + ' ' + MGC.note; }
+  function mgBars(g) {
+    var n = g.kind === 'letter' ? MGC[g.letter].bars : 0, i, h = '';
+    for (i = 0; i < 3; i++) h += '<i' + (i < n ? ' class="on"' : '') + '></i>';
+    return '<span class="sv2-mg-bars" aria-hidden="true">' + h + '</span>';
+  }
+  function mgKey(g) { return g.kind === 'against' ? 'against' : g.letter.toLowerCase(); }
+  /* the small chip in the table's Tier cell: bars and the word (letter-less), or the icon and the neutral sentence */
+  function mgChipHtml(p) {
+    var g = mgOf(p);
+    if (!g) return '';
+    return '<span class="sv2-mg sv2-mg--' + mgKey(g) + '" data-mg="' + mgKey(g) + '" title="' + esc(mgTip(g)) + '">' + (g.kind === 'against' ? flagIcon('away') : mgBars(g)) +
+      '<span class="sv2-mg-w">' + esc(mgWord(g)) + '</span><span class="sv2-sr">. Move: ' + esc(mgWord(g)) + '. ' + esc(mgTip(g)) + '</span></span>';
+  }
+  /* the badge at the top of the dropdown's flags area: the same label, a little larger, with the words "Move" in front */
+  function mgBadgeHtml(p) {
+    var g = mgOf(p);
+    if (!g) return '';
+    return '<p class="sv2-mg-badge-row"><span class="sv2-mg-badge sv2-mg--' + mgKey(g) + '" data-mg="' + mgKey(g) + '"><span class="sv2-mg-k">Move</span>' + (g.kind === 'against' ? flagIcon('away') : mgBars(g)) +
+      '<span class="sv2-mg-w">' + esc(mgWord(g)) + '</span></span><span class="sv2-sr"> ' + esc(mgTip(g)) + '</span></p>';
+  }
+  function mgAria(p) {
+    var g = mgOf(p);
+    return g ? ', ' + (g.kind === 'against' ? 'the market moved the other way' : 'move ' + MGC[g.letter].word) : '';
+  }
+  function num2(x) { return isNum(x) ? String(Math.round(x * 100) / 100) : null; }
+  /* "Pinnacle moved this side from X to Y while its limit rose from A to B": stored numbers only, each clause only when its numbers are stored. The limit clause needs two
+     different stored limits; with none the sentence stops after the move. Null when the label is not shown or no Pinnacle number is stored. */
+  function mgSentence(p) {
+    var g = mgOf(p), f = flagsOf(p);
+    if (!g || !f) return null;
+    var pn = pinNums(f), ln = lineNums(f, p.g), mv = null, l = isObj(f.limit) ? f.limit : null;
+    if (pn) mv = 'Pinnacle moved this side from ' + pn.from + ' to ' + pn.to;
+    else if (ln && p.g !== 'ml' && f.line.kind !== 'price') mv = 'Pinnacle moved the number on this side from ' + ln.from + ' to ' + ln.to;
+    else if (ln) mv = 'Pinnacle moved this side from ' + ln.from + ' to ' + ln.to;
+    if (!mv) return null;
+    if (l && isNum(l.from) && isNum(l.to) && l.from !== l.to) mv += ' while its limit ' + (l.to > l.from ? 'rose' : 'fell') + ' from ' + limitMoney(l.from) + ' to ' + limitMoney(l.to);
+    return mv + '.';
+  }
+  /* "How this label was earned": a deterministic template over the stored numbers in v2.move_grade and v2.flags. A placeholder with no stored value forces the template that
+     does not print it. Null for D, no grade or an absent block. */
+  function mgWhy(p, words) {
+    var g = mgOf(p);
+    if (!g) return null;
+    var b = g.b, f = flagsOf(p), side = words.side, cut = isObj(b.cut) ? b.cut : {}, span = spanPhrase(f, false);
+    var pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null, price = b.c_kind === 'price' || !!(f && f.line && f.line.kind === 'price');
+    var ap = num2(b.a_pts), cp = num2(b.c_pts), xa = num2(cut.x_a), xc = num2(cut.x_c), ta = num2(cut.t_a), tc = num2(cut.t_c), ma = num2(cut.m_a), mc = num2(cut.m_c);
+    var bk = isNum(b.c_same_way) && isNum(b.c_books) && b.c_books > 0 ? b.c_same_way + ' of ' + b.c_books + ' books' : null;
+    var w = mgWord(g), s;
+    if (g.kind === 'against') {
+      var parts = flagChips(p).filter(function (c) { return c.state === 'away'; }).map(function (c) { return c.tip; });
+      return w + ': ' + (parts.length ? parts.join('. ') + '. ' : '') + 'A move against the play is shown instead of a label. It describes the market and changes nothing about the play.';
+    }
+    if (b.basis === 'a_mark') {
+      s = 'Pinnacle\'s price for ' + side + ' ' + (pn ? 'went ' + pn.from + ' to ' + pn.to : 'moved') + (span ? ' ' + span : '') + (ap ? ', ' + ap + ' points of no-vig price' : '') + (xa ? ', past the top mark of ' + xa : '') + '.';
+    } else if (b.basis === 'c_mark') {
+      s = price ? 'The books moved the price toward ' + side + (bk ? ', ' + bk + ' the same way' : '') + '.' :
+        'The market moved the number toward ' + side + (ln ? ', ' + ln.from + ' to ' + ln.to + ' at Pinnacle' : '') + (cp ? ' (' + cp + ' points' + (xc ? ', top mark ' + xc : '') + ')' : '') + (bk ? ', ' + bk + ' the same way' : '') + '.';
+    } else if (b.basis === 'fired' && b.a === 'toward') {
+      s = 'Pinnacle\'s price for ' + side + ' ' + (pn ? 'went ' + pn.from + ' to ' + pn.to : 'moved') + (ap ? ', ' + ap + ' points' : '') + (ta && xa ? ' (the flag mark is ' + ta + ', the top mark ' + xa + ')' : '') + '.' +
+        (b.c === 'toward' ? ' The market\'s ' + (price ? 'price' : 'number') + ' moved the same way.' : '');
+    } else if (b.basis === 'fired') {
+      s = price ? 'The books moved the price toward ' + side + (bk ? ', ' + bk + ' past the flag mark' : '') + '.' :
+        'The market moved the number toward ' + side + (ln ? ', ' + ln.from + ' to ' + ln.to + ' at Pinnacle' : '') + (bk ? ', ' + bk + ' the same way' : '') + (xc ? ' (top mark ' + xc + ' points)' : '') + '.';
+    } else if (b.basis === 'drift') {
+      var d = [];
+      if (ap && isNum(b.a_pts) && b.a_pts >= cut.m_a) d.push('Pinnacle\'s price for ' + side + ' drifted ' + ap + ' points toward it');
+      if (cp && isNum(b.c_pts) && b.c_pts >= cut.m_c) d.push('its line ' + cp + ' points toward it');
+      s = 'No flag fired; ' + (d.length ? d.join(' and ') : 'the market drifted toward ' + side) + (ma ? ' (typical-day mark ' + ma + (mc ? ' / ' + mc : '') + (ta ? ', flag mark ' + ta + (tc ? ' / ' + tc : '') : '') + ')' : '') + '.';
+    } else return null;
+    return w + ' move: ' + s;
+  }
+
   /* ---- series: points, step paths, table ---- */
   function cleanPts(a) {
     if (!Array.isArray(a)) return [];
@@ -674,7 +772,9 @@
 
     /* the takeaway */
     var tk = takeaway({ flags: f, side: words.side, other: words.other || (money ? money.other : null), g: p.g, money: money, size: p.units > 0, graded: gr });
-    var take = '<div class="sv2-card-inset sv2-wu-take"><p class="sv2-h2">The takeaway</p><p class="sv2-wu-tk">' + tk.map(function (s) { return esc(s); }).join(' ') + '</p></div>';
+    var why = mgWhy(p, words);
+    var take = '<div class="sv2-card-inset sv2-wu-take"><p class="sv2-h2">The takeaway</p><p class="sv2-wu-tk">' + tk.map(function (s) { return esc(s); }).join(' ') + '</p>' +
+      (why ? '<p class="sv2-mg-why"><b>How this label was earned.</b> ' + esc(why) + '</p>' : '') + '</div>';
 
     /* section 1: who is on each side */
     var sec1 = '';
@@ -684,8 +784,9 @@
     }
     /* section 2: where the line went */
     var sec2 = '', pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null;
-    if (f || series) {
-      var head = '';
+    var mgb = mgBadgeHtml(p), mgs = mgSentence(p);
+    if (f || series || mgb) {
+      var head = mgb + (mgs ? '<p class="sv2-wu-fact sv2-mg-say">' + esc(mgs) + '</p>' : '');
       if (pn) head += '<p class="sv2-h2">Pinnacle ' + esc(words.side) + ' price</p><p class="sv2-wu-big sv2-num">' + fromTo(pn.from, pn.to) + '</p>';
       if (ln && f.line.kind !== 'price') {
         head += '<p class="sv2-h2">Market line</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
@@ -725,6 +826,7 @@
     vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell,
     flagsOf: flagsOf, flagChips: flagChips, chipsHtml: chipsHtml, movesOf: movesOf, chartPoints: chartPoints, stepPath: stepPath, extremes: extremes, seriesOf: seriesOf,
     chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml,
+    rowHtml: rowHtml, theadHtml: theadHtml, COLS: COLS, mgOf: mgOf, mgChipHtml: mgChipHtml, mgBadgeHtml: mgBadgeHtml, mgSentence: mgSentence, mgWhy: mgWhy, mgAria: mgAria, MGC: MGC,
     marketOrder: marketOrder, dateWords: dateWords, eyebrowOf: eyebrowOf, sideLabelWords: sideLabelWords, BOOKS: BOOKS
   };
 
@@ -886,7 +988,7 @@
   /* ---- the plays table ---- */
   var COLS = [
     { c: 'time', label: 'Freezes', k: 'freeze' }, { c: 'sport', label: 'Sport' }, { c: 'play', label: 'Play' }, { c: 'mkt', label: 'Market' },
-    { c: 'px', label: 'Price', k: 'price' }, { c: 'fair', label: 'vs fair (pts)', k: 'fair' }, { c: 'tier', label: 'Tier', k: 'tier' },
+    { c: 'px', label: 'Price', k: 'price' }, { c: 'fair', label: 'vs fair (pts)', k: 'fair' }, { c: 'tier', label: 'Tier and move', k: 'tier' },
     { c: 'spl', label: 'Bets vs money on the play' }, { c: 'wal', label: 'Wallets that beat the close' }, { c: 'size', label: 'Size', k: 'size' },
     { c: 'chev', label: '', sr: 'Details' }
   ];
@@ -920,7 +1022,7 @@
   function rowHtml(p, st, sameKeys) {
     var open = !!st.open[p.key], id = keyId('sv2-sp-x-', p.key);
     var title = playTitle(p.game, p.g, p.sf), c = fmt.cents(p.sf.price), reason = reasonOf(p), vf = vsFairCell(p);
-    var label = title + ', ' + gameLabel(p.game) + ', ' + (copy.tier[p.tier] ? copy.tier[p.tier].word : '') + '. ' + (reason || '');
+    var label = title + ', ' + gameLabel(p.game) + ', ' + (copy.tier[p.tier] ? copy.tier[p.tier].word : '') + mgAria(p) + '. ' + (reason || '');
     var ncol = COLS.length;
     var tr = '<tr class="sv2-tb-r' + (open ? ' is-open' : '') + '" data-key="' + esc(p.key) + '" data-tier="' + esc(p.tier) + '">' +
       '<td class="sv2-tb-c c-time sv2-num">' + esc(timeText(p)) + '</td>' +
@@ -929,7 +1031,7 @@
       '<td class="sv2-tb-c c-mkt">' + esc(marketLabel(p.g)) + '</td>' +
       '<td class="sv2-tb-c c-px sv2-num">' + esc(c || '') + '</td>' +
       '<td class="sv2-tb-c c-fair sv2-num' + (vf.tone ? ' is-' + vf.tone : '') + '">' + esc(vf.text) + '</td>' +
-      '<td class="sv2-tb-c c-tier">' + ui.tier(p.tier) + '</td>' +
+      '<td class="sv2-tb-c c-tier">' + ui.tier(p.tier) + mgChipHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-spl">' + splitCellHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-wal">' + walletsCellHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-size">' + sizeCellHtml(p) + '</td>' +

@@ -131,6 +131,11 @@ class NullCases(unittest.TestCase):
         self.assertEqual(letter(flg("quiet", 0.1), "ml"), "D")
         self.assertEqual(grade(flg("toward", 4.0), "ml")["c_pts"], None)
 
+    def test_a_moneyline_never_reads_a_line_move_even_from_an_inconsistent_block(self):
+        r = grade(flg("quiet", 0.0, "toward", kind="line", move=3.5, g="ml"), "ml")
+        self.assertEqual((r["c_pts"], r["letter"]), (None, "B"))
+        self.assertIsNone(MG.c_pts_of(flg(None, None, "toward", kind="line", move=3.5, g="ml")["line"], "ml", "home"))
+
     def test_a_spread_with_the_line_pin_missing(self):
         r = grade(flg(None, None, "toward", move=None))
         self.assertEqual((r["letter"], r["basis"], r["c_pts"]), ("B", "fired", None))             # fired, and no number to reach A: never a guessed A
@@ -457,6 +462,20 @@ class Stored(unittest.TestCase):
         self.assertIn("move_grade", c["markets"]["spread"]["v2"])
         json.dumps(c)
 
+    def test_the_grade_is_read_with_the_shown_sides_own_direction(self):
+        """An over reads a line moving UP as toward, an under reads it as against: the call in market_v2 passes the shown side's norm."""
+        m = TP.market(S="Over", O="Under")
+        up = {"rule": "v2f-2", "asof": ASOF, "span_min": 1300, "pin": None, "limit": None, "why": {}, "a": None, "c": "toward",
+              "line": {"kind": "line", "state": "toward", "t_c": 3.0, "books": 4, "same_way": 3, "by_book": {}, "extreme": None, "pin": {"from": 220.5, "to": 224.0}}}
+        for sidename, norm, want in (("Over", "over", (3.5, "B")), ("Under", "under", (-3.5, "B"))):
+            mm = copy.deepcopy(m)
+            mm["sf"]["all"]["side"] = sidename
+            with mock.patch.object(P.F, "flags_block", return_value=(copy.deepcopy(up), None)):
+                v2, _ = P.market_v2("nba", "total", mm, [], {}, {"mk": {}}, ASOF, {"Over": "over", "Under": "under"}, rows=[])
+            r = v2["move_grade"]
+            self.assertEqual(r["c_pts"], want[0], sidename)
+            self.assertEqual(r["letter"], want[1], sidename)
+
     def test_the_block_size(self):
         c = self.card()
         n = len(json.dumps(c["markets"]["spread"]["v2"]["move_grade"], separators=(",", ":")))
@@ -575,6 +594,11 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(sum(d["all"][sl]["all"]["n"] for sl in MGR.SLICES), sum(1 for p in ps if p["sport"] in MGR.ALL_SPORTS))      # CFB is not pooled
         self.assertEqual(sum(d["sports"]["cfb"][sl]["all"]["n"] for sl in MGR.SLICES), 13)
 
+    def test_a_marker_wins_over_a_letter_in_the_slice(self):
+        self.assertEqual(MG.bucket_of({"against": True, "letter": "A"}), "against")
+        self.assertEqual(MG.bucket_of({"against": False, "letter": "C"}), "c")
+        self.assertEqual(MG.bucket_of({"against": None, "letter": None}), "unreadable")
+
     def test_shape_counts_by_hand(self):
         ps = [self.play("nba", "1", "a", "win", 0.8), self.play("nba", "2", "a", "loss", -1.0), self.play("nba", "3", "against", "win", 0.5), self.play("nba", "4", "d", "push", 0.0)]
         d = MGR.build(ps, 123, "abc", {})
@@ -604,6 +628,7 @@ class RecordTests(unittest.TestCase):
         self.assertEqual((d["first_logged_cut"], d["logged_rows"], d["forward_graded"]), (900, 2, 1))
         self.assertEqual(n["d"]["in_sample"]["n"], 1)                                              # play 1: cut 500 is before the first logged lock
         self.assertEqual(n["a"]["all"]["n"], 1)
+        self.assertEqual(n["a"]["in_sample"]["n"], 0)                                              # the first logged lock is forward, never also in-sample
         dropped = MGR.build([self.play("nba", "3", "a")], 1, "x", logged)["sports"]["nba"]
         self.assertEqual((dropped["unreadable"]["forward"]["n"], dropped["a"]["forward"]["n"]), (1, 0))   # an mg of null is a dropped block: unreadable
 
