@@ -1,0 +1,35 @@
+name: Test side card wording
+
+# Guards the honesty wording on the classic Sharp Money side card (sharp-money/side-cards.js): the shown size is a flat 1u untested rule (not the
+# pre-registered test), the score bands carry no Elite / Lock style labels, and "on Polymarket" is printed only when the stored price source is Polymarket.
+# A separate workflow so it does not edit test-sharp-v2.yml.
+
+on:
+  pull_request:
+    paths:
+      - 'sharp-money/side-cards.js'
+      - 'sharp-money/index.html'
+      - 'sharp-money/new/index.html'
+      - 'tests/v2_side_cards_wording.test.mjs'
+      - 'tests/fixtures/side_cards_wording/**'
+      - '.github/workflows/test-side-card-wording.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: test-side-card-wording-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  wording:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - name: Side card wording
+        run: node --test tests/v2_side_cards_wording.test.mjs

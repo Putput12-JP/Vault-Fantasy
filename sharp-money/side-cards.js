@@ -5,8 +5,8 @@
    Until that branch exists the page says so and the game section stays hidden.
 
    Sharp money is context. The one exception (CLAUDE.md) is the suggested size on this card: it is shown, always labelled as an
-   untested rule, and it never feeds Top Reads, SM_GATE or an agree total. The rule is the pre-registered lock of
-   docs/sharp-card-prereg.md. Every number on the card is a stored field; a null prints "n/a".
+   untested rule, and it never feeds Top Reads, SM_GATE or an agree total. It is NOT the pre-registered lock of
+   docs/sharp-card-prereg.md: that is a different, narrower rule (`lock_shadow`), counted on its own. Every number on the card is a stored field; a null prints "n/a".
 
    Size (changed 2026-11-18, docs/sharps-audit-2026-11-18.md; CBB added back 2026-11-20 at the user's request): the card shows a flat 1u on NBA, NFL and CBB plays, and no size on CFB.
    The builder still stores the benchmark's press ladder (3u base, 2u at 2x to 3x, 5u at 3x or more, 1u under 50 cents) as `sf.units`;
@@ -208,9 +208,9 @@ var RUNG = {
   'PRESS-U': ['Press U', 'More hot wallets here than against, the ones against are betting small, and nobody is pressing.'],
   'PRESS-R6': ['Two veterans', 'Two wallets with long records are on this side at their normal size, the money is with it, and no hot wallet is against it.'],
   'FADE-F': ['Fade', 'The only losing wallet in this market is on the other side and is on a losing streak.'],
-  'TRUST-G': ['Trusted wallet', 'A wallet that has beaten its own prices lately is on this moneyline, and the older score is positive.'],
-  'TRUST-S': ['Trusted wallet', 'A wallet that has beaten its prices in spread markets is on this side and none is against it.'],
-  'TRUST-T': ['Trusted wallets', 'Two or more wallets that have beaten their prices in totals are on this side and none is against.'],
+  'TRUST-G': ['Price record', 'A wallet that has beaten its own prices lately is on this moneyline, and the older score is positive.'],
+  'TRUST-S': ['Price record', 'A wallet that has beaten its prices in spread markets is on this side and none is against it.'],
+  'TRUST-T': ['Price records', 'Two or more wallets that have beaten their prices in totals are on this side and none is against.'],
   'STEAM-C': ['Steam', 'Pinnacle\'s price is moving toward this side, and the hot wallets against it are betting small. The market overrules a small dissent.'],
   'STEAM-S': ['Steam', 'Pinnacle\'s price is moving toward this side against a seasoned wallet\'s ordinary-size bet, with 20% to 60% of the money here.'],
   'SOLO-Q': ['Quiet favourite', 'Nobody is against this side, Pinnacle is not moving, it is a 50% to 60% favourite, and the money here is small or from a wallet in hot form.'],
@@ -233,8 +233,21 @@ function half(s, max, dir){
   return '<div class="vc-half ' + dir + '">' + seg('hc', s.hc_usd) + seg('sharp', s.sharp_usd - s.hc_usd) + seg('unp', s.unproven_usd) + seg('loser', s.loser_usd) + seg('exc', s.excluded_usd) + '</div>';
 }
 /* v3: a stack of small modules. Verdict, money split, hot record, wallets (collapsed), data notes (collapsed). */
+/* Where the shown price came from. The builder stores it as markets[g].v2.price_src for the `all` play only: `pm` is Polymarket's displayed price,
+   `pin` is Pinnacle's vig-included price (Polymarket had none). Absent (older cards, the forward-only variant, the fallback rule): say nothing, never guess. */
+function priceSrc(m, v, ls){
+  var src = (m.v2 || {}).price_src;
+  if (v !== 'all' || ls !== (m.sf || {}).all) return '';
+  return src === 'pm' ? ' on Polymarket' : src === 'pin' ? ' Pinnacle price, vig included' : '';
+}
 /* The benchmark's score and label for the market: the one side whose stored `ags` score is above zero, or nothing */
-var TIER = {WEAK: 'Weak', LEAN: 'Lean', LOCK: 'Lock', PREMIUM: 'Prem', ELITE: 'Elite'};
+/* The five score bands, lowest first. The stored keys (WEAK, LEAN, LOCK, PREMIUM, ELITE) are SharpFlow's and stay as they are; what the page
+   PRINTS is a neutral band number, because a word like Elite or Lock reads as a promise and the band only describes past wallet records. */
+var TIER = {WEAK: 'Band 1', LEAN: 'Band 2', LOCK: 'Band 3', PREMIUM: 'Band 4', ELITE: 'Band 5'};
+var FOOT_NOTE = 'Sharp money is context. The suggested size is a flat 1u from an untested rule. It is not the pre-registered test, which is a different, narrower rule counted on its own. CFB games carry no size.';
+function nWallets(n){ return n + ' hot wallet' + (n === 1 ? '' : 's'); }
+function bandTitle(a){ return 'Score band ' + TIER[a.tier].slice(5) + ' of 5, from ' + nWallets(a.contributors) + '. A band orders past wallet records. It does not say this side will win.'; }
+function bandChip(a){ return '<span class="vc-tier ' + a.tier + '" title="' + bandTitle(a) + '">' + TIER[a.tier] + '</span>'; }
 /* CLV-ranked wallets on the shown side (scripts/pm_clv_tiers.py, docs/pm-clv-tiers.md): sharp = their price beat the close, shrunk and
    point in time. Any holder at $250 or more counts, not only hot ones. Context only; hidden on cards built before the field existed. */
 function rkRow(S, side, names){
@@ -249,8 +262,8 @@ function agsRow(m, names, v){
   var n = names.filter(function(x){ var a = m.sides[x][v].ags; return a && a.score > 0 && TIER[a.tier]; })[0];
   if (!n) return '';
   var a = m.sides[n][v].ags;
-  return '<div class="vc-ags"><span class="vc-tier ' + a.tier + '">' + TIER[a.tier] + '</span><span><b>' + esc(n) + '</b> score <span class="num">+' + a.score.toFixed(2) +
-    '</span></span><em>' + a.contributors + ' hot of ' + (a.for_n + a.against_n) + ' tracked</em></div>';
+  return '<div class="vc-ags">' + bandChip(a) + '<span><b>' + esc(n) + '</b> score <span class="num">+' + a.score.toFixed(2) +
+    '</span></span><em>' + nWallets(a.contributors) + ' scored, ' + (a.for_n + a.against_n) + ' tracked</em></div>';
 }
 function verdict(g, m, key, names, v){
   var ls = shadow(m, v), S = {}; names.forEach(function(n){ S[n] = m.sides[n][v]; });
@@ -260,7 +273,7 @@ function verdict(g, m, key, names, v){
     return '<section class="vc-mod vc-v on"><div class="vc-v1"><b class="vc-vu num">' + (u == null ? 'n/a' : u + '<small>u</small>') + '</b>' +
       '<div class="vc-vt"><span class="vc-cap">Suggested<span class="vc-tag">untested rule</span>' + (rg ? '<span class="vc-tag">' + rg[0] + '</span>' : '') + ' ' + (g.frozen ? '· locked' : '· live until ' + ct(g.cut) + ' CT') + '</span>' +
       '<strong>' + esc(sideLabel(ls.side, key, ls)) + '</strong><span class="vc-vs">' +
-      (ls.price != null ? '<span class="num">' + trim((ls.price * 100).toFixed(1)) + '¢</span> on Polymarket' + (ls.price_t ? ', read ' + ct(ls.price_t) + ' CT' : '') : 'price n/a') + '</span></div>' +
+      (ls.price != null ? '<span class="num">' + trim((ls.price * 100).toFixed(1)) + '¢</span>' + priceSrc(m, v, ls) + (ls.price_t ? ', read ' + ct(ls.price_t) + ' CT' : '') : 'price n/a') + '</span></div>' +
       logo(ls.side, g) + '</div>' +
       agsRow(m, names, v) + (q ? '<div class="vc-ticks">' + tick(1, '<span class="num">' + Math.round(q.share_for * 100) + '%</span> of the money') + tick(1, '<span class="num">' + q.proven_for + '</span> hot for') +
       tick(1, '<span class="num">' + q.proven_against + '</span> against') + tick(1, 'sized up' + (ls.top_press != null ? ' <span class="num">' + ls.top_press + 'x</span>' : '')) + '</div>'
@@ -329,13 +342,13 @@ function body(g, st){
   var cv = g.coverage, bits = ['Money is mark value ' + (g.frozen ? 'at the lock' : 'now') + ' (shares x price), not cost.',
     cv.markets_read + ' markets read, ' + cv.markets_missed + ' missed' + (cv.late_reads ? ', ' + cv.late_reads + ' late' : '') + '.',
     'Oldest read ' + dur(cv.max_read_lag_s) + ' before ' + (g.frozen ? 'the lock' : 'this build') + '.', 'Ledger refreshed ' + ct(g.ledger_run_at) + ' CT.'];
-  if (names.some(function(n){ return m.sides[n][v].ags; })) bits.push('The score compares the average quality of the hot wallets on each side, from -1 to +1. The labels use published cut points (above 0.781 Lean, 0.916 Lock, 0.957 Prem, 0.981 Elite; any lower positive score is Weak). Those were fitted outside Vault, and the label does not set the size.');
+  if (names.some(function(n){ return m.sides[n][v].ags; })) bits.push('The score compares the average quality of the hot wallets on each side, from -1 to +1. The bands use published cut points (band 2 above 0.781, band 3 above 0.916, band 4 above 0.957, band 5 above 0.981; any lower positive score is band 1). Those were fitted outside Vault. A band describes past wallet records, not how likely a play is to win, and it does not set the size.');
   if (cv.two_way_dust_dropped) bits.push(cv.two_way_dust_dropped + ' two-way ' + (cv.two_way_dust_dropped === 1 ? 'wallet' : 'wallets') + ' dropped as balanced dust.');
   if ((g.vault || {}).start_gap_flag) bits.push('Start times differ by ' + g.vault.start_gap_min + ' min between Polymarket and Vault.');
   if (!g.vault) bits.push('This game is on Polymarket but not yet in Vault\'s schedule, so team names come from its listing.');
-  if (g.test) bits.push(g.test.counts ? 'Counts for the forward test.' : 'Does not count for the forward test: ' + g.test.why_not.join(', ') + '.');
+  if (g.test) bits.push(g.test.counts ? 'Counts for the pre-registered test (a narrower rule than the shown size).' : 'Does not count for the pre-registered test: ' + g.test.why_not.join(', ') + '.');
   return h + '<details class="vc-mod vc-dt" data-d="n"' + (st.open.n ? ' open' : '') + '><summary>Data notes</summary><div class="vc-dtb"><p>' + bits.join(' ') + '</p></div></details>' +
-    '<p class="vc-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. CFB games carry no size.</p>';
+    '<p class="vc-foot">' + FOOT_NOTE + '</p>';
 }
 
 /* ---------- play detail: one market, every wallet on it, opened from the verdict ("See who's on it") ----------
@@ -474,7 +487,7 @@ function detail(g, key, v){
   h += '<section class="vd-sec"><span class="vd-cap">Who\'s on it</span><div class="vd-who">' + whoCol(side, S, tot, true, key, g, spx) + whoCol(other, O, counted(O), false, key, g, spx != null ? 1 - spx : null) + '</div></section>';
   if (ls){
     var rg = ls.rung && RUNG[ls.rung];
-    h += '<section class="vd-sec"><span class="vd-cap">How the size is set</span><p class="vd-p"><b>' + (rg ? rg[0] : 'Press ladder') + '.</b> ' + (rg ? rg[1] : 'This side meets the pre-registered press-ladder gates.') +
+    h += '<section class="vd-sec"><span class="vd-cap">How the size is set</span><p class="vd-p"><b>' + (rg ? rg[0] : 'Press ladder') + '.</b> ' + (rg ? rg[1] : 'This side meets one of the staking rules.') +
       ' The size is a flat 1 unit. The play is the staking rule\'s pick, built from Vault\'s own wallet records, and it has not shown an edge yet.</p>' + steamDetail(ls, key, side) + '</section>';
   }
   return h + '<p class="vd-foot">Sharp money is context. Price skill counts only past bets with a stored close; a wallet with fewer than ' + CLV_MIN + ' is listed but not plotted.</p>';
@@ -743,14 +756,14 @@ function cell(s){ return s && s.n ? '<span class="num">' + wl(s) + '</span><em c
 var REC_SP = null, REC_ALL = false, REC_RULE = null;     /* REC_RULE: the shadow rule picked in the table, which filters Open plays and Recent games to it */
 /* who a play belongs to, with its definition on hover; the full definitions sit behind the "?" button in each list's header */
 var WHO_DEF = {Shadow: 'Tracked beside the record at one unit. No size is shown on CFB games, and it never counts in the record above.', Vault: 'Suggested size: the play the card shows. Every one counts in the record.',
-  Lock: 'Forward-test play: a stricter, pre-registered rule on the same card, counted toward the 300 on the Forward test card.'};
+  Lock: 'Pre-registered test play: a different, narrower rule on the same card, counted on its own toward the 300 on the Forward test card. Not the size the card shows.'};   /* key kept: the stored tag; the page prints "Test" in the help */
 function whoTag(who){ return '<span class="vr-who ' + who.toLowerCase() + '" title="' + esc(WHO_DEF[who] || '') + '">' + who + '</span>'; }
 var REC_HELP = false;
-function helpBtn(){ return '<button type="button" class="vr-help press press-chip" aria-expanded="' + REC_HELP + '" aria-label="What Vault and Lock mean">?</button>'; }
+function helpBtn(){ return '<button type="button" class="vr-help press press-chip" aria-expanded="' + REC_HELP + '" aria-label="What Vault and Test mean">?</button>'; }
 function defsHtml(){
   return '<dl class="vr-defs"' + (REC_HELP ? '' : ' hidden') + '><div><dt>' + whoTag('Vault') + '</dt><dd>The suggested size the card shows, from the staking rules (still an untested rule). ' +
-    'One play per side. Every Vault play counts in the record at the top.</dd></div><div><dt><span class="vr-who">Test</span></dt><dd>The forward test is a stricter, ' +
-    'pre-registered rule tracked in the background, on its own card toward 300 moneyline locks. Its plays are not listed here.</dd></div></dl>';
+    'One play per side. Every Vault play counts in the record at the top.</dd></div><div><dt><span class="vr-who">Test</span></dt><dd>The pre-registered test is a different, narrower rule from the size the card shows. ' +
+    'It is tracked in the background and counted on its own toward 300 moneyline locks. Its plays are not listed here.</dd></div></dl>';
 }
 function recSport(sp, D){
   /* 'all' sums every sport's stored records; one sport reads its own block */
@@ -812,8 +825,8 @@ function recSport(sp, D){
     '<p class="vr-fn">Not in a registered test. Graded here for reference only.</p></section>';
   else ft = '<section class="vr-card"><div class="vr-fh"><h3>Forward test</h3><span class="num">' + n + ' / ' + REC_N + '</span></div>' +
     '<div class="vr-bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + REC_N + '" aria-valuenow="' + n + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
-    '<p class="vr-fs num">' + (L.n ? 'Locks ' + wl(L) + ' · ' + u2(L.units_pl) + (clvN ? ' · CLV ' + (clvS / clvN > 0 ? '+' : '') + trim((clvS / clvN * 100).toFixed(1)) + ' pts' : '') : 'No counted lock has settled yet') + '</p>' +
-    '<p class="vr-fn">Counted moneyline locks, toward ' + REC_N + '. Reads once, on ' + (REC_READ[sp] || 'its registered date') + '.' +
+    '<p class="vr-fs num">' + (L.n ? 'Test plays ' + wl(L) + ' · ' + u2(L.units_pl) + (clvN ? ' · CLV ' + (clvS / clvN > 0 ? '+' : '') + trim((clvS / clvN * 100).toFixed(1)) + ' pts' : '') : 'No counted test play has settled yet') + '</p>' +
+    '<p class="vr-fn">The pre-registered rule, not the size the card shows. Counted moneyline locks, toward ' + REC_N + '. Reads once, on ' + (REC_READ[sp] || 'its registered date') + '.' +
     ((c.data_quality || {}).fail ? ' <b class="dn">Data-quality check failing: too many locks have no fresh price.</b>' : '') + '</p></section>';
   /* the shown plays split by two tape reads (scripts/sf_signals.py); a row appears only once plays fall on both sides of it */
   var SIGS = [['limit_rising', 'Pinnacle limit rising'], ['ev_on', 'Price 0.3+ pts under fair']];
@@ -939,7 +952,7 @@ function recSport(sp, D){
   if (ALL) cc = SPS.reduce(function(t, s){ var k = cs(s).cards || {}; t.frozen += k.frozen || 0; t.counted += k.counted || 0;
     Object.keys(k.not_counted_by_reason || {}).forEach(function(r){ t.not_counted_by_reason[r] = (t.not_counted_by_reason[r] || 0) + k.not_counted_by_reason[r]; }); return t; },
     {frozen: 0, counted: 0, not_counted_by_reason: {}});
-  if (cc.frozen) notes.push(cc.frozen + ' cards frozen, ' + (cc.counted || 0) + ' count for the forward test' + Object.keys(cc.not_counted_by_reason || {}).map(function(k){ return '; ' + cc.not_counted_by_reason[k] + ' ' + esc(k); }).join('') + '.');
+  if (cc.frozen) notes.push(cc.frozen + ' cards frozen, ' + (cc.counted || 0) + ' count for the pre-registered test' + Object.keys(cc.not_counted_by_reason || {}).map(function(k){ return '; ' + cc.not_counted_by_reason[k] + ' ' + esc(k); }).join('') + '.');
   if (notes.length) out += '<details class="vr-notes"><summary>Notes</summary><ul>' + notes.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ul></details>';
   return out;
 }
@@ -1072,7 +1085,7 @@ var PLAY_CSS = [
 '}'].join('\n');
 var PV = {sort: 'lock', all: false, seen: null, plays: [], rows: [], f: null, fopen: false};
 /* ---------- filters for the plays list (Plays view only). Chips in one group are "any of"; the Sharps chips and the other groups each narrow it further. ---------- */
-var FTIERS = [['ELITE', 'Elite'], ['PREMIUM', 'Prem'], ['LOCK', 'Lock'], ['LEAN', 'Lean'], ['WEAK', 'Weak'], ['NONE', 'No tier']];
+var FTIERS = [['ELITE', TIER.ELITE], ['PREMIUM', TIER.PREMIUM], ['LOCK', TIER.LOCK], ['LEAN', TIER.LEAN], ['WEAK', TIER.WEAK], ['NONE', 'No band']];
 var FSHARPS = [['win60', 'Win 60%+'], ['pro2', '2+ hot'], ['up', 'Sized up'], ['unopp', 'No hot wallet against'], ['steam', 'Steam']];
 var FMKT = [['ml', 'Moneyline'], ['spread', 'Spread'], ['total', 'Total']];
 var WIN_MIN = 60, WIN_MIN_N = 20;     /* pooled win rate of the hot wallets, over at least this many recorded bets (AGS gives a record full credit at 20) */
@@ -1097,8 +1110,8 @@ function fPass(p){
   return Object.keys(f.on).every(function(c){ return x[c]; });
 }
 var FDEFS = [
-  ['Elite, Prem, Lock, Lean, Weak', 'The label SharpFlow\'s score gives the side. Each hot wallet earns a quality score from its past ROI (capped at 30%), how big it bet next to its usual stake, and how long its record is (full credit from 20 bets). The side\'s score compares the average quality for the side with the average against it. Above 0 it is Weak, from 0.78 Lean, from 0.92 Lock, from 0.96 Prem, from 0.98 Elite. At 0 or below it is Fade and never a play. This is not the "Lock" in the forward test, which is a separate rule.'],
-  ['No tier', 'A suggested play whose side did not score above 0, so it has no label. The size came from another rule.'],
+  ['Band 1 to 5', 'The band SharpFlow\'s score gives the side. Each hot wallet earns a quality score from its past ROI (capped at 30%), how big it bet next to its usual stake, and how long its record is (full credit from 20 bets). The side\'s score compares the average quality for the side with the average against it. Above 0 it is band 1, from 0.78 band 2, from 0.92 band 3, from 0.96 band 4, from 0.98 band 5. At 0 or below it has no band and is never a play. A band describes past wallet records, not how likely a play is to win. It is not the pre-registered test, which is a separate rule.'],
+  ['No band', 'A suggested play whose side did not score above 0, so it has no band. The size came from another rule.'],
   ['Win 60%+', 'The hot wallets on the side have won 60% or more of their recorded bets, over at least 20 bets together. A win rate is not an edge: at -150 a bet needs 60% just to break even.'],
   ['2+ hot', 'Two or more hot wallets hold $250 or more on the side.'],
   ['Sized up', 'A hot wallet bet at least 1.5 times its usual stake on this side.'],
@@ -1113,7 +1126,7 @@ function filterBar(total, shown){
   var grp = function(label, g, opts, src){ return '<div class="vf-group"><span class="vf-label">' + label + '</span><div class="vf-chips">' + opts.map(function(o){ return chip(g, o[0], o[1], !!(src || {})[o[0]]); }).join('') + '</div></div>'; };
   var h = '<div class="vf-bar"><button type="button" class="vf-toggle press press-chip' + (n ? ' has' : '') + '" aria-expanded="' + (PV.fopen ? 'true' : 'false') + '">' + FIL_ICON + 'Filter' + (n ? '<b class="num">' + n + '</b>' : '') + '</button>' +
     (n ? '<span class="vf-count num">' + shown + ' of ' + total + ' plays</span><button type="button" class="vf-clear press press-chip">Clear</button>' : '') + '</div>';
-  if (PV.fopen) h += '<div class="vf-panel">' + grp('Tier', 'tier', FTIERS, PV.f.tier) + grp('Sharps', 'on', FSHARPS, PV.f.on) + grp('Market', 'mkt', FMKT, PV.f.mkt) +
+  if (PV.fopen) h += '<div class="vf-panel">' + grp('Score band', 'tier', FTIERS, PV.f.tier) + grp('Sharps', 'on', FSHARPS, PV.f.on) + grp('Market', 'mkt', FMKT, PV.f.mkt) +
     '<details class="vf-defs"><summary>What these mean</summary><dl>' + FDEFS.map(function(d){ return '<div><dt>' + d[0] + '</dt><dd>' + d[1] + '</dd></div>'; }).join('') + '</dl></details></div>';
   return h;
 }
@@ -1163,7 +1176,7 @@ function ticketP(p, i){
       '<div class="vp-end r' + (ls.side === nm[1] ? ' pk' : '') + '"><span>' + esc(nm[1]) + '</span><b class="num">' + usd(counted(b)) + '</b></div></div>' +
       '<div class="vp-bar">' + halfP(a, max, 'l') + '<u></u>' + halfP(b, max, 'r') + '</div><div class="vp-key">' + keyP(a, 'l') + keyP(b, 'r') + '</div></div>' +
     combinedP(ls.side, me.proven, me.counts) +
-    '<div class="vp-ft">' + (ag && ag.score > 0 && TIER[ag.tier] ? '<span class="vc-tier ' + ag.tier + '">' + TIER[ag.tier] + '</span><span>score <span class="num">+' + ag.score.toFixed(2) + '</span></span>' : '') +
+    '<div class="vp-ft">' + (ag && ag.score > 0 && TIER[ag.tier] ? bandChip(ag) + '<span>score <span class="num">+' + ag.score.toFixed(2) + '</span> from ' + nWallets(ag.contributors) + '</span>' : '') +
       (st ? '<span class="' + st + '">' + (st === 'on' ? 'Pinnacle steam toward ' + esc(ls.side) : st === 'off' ? 'No Pinnacle steam' : 'Pinnacle steam unknown') + '</span>' : '') + (bits[0] ? '<span>' + bits[0] + '</span>' : '') +
       (RK_SP[g.sport] ? rkP(me.rk, m.sides[nm[0] === ls.side ? nm[1] : nm[0]].all.rk) : '') + '<span class="sp"></span><button type="button" class="vp-who" data-p="' + i + '">See who\'s on it</button></div></div></article>';
 }
@@ -1215,7 +1228,7 @@ function renderFeed(el, o, games, sp){
       '<section class="vp-rsec"><h2>Building</h2><p>Hot money on a side, no play yet.</p>' + rows.map(function(g, i){ return railRowP(g, i, !sp); }).join('') +
       (bld.length > rows.length ? '<div class="vp-quiet">' + (bld.length - rows.length) + ' more building, under All games</div>' : '') +
       (bld.length ? '' : '<div class="vp-quiet">Nothing building.</div>') + '<div class="vp-quiet">' + sl.cl.quiet + ' quiet ' + (sl.cl.quiet === 1 ? 'game' : 'games') + ' with no hot money</div></section></aside></div>' +
-      '<p class="vp-foot">Sharp money is context. The suggested size is a flat 1u from an untested rule that is still in its forward test. CFB games carry no size.</p>';
+      '<p class="vp-foot">' + FOOT_NOTE + '</p>';
   }
   box.addEventListener('click', function(e){
     var fc = e.target.closest('.vf-chip'), ft = e.target.closest('.vf-toggle'), fx = e.target.closest('.vf-clear');

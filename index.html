@@ -13473,6 +13473,16 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-11-24T14:00', tag:'Improved', title:'Sharp Money: plainer labels on the Sharps cards',
+    items:[
+      'The score labels Elite, Prem, Lock, Lean and Weak are now Band 5, 4, 3, 2 and 1. A band only orders the wallets\' past records. It does not say a play will win. The chip shows how many hot wallets the score comes from.',
+      'The price on a suggested play now says where it came from: Polymarket\'s price, or Pinnacle\'s price with its vig included when Polymarket had none. When the source is not known, it says nothing about it.',
+      'The note under the suggested size now says what is true: a flat 1u from an untested rule, separate from the pre-registered test, which is a narrower rule counted on its own.',
+      'The Forward test card now calls its plays Test plays instead of Locks.',
+      'The "Trusted wallet" tag on a suggested play now reads "Price record", since it only says the wallet has beaten its own prices lately.'
+    ]
+  },
+  {
     ts:'2026-11-24T08:00', tag:'New', title:'Sharp Money: a label for how far the market moved',
     items:[
       'A Sharps play can now show a small label, Large, Notable or Routine, for how far the market moved toward it before the play was set.',
