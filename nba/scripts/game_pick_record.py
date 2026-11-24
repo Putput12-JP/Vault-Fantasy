@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Game picks: the Vault line's side against the spread and straight up, locked before tip and graded in public. Rules: docs/game-picks.md.
+Game picks: the Vault line's side against the spread and straight up, locked before tip and graded in public. Rules: docs/game-picks.md and docs/game-pick-lock.md
+(the lock: when both teams' starting fives are confirmed, no later than LOCK_FALLBACK_MIN before tip; it was 4 hours before tip until 2026-11-23).
 
 The model is the game model already on the Slate page (build_game_model.py, shipped as model_state.json `game`, scored live by
 sim_engine.vault_mean): team ratings, home court, back-to-back, and the value of whoever the injury report says is out. Nothing here
 changes it and nothing here adds a constant to it. This module only writes down what it said and what the market said at that moment,
 then scores both against the final.
 
-  log(board, now)   -> (rows, meta) for Day.record('gpick', ...), called by snapshot.py after each poll, for regular-season games
-                       tipping within WINDOW_H. One row per game (change-only, like every other source):
+  log(board, now, lineups) -> (rows, meta) for Day.record('gpick', ...), called by snapshot.py after each poll, for regular-season games
+                       that have reached their lock (lock_open). One row per game (change-only, like every other source):
                          gid  [margin, total, p_home, book, spread, home_px, away_px, home_ml, away_ml]   (written only once a spread is posted)
                            margin   the model's home margin (positive = home wins by that many)
                            total    the model's total, context only: no total pick is made
@@ -31,7 +32,8 @@ import math, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 
-WINDOW_H = 4                                   # a game is picked from this many hours before tip: lineups and injuries have mostly settled (as sim_record)
+LOCK_FALLBACK_MIN = 20                         # a game is picked when both fives are confirmed, or from this many minutes before tip if they are not (docs/game-pick-lock.md)
+LOCK_V2_FROM = '2026-11-24'                    # first ET tip day written under this rule; earlier days are rebuilt at it (rebuild_game_picks_lineup_lock.py), the 4h record is kept apart
 BOOK_ORDER = ['DraftKings', 'Pinnacle', 'FanDuel', 'BetMGM', 'bet365', 'Consensus']   # the backtest's book first (data/game_model.json: DraftKings where available)
 DAY_KEYS = ('f', 'c')                          # clock: first sighting (the headline) and last before tip
 COLS = ['game', 'clock', 'margin', 'total', 'p_home', 'book', 'spread', 'ats_side', 'ats_edge', 'ats_px', 'ats_res', 'ats_units',
@@ -90,17 +92,42 @@ def devig(a, b):
     return pa / (pa + pb)
 
 
-def log(board, now):
+def fives_confirmed(lineups):
+    """{(day, team): True/False} from the lineups source's current rows ('YYYY-MM-DD|TEAM|player' -> [slot, Expected / Confirmed, Active / Inactive] or None).
+    A team's five is confirmed when at least five players carry a starting slot and every one of them is Confirmed. A row that was removed (None) counts for nothing."""
+    st = {}
+    for k, v in (lineups or {}).items():
+        if not v or not v[0]:
+            continue
+        day, team = k.split('|', 2)[:2]
+        st[(day, team)] = st.get((day, team), [0, True])
+        st[(day, team)][0] += 1
+        st[(day, team)][1] = st[(day, team)][1] and v[1] == 'Confirmed'
+    return {key: n >= 5 and ok for key, (n, ok) in st.items()}
+
+
+def lock_open(g, now, confirmed):
+    """True once the game's pick may be written: both teams' fives are confirmed (`confirmed` is fives_confirmed's map), or tip is within LOCK_FALLBACK_MIN minutes.
+    Never after tip. Official injury statuses are final by the time NBA.com confirms a five, so this is the first moment the model's inputs are settled."""
+    if not (now < g['tip']):
+        return False
+    if g['tip'] - now <= LOCK_FALLBACK_MIN * 60:
+        return True
+    return bool(confirmed.get((g.get('day'), g.get('away'))) and confirmed.get((g.get('day'), g.get('home'))))
+
+
+def log(board, now, lineups=None):
     rows, meta = {}, {}
     if not board or not board.get('games'):
         return rows, meta
+    confirmed = fives_confirmed(lineups)
     import pricing as PX, sim_engine as SE
     pr = PX.Pricer(example=bool(board.get('example')))
     G = (pr.MS_all or {}).get('game')
     if not G or not G.get('sd_margin'):
         return rows, meta
     for g in board['games']:
-        if not (now < g['tip'] <= now + WINDOW_H * 3600):
+        if not lock_open(g, now, confirmed):
             continue
         try:
             mean = SE.vault_mean(pr, g, board)               # None before the regular season, or with no game model state
