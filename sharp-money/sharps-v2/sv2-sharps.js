@@ -818,6 +818,79 @@
     if (isObj(share) && isNum(share[sport]) && share[sport] > 0) s += ' Pinnacle raises limits toward start on almost every game (' + Math.round(share[sport] * 100) + '% of ' + eyebrowOf(sport) + ' markets this season).';
     return s;
   }
+  /* ---- the spread fact line of a MONEYLINE play. v2.spread_ctx (scripts/sharps_v2/spread_ctx.py): Pinnacle's spread line for this side from and to over the same 24 hours as the
+     market-move flags, and how many of the readable books moved their own spread line toward or away from this side. A fact line like the Pinnacle limit: not a flag, not part of the
+     Move grade or the tier, counted nowhere. Null (nothing drawn) for a spread or total play, an absent key and a stored null: never a guess. */
+  function spreadOf(p) {
+    if (p.g !== 'ml') return null;
+    var m = mktOf(p.game, p.g), c = m && m.v2 && m.v2.spread_ctx;
+    if (!isObj(c) || !Array.isArray(c.pin) || !isNum(c.pin[0]) || !isNum(c.pin[1]) || !isNum(c.books) || c.books < 1 || !isNum(c.toward) || !isNum(c.away)) return null;
+    var side = p.sf.side, B = c.books, bw = B === 1 ? ' book' : ' books', t = c.toward, a = c.away, note;
+    if (t > 0 && a === 0) note = t + ' of ' + B + bw + ' moved toward ' + side;
+    else if (a > 0 && t === 0) note = a + ' of ' + B + bw + ' moved away from ' + side;
+    else if (t > 0 && a > 0) note = t + ' toward and ' + a + ' away from ' + side + ', of ' + B + bw;
+    else note = 'has not moved (' + B + bw + ' read)';
+    var from = lineTxt(c.pin[0], 'spread'), to = lineTxt(c.pin[1], 'spread'), same = t + a === 0;
+    return { from: from, to: to, same: same, note: note,
+      text: 'Spread at Pinnacle ' + (same ? from + ', ' + note : 'went ' + from + ' to ' + to + ', ' + note) + '.' };
+  }
+  function limitRow(f) {
+    var l = f && isObj(f.limit) ? f.limit : null;
+    if (!l || !isNum(l.to)) return null;
+    if (!isNum(l.from) || l.rows === 1 || l.from === l.to) return { v: esc(limitMoney(l.to)), n: (l.rows === 1 ? 'one reading, ' : 'unchanged, ') + 'fact only' };
+    var pct = l.from > 0 ? Math.round((l.to / l.from - 1) * 100) : null;
+    return { v: acFt(limitMoney(l.from), limitMoney(l.to)), n: (pct != null ? (pct > 0 ? '+' : '') + pct + '%, ' : '') + 'fact only' };
+  }
+  function acFt(a, b) { return '<span class="sv2-ac-ft">' + fromTo(a, b) + '</span>'; }
+  function acRow(k, v, n, key) {
+    return '<div class="sv2-ac-row" data-ac="' + key + '"><dt>' + esc(k) + '</dt><dd class="sv2-ac-v">' + v + '</dd>' + (n ? '<dd class="sv2-ac-n">' + n + '</dd>' : '') + '</div>';
+  }
+  var MK_WORD = { ml: 'Moneyline', spread: 'Spread', total: 'Total' };
+  /* the alert card at the top of the dropdown (mock: mocks/sharps-v2-alert-card.html). It replaces the four tiles and the takeaway block and keeps every fact they showed:
+     the play, the tier, the date and the freeze time, the size, the price (cents, American, the best US book), Novig, fair and the gap to it, the takeaway sentences, "how this label
+     was earned" and the price caution (those two behind the toggle). opts.whyOpen: the toggle is open. */
+  function alertCardHtml(p, ctx) {
+    var sf = p.sf, words = ctx.words, f = ctx.f, tf = ctx.tf, gr = ctx.gr, id = ctx.id, side = words.side;
+    var mgb = mgBadgeHtml(p), mgs = mgSentence(p), hasMg = !!mgOf(p);
+    var top = '<div class="sv2-ac-top"><span class="sv2-ac-dot" aria-hidden="true"></span><span class="sv2-ac-k"><span class="sv2-sr">Sharp Money, </span>' + (hasMg ? 'Price move' : 'Play breakdown') + '</span>' +
+      '<span class="sv2-ac-mk">' + esc(eyebrowOf(p.sport)) + '<span aria-hidden="true"> · </span><span class="sv2-sr">, </span>' + esc(MK_WORD[p.g] || marketLabel(p.g)) + '</span>' + mgb + '</div>';
+    var date = ctx.date;
+    var head = '<div class="sv2-wu-hd sv2-ac-hd"><div class="sv2-wu-hl1"><h3 class="sv2-wu-t sv2-ac-t" id="' + id + '-t"><span class="sv2-sr">The read on </span>' + esc(p.g === 'ml' ? sf.side + ' ML' : playTitle(p.game, p.g, sf)) + '</h3></div>' +
+      (date ? '<span class="sv2-wu-date">' + esc(date) + '</span>' : '') + '</div>';
+    var sub = '<p class="sv2-ac-sub"><span>' + esc(gameLabel(p.game)) + ', ' + esc(marketLabel(p.g)) + '</span>' + ui.tier(p.tier) + '</p>';
+    /* the plain sentences: the label's sentence when there is a label, else the first takeaway sentence; the rest of the takeaway follows, its closer is the note */
+    var tk = ctx.tk, closer = tk[tk.length - 1], body = tk.slice(0, -1), lead = mgs;
+    if (!lead && body.length) lead = body.shift();
+    var say = lead ? '<p class="sv2-ac-say">' + esc(lead) + '</p>' : '';
+    var rest = body.length ? '<p class="sv2-ac-tk">' + body.map(function (x) { return esc(x); }).join(' ') + '</p>' : '';
+    var chips = fullChips(p, words).concat(priceChips(p)).map(function (ch) {
+      return '<span class="sv2-fl" data-flag="' + ch.k + '"' + (ch.tip ? ' title="' + esc(ch.tip) + '"' : '') + '>' + flagIcon(ch.state) + '<span>' + esc(ch.text) + '</span>' + (ch.tip ? '<span class="sv2-sr">. ' + esc(ch.tip) + '</span>' : '') + '</span>';
+    }).join('');
+    /* the stat rows */
+    var rows = '', pn = f ? pinNums(f) : null, a = f ? flagState(f.pin) : null, ln0 = f && isObj(f.pin) && isNum(f.pin.line) ? lineTxt(f.pin.line, p.g) : null;
+    if (pn) rows += acRow('Pinnacle price', acFt(pn.from, pn.to), esc(a === 'toward' ? 'moved toward ' + side : a === 'away' ? 'moved away from ' + side : a === 'quiet' ? 'held' : '') + (ln0 ? esc(' at ' + ln0) : ''), 'pin');
+    var lr = limitRow(f); if (lr) rows += acRow('Pinnacle limit', lr.v, esc(lr.n), 'limit');
+    var sr = spreadOf(p); if (sr) rows += acRow('Spread', sr.same ? esc(sr.from) : acFt(sr.from, sr.to), esc(sr.note), 'spread');
+    var nvq = tf.nvq;
+    if (nvq) {
+      var nam = fmt.american(nvq.px), gw = gapWords(nvq.gap), age = novigAge(nvq.nv, !!p.game.frozen);
+      rows += acRow('Novig price', esc(fmt.cents(nvq.px) + (nam ? ' (' + nam + ')' : '')), esc((age || '') + (gw ? (age ? '; ' : '') + gw + ', ' + NOVIG_FEES : '')), 'novig');
+    }
+    rows += acRow('Price now', esc(tf.c || ''), esc([tf.am, tf.best].filter(Boolean).join(', ')), 'price');
+    rows += acRow('Fair', tf.fairV ? esc(tf.fairV.replace(/^Fair /, '')) : '', esc(tf.fairSub), 'fair');
+    if (gr) rows += acRow('Status', esc('Final ' + (gr.score || '')), esc({ won: 'Won', lost: 'Lost', push: 'Push' }[gr.result] || ''), 'status');
+    else rows += acRow('Status', isNum(p.cut) ? esc('Freezes ' + ct.time(p.cut, true)) : '', sizeCellHtml(p), 'status');
+    /* why this label: how it was earned and the price caution, closed until asked */
+    var why = mgWhy(p, words), pw = priceWhy(p), wid = id + '-why', btn = '';
+    if (why || pw) {
+      btn = '<div class="sv2-ac-whywrap"><button type="button" class="sv2-ac-why sv2-press sv2-press-btn" aria-expanded="' + (ctx.whyOpen ? 'true' : 'false') + '" aria-controls="' + wid + '" data-sp-why="' + esc(p.key) + '" data-fid="why:' + esc(p.key) + '">' +
+        (hasMg ? 'Why this label' : 'About this price') + ui.icon('chevron', 'sv2-chev') + '</button><div class="sv2-x" id="' + wid + '"' + (ctx.whyOpen ? ' data-open' : '') + '><div class="sv2-x-in"><div class="sv2-ac-whyp sv2-card-inset">' +
+        (why ? '<p class="sv2-mg-why"><b>How this label was earned.</b> ' + esc(why) + '</p>' : '') + (pw ? '<p class="sv2-mg-why sv2-mg-evid">' + esc(pw) + '</p>' : '') + '</div></div></div></div>';
+    }
+    return top + '<div class="sv2-ac-main"><div class="sv2-ac-l">' + head + sub + say + (chips ? '<div class="sv2-wu-chips sv2-ac-chips">' + chips + '</div>' : '') + rest +
+      '<p class="sv2-ac-note">Context only. Not a bet signal. ' + esc(closer) + '</p>' + btn + '</div>' +
+      '<div class="sv2-ac-r"><dl class="sv2-ac-rows sv2-card-inset">' + rows + '</dl></div></div>';
+  }
   function sideHtml(p, s, tiered, isMore) {
     var rows = sideRows(s.data, tiered);
     return '<div class="sv2-card-inset sv2-wu-side' + (isMore ? ' is-more' : '') + '"><h4 class="sv2-wu-sn"><span class="sv2-ell">' + esc(s.name) + '</span>' + (isMore ? '<span class="sv2-chip sv2-chip--ink sv2-wu-mtag">More money</span>' : '') + '</h4><dl class="sv2-wu-rows">' +
@@ -852,26 +925,13 @@
   function writeupHtml(p, opts) {
     opts = opts || {};
     var m = mktOf(p.game, p.g), v = m && m.v2 || {}, sf = p.sf, words = sideLabelWords(p), f = flagsOf(p), id = keyId('sv2-wu-', p.key);
-    var title = 'The read on ' + (p.g === 'ml' ? sf.side : playTitle(p.game, p.g, sf));
     var date = dateWords(p.game.gst), money = moneyOf(p), series = seriesOf(p);
     var tiered = !!(p.facts && p.facts.tiered);
 
-    /* tiles */
-    var tf = tileFacts(p), c = tf.c, priceSub = tf.priceSub, fairV = tf.fairV, fairSub = tf.fairSub;
-    var gr = isObj(v.graded) && v.graded.result ? v.graded : null;
-    var stat = gr ? '<p class="sv2-wu-v">Final ' + esc(gr.score || '') + '</p><p class="sv2-wu-s">' + esc({ won: 'Won', lost: 'Lost', push: 'Push' }[gr.result] || '') + '</p>' :
-      '<p class="sv2-wu-v">' + (isNum(p.cut) ? 'Freezes ' + esc(ct.time(p.cut, true)) : '') + '</p><p class="sv2-wu-s">' + sizeCellHtml(p) + '</p>';
-    var tiles = '<div class="sv2-wu-tiles">' +
-      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">The play</p><p class="sv2-wu-v">' + esc(p.g === 'ml' ? sf.side : playTitle(p.game, p.g, sf)) + '</p><p class="sv2-wu-s">' + esc(gameLabel(p.game)) + ', ' + esc(marketLabel(p.g)) + '</p><p class="sv2-wu-s">' + ui.tier(p.tier) + '</p></div>' +
-      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">The price</p><p class="sv2-wu-v sv2-num">' + esc(c || '') + '</p>' + (priceSub.length ? '<p class="sv2-wu-s">' + esc(priceSub.join(', ')) + '</p>' : '') + '<p class="sv2-wu-s sv2-mut">Price now</p></div>' +
-      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">Line and fair</p><p class="sv2-wu-v sv2-num">' + esc(fairV) + '</p><p class="sv2-wu-s">' + esc(fairSub) + '</p></div>' +
-      '<div class="sv2-card-inset sv2-wu-tile"><p class="sv2-h2">Status</p>' + stat + '</div></div>';
-
-    /* the takeaway */
+    /* the alert card: the play, the numbers and the takeaway in one card (it replaces the old four tiles and takeaway block) */
+    var tf = tileFacts(p), gr = isObj(v.graded) && v.graded.result ? v.graded : null;
     var tk = takeaway({ flags: f, side: words.side, other: words.other || (money ? money.other : null), g: p.g, money: money, size: p.units > 0, graded: gr });
-    var why = mgWhy(p, words), pw = priceWhy(p);
-    var take = '<div class="sv2-card-inset sv2-wu-take"><p class="sv2-h2">The takeaway</p><p class="sv2-wu-tk">' + tk.map(function (s) { return esc(s); }).join(' ') + '</p>' +
-      (why ? '<p class="sv2-mg-why"><b>How this label was earned.</b> ' + esc(why) + '</p>' : '') + (pw ? '<p class="sv2-mg-why sv2-mg-evid">' + esc(pw) + '</p>' : '') + '</div>';
+    var card = alertCardHtml(p, { words: words, f: f, tf: tf, gr: gr, id: id, date: date, tk: tk, whyOpen: !!opts.whyOpen });
 
     /* section 1: who is on each side */
     var sec1 = '';
@@ -881,18 +941,14 @@
     }
     /* section 2: where the line went */
     var sec2 = '', pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null;
-    var mgb = mgBadgeHtml(p), mgs = mgSentence(p);
-    if (f || series || mgb || priceChips(p).length) {
-      var head = mgb + (mgs ? '<p class="sv2-wu-fact sv2-mg-say">' + esc(mgs) + '</p>' : '');
+    if (f || series) {
+      var head = '';
       if (pn) head += '<p class="sv2-h2">Pinnacle ' + esc(words.side) + ' price</p><p class="sv2-wu-big sv2-num">' + fromTo(pn.from, pn.to) + '</p>';
       if (ln && f.line.kind !== 'price') {
         head += '<p class="sv2-h2">Market line</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
         var xt = f.line.extreme, nm = isObj(f.line.pin) ? f.line.pin : null;
         if (isObj(xt) && isNum(xt.value) && BOOKS.indexOf(xt.book) >= 0) head += '<p class="sv2-wu-s">' + (nm && isNum(nm.from) && isNum(nm.to) ? (nm.to < nm.from ? 'Lowest: ' : nm.to > nm.from ? 'Highest: ' : 'Furthest: ') : 'Furthest: ') + esc(xt.book + ' ' + lineTxt(xt.value, p.g)) + '</p>';
       } else if (ln) head += '<p class="sv2-h2">Books\' price</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
-      var chips = fullChips(p, words).concat(priceChips(p)).map(function (ch) {
-        return '<span class="sv2-fl" data-flag="' + ch.k + '"' + (ch.tip ? ' title="' + esc(ch.tip) + '"' : '') + '>' + flagIcon(ch.state) + '<span>' + esc(ch.text) + '</span>' + (ch.tip ? '<span class="sv2-sr">. ' + esc(ch.tip) + '</span>' : '') + '</span>';
-      }).join('');
       var byBook = '';
       if (!series && f && f.line && isObj(f.line.by_book)) {
         byBook = BOOKS.filter(function (b) { var r = f.line.by_book[b]; return Array.isArray(r) && isNum(r[0]) && isNum(r[1]); }).map(function (b) {
@@ -902,7 +958,7 @@
         byBook = byBook ? '<ul class="sv2-wu-books">' + byBook + '</ul>' : '';
       }
       var fact = limitLine(f, opts.share, p.sport);
-      var text = '<div class="sv2-wu-hl">' + head + (chips ? '<div class="sv2-wu-chips">' + chips + '</div>' : '') + byBook + (fact ? '<p class="sv2-wu-fact">' + esc(fact) + '</p>' : '') + '</div>';
+      var text = '<div class="sv2-wu-hl">' + head + byBook + (fact ? '<p class="sv2-wu-fact">' + esc(fact) + '</p>' : '') + '</div>';
       var chart = series ? chartsHtml(p, series, words, { draw: !!opts.draw, phone: !!opts.phone }) : '';
       sec2 = sectionHtml('2', 'Where the line went', '<div class="sv2-wu-line' + (chart ? ' has-chart' : '') + '">' + text + chart + '</div>', !opts.phone, id + '-s2');
     }
@@ -910,10 +966,7 @@
     var size = p.units > 0 && SV2.sizesOk() ? ' The size is a flat 1u from an untested rule.' : p.sport === 'cfb' ? ' ' + T.noSize + '.' : '';
     var shareRow = shareButtonHtml(p, id);
     var foot = '<footer class="sv2-wu-ft"><p>Wallets: Polymarket public positions.' + (f || series ? ' Lines: ' + BOOKS.join(', ') + '.' : '') + ' Times Central. Context only, not a bet signal.' + esc(size) + '</p><p class="sv2-wu-brand">Sharp Money</p></footer>';
-    return '<div class="sv2-wu-wrap"><article class="sv2-card sv2-acc-ink sv2-wu" aria-labelledby="' + id + '-t">' +
-      '<header class="sv2-wu-hd"><div class="sv2-wu-hl1"><p class="sv2-wu-ey"><span>Sharp Money</span><span class="sv2-sr">, </span><span>Play breakdown</span><span class="sv2-sr">, </span><span>' + esc(eyebrowOf(p.sport)) + '</span></p>' +
-      '<h3 class="sv2-wu-t" id="' + id + '-t">' + esc(title) + '</h3></div>' + (date ? '<span class="sv2-wu-date">' + esc(date) + '</span>' : '') + '</header>' +
-      tiles + take + sec1 + sec2 + shareRow + foot + '</article></div>';
+    return '<div class="sv2-wu-wrap"><article class="sv2-card sv2-acc-ink sv2-wu sv2-ac" aria-labelledby="' + id + '-t">' + card + sec1 + sec2 + shareRow + foot + '</article></div>';
   }
 
   /* ---- share as an image. shareDataOf builds the plain data object the poster (sv2-share.js) draws, from the same stored values and the same helper functions as the
@@ -951,6 +1004,7 @@
     if (pn) mv.pin = { label: 'Pinnacle ' + words.side + ' price', from: pn.from, to: pn.to };
     if (ln) mv.line = { label: f.line.kind !== 'price' ? 'Market line' : 'Books\' price', from: ln.from, to: ln.to };
     var fl = fullChips(p, words).filter(function (ch) { return ch.state !== 'none'; }).map(function (ch) { return ch.text; }); if (fl.length) mv.flags = fl;
+    var spr = spreadOf(p); if (spr) mv.spread = spr.text;
     if (fresh) { var ns = novigSentence(tf.nvq, false); if (ns) mv.novig = ns; }
     if (Object.keys(mv).length) d.moves = mv;
     /* who is on each side */
@@ -988,7 +1042,7 @@
     SORTS: SORTS, SORT_ORDER: SORT_ORDER, cleanSort: cleanSort, nextSort: nextSort, sortFlat: sortFlat, viewOf: viewOf, fairPts: fairPts,
     vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell,
     flagsOf: flagsOf, flagChips: flagChips, chipsHtml: chipsHtml, movesOf: movesOf, chartPoints: chartPoints, stepPath: stepPath, extremes: extremes, seriesOf: seriesOf,
-    chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml, mgMoveSentence: mgMoveSentence, tileFacts: tileFacts, shareDataOf: shareDataOf, shareButtonHtml: shareButtonHtml, booksUsed: booksUsed,
+    chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml, mgMoveSentence: mgMoveSentence, tileFacts: tileFacts, spreadOf: spreadOf, limitRow: limitRow, detailFor: detailFor, whyToggle: whyToggle, alertCardHtml: alertCardHtml, shareDataOf: shareDataOf, shareButtonHtml: shareButtonHtml, booksUsed: booksUsed,
     rowHtml: rowHtml, theadHtml: theadHtml, priceHtml: priceHtml, COLS: COLS, novigGap: novigGap, gapTxt: gapTxt, gapWords: gapWords, gapPct: gapPct, novigAge: novigAge, novigTile: novigTile, novigSentence: novigSentence, novigText: novigText, novigOf: novigOf, vsFairOf: vsFairOf, priceChips: priceChips, priceWhy: priceWhy, PRICE_WHY: PRICE_WHY, mgOf: mgOf, mgChipHtml: mgChipHtml, mgBadgeHtml: mgBadgeHtml, mgSentence: mgSentence, mgWhy: mgWhy, MGC: MGC,
     marketOrder: marketOrder, dateWords: dateWords, eyebrowOf: eyebrowOf, sideLabelWords: sideLabelWords, BOOKS: BOOKS
   };
@@ -1130,14 +1184,23 @@
       (ex.length ? '<ul class="sv2-sp-ex">' + ex.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' : '');
   }
 
-  function detailHtml(p, moreOpen) {
+  /* the dropdown body of a play with the state the page keeps for it (More detail open, Why this label open): one place for the first draw and for a redraw */
+  function detailFor(p, st) { return detailHtml(p, !!(st.more || {})[p.key], !!(st.why || {})[p.key]); }
+  /* the Why this label button: flips its expander and remembers the choice. btn is the button, st the page state. -> the new open state */
+  function whyToggle(btn, st) {
+    var wx = btn.parentNode.querySelector('.sv2-x'), wo = !wx.hasAttribute('data-open');
+    if (wo) wx.setAttribute('data-open', ''); else wx.removeAttribute('data-open');
+    btn.setAttribute('aria-expanded', String(wo)); (st.why = st.why || {})[btn.getAttribute('data-sp-why')] = wo;
+    return wo;
+  }
+  function detailHtml(p, moreOpen, whyOpen) {
     var ev = evidenceLines(p).map(function (l) {
       return '<li class="sv2-sp-evl"><span class="sv2-sp-evt' + (l.tag ? ' is-' + l.tag : '') + '">' + esc(l.tag ? TAG_WORD[l.tag] : '') + '</span><span>' + esc(l.text) + '</span></li>';
     }).join('');
     var mid = esc(p.key.replace(/[^a-z0-9]+/gi, '-'));
     var draw = !DRAWN[p.key]; DRAWN[p.key] = true;
     var vp = store.cards && store.cards.v2_plays, share = vp && vp.flags && vp.flags.limit_schedule_share;
-    return writeupHtml(p, { share: share, phone: isPhoneNow(), draw: draw }) + '<div class="sv2-sp-body">' +
+    return writeupHtml(p, { share: share, phone: isPhoneNow(), draw: draw, whyOpen: !!whyOpen }) + '<div class="sv2-sp-body">' +
       '<div class="sv2-sp-col">' +
       '<section class="sv2-sp-sec"><h3 class="sv2-h2">Price</h3>' + priceHtml(p) + '</section>' +
       '<section class="sv2-sp-sec"><h3 class="sv2-h2">What is stored for and against</h3><ul class="sv2-sp-ev">' + ev + '</ul></section>' +
@@ -1202,7 +1265,7 @@
       '<td class="sv2-tb-c c-size">' + sizeCellHtml(p) + '</td>' +
       '<td class="sv2-tb-c c-chev"><button type="button" class="sv2-tb-tog sv2-press sv2-press-btn" aria-expanded="' + open + '" aria-controls="' + id + '" aria-label="' + esc(label) + '" data-sp-row="' + esc(p.key) + '" data-fid="row:' + esc(p.key) + '">' + ui.icon('chevron', 'sv2-chev') + '</button></td></tr>';
     var dr = '<tr class="sv2-tb-d" data-dkey="' + esc(p.key) + '"><td colspan="' + ncol + '"><div class="sv2-x" id="' + id + '"' + (open ? ' data-open' : '') + '><div class="sv2-x-in" role="region" aria-label="' + esc(label) + '">' +
-      (open ? detailHtml(p, !!st.more[p.key]) : '') + '</div></div></td></tr>';
+      (open ? detailFor(p, st) : '') + '</div></div></td></tr>';
     return tr + dr;
   }
 
@@ -1246,7 +1309,7 @@
 
   /* ------------------------------------------------------------------ mount */
   SV2.register('sharps', function mount(el) {
-    var st = { f: loadFilters(), sort: cleanSort(null), wallet: null, open: {}, more: {}, ctxOpen: null, ctxN: CTX_STEP, panel: false, deep: null, shell: false, sig: '', lastBands: '' };
+    var st = { f: loadFilters(), sort: cleanSort(null), wallet: null, open: {}, more: {}, why: {}, ctxOpen: null, ctxN: CTX_STEP, panel: false, deep: null, shell: false, sig: '', lastBands: '' };
     var refs = {}, model = null;
     function on(name, fn) { SV2.on(name, function (a) { if (document.contains(el)) fn(a); }); }   /* a re-mounted tab leaves the old closures behind: they stay quiet */
 
@@ -1500,7 +1563,7 @@
       var inEl = drow.querySelector('.sv2-x-in');
       if (!inEl.firstChild && model) {
         var p = model.all.filter(function (x) { return x.key === key; })[0];
-        if (p) inEl.innerHTML = detailHtml(p, !!st.more[key]);
+        if (p) inEl.innerHTML = detailFor(p, st);
       }
     }
 
@@ -1545,6 +1608,8 @@
       if (tr) { toggleRow(tr.getAttribute('data-key')); return; }   /* the whole row toggles; the chevron button is the keyboard and screen reader control */
       var shb = t.closest('[data-sp-share]');
       if (shb) { shareClick(shb); return; }
+      var wy = t.closest('[data-sp-why]');
+      if (wy) { whyToggle(wy, st); return; }
       var more = t.closest('[data-sp-more]');
       if (more) {
         var mx = more.parentNode.querySelector('.sv2-x'), mo = !mx.hasAttribute('data-open');

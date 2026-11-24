@@ -78,9 +78,10 @@ console.log('the label and its chip');
 console.log('the badge at the top of the flags area, and the one sentence');
 {
   const h = P.writeupHtml(withGrade(A_MARK), {});
-  const hl = h.slice(h.indexOf('sv2-wu-hl'));
-  ok('the badge is the first thing in the line-went block, before the flag numbers and chips', hl.indexOf('sv2-mg-badge') > 0 && hl.indexOf('sv2-mg-badge') < hl.indexOf('sv2-wu-big') && hl.indexOf('sv2-mg-badge') < hl.indexOf('data-flag="pin"'));
-  ok('the badge reads Move and the word', />Move<\/span>.*>LARGE</.test(hl));
+  const top = h.slice(h.indexOf('sv2-ac-top'), h.indexOf('sv2-ac-main')), sec2 = h.slice(h.indexOf('id="sv2-wu-'), h.length);
+  ok('the badge sits in the top row of the card, at the right, before the title and the numbers', top.indexOf('sv2-mg-badge') > 0 && h.indexOf('sv2-mg-badge') < h.indexOf('sv2-wu-t ') && h.indexOf('sv2-mg-badge') < h.indexOf('data-flag="pin"') && /Price move/.test(top));
+  ok('the badge is not repeated in the line-went section', !/sv2-mg-badge/.test(h.slice(h.indexOf('<details'))));
+  ok('the badge reads Move and the word', />Move<\/span>.*>LARGE</.test(top));
   ok('the sentence uses only stored numbers: price from and to, limit from and to', /Pinnacle moved this side from \+105 to -129 while its limit rose from \$3\.7K to \$5\.3K\./.test(strip(h)));
   const s = (flags, g) => P.mgSentence(withGrade(g || A_MARK, flags));
   eq('a falling limit says fell', s(FL(PIN('toward', 2.3), null, { limit: { from: 5300, to: 3700, rows: 3 } })), 'Pinnacle moved this side from +105 to -129 while its limit fell from $5.3K to $3.7K.');
@@ -92,10 +93,10 @@ console.log('the badge at the top of the flags area, and the one sentence');
   eq('D and no grade have no sentence', [s(FL(PIN('quiet', 0.1), null), D_FLAT), s(FL(PIN('quiet', 0.1), null), NOGRADE('no_flags'))], [null, null]);
   ok('the sentence is told once, in the flags area, not in the takeaway', (strip(h).match(/Pinnacle moved this side from/g) || []).length === 1);
   const noFlagsH = P.writeupHtml(withGrade(A_MARK, null), {});
-  ok('with the flags dropped by the size gate the badge still shows and nothing breaks', /sv2-mg-badge/.test(noFlagsH) && !/Pinnacle moved this side from/.test(strip(noFlagsH)) && /The takeaway/.test(noFlagsH));
+  ok('with the flags dropped by the size gate the badge still shows and nothing breaks', /sv2-mg-badge/.test(noFlagsH) && !/Pinnacle moved this side from/.test(strip(noFlagsH)) && /sv2-ac-note/.test(noFlagsH) && !/Where the line went/.test(noFlagsH));
 }
 
-console.log('how this label was earned (inside the takeaway)');
+console.log('how this label was earned (behind the Why this label toggle)');
 {
   const words = (p) => P.sideLabelWords(p);
   const why = (g, flags, o) => { const p = withGrade(g, flags); if (o) Object.assign(p, o); return P.mgWhy(p, words(p)); };
@@ -113,8 +114,8 @@ console.log('how this label was earned (inside the takeaway)');
   eq('a placeholder with no stored number forces the template that does not print it', why(MGB({ letter: 'A', basis: 'a_mark', a: 'toward', a_pts: null, cut: {} }), FL({ state: 'toward' }, null)), 'LARGE move: Pinnacle\'s price for Hornets moved in the last 22 hours.');
   const p = withGrade(A_MARK, f);
   const h = P.writeupHtml(p, {});
-  ok('the line sits in the takeaway card, after the takeaway text, with its heading', /class="sv2-wu-tk">[^<]*<\/p><p class="sv2-mg-why"><b>How this label was earned\.<\/b> LARGE move/.test(h));
-  ok('the takeaway text itself is unchanged and its closer is still its last sentence', /These are descriptions of what the market did\. Past moves like these have not paid off in Vault&#39;s records, so this is context, not a reason to bet\.<\/p><p class="sv2-mg-why">/.test(h));
+  ok('the line sits behind the toggle, after the note, with its heading, closed by default', /<p class="sv2-ac-note">[^<]*<\/p><div class="sv2-ac-whywrap"><button[^>]*aria-expanded="false"[^>]*data-sp-why[^>]*>Why this label<[\s\S]*<div class="sv2-x" id="[^"]*-why"><div class="sv2-x-in"><div class="sv2-ac-whyp sv2-card-inset"><p class="sv2-mg-why"><b>How this label was earned\.<\/b> LARGE move/.test(h));
+  ok('the takeaway closer is kept whole in the note, right after "Context only. Not a bet signal."', /<p class="sv2-ac-note">Context only\. Not a bet signal\. These are descriptions of what the market did\. Past moves like these have not paid off in Vault&#39;s records, so this is context, not a reason to bet\.<\/p>/.test(h));
   const texts = [A_MARK, B_FIRED, B_C, A_C, C_DRIFT, AGAINST].map((g) => strip(P.writeupHtml(withGrade(g, FL(PIN(g.a || 'quiet', g.a_pts == null ? 0 : g.a_pts), LIN(g.c || 'quiet'), { limit: lim })), {}))).join(' ');
   ok('no banned word, dash or unfilled slot in any card', !BANNED.test(texts) && !texts.includes(EM) && !texts.includes(EN) && !/[{}]|undefined|NaN|\bnull\b/.test(texts));
   ok('the card never says a play will win and never says Sharp grade', !/Sharp grade|grade A|A play\b|will win/i.test(texts) && /The label does not predict results\./.test(texts));
@@ -140,8 +141,8 @@ console.log('everything else in the dropdown is still there');
   const f = FL(PIN('toward', 2.3), LIN('toward'), { limit: lim });
   const base = P.writeupHtml(mkp({ flags: f }), { share: { nba: 0.99 } });
   const withMg = P.writeupHtml(mkp({ flags: f, move_grade: A_MARK }), { share: { nba: 0.99 } });
-  const stripMg = withMg.replace(/<p class="sv2-mg-badge-row">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-wu-fact sv2-mg-say">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-mg-why">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-mg-why sv2-mg-evid">[\s\S]*?<\/p>/, '');
-  ok('with the three additions removed the card is byte for byte the card without a grade', stripMg === base, [stripMg.length, base.length]);
+  const after = (h) => h.slice(h.indexOf('<details')), rowsOf = (h) => /<dl class="sv2-ac-rows[\s\S]*?<\/dl>/.exec(h)[0], titleOf = (h) => /<h3[\s\S]*?<\/p>/.exec(h)[0];
+  ok('a grade changes only the top of the card: the sections below, the stat rows, the title and the tier are byte for byte the same', after(withMg) === after(base) && rowsOf(withMg) === rowsOf(base) && titleOf(withMg) === titleOf(base));
   ok('flag chips, the price move numbers and the limit line are all still shown', /data-flag="pin"/.test(withMg) && /data-flag="line"/.test(withMg) && /sv2-wu-big/.test(withMg) && /Pinnacle limit \$3\.7K to \$5\.3K in the last 22 hours\./.test(withMg));
   eq('the table header says Tier and move and the sort is still the tier sort', [P.SORTS.tier.label, P.SORT_ORDER.indexOf('tier') >= 0], ['Tier', true]);
   ok('no grade: the card is exactly the old card', P.writeupHtml(mkp({ flags: f, move_grade: null }), { share: { nba: 0.99 } }) === base && P.writeupHtml(mkp({ flags: f, move_grade: D_FLAT }), { share: { nba: 0.99 } }) === base);

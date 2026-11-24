@@ -1352,17 +1352,10 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
 .sv2-wu p, .sv2-wu h3, .sv2-wu h4, .sv2-wu dl, .sv2-wu dd { margin: 0; }
 .sv2-wu-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .sv2-wu-hl1 { min-width: 0; }
-.sv2-wu-ey { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-bottom: 6px; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .14em; text-transform: uppercase; color: var(--sv2-mut); }
 .sv2-wu-t { font: 700 24px/1.15 var(--sv2-sans); letter-spacing: -.01em; color: var(--sv2-ink); overflow-wrap: anywhere; }
 .sv2-wu-date { flex: none; padding: 6px 12px; border-radius: 999px; background: var(--sv2-follow); color: var(--sv2-page); font: 700 12px/1.2 var(--sv2-sans); letter-spacing: .08em; white-space: nowrap; }
-.sv2-wu-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.sv2-wu .sv2-wu-tile { display: grid; align-content: start; gap: 4px; padding: 12px 14px; }
-.sv2-wu-v { min-height: 22px; font: 700 18px/1.2 var(--sv2-sans); color: var(--sv2-ink); overflow-wrap: anywhere; }
-.sv2-wu-v.sv2-num { font-family: var(--sv2-num); }
 .sv2-wu-s { font: 400 13px/1.35 var(--sv2-sans); color: var(--sv2-mut); overflow-wrap: anywhere; }
 .sv2-wu-s .sv2-mut { color: var(--sv2-mut); }
-.sv2-wu .sv2-wu-take { display: grid; gap: 6px; }
-.sv2-wu-tk { font: 500 15px/1.5 var(--sv2-sans); color: var(--sv2-ink); }
 .sv2-wu-sec { border-top: 1px solid var(--sv2-line); }
 .sv2-wu-sum { display: flex; align-items: center; gap: 10px; min-height: 48px; cursor: pointer; list-style: none; font: 600 12px/1.2 var(--sv2-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--sv2-ink); }
 .sv2-wu-sum::-webkit-details-marker { display: none; }
@@ -1423,10 +1416,6 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
   .sv2-wu-wrap { padding: 6px 16px 2px; }
   .sv2 .sv2-wu { gap: 12px; padding: 14px; }
   .sv2-wu-t { font-size: 21px; }
-  .sv2-wu-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .sv2-wu-v { font-size: 16px; }
-  .sv2 .sv2-wu .sv2-wu-tile { padding: 10px 12px; }
-  .sv2-wu-tile .sv2-tier { gap: 6px; padding-right: 8px; font-size: 12px; max-width: 100%; }
   .sv2-wu-sides { grid-template-columns: minmax(0, 1fr); }
   .sv2-wu-big { font-size: 22px; }
 }
@@ -1473,7 +1462,6 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
 .sv2-wu .sv2-mg-badge-row { margin: 0 0 2px; }
 .sv2 .sv2-mg-badge { min-height: 26px; padding: 3px 12px 3px 10px; font-size: 12px; }
 .sv2 .sv2-mg-badge.sv2-mg--against { font-size: 13px; }
-.sv2-wu .sv2-wu-fact.sv2-mg-say { margin-top: 2px; font-size: 14px; color: var(--sv2-ink); }
 .sv2-wu .sv2-mg-why { font: 400 13px/1.45 var(--sv2-sans); color: var(--sv2-mut); }
 .sv2-wu .sv2-mg-why b { font-weight: 600; color: var(--sv2-ink); }
 @container (max-width: 699px) {
@@ -1524,3 +1512,52 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
 .sv2 .sv2-wu-sharebtn[aria-busy="true"] { cursor: progress; }
 .sv2-wu .sv2-wu-sharest { flex: 1 1 200px; min-width: 0; font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); overflow-wrap: anywhere; }
 .sv2-wu .sv2-wu-sharest:empty { display: none; }
+
+/* ===== 19. The alert card at the top of the Sharps dropdown (sv2-ac-, 2026-11-24). One glass card: a small top row (a dot, "Price move", the sport and market, and the Move label at the
+   right), the play as the title, the plain sentence, the flag chips, the stat rows (Pinnacle price and limit, the spread of a moneyline play, Novig, the price, fair, status), a context
+   note and a "Why this label" button that opens how the label was earned and the price caution. It replaces the old four tiles and the takeaway block and keeps their facts. Surfaces are the
+   .sv2-card and .sv2-card-inset the write-up already uses; ink only, the tier chip keeps its own tier colour; the toggle uses the shared .sv2-x expander and .sv2-press, so reduced motion
+   is already handled by their blocks and nothing here moves. Two columns once the card is wide, one column under that. ===== */
+.sv2 .sv2-ac { container: sv2ac / inline-size; }
+.sv2-ac-top { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; font: 600 11px/1.2 var(--sv2-sans); letter-spacing: .1em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2-ac-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--sv2-ink); }
+.sv2-ac-k { color: var(--sv2-ink); }
+.sv2-ac-mk { font-weight: 500; letter-spacing: .06em; }
+.sv2-ac-top .sv2-mg-badge-row { margin: 0 0 0 auto; }
+.sv2-ac-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+/* one column (a phone, a narrow card): the text column dissolves so the numbers come right after the sentence and the chips, before the long takeaway paragraph (content first on a phone) */
+.sv2-ac-l { display: contents; }
+.sv2-ac-hd { order: 1; } .sv2-ac-sub { order: 2; } .sv2-ac-say { order: 3; } .sv2-ac-chips { order: 4; } .sv2-ac-r { order: 5; margin-top: 6px; } .sv2-ac-tk { order: 6; } .sv2-ac-note { order: 7; } .sv2-ac-whywrap { order: 8; }
+@container sv2ac (min-width: 880px) {
+  .sv2-ac-main { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; }
+  .sv2-ac-l { display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .sv2-ac-l > *, .sv2-ac-r { order: 0; margin-top: 0; }
+}
+@container sv2ac (min-width: 560px) and (max-width: 879px) { .sv2 .sv2-ac-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; } .sv2-ac-row:nth-child(2) { border-top: 0; } }
+.sv2-ac-l p, .sv2-ac-l h3 { margin: 0; }
+.sv2-ac-t { font: 700 28px/1.1 var(--sv2-sans); letter-spacing: -.02em; }
+.sv2-ac-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font: 400 13px/1.35 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-ac-say { font: 500 15px/1.5 var(--sv2-sans); color: var(--sv2-ink); overflow-wrap: anywhere; }
+.sv2-ac-chips { margin-top: 0; }
+.sv2-ac-tk, .sv2-ac-note { font: 400 13px/1.45 var(--sv2-sans); color: var(--sv2-mut); overflow-wrap: anywhere; }
+.sv2-ac-r { min-width: 0; }
+.sv2 .sv2-ac-rows { display: grid; margin: 0; padding: 2px 14px; }
+.sv2-ac-row { display: grid; grid-template-columns: minmax(86px, 112px) minmax(0, 1fr); grid-template-areas: "k v" "k n"; column-gap: 12px; row-gap: 2px; align-items: baseline; align-content: start; padding: 10px 0; border-top: 1px solid var(--sv2-line); }
+.sv2-ac-row:first-child { border-top: 0; }
+.sv2 .sv2-ac-row dt { grid-area: k; font: 600 11px/1.3 var(--sv2-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--sv2-mut); }
+.sv2 .sv2-ac-row dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }   /* .sv2 dd resets font and colour at (0,1,1): the rows below beat it */
+.sv2 .sv2-ac-row .sv2-ac-v { grid-area: v; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font: 600 15px/1.3 var(--sv2-num); font-variant-numeric: tabular-nums; color: var(--sv2-ink); }
+.sv2-ac-ft { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sv2 .sv2-ac-row .sv2-ac-v:empty { display: none; }
+.sv2 .sv2-ac-row .sv2-ac-v .sv2-wu-arr { width: 16px; height: 16px; }
+.sv2 .sv2-ac-row .sv2-ac-n { grid-area: n; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); }
+.sv2-ac-whywrap { display: grid; gap: 8px; }
+.sv2 .sv2-ac-why { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 16px; border-radius: var(--sv2-r-sm); background: var(--sv2-box); color: var(--sv2-ink); font: 600 14px/1 var(--sv2-sans); box-shadow: inset 0 0 0 1px var(--sv2-line); }
+.sv2 .sv2-ac-why .sv2-chev { width: 16px; height: 16px; }
+.sv2 .sv2-ac-why[aria-expanded="true"] .sv2-chev { transform: rotate(180deg); }
+.sv2 .sv2-ac-whyp { display: grid; gap: 8px; padding: 12px 14px; margin-top: 2px; }
+@media (max-width: 760px) {
+  .sv2 .sv2-ac .sv2-ac-top .sv2-mg-badge-row { flex: 0 0 100%; margin: 2px 0 0; }
+  .sv2-ac-t { font-size: 22px; }
+  .sv2-ac-row { grid-template-columns: minmax(78px, 96px) minmax(0, 1fr); }
+}

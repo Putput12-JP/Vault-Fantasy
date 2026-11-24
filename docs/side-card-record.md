@@ -478,3 +478,9 @@ CBB +0.027 [-0.007, +0.230] n=7; CFB +0.110 [-0.066, +0.296] n=35; headline -0.0
 +3.32u. Over all four sports A (+0.11u) sits below C (+8.17u) and B is negative (-1.74u). The after-cut move does not order either (headline slope -0.002, interval -0.099 to +0.098). The standard errors run from 10.4 to 78.7 points of ROI (the all-loss cells and the n=1 cell have none
 worth the name), so no cell separates from zero or from another. This matches what the flags already showed ("Market-move flags v2f-2" above): they describe the market and have not ordered results. The Move grade is a tidier way to read the same two flags, not new evidence, and the page must not
 present it as anything more.
+
+## Spread context on moneyline plays (2026-11-24)
+
+Moneyline plays now carry a **spread fact line** (`v2.spread_ctx`, written up in `docs/side-cards.md` "Spread context"): Pinnacle's spread line for the play's side from and to over the 24 hours before the cut, and how many books
+moved toward or away from the side. **It is not tracked and not graded.** There is no record by it, no slice, no row in `tier_record.json`, `flag_record.json` or `move_grade_record.json`, and no count of any kind; the forward log keeps it
+(`sc`, `sc_why`) only so a frozen card can be read back as it was shown. It changes no number on this page: not a tier, a size, a Move grade or a result. It carries no claim about results.
