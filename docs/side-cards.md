@@ -490,14 +490,17 @@ moved for the same side over the same 24 hours ending at the cut that Flag C rea
 - **Readers reused, no new rule:** the tape readers and the window rule of `flags_v2.py` (`_by_book`, `_reads`, `_pin_clean`, `_window_from`, `_has_history`). Only rows with `t <= asof` are read. `from` is the row Pinnacle was showing when the
   window opened (its last stored row at or before the window start across lines, else its first inside the window), `to` its last row at or before the cut. Two or more readable spread rows are needed; a stored Pinnacle row on the other
   side of pick'em from every US book is dropped as in Flag A. A source heartbeat more than 30 minutes behind (live cards only) gives null, as for Flag C.
+- **Numbers:** a NaN or infinite line (`math.isfinite`) is a row that cannot be read and is skipped, so no NaN is ever written into a card.
 - **Side mapping:** the play side `home` or `away`; the away side's line is the home line negated. An unmapped side, or a play that is an over or under, gives null.
 - **Stored shape (about 100 bytes, under the 250 byte target):** `{"v": 1, "asof": t, "span_min": m, "pin": [from, to], "books": n, "toward": a, "away": b}`. `pin` is Pinnacle's spread line **for this side**; `books` counts the books that can be read
   (Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365, two or more rows each); `toward` and `away` count the books whose own line changed at all over the window, in the flags' direction words (toward = the side costs more:
   +22 to +19, a favourite -3 to -4). Both 0 is "has not moved". **No threshold is invented:** any change counts and the page prints the numbers.
 - **Null, with a stored reason in `spread_ctx_why`:** `side_unmapped`, `no_tape_rows_for_game`, `no_spread_market`, `no_spread_history` (one row is never a move), `pinnacle_row_inconsistent`, `pinnacle_feed_stale`, `books_feed_stale`, `error_<Type>`.
   The page draws nothing for a null: never a guess, never "has not moved".
-- **On the page:** one row "Spread" in the alert card (`sv2-sharps.js` `spreadOf`), "-3.5 to -5.5, 5 of 6 books moved toward <side>" or "has not moved (6 books read)", and one line on the Share image under `moves.spread` (`sv2-sharps.js` `shareDataOf`, drawn by `sv2-share.js`) as one more flag fact: it is drawn with the flag sentences and left out with them, in the poster's unchanged
-  drop order (numbers, money, flag sentences, line section). A tall poster that now needs the extra line can therefore lose the money table one step sooner than before. A play without the key has exactly the share data and the poster it had.
+- **On the page:** one row "Spread" in the alert card (`sv2-sharps.js` `spreadOf`), "-3.5 to -5.5, 5 of 6 books moved toward <side>" or "has not moved (6 books read)", and one line on the Share image under `moves.spread` (`sv2-sharps.js` `shareDataOf`, drawn by `sv2-share.js` after the flag sentences). **It is the first block the poster drops:** it is tried on the full
+  poster only (step 0 of the drop ladder, before the numbers, the money table, the flag sentences and the line section), and when that does not fit it is left out before anything else, so adding it never makes a block the poster
+  showed before disappear. A play without the key has exactly the share data and the poster it had. Both the row and the share line state the period they cover ("in the last 24 hours", "in the last hour", "in under an hour",
+  from `span_min`), and an equal pair of Pinnacle numbers is worded "held at -10.5", never "went -10.5 to -10.5".
   It is not in the grade sentence, the takeaway or the chips.
 - **Size:** inside the V2 budget (250 KB soft) and outside the flags sub-budget (90 KB, `check_size.py` unchanged); a moneyline play adds about 130 bytes with its reason key.
 

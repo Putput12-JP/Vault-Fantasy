@@ -18,7 +18,7 @@ no threshold is invented here.
 Never invent a number: when it cannot be read the value is None and the reason is stored beside it (`spread_ctx_why`): never 0, never "has not moved".
 Point in time: only tape rows with t <= asof are read, so a later row can never change a frozen card.
 """
-import os, sys
+import math, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -28,7 +28,8 @@ SPREAD_CTX_VERSION = 1
 
 
 def _n(x):
-    return F._n(x)
+    """A stored number that can be printed: a real int or float that is neither NaN nor infinite (a NaN line is skipped, never written into a card)."""
+    return F._n(x) and math.isfinite(x)
 
 
 def spread_ctx(rows, norm, asof, heartbeat=None):
@@ -41,12 +42,11 @@ def spread_ctx(rows, norm, asof, heartbeat=None):
         return None, "no_tape_rows_for_game"
     by = F._by_book(rows, asof)
     pin, dropped = F._pin_clean(by, "spread", norm)
+    pin = [r for r in pin if _n(r["line"])]                            # a NaN or infinite line is a row that cannot be read: skipped
     if not pin:
         return None, "pinnacle_row_inconsistent" if dropped else "no_spread_market"
     if len(pin) < 2:
         return None, "pinnacle_row_inconsistent" if dropped else "no_spread_history"
-    if any(not _n(r["line"]) for r in pin):
-        return None, "no_spread_market"
     if F._stale(asof, heartbeat, "pinnacle"):
         return None, "pinnacle_feed_stale"
     if F._stale(asof, heartbeat, "us"):

@@ -821,18 +821,27 @@
   /* ---- the spread fact line of a MONEYLINE play. v2.spread_ctx (scripts/sharps_v2/spread_ctx.py): Pinnacle's spread line for this side from and to over the same 24 hours as the
      market-move flags, and how many of the readable books moved their own spread line toward or away from this side. A fact line like the Pinnacle limit: not a flag, not part of the
      Move grade or the tier, counted nowhere. Null (nothing drawn) for a spread or total play, an absent key and a stored null: never a guess. */
+  /* the period the spread facts cover, from the stored span in minutes: "in the last 24 hours", "in the last hour", "in under an hour" */
+  function spreadWindow(min) {
+    if (min < 60) return 'in under an hour';
+    var h = Math.round(min / 60);
+    return h === 1 ? 'in the last hour' : 'in the last ' + h + ' hours';
+  }
   function spreadOf(p) {
     if (p.g !== 'ml') return null;
     var m = mktOf(p.game, p.g), c = m && m.v2 && m.v2.spread_ctx;
-    if (!isObj(c) || !Array.isArray(c.pin) || !isNum(c.pin[0]) || !isNum(c.pin[1]) || !isNum(c.books) || c.books < 1 || !isNum(c.toward) || !isNum(c.away)) return null;
-    var side = p.sf.side, B = c.books, bw = B === 1 ? ' book' : ' books', t = c.toward, a = c.away, note;
-    if (t > 0 && a === 0) note = t + ' of ' + B + bw + ' moved toward ' + side;
-    else if (a > 0 && t === 0) note = a + ' of ' + B + bw + ' moved away from ' + side;
-    else if (t > 0 && a > 0) note = t + ' toward and ' + a + ' away from ' + side + ', of ' + B + bw;
-    else note = 'has not moved (' + B + bw + ' read)';
-    var from = lineTxt(c.pin[0], 'spread'), to = lineTxt(c.pin[1], 'spread'), same = t + a === 0;
-    return { from: from, to: to, same: same, note: note,
-      text: 'Spread at Pinnacle ' + (same ? from + ', ' + note : 'went ' + from + ' to ' + to + ', ' + note) + '.' };
+    if (!isObj(c) || !Array.isArray(c.pin) || !isNum(c.pin[0]) || !isNum(c.pin[1]) || !isNum(c.books) || c.books < 1 || !isNum(c.toward) || !isNum(c.away) || !isNum(c.span_min) || c.span_min < 0) return null;
+    var side = p.sf.side, B = c.books, bw = B === 1 ? ' book' : ' books', t = c.toward, a = c.away, when = spreadWindow(c.span_min), books;
+    var from = lineTxt(c.pin[0], 'spread'), to = lineTxt(c.pin[1], 'spread'), held = from === to;
+    if (t > 0 && a === 0) books = t + ' of ' + B + bw + ' moved toward ' + side;
+    else if (a > 0 && t === 0) books = a + ' of ' + B + bw + ' moved away from ' + side;
+    else if (t > 0 && a > 0) books = t + ' toward and ' + a + ' away from ' + side + ', of ' + B + bw;
+    else books = null;
+    /* row note: Pinnacle's own number first when it did not move, then the books, always with the period */
+    var note = books ? (held ? 'Pinnacle held; ' : '') + books + ' ' + when : 'held ' + when + ' (' + B + bw + ' read)';
+    var text = books ? (held ? 'Pinnacle\'s spread held at ' + from + ', ' : 'Spread at Pinnacle went ' + from + ' to ' + to + ', ') + books + ' ' + when + '.' :
+      'Pinnacle\'s spread held at ' + from + ' ' + when + ', ' + B + bw + ' read.';
+    return { from: from, to: to, same: held, note: note, text: text };
   }
   function limitRow(f) {
     var l = f && isObj(f.limit) ? f.limit : null;
@@ -1042,7 +1051,7 @@
     SORTS: SORTS, SORT_ORDER: SORT_ORDER, cleanSort: cleanSort, nextSort: nextSort, sortFlat: sortFlat, viewOf: viewOf, fairPts: fairPts,
     vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell,
     flagsOf: flagsOf, flagChips: flagChips, chipsHtml: chipsHtml, movesOf: movesOf, chartPoints: chartPoints, stepPath: stepPath, extremes: extremes, seriesOf: seriesOf,
-    chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml, mgMoveSentence: mgMoveSentence, tileFacts: tileFacts, spreadOf: spreadOf, limitRow: limitRow, detailFor: detailFor, whyToggle: whyToggle, alertCardHtml: alertCardHtml, shareDataOf: shareDataOf, shareButtonHtml: shareButtonHtml, booksUsed: booksUsed,
+    chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml, mgMoveSentence: mgMoveSentence, tileFacts: tileFacts, spreadOf: spreadOf, spreadWindow: spreadWindow, limitRow: limitRow, detailFor: detailFor, whyToggle: whyToggle, alertCardHtml: alertCardHtml, shareDataOf: shareDataOf, shareButtonHtml: shareButtonHtml, booksUsed: booksUsed,
     rowHtml: rowHtml, theadHtml: theadHtml, priceHtml: priceHtml, COLS: COLS, novigGap: novigGap, gapTxt: gapTxt, gapWords: gapWords, gapPct: gapPct, novigAge: novigAge, novigTile: novigTile, novigSentence: novigSentence, novigText: novigText, novigOf: novigOf, vsFairOf: vsFairOf, priceChips: priceChips, priceWhy: priceWhy, PRICE_WHY: PRICE_WHY, mgOf: mgOf, mgChipHtml: mgChipHtml, mgBadgeHtml: mgBadgeHtml, mgSentence: mgSentence, mgWhy: mgWhy, MGC: MGC,
     marketOrder: marketOrder, dateWords: dateWords, eyebrowOf: eyebrowOf, sideLabelWords: sideLabelWords, BOOKS: BOOKS
   };

@@ -157,6 +157,22 @@ class NullReasons(unittest.TestCase):
         c, _ = ctx(bad + MOVED)
         self.assertEqual(c["pin"], [-3.5, -5.5])
 
+    def test_a_nan_or_infinite_line_is_skipped_never_written(self):
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            c, why = ctx(MOVED + [sp("Pinnacle", ASOF - 300, bad), sp("DraftKings", ASOF - 300, bad)])
+            self.assertIsNone(why)
+            self.assertEqual((c["pin"], c["books"], c["toward"]), ([-3.5, -5.5], 6, 6))      # the bad rows are as if never stored
+            self.assertNotIn("NaN", json.dumps(c))
+            self.assertNotIn("Infinity", json.dumps(c))
+            c2, why2 = ctx([sp("Pinnacle", ASOF - 7200, -3.5), sp("Pinnacle", ASOF - 600, bad)])
+            self.assertEqual((c2, why2), (None, "no_spread_history"))                         # one readable row left: never a move
+            self.assertEqual(ctx([sp("Pinnacle", ASOF - 7200, bad), sp("Pinnacle", ASOF - 600, bad)]), (None, "no_spread_market"))
+            self.assertEqual(ctx(MOVED + [sp(b, ASOF - 100, bad) for b in US])[0]["pin"], [-3.5, -5.5])
+
+    def test_the_card_never_carries_a_nan(self):
+        v = P.market_v2("nba", "ml", TP.market(), [], {}, {"mk": {}}, ASOF, {"A": "home", "B": "away"}, rows=MOVED + [sp("Pinnacle", ASOF - 50, float("nan"))])[0]
+        json.loads(json.dumps(v["spread_ctx"], allow_nan=False))
+
     def test_a_book_the_page_never_names_is_never_read(self):
         rows = MOVED + [sp("BookMaker", ASOF - 7000, -3.5), sp("BookMaker", ASOF - 500, -9.0), sp("Circa", ASOF - 7000, -3.5), sp("Circa", ASOF - 500, -9.0)]
         self.assertEqual(ctx(rows), ctx(MOVED))
