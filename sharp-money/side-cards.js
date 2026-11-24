@@ -1049,7 +1049,7 @@ var PLAY_CSS = [
 '.vsc .vp-form span{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--c-dim);margin-left:6px}',
 '.vsc .vp-none{margin:0;font-size:13px;line-height:1.45;color:var(--c-mut)}',
 '.vsc .vp-ft{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:12.5px;color:var(--c-mut)}.vsc .vp-ft .sp{flex:1}.vsc .vp-ft .on{color:var(--c-warn)}',
-'.vsc .vp-who{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 14px;border:0;border-radius:9px;background:var(--c-box);font-family:var(--c-sans);font-size:13px;font-weight:500;color:var(--c-ink);cursor:pointer}',
+'.vsc .vp-who{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;height:32px;padding:0 14px;border:0;border-radius:9px;background:var(--c-box);font-family:var(--c-sans);font-size:13px;font-weight:500;color:var(--c-ink);cursor:pointer}',
 '.vsc .vp-who:hover{background:var(--c-line2)}.vsc .vp-who:focus-visible,.vsc .vp-row:focus-visible{outline:2px solid var(--c-good);outline-offset:2px}',
 '.vsc .vp-rail{position:sticky;top:16px;display:flex;flex-direction:column;gap:22px}',
 '.vsc .vp-next{background:var(--c-card);border:var(--c-bw,1px) solid var(--c-line);border-radius:var(--c-r);padding:16px 18px}',
