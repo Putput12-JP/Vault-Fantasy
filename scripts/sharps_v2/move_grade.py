@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sharps V2 Move grade (rule mg-1, docs/sharp-movegrade-prereg.md, spec docs/sharps-v2-movegrade-spec.md): pure functions, stdlib only.
 
-A letter A to D that says how strongly the market moved TOWARD a shown play's side in the 24 hours before the cut, read ONLY from the stored v2f-2
+A letter A to D that says how far the market moved TOWARD a shown play's side in the 24 hours before the cut, read ONLY from the stored v2f-2
 market-move flags of the play (Flag A: Pinnacle's no-vig price at the same line; Flag C: the market's main line, or the books' price on a moneyline)
 and the side's direction. A flag fired AGAINST the play gives the "moved against" marker and no letter. Neither flag readable gives no grade.
 It describes what the market did. It is not a bet signal and it does not predict results (the in-sample letters do not order them).

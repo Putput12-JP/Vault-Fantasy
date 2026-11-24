@@ -3,7 +3,7 @@
 **Status: PROPOSED. Docs only, nothing built.** Written 2026-11-23 (Central). Rule id for everything below: **`mg-1`**. A change to any
 cutoff, branch or input after the registering commit is a new rule id (`mg-2`) and a new registration.
 
-The user's decision (2026-11-23, not relitigated here): each shown Sharps play gets a **Move grade**, a letter A to D that says how strongly the
+The user's decision (2026-11-23, not relitigated here): each shown Sharps play gets a **Move grade**, a letter A to D that says how far the
 market moved **toward the play** in the 24 hours before the cut. It is independent of the evidence tiers (Clear, Mixed, Thin, Contested). Its
 only inputs are Flag A (Pinnacle's no-vig price move at the same line) and Flag C (the market's main line move across the stored books; the
 books' price move on moneylines) of rule `v2f-2`, merged and live (`docs/sharps-v2-flags-spec.md`, #571). Pinnacle's limit stays a fact line and never
@@ -439,7 +439,7 @@ Added by the user's decision of 2026-11-23. Rule id `mg-1`, spec `docs/sharps-v2
 v2t-1, v2s-1 and v2f-2 and their thresholds, metrics, dates and kill rules stand as registered. Any change to a cutoff, an input or a branch of
 mg-1 after registration is a new rule id (mg-2) and a new registration; old rows stay read as written.
 
-What it is. A per-play letter A, B, C or D saying how strongly the market moved toward the play's side in the 24 hours before the cut, from the
+What it is. A per-play letter A, B, C or D saying how far the market moved toward the play's side in the 24 hours before the cut, from the
 registered v2f-2 Flag A (Pinnacle's no-vig price at the same line) and Flag C (the market's main line, or the books' price on a moneyline) only.
 A = a flag fired toward and the move passed the A mark (the 95th percentile of the absolute 24-hour move for the sport and market, at least half a
 point past the flag threshold); B = a flag fired toward; C = no flag fired, Pinnacle's price or line moved toward by at least the median 24-hour move

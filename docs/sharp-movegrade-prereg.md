@@ -3,7 +3,7 @@
 **Status: PROPOSED. Not registered.** The user has not approved this text. Nothing below is in force until a commit changes the status line to Registered; that commit is the
 registration, and the first play that can count is the first one cut after it. The registered `docs/sharp-tier-v2-prereg.md` is frozen and is **not edited** by this file: the
 text below is a separate, dated section in its own file, so no registered rule changes (the user can ask for it to be appended there instead). The build that logs the grade at
-lock (`scripts/sharps_v2/move_grade.py`, the `mg` key of the `v2_tier` rows) exists before the registration, so a row logged before the registering commit exists but cannot count.
+lock (`scripts/sharps_v2/move_grade.py`, the `mg` key of the `v2_tier` rows) exists before the registration, so a row logged before the registering commit exists but cannot count. In code, `REGISTERED_CUT` in `move_grade_record.py` is None until the user registers, which keeps the forward record at zero; registering means setting it to the registering commit's time.
 
 Spec: `docs/sharps-v2-movegrade-spec.md`. Code: `scripts/sharps_v2/move_grade.py`; the cutoffs and the in-sample record are reproduced by `scripts/sharps_v2/move_grade_history.py`;
 the record file is `scripts/sharps_v2/move_grade_record.py`.
@@ -17,7 +17,7 @@ Added by the user's decision of 2026-11-23. Rule id `mg-1`, spec `docs/sharps-v2
 `docs/sharp-tier-v2-prereg.md`: v2t-1, v2s-1 and v2f-2 and their thresholds, metrics, dates and kill rules stand as registered. Any change to a cutoff, an input or a branch of
 mg-1 after registration is a new rule id (mg-2) and a new registration; old rows stay read as written.
 
-What it is. A per-play letter A, B, C or D saying how strongly the market moved toward the play's side in the 24 hours before the cut, from the
+What it is. A per-play letter A, B, C or D saying how far the market moved toward the play's side in the 24 hours before the cut, from the
 registered v2f-2 Flag A (Pinnacle's no-vig price at the same line) and Flag C (the market's main line, or the books' price on a moneyline) only.
 A = a flag fired toward and the move passed the A mark (the 95th percentile of the absolute 24-hour move for the sport and market, at least half a
 point past the flag threshold); B = a flag fired toward; C = no flag fired, Pinnacle's price or line moved toward by at least the median 24-hour move

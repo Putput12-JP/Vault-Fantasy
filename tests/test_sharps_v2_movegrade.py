@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 sys.path.insert(0, HERE)
 import build_side_cards as C  # noqa: E402
 from sharps_v2 import flags_v2 as F  # noqa: E402
+from sharps_v2 import flag_record as FR  # noqa: E402
 from sharps_v2 import move_grade as MG  # noqa: E402
 from sharps_v2 import move_grade_record as MGR  # noqa: E402
 from sharps_v2 import move_grade_history as MGH  # noqa: E402
@@ -603,8 +604,8 @@ class RecordTests(unittest.TestCase):
         ps = [self.play("nba", "1", "a", "win", 0.8), self.play("nba", "2", "a", "loss", -1.0), self.play("nba", "3", "against", "win", 0.5), self.play("nba", "4", "d", "push", 0.0)]
         d = MGR.build(ps, 123, "abc", {})
         self.assertEqual((d["built"], d["data_ref"], d["mg_rule"], d["slices"]), (123, "abc", "mg-1", list(MGR.SLICES)))
-        self.assertEqual(d["sports"]["nba"]["a"]["all"], {"w": 1, "l": 1, "p": 0, "n": 2, "units": -0.2, "roi": -0.1})
-        self.assertEqual(d["sports"]["nba"]["d"]["all"], {"w": 0, "l": 0, "p": 1, "n": 1, "units": 0.0, "roi": 0.0})
+        self.assertEqual(d["sports"]["nba"]["a"]["all"], {"w": 1, "l": 1, "p": 0, "n": 2, "units": -0.2, "roi": -0.1, "se": 0.9})
+        self.assertEqual(d["sports"]["nba"]["d"]["all"], {"w": 0, "l": 0, "p": 1, "n": 1, "units": 0.0, "roi": 0.0, "se": None})
         empty = d["sports"]["nfl"]["a"]["all"]
         self.assertEqual((empty["n"], empty["roi"]), (0, None))                                    # null at n = 0, never 0
 
@@ -622,15 +623,54 @@ class RecordTests(unittest.TestCase):
         ps = [self.play("nba", "1", "d", cut=500), self.play("nba", "2", "d", cut=900)]
         logged = {"2": {"key": "2", "cut": 900, "tier": "thin", "mg": {"letter": "A", "against": False, "why": None}},
                   "3": {"key": "3", "cut": 950, "tier": "thin", "mg": None}}
-        d = MGR.build(ps, 1, "x", logged)
+        with mock.patch.object(MGR, "REGISTERED_CUT", 800):                                       # as if the prereg were registered at cut 800
+            d = MGR.build(ps, 1, "x", logged)
+            dropped = MGR.build([self.play("nba", "3", "a")], 1, "x", logged)["sports"]["nba"]
         n = d["sports"]["nba"]
         self.assertEqual((n["a"]["forward"]["n"], n["d"]["forward"]["n"]), (1, 0))                  # play 2 is A as logged, though its card now reads D
-        self.assertEqual((d["first_logged_cut"], d["logged_rows"], d["forward_graded"]), (900, 2, 1))
+        self.assertEqual((d["first_logged_cut"], d["logged_rows"], d["forward_graded"], d["registered_cut"]), (900, 2, 1, 800))
         self.assertEqual(n["d"]["in_sample"]["n"], 1)                                              # play 1: cut 500 is before the first logged lock
         self.assertEqual(n["a"]["all"]["n"], 1)
         self.assertEqual(n["a"]["in_sample"]["n"], 0)                                              # the first logged lock is forward, never also in-sample
-        dropped = MGR.build([self.play("nba", "3", "a")], 1, "x", logged)["sports"]["nba"]
         self.assertEqual((dropped["unreadable"]["forward"]["n"], dropped["a"]["forward"]["n"]), (1, 0))   # an mg of null is a dropped block: unreadable
+
+    def test_a_logged_mg_row_cannot_be_forward_while_the_registration_cut_is_none(self):
+        """The prereg is PROPOSED: rows logged before a registration cannot count, however they were logged."""
+        self.assertIsNone(MGR.REGISTERED_CUT)
+        ps = [self.play("nba", "1", "a", cut=500), self.play("nba", "2", "b", cut=900), self.play("cfb", "3", "c", cut=2000)]
+        logged = {"2": {"key": "2", "cut": 900, "mg": {"letter": "B", "against": False, "why": None}}, "3": {"key": "3", "cut": 2000, "mg": {"letter": "C", "against": False, "why": None}}}
+        d = MGR.build(ps, 1, "x", logged)
+        self.assertEqual((d["forward_graded"], d["registered_cut"], d["logged_rows"], d["logged_not_counted"]), (0, None, 2, 2))
+        self.assertEqual(d["forward_note"], "The forward test is proposed, not registered. Plays logged before registration do not count.")
+        for sp_ in SPORTS:
+            for sl in MGR.SLICES:
+                self.assertEqual(d["sports"][sp_][sl]["forward"]["n"], 0)
+        for sl in MGR.SLICES:
+            self.assertEqual(d["all"][sl]["forward"]["n"], 0)
+        self.assertEqual(d["sports"]["nba"]["b"]["all"]["n"], 1)                                   # still in all, and in no forward cell
+        self.assertEqual(d["sports"]["nba"]["b"]["in_sample"]["n"], 0)                             # logged, not counted: not in-sample either
+        self.assertEqual(d["sports"]["nba"]["a"]["in_sample"]["n"], 1)                             # cut before the first logged lock
+
+    def test_with_a_registration_cut_only_plays_cut_strictly_after_it_count(self):
+        ps = [self.play("nba", "1", "a", cut=800), self.play("nba", "2", "a", cut=801), self.play("nba", "3", "a", cut=2000)]
+        logged = {k: {"key": k, "cut": c, "mg": {"letter": "A", "against": False, "why": None}} for k, c in (("1", 800), ("2", 801), ("3", 2000))}
+        with mock.patch.object(MGR, "REGISTERED_CUT", 800):
+            d = MGR.build(ps, 1, "x", logged)
+        self.assertEqual((d["sports"]["nba"]["a"]["forward"]["n"], d["forward_graded"], d["logged_not_counted"]), (2, 2, 1))
+        self.assertEqual(d["forward_note"], MGR.FORWARD_NOTE_REGISTERED)
+        self.assertFalse(MGR.counts_forward({"forward": False, "cut": 5000}))
+        self.assertFalse(MGR.counts_forward({"forward": True, "cut": "x"}))
+
+    def test_units_are_summed_unrounded_and_roi_comes_from_that_sum(self):
+        ps = [self.play("nba", str(i), "a", flat=f) for i, f in enumerate((0.2249, 0, 0, 0, 0, 0, 0))]
+        c = MGR.cell(ps)
+        self.assertEqual((c["n"], c["units"], c["roi"]), (7, 0.22, 0.032129))                        # 0.2249 / 7 = 3.2%; the rounded 0.22 / 7 would give 3.1%
+        self.assertEqual(MGR.cell([])["roi"], None)
+
+    def test_the_standard_error(self):
+        self.assertEqual(MGR.cell([self.play("nba", "1", "a", flat=1.0), self.play("nba", "2", "a", "loss", -1.0)])["se"], 1.0)
+        self.assertIsNone(MGR.cell([self.play("nba", "1", "a")])["se"])
+        self.assertIsNone(MGR.cell([])["se"])
 
     def test_source_order_logged_then_frozen_then_frozen_flags_then_derived(self):
         class Q:
@@ -732,13 +772,58 @@ class History(unittest.TestCase):
             finally:
                 if saved is not None:
                     sharps_v2.move_grade_record = saved
-        self.assertEqual(old_text.rstrip("\n"), head.rstrip("\n"))                                 # byte for byte, with the block off (the module will not import)
+        skip_commit = lambda t: t.split("\n", 1)[1].rstrip("\n")                                   # the first line names the fixture repo's commit hash, which depends on the second it was made
+        self.assertEqual(skip_commit(old_text), skip_commit(head))                                 # byte for byte, with the block off (the module will not import)
         self.assertIn("move grade record skipped", err)
         self.assertNotIn("MOVE GRADE", old_text)
 
-    def test_the_tier_and_flag_records_do_not_import_the_grade(self):
+    def test_the_flag_and_tier_records_are_byte_identical_with_and_without_the_grade_module(self):
+        """flag_record.main calls tier_history.play_rows with the quote tape, which imports move_grade_record when it can. The flag and tier records must not change either way."""
+        import sharps_v2
+
+        def run(block):
+            outs = {}
+            with tempfile.TemporaryDirectory() as d:
+                fx = TP.Fixture(d)
+                fx.add(TP.tcard("nba", "g1", TP.CUT, v2=None, pts=0.5))
+                fx.commit()
+                os.makedirs(os.path.join(d, "tape", "nba"), exist_ok=True)
+                for name, mod in (("flag", FR), ("tier", TR)):
+                    out = os.path.join(d, "o", name + ".json")
+                    ctx = mock.patch.dict(sys.modules, {"sharps_v2.move_grade_record": None}) if block else contextlib.nullcontext()
+                    saved = getattr(sharps_v2, "move_grade_record", None)
+                    if block and saved is not None:
+                        delattr(sharps_v2, "move_grade_record")
+                    try:
+                        with ctx, contextlib.redirect_stderr(io.StringIO()):
+                            self.assertEqual(mod.main(["--data-dir", d, "--book-tape", os.path.join(d, "tape"), "--out", out, "--now", "5", "--data-ref", "abc"]), 0)
+                    finally:
+                        if block and saved is not None:
+                            sharps_v2.move_grade_record = saved
+                    outs[name] = open(out, "rb").read()
+            return outs
+        with_mg, without_mg = run(False), run(True)
+        self.assertEqual(with_mg, without_mg)
+
+    def test_the_tier_and_flag_modules_themselves_never_name_the_grade(self):
         for rel in ("tier_record.py", "flag_record.py", "flags_v2.py"):
             self.assertNotIn("move_grade", open(os.path.join(ROOT, "scripts", "sharps_v2", rel), encoding="utf-8").read(), rel)
+
+    def test_a_problem_in_the_grade_block_never_stops_the_json_write(self):
+        with tempfile.TemporaryDirectory() as d:
+            fx = TP.Fixture(d)
+            fx.add(TP.tcard("nba", "g1", TP.CUT, v2=None, pts=0.5))
+            fx.commit()
+            os.makedirs(os.path.join(d, "tape", "nba"), exist_ok=True)
+            js = os.path.join(d, "out.json")
+            buf, err = io.StringIO(), io.StringIO()
+            with mock.patch.object(MGR, "compute", side_effect=ValueError("boom")), contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                self.assertEqual(TH.main(["--repo", d, "--ref", "main", "--book-tape", os.path.join(d, "tape"), "--json", js]), 0)
+            self.assertIn("move grade report skipped", err.getvalue())
+            self.assertNotIn("MOVE GRADE", buf.getvalue())
+            doc = json.load(open(js))
+            self.assertNotIn("move_grade", doc)
+            self.assertIn("tiers", doc)
 
 
 class Workflow(unittest.TestCase):
@@ -773,6 +858,8 @@ class Wording(unittest.TestCase):
                     walk(v)
         walk(blobs)
         self.assertTrue(strings)
+        for s in strings + [MGR.RULE, MGR.FORWARD_NOTE, MGR.FORWARD_NOTE_REGISTERED]:
+            self.assertIsNone(re.search(r"strong", s, re.I), s)
         for s in strings:
             self.assertIsNone(BANNED_FLAGS.search(s.replace("_", " ")), s)
             self.assertNotRegex(s, r"(?i)sharp grade|\bpick\b|\brating\b")

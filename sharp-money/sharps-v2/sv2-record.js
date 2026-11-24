@@ -471,9 +471,11 @@
   var MG_BUCKETS = ['in_sample', 'forward'];
   var MG_NAME = { in_sample: 'In-sample', forward: 'Forward' };
   var MG_LABEL = { a: 'A', b: 'B', c: 'C', d: 'D', against: 'Moved against', unreadable: 'No grade' };
-  var MG_SHOWN = { a: 'Shown as STRONG', b: 'Shown as NOTABLE', c: 'Shown as ROUTINE', d: 'No label shown', against: 'Shown as "Market moved the other way"', unreadable: 'No grade, nothing shown' };
-  var MG_NOTE = { in_sample: 'The grade rule was written after these results. Read it as history, not a test.', forward: 'Only plays whose Move grade was logged when they froze. Starts at zero.' };
-  rec.MG_ROWS = MG_ROWS; rec.MG_BUCKETS = MG_BUCKETS; rec.MG_LABEL = MG_LABEL; rec.MG_NOTE = MG_NOTE; rec.MG_SHOWN = MG_SHOWN;
+  var MG_SHOWN = { a: 'Shown as LARGE', b: 'Shown as NOTABLE', c: 'Shown as ROUTINE', d: 'No label shown', against: 'Shown as "Market moved the other way"', unreadable: 'No grade, nothing shown' };
+  var MG_NOTE = { in_sample: 'The grade rule was written after these results. Read it as history, not a test.', forward: 'The forward test is proposed, not registered. Plays logged before registration do not count.' };
+  /* one definition of a small sample for this table and the docs: under 30 plays */
+  var MG_SMALL = 30;
+  rec.MG_SMALL = MG_SMALL; rec.MG_ROWS = MG_ROWS; rec.MG_BUCKETS = MG_BUCKETS; rec.MG_LABEL = MG_LABEL; rec.MG_NOTE = MG_NOTE; rec.MG_SHOWN = MG_SHOWN;
   /* the file is usable when it names the rule and has a slice object for the pooled set or any sport */
   rec.mgFileOk = function (f) {
     return !!(f && typeof f === 'object' && f.mg_rule && ((f.all && typeof f.all === 'object') || (f.sports && typeof f.sports === 'object')));
@@ -493,13 +495,29 @@
     return any ? out : null;
   };
   /* the table for a sport and a bucket: six rows in order, each with its tally and the monitor flags (zero-play rows stay in as zeros), and the pooled total. Unknown bucket reads as in-sample. */
+  /* the note under the bucket switch. Forward says the test is proposed while the file's registered_cut is null (rows logged before a registration never count). */
+  rec.mgNote = function (f, bucket) {
+    if (bucket !== 'forward') return MG_NOTE.in_sample;
+    return f && f.registered_cut != null ? 'Only plays cut after the registration and logged when the card froze. Starts at zero.' : MG_NOTE.forward;
+  };
+  /* one stored cell as a tally with its standard error (a fraction of 1u, null under 2 plays or when not stored) */
+  rec.mgTally = function (o) {
+    var t = rec.tierTally(o);
+    t.se = o && isNum(o.se) && t.n > 1 ? o.se : null;
+    return t;
+  };
+  /* the flags of a row: watch when the units are above 0, small sample under MG_SMALL (30) plays, the same rule the docs use */
+  rec.mgFlag = function (t) {
+    if (!t || !isNum(t.n) || t.n <= 0) return { watch: false, small: false, n: t && t.n || 0 };
+    return { watch: isNum(t.units) ? t.units > 0 : (isNum(t.roi) && t.roi > 0), small: t.n < MG_SMALL, n: t.n };
+  };
   rec.mgTable = function (f, sport, bucket) {
     var sl = rec.mgSlice(f, sport);
     if (!sl) return null;
     var b = MG_BUCKETS.indexOf(bucket) >= 0 ? bucket : 'in_sample';
     var rows = MG_ROWS.map(function (k) {
-      var t = rec.tierTally(sl[k] && sl[k][b]);
-      return { k: k, label: MG_LABEL[k], shown: MG_SHOWN[k], t: t, flag: rec.monitor(t) };
+      var t = rec.mgTally(sl[k] && sl[k][b]);
+      return { k: k, label: MG_LABEL[k], shown: MG_SHOWN[k], t: t, flag: rec.mgFlag(t) };
     });
     return { bucket: b, rows: rows, total: rec.tierPool(rows.map(function (r) { return r.t; })) };
   };
@@ -893,12 +911,19 @@
   }
 
   /* ---- the Move grade record: A to D, moved against and no grade, in-sample and forward */
-  var MGCOLS = mcol('Move grade', { noClv: true });
+  var MGCOLS = mcol('Move grade', { noClv: true }); MGCOLS.splice(MGCOLS.length - 1 + 1, 0, { c: 'se', label: 'SE', num: true, s: 1 });
+  function seText(t) { return isNum(t.se) && t.n > 1 ? '+/-' + (t.se * 100).toFixed(1) + ' pts' : '-'; }
+  function mgFlagHtml(r) {
+    var m = r.flag;
+    if (m.watch) return '<span class="sv2-chip sv2-chip--caution"><span>Watch closely' + (m.small ? ': small sample, n=' : ': n=') + '<span class="sv2-num">' + fmt.n(m.n) + '</span></span></span>';
+    if (m.small && m.n > 0) return '<span class="sv2-chip sv2-chip--muted"><span>small sample, n=<span class="sv2-num">' + m.n + '</span></span></span>';
+    return '';
+  }
   function mgRow(m) {
-    var r = m.r, C = byC(MGCOLS), ncol = MGCOLS.length + 1, fl = flagHtml(r.t);
+    var r = m.r, C = byC(MGCOLS), ncol = MGCOLS.length + 1, fl = mgFlagHtml(r);
     var sub = '<span class="sv2-rec-tag">' + esc(r.shown) + '</span>' + (fl ? ' ' + fl : '');
-    var cells = cell(C.lab, '<span class="sv2-tb-title"><b>' + esc(r.label) + '</b></span><span class="sv2-tb-mu">' + sub + '</span>', { row: true, cls: 'c-bar' }) + tallyCells(C, r.t);
-    return rowHtml({ tid: 'mg', key: r.k, ncol: ncol, label: r.label + ', detail', attrs: ' data-mg="' + r.k + '"', cells: cells, detail: dl([['n', num(fmt.n(r.t.n))], ['Shown on the page as', esc(r.shown)]]) });
+    var cells = cell(C.lab, '<span class="sv2-tb-title"><b>' + esc(r.label) + '</b></span><span class="sv2-tb-mu">' + sub + '</span>', { row: true, cls: 'c-bar' }) + tallyCells(C, r.t) + cell(C.se, '<span class="sv2-num">' + esc(seText(r.t)) + '</span>');
+    return rowHtml({ tid: 'mg', key: r.k, ncol: ncol, label: r.label + ', detail', attrs: ' data-mg="' + r.k + '"', cells: cells, detail: dl([['n', num(fmt.n(r.t.n))], ['Standard error of the ROI', num(seText(r.t))], ['Shown on the page as', esc(r.shown)]]) });
   }
   function mgSection(sport) {
     var M = S.mg, html = '<section class="sv2-rec-sec" aria-labelledby="rec-h-mg">' + head('rec-h-mg', 'By Move grade', 'How far the market moved toward the play before it froze, at a flat 1u');
@@ -907,21 +932,21 @@
     var f = M.data, b = MG_BUCKETS.indexOf(S.mgb) >= 0 ? S.mgb : 'in_sample', tb = rec.mgTable(f, sport, b);
     if (!tb) return html + '<p class="sv2-empty-line">No Move grade record for ' + esc(sportName(sport)) + ' yet.</p></section>';
     var sw = '<div class="sv2-rec-mgsw">' + seg.html({ id: 'rec-mgbucket', label: 'Which plays', value: b, size: 'sm', scroll: true, items: MG_BUCKETS.map(function (v) { return { v: v, label: MG_NAME[v] }; }) }) + '</div>';
-    var note = '<div class="sv2-card sv2-rec-tnote"><p class="sv2-rec-note"><b>' + esc(MG_NAME[b]) + '.</b> ' + esc(MG_NOTE[b]) + (b === 'forward' && !tb.total.n ? ' No Move grade has been logged at a lock and graded yet, so every row below is zero. Zero is not a record.' : '') + '</p></div>';
+    var note = '<div class="sv2-card sv2-rec-tnote"><p class="sv2-rec-note"><b>' + esc(MG_NAME[b]) + '.</b> ' + esc(rec.mgNote(f, b)) + (b === 'forward' && !tb.total.n ? ' Every row below is zero. Zero is not a record.' : '') + '</p></div>';
     var models = rec.sortRows(tb.rows.map(function (r, i) { return { idx: i, r: r, t: r.t }; }), S.sort.mg);
     var tbl = tableHtml('mg', 'Move grade record, ' + MG_NAME[b], MGCOLS, models.map(mgRow).join(''));
     var foot = '<p class="sv2-rec-note">The grade describes how far the market moved toward the play (Pinnacle\'s price, the market\'s number) in the 24 hours before it froze. It is not a bet signal and changes no size. In the history so far the letters did not order the results.</p>' +
-      '<p class="sv2-rec-note">Units and ROI are flat 1u at the stored price at the cut, not the size the page shows (' + esc(copy.play.label) + '). At n under ' + NEED_N + ' per sport no edge can be read. A record is context, not proof.' +
+      '<p class="sv2-rec-note">Units and ROI are flat 1u at the stored price at the cut, not the size the page shows (' + esc(copy.play.label) + '). At n under ' + NEED_N + ' per sport no edge can be read. A record is context, not proof. SE is one standard error of the ROI in points. A small sample is under ' + MG_SMALL + ' plays, the same rule the docs use.' +
       (sport === 'all' ? ' All pools NBA, NFL and CBB. CFB is not pooled.' : '') + (sport === 'cfb' ? ' CFB shows no size on the page. This is a flat 1u record for reference.' : '') +
       (isNum(f.built) ? ' Built ' + esc(ct.md(f.built) + ', ' + ct.time(f.built, true)) + (M.stale ? '. Last refresh failed, showing the earlier file.' : '.') : '') + '</p>' +
       '<details class="sv2-rec-mgd"><summary>What the Move grade means</summary><ul class="sv2-rec-note">' +
-      '<li>A: a market-move flag fired toward the play and the move passed the top mark, a size only the largest moves of the season reach in that sport and market.</li>' +
+      '<li>A: a market-move flag fired toward the play and the move passed the top mark, a size only the largest moves on the tape through Nov 23 reach in that sport and market.</li>' +
       '<li>B: a market-move flag fired toward the play: Pinnacle\'s price, or the market\'s number (the books\' price on a moneyline).</li>' +
-      '<li>C: no flag fired, but Pinnacle\'s price or line drifted toward the play by more than a typical day\'s move, and not that far away from it.</li>' +
+      '<li>C: no flag fired, but Pinnacle\'s price or line drifted toward the play by more than a typical day\'s move, and not that far the other way.</li>' +
       '<li>D: the market did not move toward the play by more than a typical day\'s move.</li>' +
       '<li>Moved against: a market-move flag fired against the play. It is shown instead of a letter.</li>' +
       '<li>No grade: neither flag could be read at the freeze.</li>' +
-      '<li>Marks are set from the size of 24 hour moves on every started game of the season, per sport and market, not from results.</li></ul></details>';
+      '<li>Marks are set from the size of 24 hour moves on every started game on the tape through Nov 23, per sport and market (the cutoffs are frozen from it), not from results.</li></ul></details>';
     return html + sw + note + tbl + foot + '</section>';
   }
 

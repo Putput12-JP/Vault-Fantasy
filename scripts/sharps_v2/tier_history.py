@@ -411,9 +411,13 @@ def main(argv=None):
     for f in out["flagged"]:
         tag = "  [small sample]" if f["small_sample"] else ""
         print(f"  {f['slice']} ({f['metric']}, n={f['n']}){tag}: {fmt(f['stats'])}")
-    if MGR is not None:                              # the last block: every line above is exactly what it was
-        out["move_grade"] = MGR.compute(ps)
-        MGR.print_report(out["move_grade"])
+    if MGR is not None:                              # the last block: every line above is exactly what it was; a problem in it never stops the --json write below
+        try:
+            out["move_grade"] = MGR.compute(ps)
+            MGR.print_report(out["move_grade"])
+        except Exception as e:
+            out.pop("move_grade", None)
+            print("::warning::move grade report skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
     if a.json:
         with open(a.json, "w") as fh:
             json.dump(out, fh, indent=1)

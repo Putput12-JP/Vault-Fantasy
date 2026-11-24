@@ -390,13 +390,13 @@ slice, and no slice has a sample near the 300 plays per sport that the prereg ne
 
 ## Move grade mg-1: the record by letter (2026-11-24)
 
-`scripts/sharps_v2/move_grade.py` now gives each shown play a **Move grade** (`markets[g].v2.move_grade`, `docs/side-cards.md` "Move grade"): a letter A to D for how strongly the market
+`scripts/sharps_v2/move_grade.py` now gives each shown play a **Move grade** (`markets[g].v2.move_grade`, `docs/side-cards.md` "Move grade"): a letter A to D for how far the market
 moved **toward** the play in the 24 hours before the cut, read only from the two registered market-move flags (Flag A, Pinnacle's no-vig price at the same line; Flag C, the market's number or the books'
 price on a moneyline). A flag fired **against** the play shows "moved against" and no letter; neither flag readable shows no grade. Pinnacle's limit is never an input. It is a shadow: it changes no size
 (flat 1u on NBA, NFL, CBB, none on CFB), no tier, no gate and no total. Nothing already stored changes: the history below is derived **point in time** from the tape rows at or before each play's cut
 (`scripts/sharps_v2/move_grade_record.py`, printed by `tier_history.py`, reproduced with `scripts/sharps_v2/move_grade_history.py`), nothing from the result. Every number is **in-sample** (the rule was written
-after these results), flat 1u at the stored price at the cut, and none of it is a signal. Forward test: `docs/sharp-movegrade-prereg.md` (**PROPOSED, not registered**); forward is zero until a play is
-logged at lock with its grade after that registration.
+after these results), flat 1u at the stored price at the cut, and none of it is a signal. Forward test: `docs/sharp-movegrade-prereg.md` (**PROPOSED, not registered**). The forward record is zero by rule while it is proposed: a play counts as forward only when its grade was logged at lock
+AND its cut is after the registering commit (`REGISTERED_CUT` in `move_grade_record.py`, None until the user registers), so plays logged before registration never count. The page's Forward view says so.
 
 **Cutoffs (points), from the size of 24 hour moves on every started game of the tape, never from results** (C mark = median move, B mark = the registered flag threshold, A mark = 95th percentile and at least half a point past
 the flag threshold; `move_grade_history.py` prints the distribution and checks every mark equals the table in `move_grade.py`):
@@ -442,6 +442,8 @@ Reproduce with `python3 -I scripts/sharps_v2/move_grade_history.py --ref f2eac1a
 | No grade | n=0 | n=0 | 25-21, +3.32u, +7.2% (se 14.9), n=46 | 8-7, -0.61u, -4.1% (se 24.5), n=15 | 25-21, +3.32u, +7.2% (se 14.9), n=46 | 33-28, +2.71u, +4.4% (se 12.6), n=61 |
 
 Every play sits in exactly one row, so each column adds up to its old total (the headline: 7 + 9 + 14 + 49 + 19 + 46 = 144 plays, +0.22 + 2.91 + 7.58 - 3.37 + 1.32 + 3.32 = +11.98u).
+
+ROI in these tables and on the Record page is the flat sum of the unrounded results over n (A headline +3.2%, B +32.3%, moved against +6.9%), not the rounded units over n; the page shows the same numbers. SE is one standard error of the per-play result in points of ROI. "Small sample" is under 30 plays here and on the page, one definition.
 
 The prereg's metrics on the same plays (headline, in-sample, report only): market move after the cut, mean points (se), n with a same-line close: A 0.00 (0.00) n=7, B +0.10 (0.23) n=9, C +0.04 (0.04) n=14, D +0.05 (0.08) n=48,
 moved against -0.53 (0.23) n=19; Pinnacle CLV (overlaps the inputs by construction): A -1.40 n=5, B -0.04 n=8, C -0.13 n=9, D -0.37 n=33, moved against +1.05 n=14. The move after the cut covers only the 15 minutes from the cut to the start:

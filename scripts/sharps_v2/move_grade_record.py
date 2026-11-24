@@ -11,13 +11,16 @@ flags would now give another letter), `frozen` (the card's stored v2.move_grade)
 warning, never a guess.
 Flat 1 unit at the stored price at the cut (a win pays 1 / price - 1, a loss -1, a push 0), variant `all`, voided plays left out; `units` is that flat
 sum and `roi` is units / n as a fraction, null at n = 0. NOT the size the page shows (flat 1u on NBA, NFL, CBB; none on CFB: CFB is a flat-1u
-reference). Buckets exactly as flag_record.json: in_sample = cut strictly before the first forward log row that carries `mg` (all plays when none),
-forward = only plays whose grade was logged at lock (`mg` on the v2_tier row) joined to the graded record, which starts at zero. Context only: a record,
-never a signal, never an input to Top Reads, SM_GATE or an agree total.
+reference). Buckets: in_sample = cut strictly before the first log row that carries `mg` (all plays when none); forward = only plays whose grade was logged at
+lock (`mg` on the v2_tier row) AND whose cut is after REGISTERED_CUT, joined to the graded record. The prereg (docs/sharp-movegrade-prereg.md) is PROPOSED, so
+REGISTERED_CUT is None and `forward` is zero: rows logged before a registration cannot count, however they were logged. The `mg` rows keep being written; a
+play logged but not counted sits in `all` only (`logged_not_counted`). Set REGISTERED_CUT to the registering commit's time (epoch seconds) when the user
+registers. Units are the flat sum of the unrounded results, `roi` = that sum / n to 6 places (not the rounded units, and not rounded early, so the page shows what the docs show), `se` = one standard error of the per-play result
+as a fraction of 1u (null under 2 plays). Context only: a record, never a signal, never an input to Top Reads, SM_GATE or an agree total.
 
   python3 -I scripts/sharps_v2/move_grade_record.py --data-dir pmdata --book-tape data/book_tape --out live/move_grade_record.json [--data-ref SHA]
 """
-import argparse, json, os, sys, time
+import argparse, json, math, os, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -32,8 +35,10 @@ SPORTS = ("nba", "nfl", "cfb", "cbb")
 ALL_SPORTS = TR.ALL_SPORTS                        # the sports that show a size (the page headline); CFB is reference only
 SLICES = ("a", "b", "c", "d", "against", "unreadable")
 LABEL = {"a": "A", "b": "B", "c": "C", "d": "D", "against": "moved against", "unreadable": "no grade"}
-SMALL_N = TH.SMALL_N
-FORWARD_NOTE = "forward starts at the first logged lock that carries the Move grade"
+SMALL_N = TH.SMALL_N                              # one definition for the page and the docs: a record under 30 plays is a small sample
+REGISTERED_CUT = None                             # epoch seconds of the registering commit; None until the user registers docs/sharp-movegrade-prereg.md
+FORWARD_NOTE = "The forward test is proposed, not registered. Plays logged before registration do not count."
+FORWARD_NOTE_REGISTERED = "forward = plays cut after the registration whose grade was logged at lock by the live builder"
 RULE = ("Move grade mg-1 (docs/sharp-movegrade-prereg.md), read from each play's own card at its cut. Flat 1u at the stored price at the cut, not the size the "
         "page shows. a to d are the letters, against = a market-move flag fired against the play (a marker, no letter), unreadable = no grade (neither flag "
         "readable). A play is in exactly one slice. in_sample = every play cut before the first logged lock that carries the grade (the rule was written after "
@@ -64,6 +69,24 @@ def derive_grade(c, g, side, quotes):
         return {"mg": None, "src": "error"}
 
 
+def cell(ps):
+    """{w, l, p, n, units, roi, se}: units is the flat sum rounded to 2 places for display, roi the UNROUNDED sum over n (a fraction, null at n = 0), se one standard
+    error of the per-play result as a fraction of 1u (null under 2 plays)."""
+    n = len(ps)
+    raw = sum(p["flat"] for p in ps)
+    se = None
+    if n > 1:
+        m = raw / n
+        se = round(math.sqrt(sum((p["flat"] - m) ** 2 for p in ps) / (n - 1)) / math.sqrt(n), 6)
+    return {"w": sum(p["res"] == "win" for p in ps), "l": sum(p["res"] == "loss" for p in ps), "p": sum(p["res"] == "push" for p in ps), "n": n,
+            "units": round(raw, 2), "roi": round(raw / n, 6) if n else None, "se": se}
+
+
+def counts_forward(p):
+    """A play counts as forward only when its grade was logged at lock AND its cut is after the registration cut. With REGISTERED_CUT None nothing counts."""
+    return bool(p.get("forward")) and REGISTERED_CUT is not None and isinstance(p.get("cut"), (int, float)) and p["cut"] > REGISTERED_CUT
+
+
 def with_logged(ps, logged):
     """Each play gets `forward`: True when its log row carries `mg`, and then its grade is the log's projection, read as written (an `mg` of None is a
     dropped block: unreadable). A play with no `mg` row is not forward and keeps the grade the card gave it."""
@@ -83,8 +106,8 @@ def _in(p, sl):
 
 def block(ps, sl, first_cut):
     sub = [p for p in ps if _in(p, sl)]
-    return {"all": TR.cell(sub), "in_sample": TR.cell([p for p in sub if first_cut is None or p["cut"] < first_cut]),
-            "forward": TR.cell([p for p in sub if p.get("forward")])}
+    return {"all": cell(sub), "in_sample": cell([p for p in sub if first_cut is None or p["cut"] < first_cut]),
+            "forward": cell([p for p in sub if counts_forward(p)])}
 
 
 def shape(ps, first_cut):
@@ -97,10 +120,12 @@ def build(ps, built, data_ref, logged=None):
     has = lambda r: isinstance(r, dict) and "mg" in r
     cuts = [r["cut"] for r in logged.values() if has(r) and isinstance(r.get("cut"), (int, float))]
     first_cut = min(cuts) if cuts else None
-    n_fwd = sum(1 for p in ps if p["forward"])
+    n_fwd = sum(1 for p in ps if counts_forward(p))
+    n_logged = sum(1 for p in ps if p["forward"])
     return {"built": built, "data_ref": data_ref, "rule": RULE, "mg_rule": MG.MG_RULE, "units_basis": "flat 1u at the stored price at the cut",
             "slices": list(SLICES), "first_logged_cut": first_cut, "logged_rows": sum(1 for r in logged.values() if has(r)),
-            "forward_graded": n_fwd, "forward_note": FORWARD_NOTE if not n_fwd else "forward = plays whose grade was logged at lock by the live builder",
+            "forward_graded": n_fwd, "registered_cut": REGISTERED_CUT, "logged_not_counted": n_logged - n_fwd,
+            "forward_note": FORWARD_NOTE if REGISTERED_CUT is None else FORWARD_NOTE_REGISTERED,
             "all_sports": list(ALL_SPORTS),
             "sports": {sp: shape([p for p in ps if p["sport"] == sp], first_cut) for sp in SPORTS},
             "all": shape([p for p in ps if p["sport"] in ALL_SPORTS], first_cut)}
@@ -136,7 +161,7 @@ def fmt_cell(st):
 
 def print_report(out):
     print("\nMOVE GRADE mg-1 (docs/sharp-movegrade-prereg.md): the same plays by letter, point in time; in-sample; context only; the letter describes the market and is not a bet signal")
-    print("A to D = how strongly the market moved toward the play before the cut; moved against = a market-move flag fired against it (no letter); no grade = neither flag readable.")
+    print("A to D = how far the market moved toward the play before the cut; moved against = a market-move flag fired against it (no letter); no grade = neither flag readable.")
     s = out["src"]
     print(f"Grades read from a stored card block: {s['frozen']}, from stored flags: {s['frozen_flags']}, re-derived from the tape at the cut: {s['derived']}, errors: {s['error']}.")
     for name in ("nba", "nfl", "cbb", "cfb", "headline", "all"):

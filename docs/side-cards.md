@@ -450,7 +450,7 @@ plays by slice beside the old record with no flags, and the list of every improv
 
 ### Move grade (`markets[g].v2.move_grade`, forward log key `mg`)
 
-Rule `mg-1` (`scripts/sharps_v2/move_grade.py`, spec `docs/sharps-v2-movegrade-spec.md`, text `docs/sharp-movegrade-prereg.md`, **PROPOSED, not registered**). A letter A to D for how strongly the market moved
+Rule `mg-1` (`scripts/sharps_v2/move_grade.py`, spec `docs/sharps-v2-movegrade-spec.md`, text `docs/sharp-movegrade-prereg.md`, **PROPOSED, not registered**). A letter A to D for how far the market moved
 **toward** a shown play in the 24 hours before the cut. Inputs: the play's stored `v2.flags` (Flag A `pin.state` and `pin.pts`; Flag C `line.state` and `line.pin` from and to) and the side's direction, nothing else:
 not Pinnacle's limit, the tier, the wallets, the price, the result or anything after the cut. A pure read, computed in `plays_v2.market_v2` right after the flags in its own `try` (a failure sets `move_grade: null` and
 `move_grade_error` and leaves every other key as it was). Shadow only: it never changes the shown size, `shadow_units`, the tier, the ladder, `sf_rungs`, the gates, the locks, Top Reads, SM_GATE or an agree total, and none of
@@ -485,13 +485,15 @@ time**. Flat 1u at the stored price at the cut (as `tier_record.json`; not the s
 stored `v2.flags` (`frozen_flags`), or `move_grade()` on flags re-derived from the tape rows at or before the cut (`derived`). A failure is `unreadable` with a warning, never a guess.
 
 ```
-{ "built", "data_ref", "rule", "mg_rule": "mg-1", "units_basis", "slices": [...], "first_logged_cut": epoch|null, "logged_rows": n (rows with mg), "forward_graded": n, "forward_note",
+{ "built", "data_ref", "rule", "mg_rule": "mg-1", "units_basis", "slices": [...], "first_logged_cut": epoch|null, "logged_rows": n (rows with mg), "forward_graded": n (counted), "registered_cut": epoch|null, "logged_not_counted": n, "forward_note",
   "all_sports": ["nba", "nfl", "cbb"], "sports": {"nba|nfl|cfb|cbb": {"<slice>": {"all": cell, "in_sample": cell, "forward": cell}}}, "all": same (NBA+NFL+CBB; CFB is a flat-1u reference) }
-cell = {"w", "l", "p", "n", "units", "roi" (fraction, null at n = 0)}
+cell = {"w", "l", "p", "n", "units" (flat sum, 2 places), "roi" (fraction: the UNROUNDED sum over n, 6 places, null at n = 0), "se" (one standard error of the per-play result, fraction of 1u, null under 2 plays)}
 ```
 
-`in_sample` = every play cut strictly before the first forward log row that carries `mg` (all plays when none); `forward` = only plays whose grade was logged at lock, joined to the graded record: zero until a logged play is
-graded. `python3 -I scripts/sharps_v2/tier_history.py` prints the same plays by slice beside the old record with no grade as its last block, with every improving slice flagged with its n ("small sample" under 30).
+`in_sample` = every play cut strictly before the first log row that carries `mg` (all plays when none). `forward` = only plays whose grade was logged at lock AND whose cut is after `REGISTERED_CUT`
+(a constant in `move_grade_record.py`, None until the user registers `docs/sharp-movegrade-prereg.md`), joined to the graded record. While it is None `forward` is zero and `forward_note` reads "The forward test is
+proposed, not registered. Plays logged before registration do not count."; the `mg` rows keep being written, a play logged but not counted sits in `all` only (`logged_not_counted`), and `registered_cut` is published.
+The Record page reads these two fields, shows "small sample" under 30 plays (one definition, as in `docs/side-card-record.md`) and the standard errors. `python3 -I scripts/sharps_v2/tier_history.py` prints the same plays by slice beside the old record with no grade as its last block, with every improving slice flagged with its n ("small sample" under 30).
 Context only: a record, not a signal. The classic page does not read it.
 
 ### `tier_record.json` (beside `live.json` on `pm-cards-live`)
