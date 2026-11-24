@@ -241,6 +241,15 @@
     var b = BUCKETS.indexOf(bucket) >= 0 ? bucket : 'all';
     return rec.tierTally(tierObj && tierObj[b]);
   };
+  /* The flat ROI is stored as units / n where units are rounded to 0.01 (one Clear play at +1.1978u is stored as 1.2 units and roi 1.2, which reads +120.0%), while
+     the shadow roi is stored to four places from the unrounded results (+119.8%). When the shadow staked exactly size x n (every play in the cell sized, so every
+     play has the same stake multiple), the shadow ROI IS the flat ROI of the same plays: show that unrounded value so the two columns agree. Display only: no stored
+     number is changed, and a cell where the shadow stakes less than size x n (CFB, or no size) keeps the stored flat roi. */
+  rec.exactRoi = function (t, sh, size) {
+    if (!t || !(t.n > 0) || !sh || !isNum(size) || size <= 0 || !(sh.staked > 0) || !isNum(sh.roi)) return t;
+    if (Math.abs(sh.staked - size * t.n) > 0.005) return t;
+    return Object.assign({}, t, { roi: sh.roi });
+  };
   /* the table for a sport and a bucket: five rows in order (four tiers, then Not derivable on its own row), each with its tally, its share of the
      bucket's n (null when the bucket is empty), the monitor flags, and the market split. The split is stored for all plays only: it is shown when
      the bucket holds exactly the same plays (same n as all), else null. Zero-play tiers stay in as zeros. */
@@ -249,12 +258,12 @@
     if (!sl) return null;
     var b = BUCKETS.indexOf(bucket) >= 0 ? bucket : 'all';
     var rows = TIER_ROWS.map(function (t) {
-      var o = sl[t] || {}, tally = rec.pickBucket(o, b), all = rec.pickBucket(o, 'all'), markets = null;
+      var o = sl[t] || {}, tally = rec.pickBucket(o, b), all = rec.pickBucket(o, 'all'), markets = null, size = rec.shadowSize(t, sport), shadow = rec.shadowTally(o[b]);
       if (o.by_market && tally.n > 0 && tally.n === all.n) {
-        markets = MARKETS.map(function (m) { return { k: m[0], label: m[1], t: rec.tierTally(o.by_market[m[0]]), shadow: rec.shadowTally(o.by_market[m[0]]) }; });
+        markets = MARKETS.map(function (m) { var ms = rec.shadowTally(o.by_market[m[0]]); return { k: m[0], label: m[1], t: rec.exactRoi(rec.tierTally(o.by_market[m[0]]), ms, size), shadow: ms }; });
       }
-      return { tier: t, derived: t !== 'none', t: tally, share: null, flag: rec.monitor(tally), markets: markets,
-               size: rec.shadowSize(t, sport), shadow: rec.shadowTally(o[b]) };
+      return { tier: t, derived: t !== 'none', t: rec.exactRoi(tally, shadow, size), share: null, flag: rec.monitor(tally), markets: markets,
+               size: size, shadow: shadow };
     });
     var total = rec.tierPool(rows.map(function (r) { return r.t; }));
     rows.forEach(function (r) { r.share = total.n > 0 ? r.t.n / total.n : null; });
