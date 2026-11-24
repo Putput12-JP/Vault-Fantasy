@@ -391,19 +391,98 @@
     var k = ct.dateKey(nowT), first = k.slice(0, 7) + '-01', prev = ct.addDays(first, -1).slice(0, 7), cur = k.slice(0, 7);
     return prev >= FIRST_MONTH ? [prev, cur] : [cur];
   };
+  /* ---- Frozen plays list (the Sharps rail box under Tiers). The shown plays whose card has frozen at its cut: the same plays the Plays record
+     counts (rec.playRows: sf, variant all, counted cards, NBA, NFL and CBB), plus the open list of cards_record.json (locked, no result row yet).
+     An open row is dropped when a result row of the same key exists, so a play is never listed twice. Stored values only.
+     Freeze time: the stored cut (the result row, else the tier log row), else the card's own rule, game start minus 15 minutes
+     (scripts/build_side_cards.py: "the cut (game start - 15 min)"; 1,400+ stored rows agree). tierMap is { result key: tier log row }:
+     the tier at freeze comes only from that stored log, never recomputed. */
+  var CUT_LEAD = 900;
+  rec.CUT_LEAD = CUT_LEAD;
+  function freezeTime(r, lg) {
+    if (isNum(r.cut)) return r.cut;
+    if (lg && isNum(lg.cut)) return lg.cut;
+    return isNum(r.gst) ? r.gst - CUT_LEAD : null;
+  }
+  function stateOf(r) {
+    if (r.status === 'graded') return r.res === 'win' ? ['win', 'W'] : r.res === 'loss' ? ['loss', 'L'] : ['push', 'P'];
+    if (r.status === 'unpriced') return ['unpriced', 'No price'];
+    if (r.status === 'void') return ['void', 'Void'];
+    return ['none', 'Not graded'];
+  }
+  rec.frozenList = function (rows, file, tierMap, sport) {
+    var s = sport == null ? 'all' : lc(sport), tm = tierMap || {};
+    var out = { sport: s, items: [], total: 0, awaiting: 0, settled: 0, tally: rec.tally([], {}), noSize: false };
+    if (s !== 'all' && SHOWN.indexOf(s) < 0) { out.noSize = true; return out; }
+    var inSport = function (r) { var sp = lc(r.sport); return s === 'all' ? SHOWN.indexOf(sp) >= 0 : sp === s; };
+    var done = {}, items = [];
+    (rows || []).forEach(function (r) { if (r && r.kind === 'result' && typeof r.key === 'string') done[r.key] = true; });
+    function model(r, st, lg) {
+      var tier = lg && copy.tier[lc(lg.tier)] ? lc(lg.tier) : null;
+      var st2 = st || stateOf(r);
+      return { key: r.key, sport: lc(r.sport), group: r.group, label: rec.playLabel(r), market: r.group,
+        price: isNum(r.price) && r.status !== 'unpriced' ? fmt.cents(r.price) : null, tier: tier,
+        state: st2[0], word: st2[1], flat: isNum(r.flat) && st2[0] !== 'unpriced' ? r.flat : null,
+        units: isNum(r.flat) && (st2[0] === 'win' || st2[0] === 'loss' || st2[0] === 'push') ? fmt.units(r.flat, { signed: true }) : null,
+        cut: freezeTime(r, lg), gst: isNum(r.gst) ? r.gst : null };
+    }
+    var settledRows = rec.playRows(rows, s);
+    settledRows.forEach(function (r) { items.push(model(r, null, tm[r.key])); });
+    var seen = {};
+    var open = file && Array.isArray(file.open) ? file.open : [];
+    open.forEach(function (r) {
+      if (!r || typeof r !== 'object' || typeof r.key !== 'string' || r.play !== 'sf' || !/\|all\|sf$/.test(r.key) || r.counts !== true) return;   /* the open list has no variant field: it is in the key (card|group|variant|play) */
+      if (!inSport(r) || done[r.key] || seen[r.key]) return;
+      seen[r.key] = true;
+      items.push(model(r, ['open', r.postponed === true ? 'Postponed' : 'Awaiting result'], tm[r.key]));
+    });
+    items.sort(function (a, b) {
+      var ao = a.state === 'open' ? 0 : 1, bo = b.state === 'open' ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      var ac = isNum(a.cut) ? a.cut : -Infinity, bc = isNum(b.cut) ? b.cut : -Infinity;
+      if (ac !== bc) return bc - ac;
+      return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+    });
+    out.items = items; out.total = items.length;
+    out.awaiting = items.filter(function (x) { return x.state === 'open'; }).length;
+    out.settled = out.total - out.awaiting;
+    out.tally = rec.tally(settledRows, {});
+    return out;
+  };
+  /* the box subtitle. W-L-P is rec.tally of the same rows the Plays record counts, so it equals the Record page's Record line. */
+  rec.frozenSub = function (L) {
+    if (!L || !L.total) return '';
+    var t = L.tally, s = fmt.n(L.total) + ' frozen play' + (L.total === 1 ? '' : 's') + (t.n ? ', ' + rec.fmtWl(t) + ', flat 1u' : '');
+    var ng = L.items.filter(function (x) { return x.state !== 'open' && x.state !== 'win' && x.state !== 'loss' && x.state !== 'push'; }).length;   /* void, unpriced: listed, never in the record */
+    if (L.awaiting) s += (t.n ? ', ' : ': ') + fmt.n(L.awaiting) + ' awaiting';
+    if (ng) s += (t.n || L.awaiting ? ', ' : ': ') + fmt.n(ng) + ' not graded';
+    return s;
+  };
+  /* the V2 tier log rows (pm_cards/<sport>/v2_tier/<YYYY-MM>.jsonl) as { key: row }, only rows with a known tier */
+  rec.tierLogMap = function (rows) {
+    var m = {};
+    (rows || []).forEach(function (r) { if (r && typeof r.key === 'string' && copy.tier[lc(r.tier)]) m[r.key] = r; });
+    return m;
+  };
+  rec.FROZEN_SHOW = 12;
   rec.SORT_FIRST = SORT_FIRST; rec.SHADOW_SIZE = SHADOW_SIZE; rec.SHADOW_TIP = SHADOW_TIP; rec.TIER_ROWS = TIER_ROWS; rec.BUCKETS = BUCKETS; rec.TIER_FOOT = TIER_FOOT; rec.FWD_CUT = FWD_CUT; rec.FIRST_MONTH = FIRST_MONTH; rec.NEED_N = NEED_N; rec.SMALL_N = SMALL_N; rec.TIER_NONE = TIER_NONE; rec.declared = declared;
   SV2.rec = rec;
 
   /* ------------------------------------------------------------------ browser side */
   if (typeof document === 'undefined') return;
   var S = { sport: 'all', view: 'main', file: null, rows: null, state: 'idle', loadedAt: 0, main: null, page: null, sw: null, swPage: null, busy: false,
-    tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, tb: 'all', tSince: false, open: {}, sort: {} };
+    tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, tb: 'all', tSince: false, open: {}, sort: {},
+    fz: { sport: 'all', open: false }, tl: { map: {}, loadedAt: 0, busy: false } };
 
-  function get(p, txt, force) {
+  /* Dev: ?recbase=/path/ on localhost reads the record files from a local folder (cards_record.json, cards/<sport>/<month>.jsonl, and the
+     tier log at tl/<sport>/<month>.jsonl) instead of pm-holders-data. */
+  function recBase() { var d = SV2.dev && SV2.dev.param ? SV2.dev.param('recbase') : null; return d ? d.replace(/\/?$/, '/') : null; }
+  function getUrl(u, txt, force) {
     var k = force ? Date.now() : Math.floor(Date.now() / 300000);
-    return fetch(BASE + p + '?t=' + k, { cache: force ? 'no-store' : 'default' })
+    return fetch(u + '?t=' + k, { cache: force ? 'no-store' : 'default' })
       .then(function (r) { return r.ok ? (txt ? r.text() : r.json()) : null; }).catch(function () { return null; });
   }
+  function get(p, txt, force) { return getUrl((recBase() || BASE) + p, txt, force); }
   /* tier_record.json: published beside live.json on pm-cards-live, rebuilt about every 10 minutes. Same 5 minute cache key as the files above.
      Dev: ?tierrecord=/path on localhost. A failed fetch keeps the file held (stale); an older build never replaces a newer one. */
   var TIER_URL = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/pm-cards-live/tier_record.json';
@@ -437,13 +516,88 @@
       r.slice(1).forEach(function (t) { if (t) rows = rows.concat(rec.parseJsonl(t)); });
       if (!r[0] && !rows.length) { if (S.state !== 'ok') S.state = 'none'; else S.stale = true; }
       else { S.file = r[0] || S.file; S.rows = rows; S.closes = rec.closeMap(rows); S.state = 'ok'; S.stale = false; S.loadedAt = Date.now(); }
-      S.busy = false; paint();
+      S.busy = false; paint(); paintFrozen(); loadTl(false);
     });
     return S.busy;
   }
 
   function sportNow() { var h = SV2.hostSport(); return h != null ? h : S.sport; }
   function pageNow() { return SV2.route().page === 'following' ? 'following' : 'sharps'; }
+
+  /* ---- Frozen plays box (Sharps rail, under Tiers). The Sharps page asks for the markup with rec.frozenBox(sport) each time it paints its rail;
+     this module loads the record lazily (the same load() and 5 minute cache as the Record view, so nothing is fetched twice) and
+     refreshes the box in place when data lands or the list is opened. The tier at freeze comes from the stored V2 tier log, read only
+     for a sport that has a play cut at or after the log's first row (tier_record.json first_logged_cut), so no file is asked for that cannot exist. */
+  function tlSports() {
+    var T = S.tier.data, first = T && isNum(T.first_logged_cut) ? T.first_logged_cut : null, out = [];
+    if (first == null) return out;
+    SHOWN.forEach(function (sp) {
+      var any = rec.playRows(S.rows || [], sp).some(function (r) { return isNum(r.cut) && r.cut >= first; }) ||
+        (S.file && Array.isArray(S.file.open) ? S.file.open : []).some(function (r) { return r && lc(r.sport) === sp && isNum(r.gst) && r.gst - CUT_LEAD >= first; });
+      if (any) out.push(sp);
+    });
+    return out;
+  }
+  function loadTl(force) {
+    var L = S.tl;
+    if (L.busy || S.state !== 'ok') return;
+    if (S.tier.state === 'loading' || S.tier.state === 'idle') return;   /* the tier file decides which logs exist: wait for it (its event repaints the rail) */
+    if (!force && L.loadedAt && Date.now() - L.loadedAt < 300000) return;
+    L.busy = true;
+    var base = recBase() ? recBase() + 'tl/' : BASE.replace('pm_record/', 'pm_cards/'), sports = tlSports(), months = rec.months(SV2.now()), jobs = [];
+    sports.forEach(function (sp) { months.forEach(function (m) { jobs.push(getUrl(base + sp + '/' + (recBase() ? '' : 'v2_tier/') + m + '.jsonl', true, force)); }); });
+    Promise.all(jobs).then(function (r) {
+      var rows = []; r.forEach(function (t) { if (t) rows = rows.concat(rec.parseJsonl(t)); });
+      if (rows.length || !Object.keys(L.map).length) L.map = rec.tierLogMap(rows);
+      if (jobs.length || S.tier.data) L.loadedAt = Date.now();
+      L.busy = false; paintFrozen();
+    });
+  }
+  function fzRow(m) {
+    var word = m.state === 'open' || m.units == null ? m.word : m.word + ' ' + m.units;
+    var kind = m.state === 'win' ? 'win' : m.state === 'loss' ? 'loss' : 'muted';
+    var say = m.state === 'win' ? 'Win' : m.state === 'loss' ? 'Loss' : m.state === 'push' ? 'Push' : m.word;
+    var meta = '';
+    if (isNum(m.cut)) meta += '<span class="sv2-num">' + esc(ct.md(m.cut) + ', ' + ct.time(m.cut)) + '</span>';
+    meta += '<span class="sv2-chip sv2-chip--muted"><span>' + esc(sportName(m.sport)) + '</span></span>';
+    return '<li class="sv2-fz-r" data-state="' + m.state + '"><div class="sv2-fz-l"><span class="sv2-fz-top"><b class="sv2-fz-title">' + esc(m.label) + '</b>' +
+      (m.price ? '<span class="sv2-num sv2-fz-px"><span class="sv2-sr">Price at the freeze </span>' + esc(m.price) + '</span>' : '') + '</span>' +
+      '<span class="sv2-fz-meta">' + meta + '</span></div>' +
+      '<div class="sv2-fz-rt"><span class="sv2-chip sv2-chip--' + kind + ' sv2-fz-res"><span aria-hidden="true">' + esc(word) + '</span><span class="sv2-sr">' + esc(say + (m.units && m.state !== 'open' ? ', ' + m.units.replace('u', ' units') : '')) + '</span></span>' +
+      (m.tier ? ui.tier(m.tier) : '') + '</div></li>';
+  }
+  function frozenInner() {
+    var sp = S.fz.sport, h = '<h2 class="sv2-h2" id="sv2-fz-h">Frozen plays</h2>';
+    if (S.state === 'none') return h + '<p class="sv2-rec-railn">Could not load. <button type="button" class="sv2-link" data-sv2-fz-retry>Try again</button></p>';
+    if (S.state !== 'ok') return h + ui.skel(3, 'Loading the frozen plays', 'sv2-fz-skel');
+    var L = rec.frozenList(S.rows, S.file, S.tl.map, sp);
+    if (L.noSize) return h + '<p class="sv2-rec-railn">CFB shows no size, so no play is listed here. The record tab keeps a tracked CFB record.</p><p class="sv2-rec-railn"><button type="button" class="sv2-sp-lnk" data-sv2-open-record>See the full record</button></p>';
+    if (!L.total) return h + '<p class="sv2-rec-railn">No frozen plays yet' + (sp === 'all' ? '' : ' for ' + esc(sportName(sp))) + '.</p>';
+    var many = L.total > rec.FROZEN_SHOW, open = many && S.fz.open, list = open ? L.items : L.items.slice(0, rec.FROZEN_SHOW);
+    h += '<p class="sv2-fz-sub">' + esc(rec.frozenSub(L)) + '</p>';
+    var ul = '<ul class="sv2-fz-list">' + list.map(fzRow).join('') + '</ul>';
+    h += open ? '<div class="sv2-fz-scroll" id="sv2-fz-list" tabindex="0" role="region" aria-label="All frozen plays, newest first">' + ul + '</div>' : '<div id="sv2-fz-list">' + ul + '</div>';
+    if (many) h += '<button type="button" class="sv2-sp-ctxbtn sv2-press sv2-press-btn sv2-fz-more" data-sv2-fz-more aria-expanded="' + open + '" aria-controls="sv2-fz-list"><span>' +
+      (open ? 'Show fewer' : 'Show all (' + fmt.n(L.total) + ')') + '</span>' + ui.icon('chevron', 'sv2-chev') + '</button>';
+    return h + '<p class="sv2-rec-railn">Times are Central. Context only, a record and not proof.</p>' +
+      '<p class="sv2-rec-railn"><button type="button" class="sv2-sp-lnk" data-sv2-open-record>See the full record</button></p>';
+  }
+  /* in-place refresh of every frozen box on the page; keeps keyboard focus on the control that was used */
+  function paintFrozen(focusSel) {
+    var boxes = document.querySelectorAll('[data-sv2-fz]');
+    Array.prototype.forEach.call(boxes, function (b) {
+      b.innerHTML = frozenInner();
+      b.setAttribute('aria-busy', S.state === 'ok' ? 'false' : 'true');
+      if (focusSel) { var f = b.querySelector(focusSel); if (f) { try { f.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }
+    });
+    if (SV2.rail && SV2.rail.catchUp && boxes.length) SV2.rail.catchUp();
+  }
+  rec.frozenBox = function (sport) {
+    S.fz.sport = sport == null ? 'all' : lc(sport);
+    if (S.state === 'idle' || (S.state === 'ok' && !S.busy && Date.now() - S.loadedAt >= 300000)) load(false);   /* lazy: the first paint is never blocked */
+    loadTl(false);
+    return '<section class="sv2-box sv2-sp-rb sv2-fz" data-sv2-fz aria-labelledby="sv2-fz-h" aria-busy="' + (S.state === 'ok' ? 'false' : 'true') + '">' + frozenInner() + '</section>';
+  };
 
   /* ---- small renderers */
   function num(x) { return '<span class="sv2-num">' + esc(x) + '</span>'; }
@@ -808,9 +962,11 @@
       SV2.on('sport', function () { if (S.view === 'record') paint(); });
       SV2.on('wallets', function () { if (S.view === 'record' && S.state === 'ok') paint(); });
       SV2.on('route', function () { if (S.main && document.contains(S.main)) { paintSwitch(); if (S.view === 'record') paint(); } });
-      SV2.on('refresh', function () { if (S.view === 'record') load(true); });
+      SV2.on('refresh', function () { if (S.view === 'record' || document.querySelector('[data-sv2-fz]')) { load(true).then(function () { S.tl.loadedAt = 0; loadTl(true); }); } });
       document.addEventListener('click', function (e) {
         var t = e.target; if (!t || !t.closest) return;
+        if (t.closest('[data-sv2-fz-retry]')) { S.state = 'loading'; paintFrozen('[data-sv2-fz-retry]'); load(true); return; }
+        if (t.closest('[data-sv2-fz-more]')) { S.fz.open = !S.fz.open; paintFrozen('[data-sv2-fz-more]'); return; }
         if (t.closest('[data-sv2-rec-retry]')) { S.state = 'loading'; if (!S.tier.data) S.tier.state = 'loading'; paint(); load(true); return; }
         var so = t.closest('[data-sv2-rsort]');
         if (so && S.page && S.page.contains(so)) {

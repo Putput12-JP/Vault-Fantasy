@@ -1144,6 +1144,7 @@
       }
       h += '<p class="sv2-rec-railn"><button type="button" class="sv2-sp-lnk" data-sv2-open-record>See the tier record</button></p>';
       h += '</section>';
+      if (R && R.frozenBox) h += R.frozenBox(sp);   /* the Frozen plays box, from the record module (loads lazily, refreshes itself in place) */
       if (d.ctx.length) h += '<section class="sv2-box sv2-sp-rb"><h2 class="sv2-h2">Context</h2><p>' + esc(fmt.n(d.ctx.length)) + ' games with past-winner money on a side, no play <button type="button" class="sv2-sp-lnk" data-sp-ctxgo data-fid="ctxgo">show</button></p></section>';
       h += '<p class="sv2-sp-rec"><a class="sv2-link" href="../new/#vrecord">Play record</a></p>';
       return h;
