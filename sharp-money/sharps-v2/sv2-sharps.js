@@ -247,7 +247,7 @@
   }
 
   /* extra price lines, each only when plays-data publishes the field */
-  function execLines(sf) {
+  function execLines(sf, fair) {
     var L = [], ex = sf.exec || {}, t;
     if (ex.pm_ask && isNum(ex.pm_ask.px)) { t = ct.time(ex.pm_ask.t, true); L.push('Polymarket ask ' + fmt.cents(ex.pm_ask.px) + (t ? ' (' + t + ')' : '')); }
     if (ex.us_best && isNum(ex.us_best.odds)) {
@@ -255,7 +255,7 @@
       L.push('Best US book on this line: ' + (ex.us_best.odds > 0 ? '+' : '') + Math.round(ex.us_best.odds) + (ex.us_best.book ? ' at ' + ex.us_best.book : '') + (t ? ' (' + t + ')' : ''));
     }
     if (ex.kalshi && isNum(ex.kalshi.px)) { t = ct.time(ex.kalshi.t, true); L.push('Kalshi ' + fmt.cents(ex.kalshi.px) + (t ? ' (' + t + ')' : '')); }
-    if (ex.novig && isNum(ex.novig.px)) { t = ct.time(ex.novig.t, true); L.push('Novig ' + fmt.cents(ex.novig.px) + (t ? ' (' + t + ')' : '')); }
+    if (ex.novig && validP(ex.novig.px)) L.push(novigText(ex.novig, fair));
     if (sf.close_vs_fair && isNum(sf.close_vs_fair.pts)) L.push('Pinnacle close vs fair: ' + fmt.line(sf.close_vs_fair.pts, { signed: true }) + ' pts');
     return L;
   }
@@ -433,7 +433,10 @@
     else if (ln) mv = 'Pinnacle moved this side from ' + ln.from + ' to ' + ln.to;
     if (!mv) return null;
     if (l && isNum(l.from) && isNum(l.to) && l.from !== l.to) mv += ' while its limit ' + (l.to > l.from ? 'rose' : 'fell') + ' from ' + limitMoney(l.from) + ' to ' + limitMoney(l.to);
-    return mv + '.';
+    mv += '.';
+    var nv = novigOf(p), am = nv ? fmt.american(nv.px) : null, gap = nv ? gapTxt(nv.gap) : null;
+    if (nv && am && gap) mv += ' Novig still shows ' + am + ', which is ' + gap + ' against Pinnacle\'s fair price, ' + NOVIG_FEES + '.';
+    return mv;
   }
   /* "How this label was earned": a deterministic template over the stored numbers in v2.move_grade and v2.flags. A placeholder with no stored value forces the template that
      does not print it. Null for D, no grade or an absent block. */
@@ -468,6 +471,54 @@
     } else return null;
     return w + ' move: ' + s;
   }
+
+  /* ---- Novig beside cents, and the gap against Pinnacle's fair. All stored numbers: v2.exec.novig {px, t, since_min} (px is the ASK, the cost of this side per $1, as for Kalshi) and
+     v2.vs_fair.fair (Pinnacle's no-vig fair probability for the shown side, readable only while vs_fair.why is null). The American price is a plain conversion of the stored price
+     (fmt.american). gap = fair / px - 1, in percent. Novig is an exchange with fees and we do not know that px includes them, so the gap is always written "before fees". A missing or
+     out of range number gives nothing, never a guess. Tape times are change times: "unchanged since", never "read at". Context only: no signal, no size, no tier. */
+  var NOVIG_FEES = 'before fees';
+  function validP(x) { return isNum(x) && x > 0 && x < 1; }
+  function novigGap(px, fair) { return validP(px) && validP(fair) ? fair / px - 1 : null; }
+  function gapTxt(g) {
+    if (!isNum(g)) return null;
+    var r = Math.abs(Math.round(g * 1000) / 10);
+    return (g > 0 ? '+' : g < 0 ? '-' : '') + r.toFixed(1) + '%';
+  }
+  function vsFairOf(p) {
+    var m = mktOf(p.game, p.g), vf = m && m.v2 && m.v2.vs_fair;
+    return isObj(vf) && vf.why == null && validP(vf.fair) ? vf.fair : null;
+  }
+  function novigOf(p) {
+    var m = mktOf(p.game, p.g), ex = m && m.v2 && m.v2.exec, nv = ex && ex.novig;
+    if (!isObj(nv) || !validP(nv.px)) return null;
+    return { px: nv.px, nv: nv, gap: novigGap(nv.px, vsFairOf(p)) };
+  }
+  function novigAge(nv) {
+    var t = isNum(nv.t) ? ct.time(nv.t, true) : null;
+    return t ? 'unchanged since ' + t + (isNum(nv.since_min) ? ' (' + (nv.since_min < 120 ? Math.round(nv.since_min) + ' min old' : Math.round(nv.since_min / 60) + ' hours old') + ')' : '') : null;
+  }
+  /* "Novig 73.5c (-277), unchanged since 6:42 PM CT (14 min old); +0.2% vs Pinnacle's fair, before fees" */
+  function novigText(nv, fair) {
+    var am = fmt.american(nv.px), age = novigAge(nv), gap = gapTxt(novigGap(nv.px, fair));
+    return 'Novig ' + fmt.cents(nv.px) + (am ? ' (' + am + ')' : '') + (age ? ', ' + age : '') + (gap ? '; ' + gap + ' vs Pinnacle\'s fair, ' + NOVIG_FEES : '');
+  }
+  /* the two descriptive chips of the flags chip row. "Price dropped": Pinnacle's price moved toward this side (flag A of v2f-2). "Price still open": Novig's price is above 0 better than
+     Pinnacle's fair (before fees). Named for what they measure, ink chips, context only. */
+  function priceChips(p) {
+    var f = flagsOf(p), nv = novigOf(p), out = [];
+    if (f && flagState(f.pin) === 'toward') {
+      var pn = pinNums(f);
+      out.push({ k: 'drop', state: 'toward', text: 'Price dropped', tip: 'Pinnacle\'s price for this side moved toward it' + (pn ? ' (' + pn.from + ' to ' + pn.to + ')' : '') + ' (the Pinnacle market-move flag). ' + MGC.note });
+    }
+    if (nv && isNum(nv.gap) && nv.gap > 0) {
+      var am = fmt.american(nv.px), age = novigAge(nv.nv);
+      out.push({ k: 'open', state: 'quiet', text: 'Price still open', tip: 'Novig ' + fmt.cents(nv.px) + (am ? ' (' + am + ')' : '') + ' is ' + gapTxt(nv.gap) + ' against Pinnacle\'s fair price, ' + NOVIG_FEES + (age ? ', ' + age : '') + '. ' + MGC.note });
+    }
+    return out;
+  }
+  /* one line for the "why" area, shown when the label or a Novig price is shown */
+  var PRICE_WHY = 'A price that looks better than Pinnacle\'s at one moment has not paid on its own in our tests: plays at DraftKings with 2% or more EV against Pinnacle\'s fair after a Pinnacle move hit 47.3% on 203 plays against 54.5% expected (backtest, Oct 20 to 30). The label does not predict results.';
+  function priceWhy(p) { return mgOf(p) || novigOf(p) ? PRICE_WHY : null; }
 
   /* ---- series: points, step paths, table ---- */
   function cleanPts(a) {
@@ -758,6 +809,8 @@
     var priceSub = [];
     if (am) priceSub.push(am + ' in American');
     if (ex.us_best && isNum(ex.us_best.odds)) priceSub.push('Best US book ' + amer(ex.us_best.odds) + (ex.us_best.book && BOOKS.indexOf(ex.us_best.book) >= 0 ? ' at ' + ex.us_best.book : ''));
+    var nvq = novigOf(p);
+    if (nvq) priceSub.push('Novig ' + fmt.cents(nvq.px) + (fmt.american(nvq.px) ? ' (' + fmt.american(nvq.px) + ')' : ''));
     var fairV = isNum(vf.fair) ? 'Fair ' + fmt.cents(vf.fair) : '';
     var fp = fairPts(p), fairSub = fp == null ? (vf.why === 'ticket_line_not_main_at_cut' ? 'Off Pinnacle\'s main line' : 'No fair price stored') : fp === 0 ? 'Level with fair' : fmt.line(Math.abs(fp)) + ' pts ' + (fp > 0 ? 'better' : 'worse') + ' than fair';
     if (isNum(vf.line)) fairSub += ', line ' + lineTxt(vf.line, p.g);
@@ -772,9 +825,9 @@
 
     /* the takeaway */
     var tk = takeaway({ flags: f, side: words.side, other: words.other || (money ? money.other : null), g: p.g, money: money, size: p.units > 0, graded: gr });
-    var why = mgWhy(p, words);
+    var why = mgWhy(p, words), pw = priceWhy(p);
     var take = '<div class="sv2-card-inset sv2-wu-take"><p class="sv2-h2">The takeaway</p><p class="sv2-wu-tk">' + tk.map(function (s) { return esc(s); }).join(' ') + '</p>' +
-      (why ? '<p class="sv2-mg-why"><b>How this label was earned.</b> ' + esc(why) + '</p>' : '') + '</div>';
+      (why ? '<p class="sv2-mg-why"><b>How this label was earned.</b> ' + esc(why) + '</p>' : '') + (pw ? '<p class="sv2-mg-why sv2-mg-evid">' + esc(pw) + '</p>' : '') + '</div>';
 
     /* section 1: who is on each side */
     var sec1 = '';
@@ -785,7 +838,7 @@
     /* section 2: where the line went */
     var sec2 = '', pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null;
     var mgb = mgBadgeHtml(p), mgs = mgSentence(p);
-    if (f || series || mgb) {
+    if (f || series || mgb || priceChips(p).length) {
       var head = mgb + (mgs ? '<p class="sv2-wu-fact sv2-mg-say">' + esc(mgs) + '</p>' : '');
       if (pn) head += '<p class="sv2-h2">Pinnacle ' + esc(words.side) + ' price</p><p class="sv2-wu-big sv2-num">' + fromTo(pn.from, pn.to) + '</p>';
       if (ln && f.line.kind !== 'price') {
@@ -793,7 +846,7 @@
         var xt = f.line.extreme, nm = isObj(f.line.pin) ? f.line.pin : null;
         if (isObj(xt) && isNum(xt.value) && BOOKS.indexOf(xt.book) >= 0) head += '<p class="sv2-wu-s">' + (nm && isNum(nm.from) && isNum(nm.to) ? (nm.to < nm.from ? 'Lowest: ' : nm.to > nm.from ? 'Highest: ' : 'Furthest: ') : 'Furthest: ') + esc(xt.book + ' ' + lineTxt(xt.value, p.g)) + '</p>';
       } else if (ln) head += '<p class="sv2-h2">Books\' price</p><p class="sv2-wu-big sv2-num">' + fromTo(ln.from, ln.to) + '</p>';
-      var chips = fullChips(p, words).map(function (ch) {
+      var chips = fullChips(p, words).concat(priceChips(p)).map(function (ch) {
         return '<span class="sv2-fl" data-flag="' + ch.k + '"' + (ch.tip ? ' title="' + esc(ch.tip) + '"' : '') + '>' + flagIcon(ch.state) + '<span>' + esc(ch.text) + '</span>' + (ch.tip ? '<span class="sv2-sr">. ' + esc(ch.tip) + '</span>' : '') + '</span>';
       }).join('');
       var byBook = '';
@@ -826,7 +879,7 @@
     vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell,
     flagsOf: flagsOf, flagChips: flagChips, chipsHtml: chipsHtml, movesOf: movesOf, chartPoints: chartPoints, stepPath: stepPath, extremes: extremes, seriesOf: seriesOf,
     chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml,
-    rowHtml: rowHtml, theadHtml: theadHtml, COLS: COLS, mgOf: mgOf, mgChipHtml: mgChipHtml, mgBadgeHtml: mgBadgeHtml, mgSentence: mgSentence, mgWhy: mgWhy, mgAria: mgAria, MGC: MGC,
+    rowHtml: rowHtml, theadHtml: theadHtml, COLS: COLS, novigGap: novigGap, gapTxt: gapTxt, novigText: novigText, novigOf: novigOf, vsFairOf: vsFairOf, priceChips: priceChips, priceWhy: priceWhy, PRICE_WHY: PRICE_WHY, mgOf: mgOf, mgChipHtml: mgChipHtml, mgBadgeHtml: mgBadgeHtml, mgSentence: mgSentence, mgWhy: mgWhy, mgAria: mgAria, MGC: MGC,
     marketOrder: marketOrder, dateWords: dateWords, eyebrowOf: eyebrowOf, sideLabelWords: sideLabelWords, BOOKS: BOOKS
   };
 
@@ -960,7 +1013,9 @@
     var when = [];
     if (isNum(gst)) when.push('Game starts ' + ct.day(gst) + ' ' + ct.time(gst, true));
     if (isNum(p.cut)) when.push('freezes ' + ct.time(p.cut, true));
-    var ex = execLines(sf);
+    var nv = novigOf(p), exSf = sf;
+    if (nv && !(sf.exec && sf.exec.novig)) exSf = Object.assign({}, sf, { exec: Object.assign({}, sf.exec || {}, { novig: nv.nv }) });   /* the Novig quote lives on v2.exec, the other price lines on sf */
+    var ex = execLines(exSf, vsFairOf(p));
     return line + (when.length ? '<p class="sv2-sp-note">' + esc(when.join(', ')) + '</p>' : '') +
       (ex.length ? '<ul class="sv2-sp-ex">' + ex.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' : '');
   }

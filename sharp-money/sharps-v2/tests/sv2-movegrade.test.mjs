@@ -117,7 +117,7 @@ console.log('how this label was earned (inside the takeaway)');
   ok('the takeaway text itself is unchanged and its closer is still its last sentence', /These are descriptions of what the market did\. Past moves like these have not paid off in Vault&#39;s records, so this is context, not a reason to bet\.<\/p><p class="sv2-mg-why">/.test(h));
   const texts = [A_MARK, B_FIRED, B_C, A_C, C_DRIFT, AGAINST].map((g) => strip(P.writeupHtml(withGrade(g, FL(PIN(g.a || 'quiet', g.a_pts == null ? 0 : g.a_pts), LIN(g.c || 'quiet'), { limit: lim })), {}))).join(' ');
   ok('no banned word, dash or unfilled slot in any card', !BANNED.test(texts) && !texts.includes(EM) && !texts.includes(EN) && !/[{}]|undefined|NaN|\bnull\b/.test(texts));
-  ok('the card never says a play will win and never says Sharp grade', !/Sharp grade|grade A|A play\b|will win|predict/i.test(texts));
+  ok('the card never says a play will win and never says Sharp grade', !/Sharp grade|grade A|A play\b|will win/i.test(texts) && /The label does not predict results\./.test(texts));
   ok('only the allowed book names appear in the label text', !/Novig|Kalshi|BookMaker|Circa|Caesars|Fanatics|Diamond|Odds Drop/.test(texts));
 }
 
@@ -140,7 +140,7 @@ console.log('everything else in the dropdown is still there');
   const f = FL(PIN('toward', 2.3), LIN('toward'), { limit: lim });
   const base = P.writeupHtml(mkp({ flags: f }), { share: { nba: 0.99 } });
   const withMg = P.writeupHtml(mkp({ flags: f, move_grade: A_MARK }), { share: { nba: 0.99 } });
-  const stripMg = withMg.replace(/<p class="sv2-mg-badge-row">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-wu-fact sv2-mg-say">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-mg-why">[\s\S]*?<\/p>/, '');
+  const stripMg = withMg.replace(/<p class="sv2-mg-badge-row">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-wu-fact sv2-mg-say">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-mg-why">[\s\S]*?<\/p>/, '').replace(/<p class="sv2-mg-why sv2-mg-evid">[\s\S]*?<\/p>/, '');
   ok('with the three additions removed the card is byte for byte the card without a grade', stripMg === base, [stripMg.length, base.length]);
   ok('flag chips, the price move numbers and the limit line are all still shown', /data-flag="pin"/.test(withMg) && /data-flag="line"/.test(withMg) && /sv2-wu-big/.test(withMg) && /Pinnacle limit \$3\.7K to \$5\.3K in the last 22 hours\./.test(withMg));
   eq('the table header says Tier and move and the sort is still the tier sort', [P.SORTS.tier.label, P.SORT_ORDER.indexOf('tier') >= 0], ['Tier', true]);
