@@ -30,3 +30,59 @@ so DraftKings' 2024 openers moved more. Marks are kept from 2023 as registered.
 
 **No system passes the screen** (every 2023 slope is negative). As registered, the chosen system is the largest 2024 t of all three: **M3**
 (spread move, weeks 4 and later, t 0.15), with the marks above. 2025 is read once with `mgs2_cfbd.py --phase sealed --system M3`.
+
+## Part 2. 2025, read once (2026-11-23, about 10:35 PM CT, after the choice was committed at `bda9b881`)
+
+### Verdict: **NO-GO**
+
+The frozen system M3 has a **negative** slope on 2025: the bigger the move toward a side, the slightly worse that side did at the closing number.
+2025 is not too small to read (71 A sides, 1,214 lettered sides with or without a result), so this is NO-GO, not INCONCLUSIVE.
+
+| Pass condition (2025, M3, win % at the closing number) | Value | Met? |
+|---|---|---|
+| 1. slope 95% interval above 0 | -2.49 pts per step [-5.30, +0.38], n=843 sides | no |
+| 2. permutation p below 0.05 | 0.937 | no |
+| 3. at least +1.0 pt per step and A minus D at least +3.0 | -2.49; A minus D = 44.9 - 52.4 = -7.5 | no |
+| 4. A >= D and B >= D | A 44.9, B 47.1, D 52.4 | no |
+| 5. slope above 0 in both halves | weeks 4 to 7: -2.81 [-7.52, +2.20], n=287; weeks 8 to 15: -2.32 [-5.67, +1.32], n=556 | no |
+
+### 2025 by letter, M3 (DraftKings spreads, weeks 4 and later; mean (standard error clustered by game), n)
+
+| Letter | Win % at the close (pushes out) | Cover rate (pushes count as not covered) | Win % at the open (report only, overlaps the move) |
+|---|---|---|---|
+| A | 44.9 (se 6.0), n=69 | 43.7 (se 5.9), n=71 | 63.8 (se 5.8), n=69 |
+| B | 47.1 (se 3.0), n=278 | 46.3 (se 3.0), n=283 | 53.7 (se 3.0), n=283 |
+| C | 45.1 (se 3.9), n=162 | 44.2 (se 3.9), n=165 | 46.1 (se 3.9), n=165 |
+| D | 52.4 (se 1.9), n=334 | 51.3 (se 1.9), n=341 | 51.9 (se 1.9), n=337 |
+| Moved against | 53.3 (se 2.7), n=347 | 52.3 (se 2.7), n=354 | 44.3 (se 2.7), n=352 |
+
+Cover-rate slope: -2.45 [-5.25, +0.26]. Win-at-open slope (report only): +2.37 [-0.36, +5.12].
+
+Permutation p (win % at the close, one-sided): M3 2023 0.793, 2024 0.468, **2025 0.937**.
+
+Moved against minus D (2025, win % at the close): +0.9 pts [-5.5, +7.4]: no support for a "caution" reading.
+
+Exploratory, after the frozen read, all three systems on 2025 (Holm over 3): M1 -2.13 [-4.93, +0.56] p 0.919 (Holm 1.000) n=971; M2 -1.56
+[-4.16, +0.96] p 0.855 (Holm 1.000) n=1,104; M3 -2.49 [-5.30, +0.38] p 0.937 (Holm 1.000) n=843. All three are negative in all of 2023 and 2025.
+
+Flagged for close monitoring (cells that improve, here: win % at the close above 50, report only, none promoted): 2025 M3 D 52.4% n=334, moved against
+53.3% n=347; 2024 M1 B 55.4% n=287, D 51.9% n=422; 2023 M1 D 51.3% n=855, against 50.8% n=185. With no stored price none of these is a return.
+
+## Part 3. What this means
+
+- **Tried: 3 systems** (M1, M2, M3), 2 periods each before the sealed year (6 tests), 1 frozen system on 2025, then 3 exploratory 2025 tests.
+  Nothing else was tried.
+- **Across 2,100 games of DraftKings CFB history, a letter for how far the number moved toward a side does not predict the result against the
+  moved (closing) number.** The slope is negative in 2023 and 2025 and about 0 in 2024. Against the **opening** number the same sides did win more
+  (A 64 to 73%), which is the market moving correctly; by the close the move is priced. That is the market-efficiency answer search 1 expected.
+- **What it says about the live Move grade:** this was a different window (open to close, not the 24 hours before a 15-minute cut), one book
+  (DraftKings, not Pinnacle's price), one sport, and graded at the close rather than at a stored price, so it cannot test mg-1 directly. But it was the
+  largest honest sample available, and it gives no reason to expect a move-size letter to order results in the live grade. It does not justify a
+  forward test of a results claim. The live grade stays what mg-1 already says: a description of the market, not a bet signal.
+- **What is missing and what it would take to go further:** 2021 lines are not stored (needs a CFBD fetch with the repo secret through a workflow
+  that takes a years input and does not push to `main`); 2022 has no DraftKings openers; no CFBD row stores a price, so no ROI can be computed
+  from this source at all. A stored-price test would need a historical odds source with prices at open and close, which this repo does not have.
+
+Outputs: `docs/sharps-v2-movegrade-search-2/select.json`, `sealed.json`. Reproduce: extract the four files with
+`git show 6825116ec526:data/cfbd/lines_<year>.json > scratch/cfbd/lines_<year>.json`, then `python3 -I scripts/research/mgs2_cfbd.py --phase select
+--out scratch/mgs2_select.json` and `--phase sealed --system M3 --out scratch/mgs2_sealed.json`.
