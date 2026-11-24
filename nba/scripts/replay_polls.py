@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import snapshot as S, prop_board as PB, pricing as PX, ledger as LG, sim_record, prop_sim_record, pickem_record
 
-INPUTS = ('kalshi', 'espn', 'pinnacle', 'action', 'polymarket', 'injuries', 'lineups', 'prizepicks', 'underdog', 'sleeper', 'novig')
+INPUTS = ('kalshi', 'espn', 'pinnacle', 'action', 'actionprops', 'polymarket', 'injuries', 'lineups', 'prizepicks', 'underdog', 'sleeper', 'novig')
 STAGES = ('ledger', 'minutes', 'sim', 'psim', 'pkn', 'heldbets')          # novig_paper needs the Novig order books, which are not stored
 _SCHEDULE = {}
 

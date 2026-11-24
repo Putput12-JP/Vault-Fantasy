@@ -33,20 +33,26 @@ STATS = ['pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra']      # the priced 
 
 
 def best_price(e, line, side):
-    """(american string, book) with the lowest implied chance (best payout) among sportsbook rows at this line, else (None, None)."""
+    """(american string, book) with the lowest implied chance (best payout) among sportsbook rows at this line, else (None, None).
+    e['books'] first. e['shop'] (FanDuel, BetMGM, BetRivers, bet365, Caesars, Fanatics) is read only when none of e['books'] posts the line, so a line
+    only the shop books post has a price, and a price the record already had (DraftKings, Pinnacle) is never replaced by a better one from a soft book."""
     import pricing as PX
-    best = None
-    for r in e.get('books', []):
-        if r[1] != line:
-            continue
-        a = r[2] if side == 'O' else r[3]
-        p = PX.am_p(a)
-        if p is not None and (best is None or p < best[0]):
-            best = (p, a, r[0])
-    return (best[1], best[2]) if best else (None, None)
+    for rows in (e.get('books', []), e.get('shop', [])):
+        best = None
+        for r in rows:
+            if r[1] != line:
+                continue
+            a = r[2] if side == 'O' else r[3]
+            p = PX.am_p(a)
+            if p is not None and (best is None or p < best[0]):
+                best = (p, a, r[0])
+        if best:
+            return best[1], best[2]
+    return None, None
 
 
-def log(board, now):
+def log(board, now, mu_of=None):
+    """mu_of(key), when given, may return a mean to use in place of the model's (repair_shop_lines.py rebuilds a row at the right line with the mean the recorder had)."""
     rows, meta = {}, {}
     if not board or not board.get('games') or not board.get('props'):
         return rows, meta
@@ -73,6 +79,8 @@ def log(board, now):
                 continue
             hold = pr.roster_hold(m['team'], g, status, cache, m.get('src')) or pr.returning_hold(int(e['p']), m['team'], g)
             mu = m['mu']
+            if mu_of and mu_of(f"{e['g']}|{e['p']}|{s}") is not None:
+                mu = mu_of(f"{e['g']}|{e['p']}|{s}")
             v0, v1, v2, v3 = pr.PR['variance'][s]
             sd = math.sqrt(max(.25, v0 + v1 * mu + v2 * mu * mu + (v3 * m['extra'] if v3 else 0)))
             pm = pr.cal(s, pr.p_over_raw(s, mu, line, m['extra']))
