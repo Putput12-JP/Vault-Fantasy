@@ -1511,3 +1511,16 @@ html[data-theme="light"] { --sv2-ch1: #1B5FC1; --sv2-ch2: #AB4710; --sv2-ch3: #0
 @media (min-width: 1280px) {
   .sv2-embedded .sv2-cols.sv2-sp { grid-template-columns: minmax(0, 1fr) clamp(272px, 17vw, 360px); }
 }
+
+/* ===== 18. Share this play as an image (sv2-wu-share, 2026-11-24). A real button (44px target) at the foot of the write-up card, with a polite status line beside it.
+   Press motion is the shared .sv2-press primitive (its reduced-motion rule is in section 7); the busy spinner is the shared .sv2-spinner. Nothing else moves, so nothing is
+   added to the reduced-motion block. Colour is the same ink and box tokens the card uses, so both themes and both skins follow. ===== */
+.sv2-wu-share { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-top: 2px; }
+.sv2 .sv2-wu-sharebtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: var(--sv2-r-sm); background: var(--sv2-box); color: var(--sv2-ink); box-shadow: inset 0 0 0 1px var(--sv2-line); font: 600 14px/1 var(--sv2-sans); cursor: pointer; }
+.sv2 .sv2-wu-sharebtn .sv2-wu-shi { flex: none; width: 18px; height: 18px; }
+.sv2 .sv2-wu-sharebtn .sv2-spinner { display: none; }
+.sv2 .sv2-wu-sharebtn[aria-busy="true"] .sv2-spinner { display: inline-block; }
+.sv2 .sv2-wu-sharebtn[aria-busy="true"] .sv2-wu-shi { display: none; }
+.sv2 .sv2-wu-sharebtn[aria-busy="true"] { cursor: progress; }
+.sv2-wu .sv2-wu-sharest { flex: 1 1 200px; min-width: 0; font: 400 13px/1.4 var(--sv2-sans); color: var(--sv2-mut); overflow-wrap: anywhere; }
+.sv2-wu .sv2-wu-sharest:empty { display: none; }

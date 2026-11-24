@@ -420,6 +420,14 @@
   /* "Pinnacle moved this side from X to Y while its limit rose from A to B": stored numbers only, each clause only when its numbers are stored. The limit clause needs two
      different stored limits; with none the sentence stops after the move. Null when the label is not shown or no Pinnacle number is stored. */
   function mgSentence(p) {
+    var mv = mgMoveSentence(p);
+    if (!mv) return null;
+    var nv = novigOf(p);
+    if (nv) mv += ' ' + novigSentence(nv, !!p.game.frozen);
+    return mv;
+  }
+  /* the move sentence alone, without the Novig sentence (the share image adds Novig only under its own fresh-quote rule) */
+  function mgMoveSentence(p) {
     var g = mgOf(p), f = flagsOf(p);
     if (!g || !f) return null;
     var pn = pinNums(f), ln = lineNums(f, p.g), mv = null, l = isObj(f.limit) ? f.limit : null;
@@ -429,8 +437,6 @@
     if (!mv) return null;
     if (l && isNum(l.from) && isNum(l.to) && l.from !== l.to) mv += ' while its limit ' + (l.to > l.from ? 'rose' : 'fell') + ' from ' + limitMoney(l.from) + ' to ' + limitMoney(l.to);
     mv += '.';
-    var nv = novigOf(p);
-    if (nv) mv += ' ' + novigSentence(nv, !!p.game.frozen);
     return mv;
   }
   /* "How this label was earned": a deterministic template over the stored numbers in v2.move_grade and v2.flags. A placeholder with no stored value forces the template that
@@ -825,6 +831,23 @@
     return '<details class="sv2-wu-sec"' + (open ? ' open' : '') + ' id="' + id + '"><summary class="sv2-wu-sum"><span class="sv2-wu-n" aria-hidden="true">' + n + '</span><span class="sv2-wu-st">' + esc(title) + '</span>' +
       '<svg class="sv2-chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary><div class="sv2-wu-sb">' + body + '</div></details>';
   }
+  /* the price tile and the line-and-fair tile of the write-up: one place, so the card and the share image say the same thing. nvq is the stored Novig quote (any age);
+     the card shows it with its age, the share image only while it is fresh. */
+  function tileFacts(p) {
+    var m = mktOf(p.game, p.g), v = m && m.v2 || {}, sf = p.sf;
+    var c = fmt.cents(sf.price), am = fmt.american(sf.price), ex = v.exec || {}, vf = v.vs_fair || {};
+    var priceSub = [];
+    var amTxt = am ? am + ' in American' : null;
+    var best = ex.us_best && isNum(ex.us_best.odds) ? 'Best US book ' + amer(ex.us_best.odds) + (ex.us_best.book && BOOKS.indexOf(ex.us_best.book) >= 0 ? ' at ' + ex.us_best.book : '') : null;
+    if (amTxt) priceSub.push(amTxt);
+    if (best) priceSub.push(best);
+    var nvq = novigOf(p), nvt = nvq ? novigTile(nvq, !!p.game.frozen) : null;
+    if (nvt) priceSub.push(nvt);
+    var fairV = isNum(vf.fair) ? 'Fair ' + fmt.cents(vf.fair) : '';
+    var fp = fairPts(p), fairSub = fp == null ? (vf.why === 'ticket_line_not_main_at_cut' ? 'Off Pinnacle\'s main line' : 'No fair price stored') : fp === 0 ? 'Level with fair' : fmt.line(Math.abs(fp)) + ' pts ' + (fp > 0 ? 'better' : 'worse') + ' than fair';
+    if (isNum(vf.line)) fairSub += ', line ' + lineTxt(vf.line, p.g);
+    return { c: c, am: amTxt, best: best, priceSub: priceSub, nvq: nvq, nvt: nvt, fairV: fairV, fairSub: fairSub };
+  }
   /* opts: share (v2_plays.flags.limit_schedule_share), phone (sections closed), draw (draw the lines in: first render only) */
   function writeupHtml(p, opts) {
     opts = opts || {};
@@ -834,15 +857,7 @@
     var tiered = !!(p.facts && p.facts.tiered);
 
     /* tiles */
-    var c = fmt.cents(sf.price), am = fmt.american(sf.price), ex = v.exec || {}, vf = v.vs_fair || {};
-    var priceSub = [];
-    if (am) priceSub.push(am + ' in American');
-    if (ex.us_best && isNum(ex.us_best.odds)) priceSub.push('Best US book ' + amer(ex.us_best.odds) + (ex.us_best.book && BOOKS.indexOf(ex.us_best.book) >= 0 ? ' at ' + ex.us_best.book : ''));
-    var nvq = novigOf(p), nvt = nvq ? novigTile(nvq, !!p.game.frozen) : null;
-    if (nvt) priceSub.push(nvt);
-    var fairV = isNum(vf.fair) ? 'Fair ' + fmt.cents(vf.fair) : '';
-    var fp = fairPts(p), fairSub = fp == null ? (vf.why === 'ticket_line_not_main_at_cut' ? 'Off Pinnacle\'s main line' : 'No fair price stored') : fp === 0 ? 'Level with fair' : fmt.line(Math.abs(fp)) + ' pts ' + (fp > 0 ? 'better' : 'worse') + ' than fair';
-    if (isNum(vf.line)) fairSub += ', line ' + lineTxt(vf.line, p.g);
+    var tf = tileFacts(p), c = tf.c, priceSub = tf.priceSub, fairV = tf.fairV, fairSub = tf.fairSub;
     var gr = isObj(v.graded) && v.graded.result ? v.graded : null;
     var stat = gr ? '<p class="sv2-wu-v">Final ' + esc(gr.score || '') + '</p><p class="sv2-wu-s">' + esc({ won: 'Won', lost: 'Lost', push: 'Push' }[gr.result] || '') + '</p>' :
       '<p class="sv2-wu-v">' + (isNum(p.cut) ? 'Freezes ' + esc(ct.time(p.cut, true)) : '') + '</p><p class="sv2-wu-s">' + sizeCellHtml(p) + '</p>';
@@ -893,11 +908,77 @@
     }
     /* footer */
     var size = p.units > 0 && SV2.sizesOk() ? ' The size is a flat 1u from an untested rule.' : p.sport === 'cfb' ? ' ' + T.noSize + '.' : '';
+    var shareRow = shareButtonHtml(p, id);
     var foot = '<footer class="sv2-wu-ft"><p>Wallets: Polymarket public positions.' + (f || series ? ' Lines: ' + BOOKS.join(', ') + '.' : '') + ' Times Central. Context only, not a bet signal.' + esc(size) + '</p><p class="sv2-wu-brand">Sharp Money</p></footer>';
     return '<div class="sv2-wu-wrap"><article class="sv2-card sv2-acc-ink sv2-wu" aria-labelledby="' + id + '-t">' +
       '<header class="sv2-wu-hd"><div class="sv2-wu-hl1"><p class="sv2-wu-ey"><span>Sharp Money</span><span class="sv2-sr">, </span><span>Play breakdown</span><span class="sv2-sr">, </span><span>' + esc(eyebrowOf(p.sport)) + '</span></p>' +
       '<h3 class="sv2-wu-t" id="' + id + '-t">' + esc(title) + '</h3></div>' + (date ? '<span class="sv2-wu-date">' + esc(date) + '</span>' : '') + '</header>' +
-      tiles + take + sec1 + sec2 + foot + '</article></div>';
+      tiles + take + sec1 + sec2 + shareRow + foot + '</article></div>';
+  }
+
+  /* ---- share as an image. shareDataOf builds the plain data object the poster (sv2-share.js) draws, from the same stored values and the same helper functions as the
+     write-up card above: tileFacts, mgMoveSentence, fullChips, sideRows, novigSentence, sizeCell. It adds no number of its own. The Novig lines are included only while
+     the quote is fresh (30 minutes or less) and the card is live: the same rule that gives the card its gap. A missing field leaves its key out. */
+  function booksUsed(p, f, series) {
+    var used = {}, ex = (mktOf(p.game, p.g) || {}).v2 && mktOf(p.game, p.g).v2.exec;
+    if (f && (isObj(f.pin) && isNum(f.pin.from) || isObj(f.line) && isObj(f.line.pin) && isNum(f.line.pin.from))) used.Pinnacle = 1;
+    if (f && f.line && isObj(f.line.by_book)) BOOKS.forEach(function (b) { var r = f.line.by_book[b]; if (Array.isArray(r) && isNum(r[0]) && isNum(r[1])) used[b] = 1; });
+    if (f && f.line && isObj(f.line.extreme) && BOOKS.indexOf(f.line.extreme.book) >= 0 && isNum(f.line.extreme.value)) used[f.line.extreme.book] = 1;
+    if (series) { if (series.pin.length) used.Pinnacle = 1; Object.keys(series.lines).forEach(function (b) { used[b] = 1; }); }
+    if (ex && ex.us_best && isNum(ex.us_best.odds) && BOOKS.indexOf(ex.us_best.book) >= 0) used[ex.us_best.book] = 1;
+    return BOOKS.filter(function (b) { return used[b]; });
+  }
+  /* o: { url: page address text, readT: seconds of the stored price read, nowT } */
+  function shareDataOf(p, o) {
+    o = o || {};
+    var m = mktOf(p.game, p.g), v = m && m.v2 || {}, sf = p.sf, words = sideLabelWords(p), f = flagsOf(p), series = seriesOf(p), money = moneyOf(p);
+    var play = p.g === 'ml' ? sf.side : playTitle(p.game, p.g, sf), tf = tileFacts(p), fresh = !!(tf.nvq && tf.nvq.fresh);
+    var d = { v: 1, brand: 'Sharp Money', eyebrow: 'Play breakdown', sport: eyebrowOf(p.sport), title: 'The read on ' + play, game: gameLabel(p.game), market: marketLabel(p.g) };
+    var date = dateWords(p.game.gst); if (date) d.date = date;
+    var tw = copy.tier[p.tier]; if (tw) d.tier = { key: p.tier, word: tw.word, pips: tw.pips };
+    var g = mgOf(p); if (g) d.move = { key: mgKey(g), word: mgWord(g), bars: g.kind === 'letter' ? MGC[g.letter].bars : 0 };
+    d.price = {}; if (tf.c) d.price.cents = tf.c; if (tf.am) d.price.american = tf.am; if (tf.best) d.price.best = tf.best;
+    if (fresh) { var nt = novigTile(tf.nvq, false); if (nt) d.price.novig = nt; }
+    d.fair = {}; if (tf.fairV) d.fair.value = tf.fairV; if (tf.fairSub) d.fair.sub = tf.fairSub;
+    var gr = isObj(v.graded) && v.graded.result ? v.graded : null, size = sizeCell(p), sz = size.kind === 'pill' ? (SV2.sizesOk() ? fmt.units(size.units) + ' ' + copy.play.label : '') : size.text;
+    d.status = {};
+    if (gr) { d.status.label = 'Status'; d.status.value = 'Final ' + (gr.score || ''); var rw = { won: 'Won', lost: 'Lost', push: 'Push' }[gr.result]; if (rw) d.status.sub = rw; }
+    else if (isNum(p.cut)) { d.status.label = 'Freezes'; d.status.value = ct.time(p.cut, true); }
+    if (sz) d.status.size = sz;
+    /* where the line went */
+    var mv = {}, say = mgMoveSentence(p); if (say) mv.say = say;
+    var pn = f ? pinNums(f) : null, ln = f ? lineNums(f, p.g) : null;
+    if (pn) mv.pin = { label: 'Pinnacle ' + words.side + ' price', from: pn.from, to: pn.to };
+    if (ln) mv.line = { label: f.line.kind !== 'price' ? 'Market line' : 'Books\' price', from: ln.from, to: ln.to };
+    var fl = fullChips(p, words).filter(function (ch) { return ch.state !== 'none'; }).map(function (ch) { return ch.text; }); if (fl.length) mv.flags = fl;
+    if (fresh) { var ns = novigSentence(tf.nvq, false); if (ns) mv.novig = ns; }
+    if (Object.keys(mv).length) d.moves = mv;
+    /* who is on each side */
+    if (money) {
+      var names = marketOrder(p, [money.side, money.other]), hv = heavier(money.mine.usd, money.theirs.usd), tiered = !!(p.facts && p.facts.tiered);
+      var per = names.map(function (n) { return sideRows(money.sides[n], tiered); }), labels = [];
+      per.forEach(function (rs) { rs.forEach(function (r) { if (labels.indexOf(r.label) < 0) labels.push(r.label); }); });
+      d.money = { names: names, more: hv ? names.indexOf(hv === 'a' ? money.side : money.other) : -1, rows: labels.map(function (lb) {
+        return { label: lb, cells: per.map(function (rs) { var r = rs.filter(function (x) { return x.label === lb; })[0]; return r ? (r.note ? r.note : r.usd + ', ' + (r.n || '')).replace(/, $/, '') : ''; }) };
+      }) };
+    }
+    var lines = booksUsed(p, f, series); if (d.price.novig || (d.moves && d.moves.novig)) lines.push('Novig');
+    var rt = isNum(o.readT) ? o.readT : isNum(sf.price_t) ? sf.price_t : null;
+    d.footer = { context: 'Context only. Not a bet signal.', source: 'Wallets: Polymarket public positions.' + (lines.length ? ' Lines: ' + lines.join(', ') + '.' : '') + ' Times Central.' };
+    if (rt != null) {
+      var nowT = isNum(o.nowT) ? o.nowT : SV2.now();
+      d.footer.read = 'Price read ' + (ct.dateKey(rt) === ct.dateKey(nowT) ? '' : ct.md(rt) + ', ') + ct.time(rt, true);
+    }
+    if (o.url) d.footer.url = o.url;
+    d.file = SV2.share ? SV2.share.fileName(p.sport, p.g === 'ml' ? play + ' ML' : play) : null;   /* a moneyline and a spread on one team do not share a name */
+    return d;
+  }
+  var SHARE_ICON = '<svg class="sv2-wu-shi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  /* the Share button and its status line (a polite live region) at the foot of the write-up. Only when the share module is loaded. */
+  function shareButtonHtml(p, id) {
+    if (!SV2.share || !SV2.share.buildOps) return '';
+    return '<div class="sv2-wu-share"><button type="button" class="sv2-wu-sharebtn sv2-press sv2-press-btn" data-sp-share="' + esc(p.key) + '" aria-label="Share this play as an image">' + SHARE_ICON +
+      '<span class="sv2-spinner xs" aria-hidden="true"></span><span class="sv2-wu-shl">Share</span></button><p class="sv2-wu-sharest" id="' + id + '-share-st" role="status" aria-live="polite"></p></div>';
   }
 
   SV2.sharpsPage = {
@@ -907,7 +988,7 @@
     SORTS: SORTS, SORT_ORDER: SORT_ORDER, cleanSort: cleanSort, nextSort: nextSort, sortFlat: sortFlat, viewOf: viewOf, fairPts: fairPts,
     vsFairCell: vsFairCell, splitCell: splitCell, walletsCell: walletsCell, sizeCell: sizeCell,
     flagsOf: flagsOf, flagChips: flagChips, chipsHtml: chipsHtml, movesOf: movesOf, chartPoints: chartPoints, stepPath: stepPath, extremes: extremes, seriesOf: seriesOf,
-    chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml,
+    chartTable: chartTable, moneyOf: moneyOf, sideRows: sideRows, limitMoney: limitMoney, takeaway: takeaway, limitLine: limitLine, fullChips: fullChips, writeupHtml: writeupHtml, mgMoveSentence: mgMoveSentence, tileFacts: tileFacts, shareDataOf: shareDataOf, shareButtonHtml: shareButtonHtml, booksUsed: booksUsed,
     rowHtml: rowHtml, theadHtml: theadHtml, priceHtml: priceHtml, COLS: COLS, novigGap: novigGap, gapTxt: gapTxt, gapWords: gapWords, gapPct: gapPct, novigAge: novigAge, novigTile: novigTile, novigSentence: novigSentence, novigText: novigText, novigOf: novigOf, vsFairOf: vsFairOf, priceChips: priceChips, priceWhy: priceWhy, PRICE_WHY: PRICE_WHY, mgOf: mgOf, mgChipHtml: mgChipHtml, mgBadgeHtml: mgBadgeHtml, mgSentence: mgSentence, mgWhy: mgWhy, MGC: MGC,
     marketOrder: marketOrder, dateWords: dateWords, eyebrowOf: eyebrowOf, sideLabelWords: sideLabelWords, BOOKS: BOOKS
   };
@@ -1431,6 +1512,21 @@
       btn.setAttribute('aria-expanded', String(open)); btn.closest('tr').classList.toggle('is-open', open); st.open[key] = open;
     }
 
+    /* ---- share as an image: one press builds the poster from this play's data and shares it (phones) or saves it (everything else) */
+    function shareClick(btn) {
+      if (btn.dataset.busy) return;                      /* disabled alone leaves a double-press window across the first await */
+      var key = btn.getAttribute('data-sp-share'), p = model && model.all.filter(function (x) { return x.key === key; })[0];
+      var stId = btn.parentNode && btn.parentNode.querySelector ? btn.parentNode.querySelector('.sv2-wu-sharest') : null;
+      function status(msg) { if (stId) stId.textContent = msg; setLive(msg); }
+      if (!p || !SV2.share) { status('Could not make the image.'); return; }
+      btn.dataset.busy = '1'; btn.setAttribute('aria-busy', 'true'); status('');
+      var data = null;
+      try { data = shareDataOf(p, { url: SV2.share.pageUrl(window.location), nowT: nowT() }); } catch (e) { data = null; }
+      var fin = function () { delete btn.dataset.busy; btn.removeAttribute('aria-busy'); };
+      if (!data) { status('Could not make the image.'); fin(); return; }
+      SV2.share.run(data, { status: status }).then(fin, fin);
+    }
+
     /* ---- events (delegated) ---- */
     el.addEventListener('click', function (e) {
       var t = e.target; if (!t.closest) return;
@@ -1447,6 +1543,8 @@
       if (sb) { st.sort = nextSort(st.sort, sb.getAttribute('data-sp-sort')); paint(true); setLive('Sorted by ' + sortWord(st.sort)); return; }
       var tr = t.closest('tr.sv2-tb-r');
       if (tr) { toggleRow(tr.getAttribute('data-key')); return; }   /* the whole row toggles; the chevron button is the keyboard and screen reader control */
+      var shb = t.closest('[data-sp-share]');
+      if (shb) { shareClick(shb); return; }
       var more = t.closest('[data-sp-more]');
       if (more) {
         var mx = more.parentNode.querySelector('.sv2-x'), mo = !mx.hasAttribute('data-open');

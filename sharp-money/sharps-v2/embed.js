@@ -15,7 +15,7 @@
      dark ink on that black page (2026-11-24 audit: 2.3:1 to 3.5:1). Pin V2's dark tokens there. The desktop shell sets its own data-theme and is left alone. */
   try { if (/\/new\//.test(location.pathname) && !document.documentElement.hasAttribute('data-theme')) document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
   var me = document.currentScript, BASE = me && me.src ? new URL('./', me.src).href : 'sharps-v2/';
-  var V = { css: 31, core: 6, sharps: 12, following: 3, record: 15 };
+  var V = { css: 32, core: 6, share: 1, sharps: 13, following: 3, record: 15 };
   var tpl = null, assets = null, pending = null;
   /* A wallet link on the Sharps tab points at #following/acct/<sport>/<wallet>, an address the Sharp Money shell does not know (it would land
      on the plays tab). Take the shell to its Following tab and open that wallet's popup there. */
@@ -56,7 +56,7 @@
     if (!document.getElementById('sv2-css')) {
       var l = document.createElement('link'); l.id = 'sv2-css'; l.rel = 'stylesheet'; l.href = BASE + 'sv2.css?v=' + V.css; document.head.appendChild(l);
     }
-    assets = script(BASE + 'sv2-core.js?v=' + V.core).then(function () { return script(BASE + 'sv2-sharps.js?v=' + V.sharps); })
+    assets = script(BASE + 'sv2-core.js?v=' + V.core).then(function () { return script(BASE + 'sv2-share.js?v=' + V.share); }).then(function () { return script(BASE + 'sv2-sharps.js?v=' + V.sharps); })
       .then(function () { return script(BASE + 'sv2-following.js?v=' + V.following); })
       .then(function () { return script(BASE + 'sv2-record.js?v=' + V.record); });
     assets.catch(function () { assets = null; });
