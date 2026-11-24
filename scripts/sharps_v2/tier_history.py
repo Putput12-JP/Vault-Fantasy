@@ -135,8 +135,11 @@ def derive(c, g, side, tape):
 def play_rows(git, rows, tape, quotes=None):
     """One record per graded sf play of variant all: the result row joined to its tier. With `quotes` (a QuoteTape) each play also carries its
     market-move flag states `fa` (Flag A) and `fc` (Flag C) at its cut, from its card's stored v2.flags or re-derived from the tape (`fsrc`);
-    without it they are None (not readable) and the record is exactly what it was."""
-    from sharps_v2 import flag_record as FR
+    without it they are None (not readable) and the record is exactly what it was. The flag module is imported only when `quotes` is given, so a
+    problem in it can never reach the tier record."""
+    FR = None
+    if quotes is not None:
+        from sharps_v2 import flag_record as FR
     out, cards = [], {}
     for r in rows:
         if r.get("kind") != "result" or r.get("play") != "sf" or r.get("variant") != "all" or r.get("status") != "graded":
@@ -343,7 +346,13 @@ def main(argv=None):
     sha = git.sha
     tape = BSC.BookTape(a.book_tape)
     rows = graded_rows(git)
-    ps = play_rows(git, rows, tape, BSC.QuoteTape(a.book_tape))
+    quotes = None
+    try:                                             # the flag record is context: a problem there leaves the tier record exactly as it was
+        from sharps_v2 import flag_record as FR      # noqa: F401  (checked here so play_rows is only given quotes when the module imports)
+        quotes = BSC.QuoteTape(a.book_tape)
+    except Exception as e:
+        print("::warning::flag record skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
+    ps = play_rows(git, rows, tape, quotes)
     voided = sum(1 for r in rows if r.get("play") == "sf" and r.get("variant") == "all" and r.get("status") == "void")
     git.close()
     out = compute(ps)
@@ -380,9 +389,9 @@ def main(argv=None):
     for k in ("cbb_before_nov18_831am", "cbb_nov18_to_merge (hidden)", "cbb_nov18_to_nov19", "cbb_since_nov20_midnight", "cbb_after_merge"):
         print(f"  {k}: {short(r[k])}")
     print_shadow(out)
-    from sharps_v2 import flag_record as FR
-    out["flags"] = FR.compute(ps)
-    FR.print_report(out["flags"])
+    if quotes is not None:
+        out["flags"] = FR.compute(ps)
+        FR.print_report(out["flags"])
     print(f"\nFLAGGED FOR CLOSE MONITORING: every record that improves, with its n (tag under n={SMALL_N}); in-sample, none promoted, none a signal")
     for f in out["flagged"]:
         tag = "  [small sample]" if f["small_sample"] else ""

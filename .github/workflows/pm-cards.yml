@@ -84,7 +84,7 @@ jobs:
             --data-ref "$(git -C pmdata rev-parse HEAD)" || { echo "::warning::tier_record.json not built this run"; rm -f live/tier_record.json; }
       - name: Flag record (context only, never blocks the publish)
         if: env.SKIP != '1'
-        # per-sport record of the market-move flags v2f-1 by slice (docs/side-cards.md "flag_record.json"), mirrored on the tier record step above.
+        # per-sport record of the market-move flags v2f-2 by slice (docs/side-cards.md "flag_record.json"), mirrored on the tier record step above.
         # Any failure drops the file for this run: the V1 files still publish.
         run: |
           python3 -I scripts/sharps_v2/flag_record.py --data-dir pmdata --book-tape data/book_tape --out live/flag_record.json \

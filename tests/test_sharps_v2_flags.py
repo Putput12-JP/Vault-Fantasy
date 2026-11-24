@@ -1,4 +1,4 @@
-"""Unit tests for the Sharps V2 market-move flags (docs/sharps-v2-flags-spec.md, rule v2f-1): scripts/sharps_v2/flags_v2.py, its use in
+"""Unit tests for the Sharps V2 market-move flags (docs/sharps-v2-flags-spec.md, rule v2f-2): scripts/sharps_v2/flags_v2.py, its use in
 plays_v2.market_v2 and build_side_cards.card, the size gate, the forward log key and the flag record. Synthetic inputs only; no network,
 no stored data. Run from the repo root:
     python3 -m unittest tests.test_sharps_v2_flags
@@ -26,10 +26,10 @@ US = ("DraftKings", "FanDuel", "BetMGM", "BetRivers", "bet365")
 VAULT = {"key": "nba:1", "teams": {"away": ["A"], "home": ["B"]}}      # side A is the away team, B the home team: the spread pick of the card fixture is A
 
 # The registered thresholds, copied here as literals (spec 1.2 and 1.4, user decision D2 2026-11-23): changing one in the code must break a test.
-EXPECT_T_A = {"nba": {"ml": 4.0, "spread": 1.5, "total": 1.5}, "nfl": {"ml": 1.5, "spread": 1.5, "total": 1.0},
-              "cbb": {"ml": 3.0, "spread": 1.5, "total": 1.0}, "cfb": {"ml": 2.0, "spread": 1.5, "total": 1.5}}
+EXPECT_T_A = {"nba": {"ml": 4.0, "spread": 1.5, "total": 1.5}, "nfl": {"ml": 1.5, "spread": 1.5, "total": 1.5},
+              "cbb": {"ml": 3.0, "spread": 1.5, "total": 1.5}, "cfb": {"ml": 2.5, "spread": 1.5, "total": 1.5}}
 EXPECT_T_C = {"nba": {"spread": 2.0, "total": 3.0}, "nfl": {"spread": 1.0, "total": 1.0},
-              "cbb": {"spread": 1.0, "total": 2.5}, "cfb": {"spread": 1.0, "total": 1.0}}
+              "cbb": {"spread": 1.0, "total": 2.5}, "cfb": {"spread": 1.5, "total": 1.5}}
 BANNED = re.compile(r"\b(agree|agrees|agreement|proven|elite|lock|go|confirm|confirms|smart money|sharp action)\b", re.I)
 
 
@@ -66,8 +66,8 @@ class Constants(unittest.TestCase):
     def test_the_threshold_tables_are_the_registered_values(self):
         self.assertEqual(F.FLAGS_T_A, EXPECT_T_A)
         self.assertEqual(F.FLAGS_T_C, EXPECT_T_C)
-        self.assertEqual((F.FLAGS_RULE, F.FLAGS_WINDOW, F.FLAGS_STALE, F.FLAGS_SERIES_N), ("v2f-1", 86400, 1800, 16))
-        self.assertEqual(F.LIMIT_SCHEDULE_SHARE, {"nba": 0.99, "nfl": 0.98, "cbb": 0.97, "cfb": 0.95})
+        self.assertEqual((F.FLAGS_RULE, F.FLAGS_WINDOW, F.FLAGS_STALE, F.FLAGS_SERIES_N), ("v2f-2", 86400, 1800, 16))
+        self.assertEqual(F.LIMIT_SCHEDULE_SHARE, {"nba": 0.99, "nfl": 0.93, "cbb": 0.97, "cfb": 0.89})
         self.assertEqual(F.FLAGS_C_BOOK_MOVE, 1.0)
         self.assertEqual(F.FLAGS_C_MIN_US, 2)
 
@@ -84,7 +84,8 @@ class Constants(unittest.TestCase):
         for b in ("BookMaker", "Circa", "Fanatics", "Caesars", "Consensus", "Open", "Novig", "Kalshi"):
             self.assertNotIn(b, F.FLAGS_BOOKS)
         rows = [mk("spread", "Pinnacle", ASOF - 3600, -3.5), mk("spread", "Pinnacle", ASOF - 600, -4.5)]
-        rows += [mk("spread", b, ASOF - 3000, -3.5) for b in ("BookMaker", "Circa", "Fanatics", "Caesars", "Consensus", "Open", "DraftKings", "FanDuel")]
+        for b in ("BookMaker", "Circa", "Fanatics", "Caesars", "Consensus", "Open", "DraftKings", "FanDuel"):
+            rows += [mk("spread", b, ASOF - 5000, -3.5), mk("spread", b, ASOF - 3000, -4.5)]
         fl, se = flags(rows, "spread")
         self.assertEqual(sorted(fl["line"]["by_book"]), ["DraftKings", "FanDuel"])
         self.assertEqual(sorted(se["lines"]), ["DraftKings", "FanDuel", "Pinnacle"])
@@ -124,29 +125,47 @@ class FlagABoundary(unittest.TestCase):
             self.assertAlmostEqual(pin["pts"], 7.3, delta=0.2)
             self.assertEqual((pin["from"], pin["to"]), (105, -129))
 
-    def test_a_line_change_is_not_a_price_move(self):
-        # the line moved -3.5 -> -4.5 and the price at the new line is the only quote there: from is that same row, a move of 0 (spec 1.2)
+    def test_a_line_change_is_not_a_price_move_and_a_first_quote_at_a_line_is_null(self):
+        # the line moved -3.5 -> -4.5 and the new line has only the current quote: nothing to compare at this line (null, never a move of 0)
         rows = [sp("Pinnacle", ASOF - 7200, -3.5, 0.5), sp("Pinnacle", ASOF - 600, -4.5, 0.5)]
-        pin = flags(rows, "spread")[0]["pin"]
-        self.assertEqual((pin["pts"], pin["state"], pin["line"], pin["t_from"]), (0.0, "quiet", -4.5, ASOF - 600))
+        fl = flags(rows, "spread")[0]
+        self.assertEqual((fl["pin"], fl["why"]["pin"], fl["a"]), (None, "no_same_line_history", None))
         # a price move at the OLD line before the line change is ignored: only quotes at the current line are compared
         rows = [sp("Pinnacle", ASOF - 9000, -4.5, 0.5), sp("Pinnacle", ASOF - 7200, -3.5, 0.2), sp("Pinnacle", ASOF - 600, -4.5, 0.53)]
         pin = flags(rows, "spread")[0]["pin"]
         self.assertEqual((pin["state"], pin["t_from"], pin["pts"]), ("toward", ASOF - 9000, 3.0))   # the -3.5 quote (a different line) is skipped
+        # the two-row minimum is on the quotes at THIS line: three Pinnacle rows, but one at the current line
+        rows = [sp("Pinnacle", ASOF - 9000, -3.5, 0.5), sp("Pinnacle", ASOF - 7200, -3.0, 0.2), sp("Pinnacle", ASOF - 600, -4.5, 0.53)]
+        self.assertEqual(flags(rows, "spread")[0]["why"]["pin"], "no_same_line_history")
+        # a moneyline needs two readable rows in all
+        self.assertEqual(flags([ml("Pinnacle", ASOF - 600, 0.5)], "ml")[0]["why"]["pin"], "no_pinnacle_history")
 
-    def test_the_window_starts_at_the_first_row_inside_it_else_the_last_row_before(self):
-        old = ASOF - DAY - 5000
-        rows = [ml("Pinnacle", old - 9000, 0.40), ml("Pinnacle", old, 0.60)]                 # no row inside the window: from = the last row before it (= now): 0
+    def test_the_window_starts_at_the_row_hanging_when_it_opened(self):
+        """v2f-2: the tape writes a row only on a change, so the number showing when the window opened is the LAST row at or before the window start."""
+        ws = ASOF - DAY
+        rows = [ml("Pinnacle", ws - 9000, 0.40), ml("Pinnacle", ws - 5000, 0.45), ml("Pinnacle", ASOF - 100, 0.60)]
         pin = flags(rows, "ml")[0]["pin"]
-        self.assertEqual((pin["t_from"], pin["pts"], pin["state"]), (old, 0.0, "quiet"))
-        rows = [ml("Pinnacle", old, 0.40), ml("Pinnacle", ASOF - 100, 0.60)]                 # now is the only row inside: from = now itself (spec 1.1: the first row inside)
+        self.assertEqual((pin["t_from"], pin["pts"]), (ws - 5000, 15.0))                      # the hanging row (0.45), not the older 0.40
+        self.assertAlmostEqual(pin["from"], am(0.45))
+        rows = [ml("Pinnacle", ws - 5000, 0.45), ml("Pinnacle", ws + 60, 0.50), ml("Pinnacle", ASOF - 100, 0.60)]
+        self.assertEqual((flags(rows, "ml")[0]["pin"]["t_from"], flags(rows, "ml")[0]["pin"]["pts"]), (ws - 5000, 15.0))   # a row inside the window does not replace it
+        rows = [ml("Pinnacle", ws, 0.45), ml("Pinnacle", ASOF - 100, 0.50)]
+        self.assertEqual(flags(rows, "ml")[0]["pin"]["t_from"], ws)                           # a row exactly at the window start is the hanging one
+        rows = [ml("Pinnacle", ws - 5000, 0.40), ml("Pinnacle", ws, 0.45), ml("Pinnacle", ASOF - 100, 0.60)]
+        self.assertEqual((flags(rows, "ml")[0]["pin"]["t_from"], flags(rows, "ml")[0]["pin"]["pts"]), (ws, 15.0))   # the row AT the start beats the older one
+        rows = [ml("Pinnacle", ws + 1, 0.45), ml("Pinnacle", ASOF - 100, 0.60)]
+        pin = flags(rows, "ml")[0]["pin"]                                                      # nothing at or before the start: the first row inside
+        self.assertEqual((pin["t_from"], pin["pts"]), (ws + 1, 15.0))
+        rows = [ml("Pinnacle", ws - 9000, 0.40), ml("Pinnacle", ws - 5000, 0.60)]              # both before the window: it held all window, a real move of 0
         pin = flags(rows, "ml")[0]["pin"]
-        self.assertEqual((pin["t_from"], pin["pts"]), (ASOF - 100, 0.0))
-        rows = [ml("Pinnacle", old, 0.40), ml("Pinnacle", ASOF - DAY + 60, 0.45), ml("Pinnacle", ASOF - 100, 0.60)]
-        pin = flags(rows, "ml")[0]["pin"]
-        self.assertEqual((pin["t_from"], pin["pts"]), (ASOF - DAY + 60, 15.0))              # the first row INSIDE the window, not the carried one (the registered thresholds were fitted this way)
-        rows = [ml("Pinnacle", ASOF - DAY, 0.45), ml("Pinnacle", ASOF - 100, 0.50)]
-        self.assertEqual(flags(rows, "ml")[0]["pin"]["t_from"], ASOF - DAY)                # exactly 24 hours before is inside
+        self.assertEqual((pin["t_from"], pin["t_to"], pin["pts"], pin["state"]), (ws - 5000, ws - 5000, 0.0, "quiet"))
+        # a single reading is never a move
+        rows = [ml("Pinnacle", ws - 5000, 0.4)]
+        self.assertEqual(flags(rows, "ml")[0]["why"]["pin"], "no_pinnacle_history")
+        # the chart starts at the same hanging row
+        rows = [sp("Pinnacle", ws - 5000, -3.5, 0.45), sp("Pinnacle", ws - 100, -3.5, 0.47), sp("Pinnacle", ASOF - 100, -3.5, 0.60)]
+        fl, se = flags(rows, "spread")
+        self.assertEqual((se["t0"], se["pin_px"][0][0], fl["pin"]["t_from"]), (ws, 0, ws - 100))
 
     def test_toward_and_away_are_mirrors_for_the_other_side(self):
         rows = [ml("Pinnacle", ASOF - 7200, 0.5), ml("Pinnacle", ASOF - 600, 0.58)]
@@ -272,7 +291,7 @@ class FlagCMoneyline(unittest.TestCase):
 
 class NullsAndPointInTime(unittest.TestCase):
     def full(self, g="spread"):
-        rows = [mk(g, "Pinnacle", ASOF - 7200, -3.5, lim=[1, 3000, 1]), mk(g, "Pinnacle", ASOF - 900, -5.5, 0.55, lim=[1, 9000, 1])]
+        rows = [mk(g, "Pinnacle", ASOF - 7200, -3.5, lim=[1, 3000, 1]), mk(g, "Pinnacle", ASOF - 5000, -5.5, 0.5), mk(g, "Pinnacle", ASOF - 900, -5.5, 0.55, lim=[1, 9000, 1])]
         for b in ("DraftKings", "FanDuel", "BetMGM"):
             rows += [mk(g, b, ASOF - 7000, -3.5), mk(g, b, ASOF - 800, -5.0)]
         return rows
@@ -280,10 +299,11 @@ class NullsAndPointInTime(unittest.TestCase):
     def test_a_row_after_the_cut_never_changes_a_flag(self):
         rows = self.full()
         base = flags(rows, "spread")
-        later = rows + [sp("Pinnacle", ASOF + 1, -9.5, 0.9, lim=[1, 99999, 1]), sp("FanDuel", ASOF + 5, -12.0), sp("DraftKings", ASOF + 60, -12.0), sp("BetMGM", ASOF + 90, -12.0)]
+        later = rows + [sp("Pinnacle", ASOF + 1, -9.5, 0.9, lim=[1, 99999, 1]), sp("Pinnacle", ASOF + 2, -9.5, 0.1), sp("FanDuel", ASOF + 5, -12.0), sp("DraftKings", ASOF + 60, -12.0),
+                        sp("BetMGM", ASOF + 90, -12.0)]
         self.assertEqual(flags(later, "spread"), base)
         self.assertEqual(flags(later, "spread", asof=ASOF + 400)[0]["pin"]["line"], -9.5)      # a later asof does read them: the cut is the only gate
-        self.assertEqual(flags(rows + [sp("Pinnacle", ASOF, -6.5)], "spread")[0]["pin"]["line"], -6.5)   # a row AT the cut is read
+        self.assertEqual(flags(rows + [sp("Pinnacle", ASOF, -6.5)], "spread")[0]["line"]["pin"]["to"], -6.5)   # a row AT the cut is read
 
     def test_reasons_for_every_null(self):
         none, _ = flags([], "spread")
@@ -348,7 +368,7 @@ class NullsAndPointInTime(unittest.TestCase):
         rows = [ml("Pinnacle", ASOF - 5400, 0.5), ml("Pinnacle", ASOF - 60, 0.5)]
         self.assertEqual(flags(rows, "ml")[0]["span_min"], 90)
         rows = [ml("Pinnacle", ASOF - 3 * DAY, 0.5), ml("Pinnacle", ASOF - DAY + 60, 0.5), ml("Pinnacle", ASOF - 60, 0.5)]
-        self.assertEqual(flags(rows, "ml")[0]["span_min"], 1439)
+        self.assertEqual(flags(rows, "ml")[0]["span_min"], 1440)                                    # from = the row hanging when the window opened
         rows = [ml("Pinnacle", ASOF - 3 * DAY, 0.5), ml("Pinnacle", ASOF - 2 * DAY, 0.5)]            # nothing inside: the last row before the window, capped at the window
         self.assertEqual(flags(rows, "ml")[0]["span_min"], 1440)
 
@@ -357,21 +377,29 @@ class LimitFact(unittest.TestCase):
     ROWS = [dict(sp("Pinnacle", ASOF - 9000, -3.5), lim=[5000, 3000, 2500]), dict(sp("Pinnacle", ASOF - 5000, -3.5), lim=[6000, 7000, 2500]),
             dict(sp("Pinnacle", ASOF - 600, -3.5), lim=[6000, 20000, 4000]), dict(sp("Pinnacle", ASOF + 100, -3.5), lim=[1, 99999, 1])]
 
-    def test_copied_from_limit_read_not_computed(self):
-        fact, why = F.flag_limit(self.ROWS, "spread", ASOF)
-        lr = SIG.limit_read(self.ROWS, "spread", ASOF)
-        self.assertEqual((fact["from"], fact["to"], fact["rows"]), (lr["open"], lr["now"], lr["rows"]))
-        self.assertEqual((fact["from"], fact["to"], fact["market"], fact["asof"], why), (3000, 20000, "spread", ASOF, None))
-        self.assertEqual(sorted(fact), ["asof", "from", "market", "rows", "to"])          # no pct, no rising: a fact line only (D1)
-        self.assertEqual(F.flag_limit(self.ROWS, "ml", ASOF)[0]["to"], 6000)               # each market reads its own slot
+    def test_from_is_the_limit_showing_when_the_window_opened_and_to_is_copied_from_limit_read(self):
+        ws = ASOF - DAY
+        rows = [dict(sp("Pinnacle", ws - 90000, -3.5), lim=[1, 500, 1]), dict(sp("Pinnacle", ws - 5000, -3.5), lim=[1, 1000, 1]),
+                dict(sp("Pinnacle", ws + 100, -3.5), lim=[1, 2000, 1]), dict(sp("Pinnacle", ASOF - 600, -3.5), lim=[1, 20000, 1]), dict(sp("Pinnacle", ASOF + 100, -3.5), lim=[1, 99999, 1])]
+        fact, why = F.flag_limit(rows, "spread", ASOF)
+        lr = SIG.limit_read(rows, "spread", ASOF)
+        self.assertEqual((fact["from"], fact["t_from"], fact["to"], fact["rows"], why), (1000, ws - 5000, 20000, 4, None))
+        self.assertEqual((fact["to"], fact["rows"]), (lr["now"], lr["rows"]))                 # `to` and the row count are copied from limit_read
+        self.assertEqual(lr["open"], 500)                                                      # ...whose `open` is the first limit EVER: not what the window measures
+        self.assertEqual(sorted(fact), ["asof", "from", "market", "rows", "t_from", "to"])    # no pct, no rising: a fact line only (D1)
+        rows2 = [dict(sp("Pinnacle", ws + 100, -3.5), lim=[1, 2000, 1]), dict(sp("Pinnacle", ASOF - 600, -3.5), lim=[1, 20000, 1])]
+        self.assertEqual(F.flag_limit(rows2, "spread", ASOF)[0]["from"], 2000)                 # no row at or before the start: the first inside
+        self.assertEqual(F.flag_limit(self.ROWS, "ml", ASOF)[0]["to"], 6000)                   # each market reads its own slot
         self.assertEqual(F.flag_limit(self.ROWS, "total", ASOF)[0]["from"], 2500)
+        zero = [dict(sp("Pinnacle", ws - 50, -3.5), lim=[1, 0, 1]), dict(sp("Pinnacle", ASOF - 600, -3.5), lim=[1, 7000, 1])]
+        self.assertEqual(F.flag_limit(zero, "spread", ASOF)[0]["from"], 7000)                  # a stored 0 is not a limit (never read as one)
 
     def test_there_is_no_limit_chip_or_rule_anywhere_in_the_block(self):
         fl, se = flags(self.ROWS + [mk("spread", "DraftKings", ASOF - 100, -3.5)], "spread")
         blob = json.dumps([fl, se])
         for word in ("rising", "falling", "tested", "chip", "pct"):
             self.assertNotIn(word, blob)
-        self.assertEqual(sorted(fl["limit"]), ["asof", "from", "market", "rows", "to"])
+        self.assertEqual(sorted(fl["limit"]), ["asof", "from", "market", "rows", "t_from", "to"])
 
     def test_one_reading_and_no_reading_and_a_bad_reading(self):
         one = F.flag_limit([dict(ml("Pinnacle", ASOF - 60, 0.5), lim=[1500, 1, 1])], "ml", ASOF)[0]
@@ -471,9 +499,9 @@ class SizeGate(unittest.TestCase):
         games = []
         for i in range(plays):
             games.append({"ev": f"e{i}", "markets": {"spread": {"sides": {}, "v2": {
-                "rule": "v2t-1", "tier": "thin", "flags": {"rule": "v2f-1", "pad": "f" * pad_flags, "line": {"state": "toward", "by_book": {"X": "b" * pad_book}}},
+                "rule": "v2t-1", "tier": "thin", "flags": {"rule": "v2f-2", "pad": "f" * pad_flags, "line": {"state": "toward", "by_book": {"X": "b" * pad_book}}},
                 "series": {"pad": "s" * pad_series}}}}})
-        return {"built": 1, "games": games, "v2_plays": {"rule": "v2t-1", "flags": {"rule": "v2f-1"}}}
+        return {"built": 1, "games": games, "v2_plays": {"rule": "v2t-1", "flags": {"rule": "v2f-2"}}}
 
     def test_under_budget_is_untouched(self):
         d = self.doc()
@@ -577,7 +605,7 @@ class Guard(unittest.TestCase):
                 for norm in ("home", "away", "over", "under", None):
                     for sport in ("nba", "nfl", "cbb", "cfb", "xfl"):
                         fl, se = F.flags_block(rows, g, norm, ASOF, sport, {"pinnacle": ASOF})
-                        self.assertEqual(fl["rule"], "v2f-1")
+                        self.assertEqual(fl["rule"], "v2f-2")
                         self.assertIsInstance(fl["why"], dict)
                         json.dumps([fl, se])
 
@@ -607,7 +635,7 @@ class Guard(unittest.TestCase):
 
 
 class AdditiveOnly(unittest.TestCase):
-    ROWS = [dict(sp("Pinnacle", ASOF - 7200, -3.5, 0.5), lim=[1, 3000, 1]), dict(sp("Pinnacle", ASOF - 600, -6.0, 0.5), lim=[1, 9000, 1])]
+    ROWS = [dict(sp("Pinnacle", ASOF - 7200, -3.5, 0.5), lim=[1, 3000, 1]), dict(sp("Pinnacle", ASOF - 900, -6.0, 0.5)), dict(sp("Pinnacle", ASOF - 600, -6.0, 0.5), lim=[1, 9000, 1])]
     ROWS += [sp(b, ASOF - 7000, -3.5) for b in US[:3]] + [sp(b, ASOF - 500, -5.0) for b in US[:3]]
 
     def card(self, **kw):
@@ -619,7 +647,7 @@ class AdditiveOnly(unittest.TestCase):
         self.assertNotIn("flags", c["markets"]["ml"]["v2"])                                   # no shown play, no flags
         self.assertNotIn("series", c["markets"]["ml"]["v2"])
         v = c["markets"]["spread"]["v2"]
-        self.assertEqual(v["flags"]["rule"], "v2f-1")
+        self.assertEqual(v["flags"]["rule"], "v2f-2")
         self.assertEqual(v["flags"]["asof"], ASOF)
         self.assertEqual((v["flags"]["line"]["state"], v["flags"]["a"]), ("away", "quiet"))   # the home line went -3.5 to -6.0: toward home, so against the away side A
         for k in ("flags", "series"):
@@ -755,7 +783,7 @@ class FlagRecord(unittest.TestCase):
               self.play("nba", "5", None, None, "win", 1.0), self.play("cfb", "6", "toward", None, "loss", -1.0),
               self.play("nfl", "7", "quiet", "away", "win", 0.9), self.play("cbb", "8", None, "toward", "win", 1.06)]
         d = FR.build(ps, 123, "abc", {})
-        self.assertEqual((d["built"], d["data_ref"], d["flags_rule"], d["slices"]), (123, "abc", "v2f-1", list(FR.SLICES)))
+        self.assertEqual((d["built"], d["data_ref"], d["flags_rule"], d["slices"]), (123, "abc", "v2f-2", list(FR.SLICES)))
         nba = d["sports"]["nba"]
         self.assertEqual(nba["a_toward"]["all"], {"w": 1, "l": 1, "p": 0, "n": 2, "units": -0.2, "roi": -0.1})
         self.assertEqual((nba["a_away"]["all"]["n"], nba["c_toward"]["all"]["n"], nba["c_away"]["all"]["n"]), (1, 1, 0))
@@ -862,6 +890,184 @@ class FlagRecord(unittest.TestCase):
 
 
 CUT_FIX = TP.CUT
+
+
+class SwappedRow(unittest.TestCase):
+    """The stored Pinnacle row of cfb:290201 (M-OH at WMU, 2026-11-23): first row ml [-323, 260] and spread home +7.5, ten minutes later [245, -301] and -7.5. The
+    first row has the sides swapped; the US books were at about WMU -245 to -305 and -7 to -7.5 the whole time."""
+    T0 = 1795392408
+
+    def rows(self, third=True):
+        r = [{"t": self.T0 - 43133, "book": b, "ml": ml_, "sp": [h, -110, -110]} for b, ml_, h in
+             (("BetRivers", [250, -335], -7.5), ("DraftKings", [240, -298], -7.5), ("FanDuel", [240, -295], -7.5))]
+        r += [{"t": self.T0, "book": "Pinnacle", "ml": [-323, 260], "sp": [7.5, -113, -103], "tot": [49.5, -113, -107]},
+              {"t": self.T0, "book": "BetMGM", "ml": [230, -275], "sp": [-7, -110, -110]}, {"t": self.T0, "book": "BetRivers", "ml": [230, -305], "sp": [-7, -110, -110]},
+              {"t": self.T0, "book": "DraftKings", "ml": [200, -245], "sp": [-7.5, -110, -110]}, {"t": self.T0, "book": "FanDuel", "ml": [230, -285], "sp": [-7.5, -110, -110]},
+              {"t": self.T0 + 593, "book": "Pinnacle", "ml": [245, -301], "sp": [-7.5, -101, -115], "tot": [45.5, -110, -110]}]
+        if third:
+            r.append({"t": self.T0 + 1216, "book": "Pinnacle", "ml": [257, -318], "sp": [-7.5, -101, -115]})
+        return r
+
+    ASOF_ = T0 + 5000
+
+    def test_the_swapped_row_is_dropped_and_no_43_point_move_is_published(self):
+        rows = self.rows()
+        for g in ("ml", "spread"):
+            fl, se = F.flags_block(rows, g, "home", self.ASOF_, "cfb")
+            self.assertEqual(fl["pin"]["dropped"], 1, g)
+            self.assertLess(abs(fl["pin"]["pts"]), 5.0, g)                                   # the dropped row would have read as a move of about 45 points
+            self.assertEqual(fl["pin"]["state"], "quiet", g)
+            self.assertGreater(fl["pin"]["t_from"], self.T0, g)                              # the swapped row is nowhere in the chart's price series either
+            self.assertNotEqual(se["pin_px"][0][0] if se and se["pin_px"] else None, None)
+        self.assertGreater(F.flags_block(rows, "ml", "home", self.ASOF_, "cfb")[1]["pin_px"][0][1], -400)   # home price series starts at -301, not +260
+
+    def test_with_nothing_left_the_reason_is_named_not_a_zero(self):
+        fl, _ = F.flags_block(self.rows(False), "ml", "home", self.ASOF_, "cfb")
+        self.assertIsNone(fl["pin"])
+        self.assertEqual(fl["why"]["pin"], "pinnacle_row_inconsistent")
+        self.assertIsNone(fl["a"])
+
+    def test_flag_c_reads_the_cleaned_pinnacle_rows(self):
+        rows = self.rows()
+        fl, _ = F.flags_block(rows, "ml", "home", self.ASOF_, "cfb")
+        self.assertNotEqual(fl["why"]["line"], "pinnacle_row_inconsistent")
+        for g in ("spread",):
+            ln = F.flags_block(rows, g, "home", self.ASOF_, "cfb")[0]["line"]
+            if ln:
+                self.assertEqual(ln["pin"]["from"], -7.5)                                    # not the swapped +7.5
+
+    def test_a_real_move_across_even_money_is_not_dropped(self):
+        # Pinnacle 0.40 then 0.60 while the US books sit at 0.45 and 0.55 (not all on one side): a real move of 20 points
+        rows = [ml("Pinnacle", ASOF - 7000, 0.40), ml("Pinnacle", ASOF - 600, 0.60), ml("DraftKings", ASOF - 8000, 0.45), ml("FanDuel", ASOF - 8000, 0.55)]
+        pin = flags(rows, "ml")[0]["pin"]
+        self.assertEqual((pin["dropped"], pin["pts"]), (0, 20.0))
+        # a coin-flip game: a row 0.49 against books at 0.52 is inside the margin, never "the other side"
+        rows = [ml("Pinnacle", ASOF - 7000, 0.52), ml("Pinnacle", ASOF - 600, 0.49), ml("DraftKings", ASOF - 8000, 0.52), ml("FanDuel", ASOF - 8000, 0.51)]
+        self.assertEqual(flags(rows, "ml")[0]["pin"]["dropped"], 0)
+        # a first row on the other side of every book is dropped; one book alone is not enough evidence and there is no neighbour pair
+        rows = [ml("Pinnacle", ASOF - 7000, 0.20), ml("Pinnacle", ASOF - 600, 0.75), ml("DraftKings", ASOF - 8000, 0.70)]
+        self.assertEqual(flags(rows, "ml")[0]["pin"]["dropped"], 0)
+        rows = [ml("Pinnacle", ASOF - 7000, 0.20), ml("Pinnacle", ASOF - 600, 0.75), ml("DraftKings", ASOF - 8000, 0.70), ml("FanDuel", ASOF - 8000, 0.72)]
+        self.assertEqual((flags(rows, "ml")[0]["why"]["pin"], flags(rows, "ml")[0]["pin"]), ("pinnacle_row_inconsistent", None))
+
+    def test_without_us_books_only_an_isolated_row_is_dropped(self):
+        rows = [ml("Pinnacle", ASOF - 7000, 0.70), ml("Pinnacle", ASOF - 5000, 0.25), ml("Pinnacle", ASOF - 600, 0.72)]
+        pin = flags(rows, "ml")[0]["pin"]
+        self.assertEqual((pin["dropped"], pin["pts"]), (1, 2.0))
+        rows = [ml("Pinnacle", ASOF - 7000, 0.25), ml("Pinnacle", ASOF - 600, 0.75)]       # two rows that disagree and nothing to say which: both kept
+        self.assertEqual(flags(rows, "ml")[0]["pin"]["dropped"], 0)
+
+    def test_a_spread_line_with_its_sign_flipped_is_dropped_and_totals_are_never_checked(self):
+        rows = [sp("Pinnacle", ASOF - 7000, 7.5, 0.5), sp("Pinnacle", ASOF - 6000, -7.5, 0.5), sp("Pinnacle", ASOF - 600, -7.5, 0.5),
+                sp("DraftKings", ASOF - 8000, -7.5), sp("FanDuel", ASOF - 8000, -7.0)]
+        self.assertEqual(flags(rows, "spread")[0]["pin"]["dropped"], 1)
+        rows = [tot("Pinnacle", ASOF - 7000, 49.5, 0.5), tot("Pinnacle", ASOF - 3000, 45.5, 0.5), tot("Pinnacle", ASOF - 600, 45.5, 0.5), tot("DraftKings", ASOF - 8000, 45.5),
+                tot("FanDuel", ASOF - 8000, 45.5)]
+        self.assertEqual(flags(rows, "total")[0]["pin"]["dropped"], 0)
+
+
+class FirstQuotes(unittest.TestCase):
+    """A first quote inside the window is not a move from nothing (v2f-2): null for a book, never a move of 0."""
+
+    def base(self):
+        rows = [mk("spread", "Pinnacle", ASOF - 9000, -3.0), mk("spread", "Pinnacle", ASOF - 900, -5.5)]
+        for b in ("DraftKings", "FanDuel"):
+            rows += [mk("spread", b, ASOF - 8000, -3.0), mk("spread", b, ASOF - 800, -5.0)]
+        return rows
+
+    def test_a_book_whose_only_row_is_a_first_quote_inside_the_window_is_not_read(self):
+        ln = flags(self.base() + [mk("spread", "BetMGM", ASOF - 700, -5.0)], "spread")[0]["line"]
+        self.assertEqual(sorted(ln["by_book"]), ["DraftKings", "FanDuel"])
+        self.assertEqual((ln["books"], ln["same_way"]), (3, 3))                              # not 4: BetMGM has no history
+        fl = flags([r for r in self.base() if r["book"] != "FanDuel"] + [mk("spread", "BetMGM", ASOF - 700, -5.0)], "spread")[0]
+        self.assertEqual((fl["line"], fl["why"]["line"]), (None, "too_few_books"))
+
+    def test_a_single_row_that_was_already_showing_when_the_window_opened_held_all_window(self):
+        ws = ASOF - DAY
+        ln = flags(self.base() + [mk("spread", "BetMGM", ws - 3000, -3.0)], "spread")[0]["line"]
+        self.assertEqual(ln["by_book"]["BetMGM"], [-3.0, -3.0])                              # a real move of 0 (it did not change), counted as read
+        self.assertEqual(ln["books"], 4)
+        self.assertEqual(ln["same_way"], 3)
+
+    def test_pinnacle_with_a_first_quote_only_is_too_few_books_for_flag_c(self):
+        rows = [mk("spread", "Pinnacle", ASOF - 900, -5.5)]
+        for b in ("DraftKings", "FanDuel"):
+            rows += [mk("spread", b, ASOF - 8000, -3.0), mk("spread", b, ASOF - 800, -5.0)]
+        self.assertEqual(flags(rows, "spread")[0]["why"]["line"], "too_few_books")
+
+    def test_the_flag_record_keeps_a_play_with_neither_flag_readable_as_unreadable(self):
+        class Q:
+            def game(self, *a):
+                return [mk("spread", "Pinnacle", ASOF - 900, -5.5)], "gk"
+        c = {"sport": "nba", "ev": "nba-a-b-2027-01-15", "gst": ASOF + 900, "cut": ASOF, "vault": {"key": "k", "teams": {"away": ["A"], "home": ["B"]}},
+             "markets": {"spread": {"sides": {"A": {}, "B": {}}}}}
+        got = FR.derive_flags(c, "spread", "B", Q())
+        self.assertEqual((got["a"], got["c"]), (None, None))
+        self.assertEqual(FR.slices_of(got["a"], got["c"]), ["unreadable"])
+
+    def test_the_error_path_is_unreadable_never_quiet_or_no_flag_fired(self):
+        c = {"sport": "nba", "ev": "x", "gst": ASOF + 900, "cut": ASOF, "markets": {"spread": {"sides": {"A": {}, "B": {}}}}}
+        with contextlib.redirect_stderr(io.StringIO()):
+            got = FR.derive_flags(c, "spread", "B", object())
+        self.assertEqual(got, {"a": None, "c": None, "src": "error"})
+        self.assertEqual(FR.slices_of(got["a"], got["c"]), ["unreadable"])
+        play = {"key": "e", "sport": "nba", "group": "spread", "cut": 1, "res": "win", "flat": 0.9, "fa": got["a"], "fc": got["c"], "tier": "thin", "clv": None}
+        d = FR.build([play], 1, "x", {})["sports"]["nba"]
+        self.assertEqual((d["unreadable"]["all"]["n"], d["none"]["all"]["n"]), (1, 0))
+
+
+class RecordPieces(unittest.TestCase):
+    def test_the_logged_mf_has_these_literal_values(self):
+        c = TP.Additive().card(vault=VAULT, quotes=TP.Malformed.Quotes(AdditiveOnly.ROWS))
+        mf = P.log_row("nba/frozen/d/x.json", c, "spread", 1)["mf"]
+        want = {"rule": "v2f-2", "asof": ASOF, "span_min": 120, "src_age_min": {"pinnacle": None, "us": None},
+                "pin_state": "quiet", "pin_pts": 0.0, "pin_from": 100.0, "pin_to": 100.0, "pin_line": 6.0, "lim_from": 3000, "lim_to": 9000,
+                "line_kind": "line", "line_state": "away", "line_pin_from": 3.5, "line_pin_to": 6.0, "line_books": 4, "line_same_way": 4,
+                "line_extreme_book": "Pinnacle", "line_extreme": 6.0, "why": {"pin": None, "limit": None, "line": None}}
+        self.assertEqual(mf, want)
+
+    def test_mf_carries_flag_c_in_its_own_fields_not_flag_a(self):
+        fl = {"rule": "v2f-2", "asof": 5, "span_min": 9, "src_age_min": None, "why": {},
+              "pin": {"state": "toward", "pts": 2.0, "from": -105, "to": -129, "line": None},
+              "line": {"kind": "price", "state": "away", "pin": {"from": 1, "to": 2}, "books": 3, "same_way": 2, "extreme": {"book": "FanDuel", "value": -110}},
+              "limit": {"from": 10, "to": 20}}
+        mf = F.mf_of(fl)
+        self.assertEqual((mf["pin_state"], mf["line_state"], mf["line_extreme_book"], mf["line_same_way"], mf["lim_to"]), ("toward", "away", "FanDuel", 2, 20))
+
+    def test_the_headline_excludes_cfb_and_pools_the_three_sports_that_show_a_size(self):
+        def play(sp, k, flat):
+            return {"key": k, "sport": sp, "group": "ml", "cut": 1, "res": "win" if flat > 0 else "loss", "flat": flat, "fa": "toward", "fc": None, "tier": "thin", "clv": None}
+        ps = [play("nba", "1", 1.0), play("nfl", "2", 1.0), play("cbb", "3", -1.0), play("cfb", "4", 5.0)]
+        out = FR.compute(ps)
+        self.assertEqual((out["old"]["headline"]["n"], out["old"]["headline"]["units"]), (3, 1.0))
+        self.assertEqual((out["slices"]["headline"]["a_toward"]["n"], out["slices"]["headline"]["a_toward"]["units"]), (3, 1.0))
+        self.assertEqual(out["slices"]["cfb"]["a_toward"]["units"], 5.0)
+
+    def test_tier_record_and_history_still_build_when_the_flag_module_will_not_import(self):
+        import sharps_v2
+        had = hasattr(sharps_v2, "flag_record")
+        saved = getattr(sharps_v2, "flag_record", None)
+        if had:
+            delattr(sharps_v2, "flag_record")
+        try:
+            with tempfile.TemporaryDirectory() as d, mock.patch.dict(sys.modules, {"sharps_v2.flag_record": None}):
+                fx = TP.Fixture(d)
+                fx.add(TP.tcard("nba", "g1", TP.CUT, pts=0.5))
+                fx.commit()
+                os.makedirs(os.path.join(d, "tape", "nba"), exist_ok=True)
+                out = os.path.join(d, "o", "tier_record.json")
+                with contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(TR.main(["--data-dir", d, "--book-tape", os.path.join(d, "tape"), "--out", out, "--now", "5", "--data-ref", "abc"]), 0)
+                self.assertEqual(json.load(open(out))["data_ref"], "abc")
+                buf, err = io.StringIO(), io.StringIO()
+                with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+                    self.assertEqual(TP.TH.main(["--repo", d, "--ref", "main", "--book-tape", os.path.join(d, "tape")]), 0)
+                self.assertIn("PER-TIER RECORD", buf.getvalue())
+                self.assertNotIn("MARKET-MOVE FLAGS", buf.getvalue())
+                self.assertIn("flag record skipped", err.getvalue())
+        finally:
+            if had:
+                sharps_v2.flag_record = saved
 
 
 class Wording(unittest.TestCase):

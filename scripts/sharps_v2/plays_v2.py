@@ -29,7 +29,7 @@ PRICE_TIER_SPORTS = ("nba", "nfl")               # the CLV tiers (a2, b1) and th
 FACTS_NA = ["a2", "b1", "a3"]                    # facts that do not apply on a college card (published false)
 EV_PTS = SIG.EV_ON_PTS                           # 0.3, registered Nov 14 (scripts/sf_signals.py); no new threshold
 PIN_LINE_EPS = SIG.PIN_LINE_EPS
-# the market-move flags (docs/sharps-v2-flags-spec.md, rule v2f-1): the frozen constants live in flags_v2.py and are re-exported here, the one
+# the market-move flags (docs/sharps-v2-flags-spec.md, rule v2f-2): the frozen constants live in flags_v2.py and are re-exported here, the one
 # source the docs, the prereg and the tests read. Context only: nothing in this file reads them for a tier, a size or a gate.
 FLAGS_RULE, FLAGS_T_A, FLAGS_T_C, FLAGS_WINDOW, FLAGS_STALE = F.FLAGS_RULE, F.FLAGS_T_A, F.FLAGS_T_C, F.FLAGS_WINDOW, F.FLAGS_STALE
 FLAGS_SERIES_N, FLAGS_US = F.FLAGS_SERIES_N, F.FLAGS_US

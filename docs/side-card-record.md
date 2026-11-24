@@ -306,20 +306,34 @@ How to read it, plainly:
 The CBB line moves mostly because the one Clear play (a win) is sized up and the three Thin plays (all losses) are sized down; that is an ordering applied after
 the fact to ten plays and says nothing about forward results. The proposed forward read is in `docs/sharp-tier-v2-prereg.md`, "Shadow size v2s-1" (still PROPOSED).
 
-## Market-move flags v2f-1: the record by flag (2026-11-23)
+## Market-move flags v2f-2: the record by flag (2026-11-23)
 
 `scripts/sharps_v2/flags_v2.py` now publishes two flags beside each shown play (`markets[g].v2.flags`, `docs/side-cards.md` "Market-move flags"): **Flag A**, whether
 Pinnacle's no-vig price for the side moved toward or away from it at the same line over the 24 hours before the cut, and **Flag C**, whether the market moved the number
 (spreads, totals) or the books moved the price (moneylines). Pinnacle's limit is a fact line (from, to), not a flag (user decision D1). Nothing already stored changes:
 the history below is derived **point in time** from the tape rows at or before each play's cut (`scripts/sharps_v2/flag_record.py`, printed by
 `tier_history.py`), nothing from the result. Every number is **in-sample** (the flag rule was written after these results), flat 1u at the stored price at the cut,
-and none of it is a signal. Forward test: `docs/sharp-tier-v2-prereg.md` "Market-move flags v2f-1" (PROPOSED); forward is zero until a play is logged at lock with its flags.
+and none of it is a signal. Forward test: `docs/sharp-tier-v2-prereg.md` "Market-move flags v2f-2" (PROPOSED); forward is zero until a play is logged at lock with its flags.
 
-**Data read:** `origin/pm-holders-data` at commit `35e60b0cf4ad5cef9ea858c8501347b49e59ef71` (Nov 23), tape at `origin/main` afd35efe33; 205 graded shown plays (sf, variant
-all), 3 voided left out; all 205 flag reads re-derived from the tape (none stored yet). Reproduce with `python3 -I scripts/sharps_v2/tier_history.py --ref <commit>`.
+**Rule change before anything shipped (v2f-1 to v2f-2).** The first draft read the start of the 24-hour window as the first stored row inside it. The tape writes a row only when a book's
+numbers change, so that dropped the first move of the window, and a first quote at a new line read as a move of 0 (an invented zero). v2f-2 starts the window at the row hanging when it
+opened, returns null for a first quote, takes the limit's "from" the same way, and drops a stored Pinnacle row that has its sides swapped. The thresholds were re-measured: **T_A** NFL
+total 1.0 to 1.5, CBB total 1.0 to 1.5, CFB moneyline 2.0 to 2.5 (the other nine are unchanged); **T_C** CFB spread 1.0 to 1.5, CFB total 1.0 to 1.5 (the other six are unchanged). Old (v2f-1) against
+new (v2f-2) on the same 205 plays: headline A away 8-6, +0.92u (n=14) to 7-7, -1.02u (n=14); headline C toward 8-3, +2.78u (n=11) to 8-4, +1.78u (n=12); NBA C toward 4-2, +0.37u (n=6) to 4-3, -0.63u (n=7);
+NFL A away 1-1, -0.06u to 0-2, -2.00u; CFB A toward 4-6 (n=10) to 5-6 (n=11), A away 2-4 (n=6) to 4-4 (n=8), C toward 5-6 (n=11) to 4-6 (n=10), C away 1-8 (n=9) to 1-6 (n=7); every other cell is the same.
+Two slices that improved under v2f-1 (headline A away, NBA C toward) no longer do.
+
+**Data read:** `origin/pm-holders-data` at commit `7024604abfd69fa5f16df6b449b80b7a0ccc33e0` (Nov 23), tape at `origin/main` afd35efe33; 205 graded shown plays (sf, variant
+all), 3 voided left out; all 205 flag reads re-derived from the tape (none stored yet). Reproduce with `python3 -I scripts/sharps_v2/tier_history.py --ref <commit>`. No graded play has a
+dropped Pinnacle row.
+
+**Coverage, outright.** Flag A is readable on 57 of 58 NBA plays, 32 of 33 NFL, **6 of 53 CBB** and 44 of 61 CFB; Flag C on 58, 33, **7 of 53 CBB** and 46 of 61 CFB. Neither is readable on 61 plays:
+**CBB 46** = 8 `side_unmapped` (the card has no Vault join, so no team names; 2 of them have tape rows) + 38 with no Pinnacle row at the cut (the CBB tape began 2026-11-19 9:08 AM CT; 1 of
+the 38 has US-book rows); **CFB 15** = 9 `side_unmapped` (no Vault join) + 6 with no Pinnacle row at the cut (4 of them have US-book rows). The 4 plays where only Flag A is null are first
+quotes at a new line.
 
 A play can sit in an A slice and a C slice (they are separate flags), so the slices overlap. "No flag fired" = at least one flag readable and neither toward nor away.
-"Unreadable" = neither readable (the CBB tape began 2026-11-19 9:08 AM CT, so most CBB plays before it have no history, and the CFB list has the same gap).
+"Unreadable" = neither readable. "Improves" in this entry means units above 0, not better than a baseline.
 
 | Old (the record today, no flags) | Record | n |
 |---|---|---|
@@ -331,39 +345,36 @@ A play can sit in an A slice and a C slice (they are separate flags), so the sli
 
 | New (the same plays by flag) | NBA | NFL | CBB | CFB (no size) | Headline NBA+NFL+CBB |
 |---|---|---|---|---|---|
-| A toward | 3-2, +0.35u, n=5 | 4-1, +1.93u, n=5 | n=0 | 4-6, -2.91u, n=10 | 7-3, +2.28u, +22.8% (se 27.8), n=10 |
-| A away | 7-5, +0.98u, n=12 | 1-1, -0.06u, n=2 | n=0 | 2-4, -2.26u, n=6 | 8-6, +0.92u, +6.6% (se 26.9), n=14 |
-| C toward | 4-2, +0.37u, n=6 | 3-1, +1.35u, n=4 | 1-0, +1.06u, n=1 | 5-6, -2.82u, n=11 | 8-3, +2.78u, +25.3% (se 25.5), n=11 |
-| C away | 9-4, +3.75u, n=13 | 0-1, -1.00u, n=1 | n=0 | 1-8, -7.10u, n=9 | 9-5, +2.75u, +19.6% (se 26.9), n=14 |
-| No flag fired | 18-15, -3.49u, n=33 | 16-9, +5.15u, n=25 | 3-3, -0.38u, n=6 | 12-7, +2.40u, n=19 | 37-27, +1.27u, +2.0% (se 11.6), n=64 |
+| A toward | 3-2, +0.35u, n=5 | 4-1, +1.93u, n=5 | n=0 | 5-6, -2.60u, n=11 | 7-3, +2.28u, +22.8% (se 27.8), n=10 |
+| A away | 7-5, +0.98u, n=12 | 0-2, -2.00u, n=2 | n=0 | 4-4, -0.29u, n=8 | 7-7, -1.02u, -7.3% (se 27.0), n=14 |
+| C toward | 4-3, -0.63u, n=7 | 3-1, +1.35u, n=4 | 1-0, +1.06u, n=1 | 4-6, -3.65u, n=10 | 8-4, +1.78u, +14.9% (se 25.5), n=12 |
+| C away | 9-4, +3.75u, n=13 | 0-1, -1.00u, n=1 | n=0 | 1-6, -5.10u, n=7 | 9-5, +2.75u, +19.6% (se 26.9), n=14 |
+| No flag fired | 18-14, -2.49u, n=32 | 17-8, +7.09u, n=25 | 3-3, -0.38u, n=6 | 11-9, -0.66u, n=20 | 38-25, +4.22u, +6.7% (se 11.7), n=63 |
 | Unreadable | n=0 | n=0 | 25-21, +3.32u, n=46 | 8-7, -0.61u, n=15 | 25-21, +3.32u, +7.2% (se 14.9), n=46 |
 
-The headline totals are unchanged by construction: every play is in "A or C fired", "No flag fired" or "Unreadable" (a play with both flags fired sits in two slices, so the
-slice counts add to more than 144). These numbers agree with the spec's draft table (`docs/sharps-v2-flags-spec.md` 2.4) except CFB "C away" (spec 2-8, n=10; here 1-8, n=9): the
-tape has grown since the draft and one CFB play moved between slices.
+The headline totals are unchanged by construction: every play is in "A or C fired", "No flag fired" or "Unreadable" (a play with both flags fired sits in two slices, so the slice counts add to
+more than 144). Against the spec's first draft (`docs/sharps-v2-flags-spec.md`, section 2.4 as first written, flags read under v2f-1 on an older data commit) the CFB "C away" cell was 2-8, n=10: that draft
+read Flag C on games with no Pinnacle row, which this build requires (the gap is not tape growth; older tape snapshots give the same result).
 
-**Flagged for close monitoring: every flag slice whose record improves, with its n** (flat ROI above 0; "small sample" under n=30; all in-sample, none promoted, none a signal;
-the list is the output of `tier_history.py`):
+**Flagged for close monitoring: every flag slice whose record improves, with its n** ("improves" = units above 0; "small sample" under n=30; all in-sample, none promoted, none a signal; the list is the
+output of `tier_history.py`):
 
-| Slice | Record | n |
-|---|---|---|
-| NBA A toward | 3-2, +0.35u | 5, small sample |
-| NBA A away | 7-5, +0.98u | 12, small sample |
-| NBA C toward | 4-2, +0.37u | 6, small sample |
-| NBA C away | 9-4, +3.75u | 13, small sample |
-| NFL A toward | 4-1, +1.93u | 5, small sample |
-| NFL C toward | 3-1, +1.35u | 4, small sample |
-| NFL no flag fired | 16-9, +5.15u | 25, small sample |
-| CFB (no size) no flag fired | 12-7, +2.40u | 19, small sample |
-| CBB C toward | 1-0, +1.06u | 1, small sample |
-| CBB unreadable | 25-21, +3.32u | 46 |
-| Headline A toward | 7-3, +2.28u | 10, small sample |
-| Headline A away | 8-6, +0.92u | 14, small sample |
-| Headline C toward | 8-3, +2.78u | 11, small sample |
-| Headline C away | 9-5, +2.75u | 14, small sample |
-| Headline no flag fired | 37-27, +1.27u | 64 |
-| Headline unreadable | 25-21, +3.32u | 46 |
+| Slice | Record | n | se (points of ROI) |
+|---|---|---|---|
+| NBA A toward | 3-2, +0.35u | 5, small sample | 45.5 |
+| NBA A away | 7-5, +0.98u | 12, small sample | 29.2 |
+| NBA C away | 9-4, +3.75u | 13, small sample | 27.3 |
+| NFL A toward | 4-1, +1.93u | 5, small sample | 35.8 |
+| NFL C toward | 3-1, +1.35u | 4, small sample | 45.8 |
+| NFL no flag fired | 17-8, +7.09u | 25, small sample | 18.7 |
+| CBB C toward | 1-0, +1.06u | 1, small sample | none (n=1) |
+| CBB unreadable | 25-21, +3.32u | 46 | 14.9 |
+| Headline A toward | 7-3, +2.28u | 10, small sample | 27.8 |
+| Headline C toward | 8-4, +1.78u | 12, small sample | 25.5 |
+| Headline C away | 9-5, +2.75u | 14, small sample | 26.9 |
+| Headline no flag fired | 38-25, +4.22u | 63 | 11.7 |
+| Headline unreadable | 25-21, +3.32u | 46 | 14.9 |
 
 Read it plainly: the flagged slices run both ways. NBA "C away" (the market moved the number against the play's side) is the best NBA slice at +3.75u, which is the opposite
-of reading a flag as a signal, and every standard error is 25 to 97 points. None separates from zero or from another slice, and no slice has a sample near the 300 plays per sport
-that the prereg needs. The flags describe what the market did; they say nothing about whether a play wins.
+of reading a flag as a signal. The standard errors of the flagged slices run from 11.7 to 45.8 points of ROI (the CBB n=1 slice has none), so none separates from zero or from another
+slice, and no slice has a sample near the 300 plays per sport that the prereg needs. The flags describe what the market did; they say nothing about whether a play wins.

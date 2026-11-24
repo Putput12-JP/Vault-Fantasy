@@ -1,7 +1,10 @@
 # Sharps V2: market-move flags and the play write-up card (spec)
 
-**Status: SPEC ONLY, nothing built.** Written 2026-11-23 (Central). Rule id for everything below: **`v2f-1`**. A change to any
-threshold, window or branch after the registering commit is a new rule id (`v2f-2`) and a new registration.
+**Status: data side built on branch `sharps-v2-flags` (nothing shipped, the prereg stays PROPOSED).** Written 2026-11-23 (Central). Rule id for everything below:
+**`v2f-2`**. The first draft of this spec (`v2f-1`) read a book's "from" value as the first stored row inside the 24-hour window; because the tape writes a row only when
+something changes, that dropped the first move of the window and read a first quote at a new line as a move of 0. Review found both, nothing had shipped, so the
+rule was changed in place and every threshold re-measured (sections 1.1, 1.2, 1.4); the id is `v2f-2` everywhere. A change to any threshold, window or branch after the
+registering commit is a new rule id (`v2f-3`) and a new registration.
 
 Source request (the user, 2026-11-23): flag Sharps plays when (1) Pinnacle's price moved (example +105 to about -129), (2) Pinnacle's
 limit climbed (example about $1.1K to $1.45K), (3) the whole market moved the number (example Cornell +22 to about +19, BookMaker
@@ -81,16 +84,23 @@ So no flag below may be worded as confirmation. They describe **what the market 
 
 ---
 
-## 1. Flag definitions (rule `v2f-1`)
+## 1. Flag definitions (rule `v2f-2`)
 
 ### 1.1 Common rules
 
 - **Who gets flags:** only market groups with a shown play (`v2.side` set). Not every market of every game (size, 3.1).
 - **As of:** `asof` = the card's cut (game start minus 15 minutes) on a frozen card, the build time on a live card. Only tape rows with
   `t <= asof` are read. Nothing after the cut ever enters a frozen card or the history.
-- **Window:** the 24 hours ending at `asof` (`window_min: 1440`), the same window `steam_record.py` and `sharp_tape.py`'s `pp` use. The
-  "from" value of a book is its first stored row inside the window; when it has no row inside the window, its last row before the
-  window (the number it was hanging when the window opened). Hours actually covered are reported as `span_min`.
+- **Window:** the 24 hours ending at `asof` (`window_min: 1440`), the same window `steam_record.py` and `sharp_tape.py`'s `pp` use. The tape writes a row only when a
+  book's numbers change, so the number a book was showing **when the window opened** is its **last stored row at or before the window start** (it held until the next row);
+  when it has none, its first stored row inside the window. That row is the book's "from" value. A book whose only row is a **first quote inside the window** has no history
+  and is not read (null, never a move of 0); a single row that was already showing when the window opened held all window and reads as a move of 0. Hours actually covered
+  are reported as `span_min`.
+- **Swapped Pinnacle rows.** A stored Pinnacle row is dropped (`dropped` on the flag, reason `pinnacle_row_inconsistent` when nothing is left) when it sits on the other side of
+  even money from every US book showing at its time (2 or more of them; moneyline fair at least 0.05 from 0.5 on both sides of the comparison, spread: the sign of the line), or,
+  with fewer than 2 US books, from BOTH of Pinnacle's own neighbouring rows. Real case: `cfb:290201` M-OH at WMU, 2026-11-23, first Pinnacle row ml [-323, 260] and spread
+  home +7.5, ten minutes later [245, -301] and -7.5, US books at WMU -245 to -305: read raw, that is a 45-point Flag A. A total has no side and is never checked. None of the 205
+  graded plays has a dropped row.
 - **Side mapping:** `build_side_cards.side_norms` (home, away, over, under). An unmapped side gives null flags with `why: "side_unmapped"`.
 - **Direction words:** **toward** = the move makes the play's side cost more (Pinnacle's fair for the side went up; the side's spread
   shrank, for example Cornell +22 to +19 or a favourite -3 to -4; a total went up for an over or down for an under). **away** = the
@@ -110,54 +120,63 @@ So no flag below may be worded as confirmation. They describe **what the market 
 
 Rule (the `steam_record.py` signal, evaluated once at `asof`):
 
-1. Pinnacle rows for the market with `t <= asof`; at least **2** such rows in all, and the last one is `now`.
-2. Moneyline: the window's first row is `from`. Spread or total: `from` is the window's first row **at the same main line as `now`**
-   (a line change is not a price move; it belongs to Flag C).
+1. Pinnacle rows for the market with `t <= asof` (after the swapped-row check), the last one is `now`.
+2. Moneyline: at least **2** rows in all; `from` is the row hanging when the window opened (section 1.1). Spread or total: the rows **at the same main line as `now`** (a line change
+   is not a price move; it belongs to Flag C) must number at least **2** (`now` and an earlier one; a first quote at a new line is `no_same_line_history`), and `from` is the
+   hanging row among them.
 3. `pin_move_pts = (fair_now - fair_from) x 100` for the side. State: toward if `pin_move_pts >= T_A`, away if `<= -T_A`, else quiet.
 
-Null when: fewer than 2 Pinnacle rows before `asof` (`why: "no_pinnacle_history"`), no Pinnacle row at all (`"no_tape_rows_for_game"`),
-unmapped side, or stale feed.
+Null when: fewer than 2 Pinnacle rows before `asof` (`why: "no_pinnacle_history"`), no Pinnacle row at all (`"no_tape_rows_for_game"`), no earlier quote at the current line
+(`"no_same_line_history"`), every row dropped as swapped (`"pinnacle_row_inconsistent"`), unmapped side, or stale feed.
 
 **Distribution (all games in the tape that have started, home or over side, 24-hour window ending 15 minutes before start, absolute
 points of no-vig fair):**
 
 | Sport, market | n | median | p75 | p80 | p90 | p95 | p99 |
 |---|---|---|---|---|---|---|---|
-| NBA moneyline | 248 | 1.84 | 3.46 | 4.16 | 5.94 | 8.64 | 13.59 |
-| NBA spread (fixed line) | 248 | 0.70 | 1.16 | 1.39 | 1.74 | 2.08 | 2.78 |
-| NBA total (fixed line) | 248 | 0.68 | 1.37 | 1.55 | 1.94 | 2.28 | 2.68 |
-| NFL moneyline | 116 | 0.74 | 1.29 | 1.47 | 2.00 | 2.35 | 3.35 |
-| NFL spread | 116 | 0.67 | 1.32 | 1.39 | 1.69 | 2.40 | 2.87 |
-| NFL total | 116 | 0.24 | 0.90 | 1.11 | 1.65 | 2.17 | 2.71 |
-| CBB moneyline | 140 | 1.24 | 2.52 | 2.97 | 3.67 | 4.44 | 5.19 |
-| CBB spread | 167 | 0.77 | 1.20 | 1.34 | 1.88 | 2.40 | 2.92 |
-| CBB total | 167 | 0.43 | 0.97 | 1.09 | 1.66 | 2.20 | 3.38 |
-| CFB moneyline | 331 | 0.82 | 1.81 | 2.17 | 2.92 | 3.89 | 5.53 |
-| CFB spread | 337 | 0.47 | 1.13 | 1.37 | 1.83 | 2.19 | 3.04 |
-| CFB total | 337 | 0.45 | 1.11 | 1.34 | 1.66 | 2.03 | 2.84 |
+| NBA moneyline | 248 | 1.90 | 3.51 | 4.20 | 5.96 | 8.96 | 13.76 |
+| NBA spread (fixed line) | 221 | 0.70 | 1.39 | 1.61 | 1.85 | 2.31 | 2.89 |
+| NBA total (fixed line) | 217 | 0.79 | 1.48 | 1.61 | 2.06 | 2.39 | 2.74 |
+| NFL moneyline | 116 | 0.74 | 1.39 | 1.55 | 2.07 | 2.75 | 4.47 |
+| NFL spread | 106 | 0.91 | 1.58 | 1.62 | 2.18 | 2.53 | 3.11 |
+| NFL total | 95 | 0.69 | 1.38 | 1.60 | 2.35 | 2.81 | 4.62 |
+| CBB moneyline | 141 | 1.24 | 2.51 | 2.97 | 3.66 | 4.44 | 5.21 |
+| CBB spread | 153 | 0.88 | 1.22 | 1.44 | 1.99 | 2.44 | 3.00 |
+| CBB total | 143 | 0.65 | 1.08 | 1.30 | 1.83 | 2.27 | 3.67 |
+| CFB moneyline | 331 | 0.94 | 2.09 | 2.48 | 3.33 | 4.21 | 6.76 |
+| CFB spread | 306 | 0.69 | 1.37 | 1.48 | 1.94 | 2.29 | 3.17 |
+| CFB total | 296 | 0.67 | 1.34 | 1.56 | 1.88 | 2.33 | 2.98 |
 
-On the graded plays (signed toward the play side, so the median says which way the market went on Sharps picks): NBA median -0.66
-(n=58), NFL 0.00 (n=33), CBB +0.22 (n=7), CFB +0.27 (n=46). Sharps plays are not, on the median, sides Pinnacle was moving toward.
+(Measured under the v2f-2 window rule on the tape at origin/main afd35efe, 2026-11-23 1:30 PM CT, started games with a readable flag, 24 hours ending 15 minutes before start. The n
+for spreads and totals is below the number of games because a market whose current line has no earlier quote is null.)
+
+On the graded plays (signed toward the play side, so the median says which way the market went on Sharps picks): NBA median -0.85
+(n=57), NFL 0.00 (n=32), CBB +0.86 (n=6), CFB +0.12 (n=44). Sharps plays are not, on the median, sides Pinnacle was moving toward.
 
 **Threshold `T_A`:** the 80th percentile of the absolute move for the sport and market, rounded to the nearest 0.5 point. It marks
-roughly the largest fifth of moves in either direction (measured fire rate 15% to 24%), so about one play in ten is "toward".
+roughly the largest fifth of moves in either direction (measured fire rate 13% to 26%, either direction), so about one play in ten is "toward".
 
 | T_A (points) | Moneyline | Spread | Total |
 |---|---|---|---|
 | NBA | 4.0 | 1.5 | 1.5 |
-| NFL | 1.5 | 1.5 | 1.0 |
-| CBB | 3.0 | 1.5 | 1.0 |
-| CFB | 2.0 | 1.5 | 1.5 |
+| NFL | 1.5 | 1.5 | **1.5** (was 1.0) |
+| CBB | 3.0 | 1.5 | **1.5** (was 1.0) |
+| CFB | **2.5** (was 2.0) | 1.5 | 1.5 |
+
+Fire rate under these thresholds, either direction (toward in brackets), readable games: NBA moneyline 21% (9%), spread 21% (11%), total 24% (13%); NFL 22% (12%), 26% (17%), 21% (15%);
+CBB 18% (8%), 18% (12%), 13% (7%); CFB 20% (9%), 20% (12%), 21% (12%). Under the old thresholds on the new window rule the three changed cells would fire on 41% (NFL total),
+28% (CBB total) and 27% (CFB moneyline) of games, which is why they moved.
 
 **The user's example as a reference:** +105 to -129 is 48.8% to 56.3% raw implied, **+7.5 points** (the request said about 6.7; the
 no-vig figure needs the other side's price, which the screenshot does not show). That is above p95 in every sport and market except
-NBA moneylines (p95 8.6), so it would show as "toward" everywhere.
+NBA moneylines (p95 9.0), so it would show as "toward" everywhere.
 
 ### 1.3 Flag B: "Pinnacle's limit" (a fact about the market, not a side)
 
-Read: `sf_signals.limit_read` at `asof`, unchanged (`open` = the first stored limit for the market group, `now` = the last at or
-before `asof`, `rising` = +$500 or 1.45x). Stored also: `pct = (now / open - 1) x 100`. Null when no row before `asof` carries a limit
-(`why: "no_limit_before_cut"`).
+Read (v2f-2, user decision D1: a fact line only): `to` = the last stored Pinnacle limit for the market at or before `asof` (copied from `sf_signals.limit_read`'s `now`), `from` = the
+limit Pinnacle was **showing when the 24-hour window opened**, with the same rule as every other number (its last stored limit at or before the window start, else its first stored
+limit inside the window; `t_from` is that row's time). There is no `rising` rule, no `pct`, no chip. The first draft took `from` as the first limit ever stored (`limit_read`'s
+`open`), which can be days old, so its copy "in the last 24 hours" was wrong. Null when no row before `asof` carries a limit (`why: "no_limit_before_cut"`).
 
 **What the data shows: Pinnacle raises limits on a schedule as the start nears, on nearly every market.**
 
@@ -175,9 +194,11 @@ user's example (+$350, +32%) does **not** meet the existing rising rule and is s
 Two more facts: a limit belongs to the **market**, not to a side, so it can never point toward or away from the play; and
 `steam_record.py` found that a price move with the limit up did not keep going either (NBA continuation -0.34, n=287).
 
-**Therefore Flag B is shown as a fact line, never as an on/off chip:** "Pinnacle limit $3,000 to $20,000 in the last 24 hours. Pinnacle
-raises limits toward start on almost every game (99% of NBA markets this season)." The share is the stored sport share above,
-recomputed by T1 and published in `v2_plays.flags.limit_schedule_share`. A "limit raised ahead of schedule" chip would need a fitted
+**Therefore Flag B is shown as a fact line, never as an on/off chip, and the copy says exactly what it measures:** "Pinnacle limit $3,000 when the last 24 hours began, $20,000 now.
+Pinnacle raises limits toward start on almost every game (99% of NBA markets this season)." (One reading: "Pinnacle limit $3,000 (one reading)".) "Now" is the cut on a frozen card.
+The share published in `v2_plays.flags.limit_schedule_share` (`limit_share_basis`) is the share of markets whose limit at the cut was above the limit showing when the window opened,
+the same two numbers the line prints: NBA 99.2% (744 markets), NFL 92.9% (252), CBB 96.9% (480), CFB 89.4% (1,012), on the tape at origin/main afd35efe (the first-limit-ever shares
+in the table above are descriptive only). A "limit raised ahead of schedule" chip would need a fitted
 schedule (sport x market x hours to start) and its own registration: **deferred**, decision D1.
 
 ### 1.4 Flag C: "The market moved the number" (spreads and totals) / "The books moved the price" (moneylines)
@@ -187,8 +208,10 @@ schedule (sport x market x hours to start) and its own registration: **deferred*
 1. Pinnacle's main line for the side moved by `T_C` points or more from `from` to `now` (direction words as in 1.1).
 2. At least **2** of the five US books (DraftKings, FanDuel, BetMGM, BetRivers, bet365) moved their own main line by **1 point or more
    in the same direction** over the same window.
-3. State toward or away when both hold; quiet otherwise. Null when Pinnacle has no row or fewer than 2 US books have a row before
-   `asof` (`why: "too_few_books"`), or a feed is stale.
+3. State toward or away when both hold; quiet otherwise. Null when Pinnacle has no readable row or fewer than 2 US books are readable before `asof`
+   (`why: "too_few_books"`), a feed is stale, or every Pinnacle row was dropped as swapped (`"pinnacle_row_inconsistent"`). A book is **readable** when it has two or more rows, or
+   one row that was already showing when the window opened; a book whose only row is a first quote inside the window is left out (v2f-2). "From" is the row hanging when the window
+   opened (1.1), for Pinnacle and for each book.
 
 Stored for display: Pinnacle `from` and `to`, every readable book's `from` and `to`, `books` (readable), `same_way` (books that moved 1
 point or more the same way as Pinnacle), and `extreme` = the book (Pinnacle or US) whose line at `asof` is furthest in the move's
@@ -200,31 +223,31 @@ price from and to; `extreme` = the book with the largest move.
 
 **Distribution, Pinnacle main line move, absolute points (same games as 1.2):**
 
-| Sport, market | median | p75 | p80 | p90 | p95 | share with no move |
-|---|---|---|---|---|---|---|
-| NBA spread | 1.00 | 1.50 | 1.80 | 2.50 | 3.50 | 18% |
-| NBA total | 1.50 | 2.50 | 3.00 | 3.50 | 4.00 | 12% |
-| NFL spread | 0.00 | 0.00 | 0.50 | 0.50 | 1.00 | 77% |
-| NFL total | 0.00 | 1.00 | 1.00 | 1.00 | 1.50 | 58% |
-| CBB spread | 0.50 | 1.00 | 1.00 | 1.50 | 2.00 | 40% |
-| CBB total | 1.00 | 2.00 | 2.40 | 3.00 | 4.00 | 30% |
-| CFB spread | 0.50 | 1.00 | 1.00 | 1.50 | 2.50 | 41% |
-| CFB total | 0.50 | 1.00 | 1.00 | 1.50 | 2.00 | 44% |
+| Sport, market | n | median | p75 | p80 | p90 | p95 | share with no move |
+|---|---|---|---|---|---|---|---|
+| NBA spread | 248 | 1.00 | 1.50 | 2.00 | 2.50 | 3.50 | 18% |
+| NBA total | 248 | 1.50 | 2.50 | 3.00 | 3.50 | 4.00 | 11% |
+| NFL spread | 114 | 0.00 | 0.50 | 0.50 | 0.50 | 1.00 | 73% |
+| NFL total | 114 | 0.00 | 1.00 | 1.00 | 1.00 | 1.50 | 54% |
+| CBB spread | 168 | 0.50 | 1.00 | 1.00 | 1.50 | 2.00 | 40% |
+| CBB total | 168 | 1.00 | 2.00 | 2.50 | 3.00 | 4.00 | 30% |
+| CFB spread | 337 | 0.50 | 1.00 | 1.50 | 2.00 | 2.50 | 38% |
+| CFB total | 337 | 0.50 | 1.00 | 1.50 | 1.50 | 2.00 | 42% |
 
-Median of the six books' line moves: NBA spread p80 2.00, NBA total 3.00, NFL spread 0.00, CBB spread 1.00, CFB spread 1.00. How many
-of the six books moved half a point or more (NBA spreads, 248 games): 0 books 8 games, 1: 25, 2: 28, 3: 21, 4: 32, 5: 42, all 6: 92.
-Moneyline, median book no-vig move: pooled p80 2.82 points (NBA 4.46, NFL 1.06, CBB 3.25, CFB 2.05).
+(Games where Pinnacle and at least 2 US books are readable, v2f-2 window rule, tape at origin/main afd35efe. The first draft's tables of "the six books' line moves" and the pooled
+moneyline book move were measured under the old window rule and are removed; the moneyline Flag C uses `T_A`, so they fed no threshold.)
 
 **Threshold `T_C`:** the 80th percentile of Pinnacle's absolute line move for the sport and market, rounded **up** to the half point,
-with a floor of 1.0 (the stale-number rule's book move). Measured fire rate, either direction: NBA spread 19%, total 21%; NFL spread
-4%, total 18%; CBB spread 32%, total 20%; CFB spread 30%, total 34%. (NFL lines barely move inside 24 hours, so the floor binds.)
+with a floor of 1.0 (the stale-number rule's book move). Measured fire rate of the whole Flag C (the line rule and the 2-book rule), either direction (toward in brackets): NBA
+spread 19% (6%), total 23% (7%); NFL spread 4% (0%), total 23% (11%); CBB spread 32% (8%), total 20% (9%); CFB spread 20% (11%), total 20% (13%). Moneyline Flag C: NBA 30% (11%), NFL 20% (10%),
+CBB 34% (19%), CFB 24% (11%). (NFL spreads barely move inside 24 hours, so the floor binds.)
 
 | T_C (points) | Spread | Total |
 |---|---|---|
 | NBA | 2.0 | 3.0 |
 | NFL | 1.0 | 1.0 |
 | CBB | 1.0 | 2.5 |
-| CFB | 1.0 | 1.0 |
+| CFB | **1.5** (was 1.0) | **1.5** (was 1.0) |
 
 **The user's example as a reference:** Cornell +22 to +19 is a 3.0 point move toward Cornell (CBB spread p95 2.0, p99 3.0): it would
 read "toward", with BookMaker's +18.5 as the extreme if BookMaker were stored (it is not; 0.1).
@@ -248,10 +271,23 @@ or a flag on a market with no shown play.
 
 ### 1.7 How often the flags fire
 
-**Graded plays** (205 shown plays, 2026-11-12 to 2026-11-22, each read at its own cut):
+**Graded plays** (205 shown plays, 2026-11-12 to 2026-11-23, each read at its own cut, v2f-2; the limit is a fact, not a flag, so it has no column):
 
-| Sport | A toward / away / quiet / null | B rising / not / null | C toward / away / quiet / null |
-|---|---|---|---|
+| Sport | A toward / away / quiet / null | C toward / away / quiet / null |
+|---|---|---|
+| NBA (58) | 5 / 12 / 40 / 1 | 7 / 13 / 38 / 0 |
+| NFL (33) | 5 / 2 / 25 / 1 | 4 / 1 / 28 / 0 |
+| CBB (53) | 0 / 0 / 6 / 47 | 1 / 0 / 6 / 46 |
+| CFB (61) | 11 / 8 / 25 / 17 | 10 / 7 / 29 / 15 |
+
+Every graded NBA and NFL play has a limit fact; CBB 9 of 53 and CFB 46 of 61. The "null" counts are the reasons in 1.1 and 1.2: of the 15 CFB plays with neither flag readable, 9 are
+`side_unmapped` (no Vault join, so no team names) and 6 have no Pinnacle row at the cut (4 of them have US-book rows); of the 46 CBB plays, 8 are `side_unmapped` (2 of them have
+tape rows) and 38 have no Pinnacle row at the cut (the CBB tape began 2026-11-19 9:08 AM CT; 1 of the 38 has US-book rows). The 4 plays where only Flag A is null
+(NBA 1, NFL 1, CFB 2 and CBB 1) are first quotes at a new line (`no_same_line_history`), which the first draft read as a move of 0.
+
+**Live slate:** see the 2026-11-23 build in `docs/side-cards.md` "Market-move flags" (counts are given there with the pinned build time).
+
+---|---|---|---|
 | NBA (58) | 5 / 12 / 41 / 0 | 57 / 1 / 0 | 6 / 13 / 39 / 0 |
 | NFL (33) | 5 / 2 / 26 / 0 | 33 / 0 / 0 | 4 / 1 / 28 / 0 |
 | CBB (53) | 0 / 0 / 7 / 46 | 8 / 1 / 44 | 1 / 0 / 7 / 45 |
@@ -286,44 +322,39 @@ The flags are a tracking change, so they ship as a **new shadow signal** in the 
 - The value logged is the one on the frozen card at the cut (repair pass: re-projected from the card's stored `v2.flags`, so a late
   append equals an on-time one).
 
-### 2.3 Proposed prereg section (to add to `docs/sharp-tier-v2-prereg.md`, status PROPOSED with the rest of that file)
+### 2.3 Prereg section
 
-Text to add, verbatim:
-
-> ## Market-move flags v2f-1 (shadow, added 2026-11-23, PROPOSED)
->
-> Flags A (Pinnacle's price, fixed line, 24 h), B (Pinnacle's limit, a market fact) and C (the market's number) are defined in
-> `docs/sharps-v2-flags-spec.md` section 1, thresholds frozen in `scripts/sharps_v2/plays_v2.py` (`FLAGS_T_A`, `FLAGS_T_C`) at the
-> registering commit. Logged at lock as `mf` on the `v2_tier` rows. Context only; they change no size, tier, gate or agree total.
->
-> **Primary metric:** Pinnacle CLV = Pinnacle's no-vig fair for the side at the last tape row at or before game start (the `pinclose`
-> row) minus the stored Polymarket price at the cut, in points, per flag state, per sport, never pooled. Plays with `price_src == "pin"`
-> are left out and reported apart. **Slices:** A toward, A away, A quiet; C toward, C away, C quiet; B is reported as a description
-> (share rising), not a slice with a verdict, because it is near-universal. **Comparison:** mean CLV of "toward" minus mean CLV of
-> "quiet", and "away" minus "quiet", 95% percentile bootstrap, 10,000 resamples, seed 20261111, resampling plays.
->
-> **Minimum n:** 300 plays per sport with a readable flag and a readable close before any verdict; under 300 at the final read is
-> Underpowered (neither pass nor fail). **Final reads:** the same dates as the tier registration (NBA: first Monday after the 2026-27
-> regular season; NFL: Tuesday after Week 18; CFB: Monday after conference championship weekend; CBB: Monday after the 2027 national
-> championship game). Monthly interim reads are report-only.
->
-> **Pass** (per sport, per flag): the lower 95% bound of "toward minus quiet" is above 0 with n met. A pass lets the user *consider*
-> calling the flag tested; the page keeps "context only" until then. **Secondary:** flat 1u ROI per slice (a win pays 1 / price - 1).
-> **Expected:** "toward" holds about one play in ten, so 300 per sport with a toward group big enough is unlikely this season; the honest
-> expectation is Underpowered, said in advance. A slice that improves is flagged for close monitoring with its n and is never promoted
-> on the same data.
+The registered text is the section "Market-move flags v2f-2" of `docs/sharp-tier-v2-prereg.md` (PROPOSED with the rest of that file). It replaces this spec's first-draft text: the primary metric
+for a flag slice is now **the market move after the cut** (Pinnacle's no-vig close minus its no-vig fair at the cut, same line), because the first draft's metric (the close minus the price at
+the cut) contains Pinnacle's fair at the cut minus that price, a term Flag A moves with by construction; CLV stays as a secondary that is labelled as overlapping. Pinnacle's limit is a fact
+line and not a slice (D1).
 
 ### 2.4 History, re-derived point in time
 
 Feasible wherever the tape existed at the cut; the flags read only tape rows with `t <= cut`, so a frozen card's flags re-derive the same
-whenever they are computed (except staleness, see 1.1). Coverage of the 205 graded plays: NBA 58 of 58, NFL 33 of 33, CFB 46 of 61 (A)
-and 47 of 61 (C), **CBB 7 of 53** (the CBB tape began 2026-11-19 9:08 AM CT; plays cut before that are null forever, said so on the
-card as "No market history stored for this game").
+whenever they are computed (staleness is not read on a frozen card or in the history, see 1.1). Coverage of the 205 graded plays, v2f-2: Flag A readable on NBA 57 of 58, NFL 32 of 33, CFB 44 of
+61, CBB 6 of 53; Flag C readable on NBA 58, NFL 33, CFB 46, **CBB 7 of 53** (the CBB tape began 2026-11-19 9:08 AM CT; plays cut before that are null forever, said so on the card as "No market
+history stored for this game"). Neither flag is readable on 61 plays (CBB 46, CFB 15; the reasons are in 1.7).
 
-**Record per flag today (in-sample, flat 1u at the stored price at the cut, data dff069af):**
+**Record per flag today (in-sample, flat 1u at the stored price at the cut, pm-holders-data 7024604abf, tape at origin/main afd35efe).** A play can sit in an A slice and a C slice; "No flag fired" = at least
+one flag readable and neither toward nor away; "Unreadable" = neither readable. "Improves" below means units above 0, not better than a baseline.
 
 | Slice | NBA | NFL | CBB | CFB (no size shown) | NBA+NFL+CBB |
 |---|---|---|---|---|---|
+| A toward | 3-2, +0.35u, n=5 | 4-1, +1.93u, n=5 | n=0 | 5-6, -2.60u, n=11 | 7-3, +2.28u, +22.8% (se 27.8), n=10 |
+| A away | 7-5, +0.98u, n=12 | 0-2, -2.00u, n=2 | n=0 | 4-4, -0.29u, n=8 | 7-7, -1.02u, -7.3% (se 27.0), n=14 |
+| C toward | 4-3, -0.63u, n=7 | 3-1, +1.35u, n=4 | 1-0, +1.06u, n=1 | 4-6, -3.65u, n=10 | 8-4, +1.78u, +14.9% (se 25.5), n=12 |
+| C away | 9-4, +3.75u, n=13 | 0-1, -1.00u, n=1 | n=0 | 1-6, -5.10u, n=7 | 9-5, +2.75u, +19.6% (se 26.9), n=14 |
+| No flag fired | 18-14, -2.49u, n=32 | 17-8, +7.09u, n=25 | 3-3, -0.38u, n=6 | 11-9, -0.66u, n=20 | 38-25, +4.22u, +6.7% (se 11.7), n=63 |
+| Unreadable | n=0 | n=0 | 25-21, +3.32u, n=46 | 8-7, -0.61u, n=15 | 25-21, +3.32u, +7.2% (se 14.9), n=46 |
+
+**Flagged for close monitoring (each has units above 0; all in-sample):** NBA A toward +0.35u (n=5), NBA A away +0.98u (n=12), NBA C away +3.75u (n=13, the market moved against the side: the
+"wrong" way for any reading of these flags as a signal), NFL A toward +1.93u (n=5), NFL C toward +1.35u (n=4), NFL no flag fired +7.09u (n=25), CBB C toward +1.06u (n=1), CBB unreadable +3.32u
+(n=46); headline A toward +2.28u (n=10), C toward +1.78u (n=12), C away +2.75u (n=14), no flag fired +4.22u (n=63), unreadable +3.32u (n=46). Under n=30 is a small sample (all but the last three
+lines and CBB unreadable). The standard errors of these slices run from 11.7 to 45.8 points (the CBB n=1 slice has none); none separates from zero or from each other. The first draft's list
+included a "B rising" slice (+8.66u, n=98) that no longer exists, and its "9 to 28" range was measured on different slices.
+
+---|---|---|---|---|---|
 | A toward | 3-2, +0.35u, n=5 | 4-1, +1.93u, n=5 | n=0 | 4-6, -2.91u, n=10 | 7-3, +2.28u, +22.8% (se 27.8), n=10 |
 | A away | 7-5, +0.98u, n=12 | 1-1, -0.06u, n=2 | n=0 | 2-4, -2.26u, n=6 | 8-6, +0.92u, +6.6% (se 26.9), n=14 |
 | A quiet | 24-17, -1.24u, n=41 | 17-9, +6.02u, n=26 | 4-3, +0.68u, n=7 | 15-15, -3.55u, n=30 | 45-29, +5.46u, +7.4% (se 10.7), n=74 |
@@ -349,13 +380,13 @@ Additive keys inside the existing `v2` block, so `strip_plays_v2` already remove
 
 ```
 v2.flags = {
-  "rule": "v2f-1", "asof": 1795477500, "window_min": 1440, "span_min": 1290, "src_age_min": {"pinnacle": 6, "us": 6},
+  "rule": "v2f-2", "asof": 1795477500, "window_min": 1440, "span_min": 1290, "src_age_min": {"pinnacle": 6, "us": 6},
   "pin": {                                   // Flag A, or null
     "state": "toward" | "away" | "quiet", "pts": 2.31, "t_a": 1.5,
     "from": -105, "to": -129,                // American price for the side at the same line (moneyline: the side's price)
-    "line": -3.5 | null, "t_from": 1795400000, "t_to": 1795470000, "rows": 12 },
-  "limit": {                                 // Flag B fact (sf_signals.limit_read), or null
-    "from": 3000, "to": 20000, "pct": 566.7, "rising": true, "rows": 14 },
+    "line": -3.5 | null, "t_from": 1795400000, "t_to": 1795470000, "rows": 12, "dropped": 0 },     // dropped = swapped Pinnacle rows left out (1.1)
+  "limit": {                                 // Flag B fact (v2f-2: from = the limit showing when the 24 h window opened, to = limit_read's now), or null
+    "market": "spread", "from": 3000, "to": 20000, "rows": 14, "t_from": 1795400000, "asof": 1795477500 },
   "line": {                                  // Flag C, or null
     "kind": "line" | "price", "state": "toward" | "away" | "quiet", "t_c": 1.0,
     "pin": {"from": 22.0, "to": 19.0},       // the side's line (kind line) or American price (kind price)
@@ -384,7 +415,7 @@ v2.series = {                                // the two mini charts, or null
 
 ### 3.2 `v2_plays.flags` (top level, live only)
 
-`{"rule": "v2f-1", "t_a": {...table 1.2...}, "t_c": {...table 1.4...}, "window_min": 1440, "stale_min": 30, "limit_schedule_share":
+`{"rule": "v2f-2", "t_a": {...table 1.2...}, "t_c": {...table 1.4...}, "window_min": 1440, "stale_min": 30, "limit_schedule_share":
 {"nba": 0.99, "nfl": 0.98, "cbb": 0.97, "cfb": 0.96}, "books": ["Pinnacle","DraftKings","FanDuel","BetMGM","BetRivers","bet365"],
 "context_only": true}`. The page reads thresholds and shares from here, never from its own constants.
 
@@ -398,7 +429,7 @@ v2.series = {                                // the two mini charts, or null
 
 | File | Change |
 |---|---|
-| `scripts/sharps_v2/plays_v2.py` | New pure functions `flag_pin(rows, g, norm, asof, sport)`, `flag_limit(rows, g, asof)` (wraps `SIG.limit_read`), `flag_line(rows, g, norm, asof, sport)`, `flag_series(rows, g, norm, asof, n=16)`, `flags_block(...)`; constants `FLAGS_RULE = "v2f-1"`, `FLAGS_T_A`, `FLAGS_T_C`, `FLAGS_WINDOW = 86400`, `FLAGS_STALE = 1800`, `FLAGS_SERIES_N = 16`, `FLAGS_US = US_BOOKS`. `market_v2` calls `flags_block` only when `side` is set and stores `v2["flags"]`, `v2["series"]`. `log_row` adds `mf`. `plays_fields` adds `flags`. |
+| `scripts/sharps_v2/plays_v2.py` | New pure functions `flag_pin(rows, g, norm, asof, sport)`, `flag_limit(rows, g, asof)` (wraps `SIG.limit_read`), `flag_line(rows, g, norm, asof, sport)`, `flag_series(rows, g, norm, asof, n=16)`, `flags_block(...)`; constants `FLAGS_RULE = "v2f-2"`, `FLAGS_T_A`, `FLAGS_T_C`, `FLAGS_WINDOW = 86400`, `FLAGS_STALE = 1800`, `FLAGS_SERIES_N = 16`, `FLAGS_US = US_BOOKS`. `market_v2` calls `flags_block` only when `side` is set and stores `v2["flags"]`, `v2["series"]`. `log_row` adds `mf`. `plays_fields` adds `flags`. |
 | `scripts/build_side_cards.py` | Pass the heartbeat (`data/exchange_edge_live.json` `seen`, NFL `data/book_tape/nfl/last.json`) into `market_v2`. **Guard:** the `flags_block` call is wrapped in `try/except Exception as e`; on failure the card gets `v2.flags = null`, `v2.series = null`, `v2.flags_error = "<type>"`, and the build prints `::warning::v2 flags dropped for <ev> <g>: <type>`. The build and every other key are never affected. |
 | `scripts/sharps_v2/check_size.py` | The 90 KB sub-budget and drop order of 3.1. |
 | `scripts/sharps_v2/flag_history.py` (new) | Point-in-time re-derivation for graded plays (2.4), prints the record per flag with n and the monitoring list; `--json` output to `pm_record/v2_flag_record.json` (copied into `live.json` as `v2_flag_record`, a new top key added to `V2_TOP_KEYS`). |
@@ -564,7 +595,7 @@ fixed 1080px width and reuse `vscShareCard`. Not in this build (decision D6).
 
 | # | Task | Model | Files | Done when |
 |---|---|---|---|---|
-| T1 | Commit the measurement as `flag_history.py`; regenerate every distribution and record table in this spec from it at a named data commit | Sonnet builds, Opus reviews the numbers against this spec | `scripts/sharps_v2/flag_history.py`, `docs/side-card-record.md` (new section "Market-move flags v2f-1") | the printed tables equal sections 1 and 2.4, or the spec is corrected first |
+| T1 | Commit the measurement as `flag_history.py`; regenerate every distribution and record table in this spec from it at a named data commit | Sonnet builds, Opus reviews the numbers against this spec | `scripts/sharps_v2/flag_history.py`, `docs/side-card-record.md` (new section "Market-move flags v2f-2") | the printed tables equal sections 1 and 2.4, or the spec is corrected first |
 | T2 | Flag functions, series, guard, `mf` log key, sub-budget | Sonnet builds; Opus reviews point-in-time reads, null rules and that nothing size-related reads the flags | `scripts/sharps_v2/plays_v2.py`, `scripts/build_side_cards.py`, `scripts/sharps_v2/check_size.py`, `tests/test_sharps_v2_plays.py` | Python tests in 4.6 pass; a local build on the live inputs shows the 3.1 byte numbers |
 | T3 | Prereg section added to `docs/sharp-tier-v2-prereg.md` (PROPOSED) | Opus writes, user approves (D5) | that file only | text of 2.3 present, status line unchanged |
 | T4 | History record: `pm_record/v2_flag_record.json` written by the record workflow, `v2_flag_record` in `live.json` | Sonnet builds, Opus reviews | `.github/workflows/pm-record.yml`, `plays_v2.V2_TOP_KEYS` | the file matches T1's tables |

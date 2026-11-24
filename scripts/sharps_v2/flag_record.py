@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""flag_record.json: the per-sport record of the market-move flags (docs/sharps-v2-flags-spec.md, rule v2f-1), published beside tier_record.json on
+"""flag_record.json: the per-sport record of the market-move flags (docs/sharps-v2-flags-spec.md, rule v2f-2), published beside tier_record.json on
 `pm-cards-live`. Rebuilt every run from the frozen cards, the graded rows and the book tape, point in time: a play's flags come from its own card
 at its cut (the stored v2.flags on a new card, a re-derivation from the tape rows at or before the cut on an old one), never from its result.
 
@@ -32,7 +32,7 @@ SLICES = ("a_toward", "a_away", "c_toward", "c_away", "none", "unreadable")
 LABEL = {"a_toward": "A toward", "a_away": "A away", "c_toward": "C toward", "c_away": "C away", "none": "no flag fired", "unreadable": "flags unreadable"}
 SMALL_N = TH.SMALL_N
 FORWARD_NOTE = "forward starts at the first logged lock that carries the flags"
-RULE = ("Market-move flags v2f-1 (docs/sharps-v2-flags-spec.md), read from each play's own card at its cut. Flat 1u at the stored price at the cut, not the "
+RULE = ("Market-move flags v2f-2 (docs/sharps-v2-flags-spec.md), read from each play's own card at its cut. Flat 1u at the stored price at the cut, not the "
         "size the page shows. A and C are separate flags, so a play can sit in more than one slice; none = a readable flag set where neither fired, "
         "unreadable = neither readable. The Pinnacle limit is a fact, not a slice. in_sample = every play cut before the first logged lock that carries the "
         "flags (the rule was written after those results, so these are derived after the fact); forward = only plays whose flags were logged at lock, "
@@ -141,7 +141,7 @@ def fmt_cell(st):
 
 
 def print_report(out):
-    print("\nMARKET-MOVE FLAGS v2f-1 (docs/sharps-v2-flags-spec.md): the same plays by flag state, point in time; in-sample; context only")
+    print("\nMARKET-MOVE FLAGS v2f-2 (docs/sharps-v2-flags-spec.md): the same plays by flag state, point in time; in-sample; context only")
     print("A = Pinnacle's price, C = the market's number or price. A play can sit in an A slice and a C slice; the Pinnacle limit is a fact, not a slice.")
     print(f"Flags read from a stored card block: {out['src']['frozen']}, re-derived from the tape at the cut: {out['src']['derived']}, errors: {out['src']['error']}.")
     for name in [s for s in SPORTS] + ["headline"]:
