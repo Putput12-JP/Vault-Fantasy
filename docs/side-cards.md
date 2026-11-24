@@ -370,16 +370,19 @@ v2_plays.flags = {thresholds t_a and t_c, window_min, stale_min, series_points, 
 ```
 
 - **The window (v2f-2).** The tape writes a row only when a book's numbers change, so the number a book was showing when the 24-hour window opened is its **last row at or before the
-  window start** (it held until the next row); with none, its first row inside the window. A book whose only row is a **first quote inside the window** has no history and is not read
-  (null, never a move of 0); a single row already showing when the window opened held all window (a real 0). v2f-1 started the window at the first row inside it, which dropped the first
+  window start** (it held until the next row); with none, its first row inside the window. **A book needs 2 or more readable rows** (Flag A's Pinnacle and every Flag C book alike): a single
+  stored row is never a move, whether it was first quoted inside the window or already showing when it opened (null, never a move of 0); two rows both before the window are a real 0. v2f-1 started the window at the first row inside it, which dropped the first
   move of the window and read a first quote as a 0; it never shipped.
-- **Swapped Pinnacle rows.** A stored Pinnacle row on the other side of even money (moneyline fair at least 0.05 from 0.5; spread: the sign of the line) from every US book showing at its time (2 or
+- **Swapped Pinnacle rows.** A stored Pinnacle row on the other side of even money (moneyline fair at least 0.05 from 0.5; spread: the sign of the line, both at least 1.5 points from pick'em) from every US book showing at its time (2 or
   more), or, with fewer than 2 US books, from BOTH of Pinnacle's neighbouring rows, is dropped before any read (`pin.dropped`; `pinnacle_row_inconsistent` when nothing is left). Real case:
   `cfb:290201` M-OH at WMU on 2026-11-23, first row ml [-323, 260] and home +7.5, ten minutes later [245, -301] and -7.5, US books at WMU -245 to -305: a 45-point Flag A if read raw.
-  A total is never checked. No graded play has a dropped row.
+  A total is never checked. No graded play has a dropped row; across the whole tape it drops rows in 4 CFB moneyline and 6 CFB spread markets and nowhere else (without the 1.5 point margin it also dropped
+  8 NBA and 1 CBB spread markets near -1 and +1, e.g. nba:295485).
 - **Flag A** (Pinnacle's price): the two-way no-vig fair for the side (`mine / (mine + other)`, the formula of `sf_signals.ev_read`) at the last readable
   Pinnacle row at or before `asof` against the row hanging when the window opened (above). Moneylines need 2 or more readable rows; spreads and totals compare only quotes at
-  the same line as now (a line change is Flag C's) and need **2 or more of them** (a first quote at a new line is `no_same_line_history`, never a 0). `pts` = fair move x 100; toward at
+  the same line as now (a line change is Flag C's) and need **2 or more of them** (a first quote at a new line is `no_same_line_history`, never a 0). The row showing at the window start is picked
+  across all lines: when it is at another line, `from` is the first earlier quote at the current line INSIDE the window, and with none the flag is `no_same_line_history` (home spread -3.5 three days ago, -3 two
+  days ago, -3.5 an hour ago is null, not a 6-point move from a 72-hour-old quote). `pts` = fair move x 100; toward at
   `pts >= T_A`, away at `pts <= -T_A`, else quiet, compared on the stored 2-decimal value.
 - **Flag C**: spreads and totals, Pinnacle's side line moved `T_C` or more AND at least 2 of the 5 US books moved their own line 1 point or more the same way.
   Moneylines (`kind: "price"`): at least 2 US books moved their no-vig price for the side by `T_A(ml)` or more one way and none the other way. A book is read only if it has history (the window rule above). `same_way` counts
@@ -415,7 +418,7 @@ v2_plays.flags = {thresholds t_a and t_c, window_min, stale_min, series_points, 
   `mf` key ("not logged", never quiet); a dropped flag block logs `mf: null`. Old rows are never rewritten and every reader tolerates both.
 - **Coverage and size on the Nov 23 inputs** (v2f-2; a pinned `--now` of Nov 23, 1:15 PM CT, the heartbeat 9 minutes old). Live slate, 16 shown plays (NBA 8, NFL 1, CBB 5, CFB 2): every play has a flag block,
   a limit fact and (15 of 16) charts; Flag A and Flag C are readable on 15 (the other CFB play's side did not map to a team: `side_unmapped`). The 205 graded plays, re-derived from the tape at each cut: Flag A readable on
-  NBA 57 of 58, NFL 32 of 33, **CBB 6 of 53**, CFB 44 of 61; Flag C on NBA 58, NFL 33, **CBB 7 of 53**, CFB 46 of 61 (the CBB tape began 2026-11-19 9:08 AM CT; earlier plays are null for good). The 61
+  NBA 57 of 58, NFL 32 of 33, **CBB 6 of 53**, CFB 43 of 61; Flag C on NBA 58, NFL 33, **CBB 7 of 53**, CFB 46 of 61 (the CBB tape began 2026-11-19 9:08 AM CT; earlier plays are null for good). The 61
   plays with neither flag: CBB 46 = 8 `side_unmapped` (no Vault join; 2 have tape rows) + 38 with no Pinnacle row at the cut (1 has US-book rows); CFB 15 = 9 `side_unmapped` + 6 with no Pinnacle row at the cut
   (4 have US-book rows). `live.json` grew by 15.6 KB (1,479,703 to 1,495,298 bytes) on 16 plays, about 1 KB a play (flags and charts 15.0 KB), so the 90 KB sub-budget holds about 90 plays. The 245 shown plays
   of the rebuilt frozen cards added 139 KB across the cards (0.6 KB a play) and the 245 forward log rows 107 KB (0.4 KB a row). Old (origin/main) and new builds on the same inputs and `--now`: every

@@ -159,7 +159,8 @@ size (null, never 0). The values are an **ordering by evidence, not fitted to re
 Added by the user's decisions of 2026-11-23 (D1 to D5, D7 of `docs/sharps-v2-flags-spec.md`). It stays **PROPOSED** with the rest of this file: the
 commit that changes the status line to Registered is the registration, and the first play that can count is the first one cut after it. The status line
 above is unchanged. The rule id is `v2f-2`: a first draft (`v2f-1`) read the start of the 24-hour window as the first stored row inside it, which dropped the first move of the window
-and read a first quote at a new line as a move of 0; review found it before anything shipped and the rule and its thresholds were re-measured (spec section 1).
+and read a first quote at a new line as a move of 0; review found it before anything shipped and the rule and its thresholds were re-measured (spec section 1). A second review fix, also before anything shipped, picks the row showing at the window start across all lines (so a quote at the current line from days ago is never "from" when a different line was showing when the window opened) and
+requires 2 or more rows of every book; no threshold moved because of it.
 
 Flags A (Pinnacle's price, fixed line, 24 h) and C (the market's number, or the books' price on a moneyline) are defined in
 `docs/sharps-v2-flags-spec.md` section 1, thresholds frozen in `scripts/sharps_v2/flags_v2.py` (`FLAGS_T_A`, `FLAGS_T_C`, re-exported by

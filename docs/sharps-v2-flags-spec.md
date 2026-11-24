@@ -93,14 +93,18 @@ So no flag below may be worded as confirmation. They describe **what the market 
   `t <= asof` are read. Nothing after the cut ever enters a frozen card or the history.
 - **Window:** the 24 hours ending at `asof` (`window_min: 1440`), the same window `steam_record.py` and `sharp_tape.py`'s `pp` use. The tape writes a row only when a
   book's numbers change, so the number a book was showing **when the window opened** is its **last stored row at or before the window start** (it held until the next row);
-  when it has none, its first stored row inside the window. That row is the book's "from" value. A book whose only row is a **first quote inside the window** has no history
-  and is not read (null, never a move of 0); a single row that was already showing when the window opened held all window and reads as a move of 0. Hours actually covered
-  are reported as `span_min`.
+  when it has none, its first stored row inside the window. That row is the book's "from" value, picked **across all lines** for a spread or total (see Flag A below for what that means when
+  the line has changed). **A book needs two or more readable rows to be read at all** (the same minimum for Flag A's Pinnacle and Flag C's every book, moneyline or line): a single stored row
+  is never a move, whether it was first quoted inside the window or already showing when the window opened (null, never a move of 0). Two rows that were both showing before the window opened
+  are a real move of 0. Hours actually covered are reported as `span_min`.
 - **Swapped Pinnacle rows.** A stored Pinnacle row is dropped (`dropped` on the flag, reason `pinnacle_row_inconsistent` when nothing is left) when it sits on the other side of
-  even money from every US book showing at its time (2 or more of them; moneyline fair at least 0.05 from 0.5 on both sides of the comparison, spread: the sign of the line), or,
+  even money from every US book showing at its time (2 or more of them; moneyline fair at least 0.05 from 0.5 on both sides of the comparison, spread: the sign of the line with both lines at least
+  1.5 points from pick'em), or,
   with fewer than 2 US books, from BOTH of Pinnacle's own neighbouring rows. Real case: `cfb:290201` M-OH at WMU, 2026-11-23, first Pinnacle row ml [-323, 260] and spread
   home +7.5, ten minutes later [245, -301] and -7.5, US books at WMU -245 to -305: read raw, that is a 45-point Flag A. A total has no side and is never checked. None of the 205
-  graded plays has a dropped row.
+  graded plays has a dropped row. Across every started game on the tape (origin/main afd35efe) the rule drops rows in 4 CFB moneyline and 6 CFB spread markets (lines of 6.5 to 11 points: all clear swaps) and in no
+  NBA, NFL or CBB market. Its first version had no line margin and dropped 8 NBA and 1 CBB spread markets whose Pinnacle line sat at -1 or +1 against US books showing the other sign (for example nba:295485);
+  a sign read that close to pick'em is not evidence of a swap, so the 1.5 point margin was added and those markets are read as written.
 - **Side mapping:** `build_side_cards.side_norms` (home, away, over, under). An unmapped side gives null flags with `why: "side_unmapped"`.
 - **Direction words:** **toward** = the move makes the play's side cost more (Pinnacle's fair for the side went up; the side's spread
   shrank, for example Cornell +22 to +19 or a favourite -3 to -4; a total went up for an over or down for an under). **away** = the
@@ -122,8 +126,10 @@ Rule (the `steam_record.py` signal, evaluated once at `asof`):
 
 1. Pinnacle rows for the market with `t <= asof` (after the swapped-row check), the last one is `now`.
 2. Moneyline: at least **2** rows in all; `from` is the row hanging when the window opened (section 1.1). Spread or total: the rows **at the same main line as `now`** (a line change
-   is not a price move; it belongs to Flag C) must number at least **2** (`now` and an earlier one; a first quote at a new line is `no_same_line_history`), and `from` is the
-   hanging row among them.
+   is not a price move; it belongs to Flag C) must number at least **2** (`now` and an earlier one; a first quote at a new line is `no_same_line_history`). `from` is the row hanging when the window
+   opened, **picked across all lines**: when that row is at the current line it is `from`; when a different line was showing at the window start, `from` is the first earlier quote at the current line
+   **inside** the window, and with none the flag is `no_same_line_history`. (Example: home spread -3.5 three days ago, -3 two days ago, -3.5 an hour ago is null, not a 6-point move from a 72-hour-old quote
+   at a line the book had left; v2f-2 as first written filtered to the current line before picking the start and read exactly that.)
 3. `pin_move_pts = (fair_now - fair_from) x 100` for the side. State: toward if `pin_move_pts >= T_A`, away if `<= -T_A`, else quiet.
 
 Null when: fewer than 2 Pinnacle rows before `asof` (`why: "no_pinnacle_history"`), no Pinnacle row at all (`"no_tape_rows_for_game"`), no earlier quote at the current line
@@ -135,23 +141,23 @@ points of no-vig fair):**
 | Sport, market | n | median | p75 | p80 | p90 | p95 | p99 |
 |---|---|---|---|---|---|---|---|
 | NBA moneyline | 248 | 1.90 | 3.51 | 4.20 | 5.96 | 8.96 | 13.76 |
-| NBA spread (fixed line) | 221 | 0.70 | 1.39 | 1.61 | 1.85 | 2.31 | 2.89 |
-| NBA total (fixed line) | 217 | 0.79 | 1.48 | 1.61 | 2.06 | 2.39 | 2.74 |
+| NBA spread (fixed line) | 220 | 0.70 | 1.27 | 1.49 | 1.85 | 2.31 | 2.89 |
+| NBA total (fixed line) | 217 | 0.80 | 1.48 | 1.60 | 2.06 | 2.36 | 2.74 |
 | NFL moneyline | 116 | 0.74 | 1.39 | 1.55 | 2.07 | 2.75 | 4.47 |
-| NFL spread | 106 | 0.91 | 1.58 | 1.62 | 2.18 | 2.53 | 3.11 |
-| NFL total | 95 | 0.69 | 1.38 | 1.60 | 2.35 | 2.81 | 4.62 |
+| NFL spread | 101 | 0.77 | 1.39 | 1.47 | 1.94 | 2.40 | 2.87 |
+| NFL total | 89 | 0.54 | 1.22 | 1.38 | 2.13 | 2.39 | 3.19 |
 | CBB moneyline | 141 | 1.24 | 2.51 | 2.97 | 3.66 | 4.44 | 5.21 |
 | CBB spread | 153 | 0.88 | 1.22 | 1.44 | 1.99 | 2.44 | 3.00 |
 | CBB total | 143 | 0.65 | 1.08 | 1.30 | 1.83 | 2.27 | 3.67 |
 | CFB moneyline | 331 | 0.94 | 2.09 | 2.48 | 3.33 | 4.21 | 6.76 |
-| CFB spread | 306 | 0.69 | 1.37 | 1.48 | 1.94 | 2.29 | 3.17 |
-| CFB total | 296 | 0.67 | 1.34 | 1.56 | 1.88 | 2.33 | 2.98 |
+| CFB spread | 300 | 0.69 | 1.37 | 1.48 | 1.94 | 2.29 | 3.19 |
+| CFB total | 291 | 0.67 | 1.34 | 1.44 | 1.79 | 2.21 | 2.90 |
 
 (Measured under the v2f-2 window rule on the tape at origin/main afd35efe, 2026-11-23 1:30 PM CT, started games with a readable flag, 24 hours ending 15 minutes before start. The n
 for spreads and totals is below the number of games because a market whose current line has no earlier quote is null.)
 
 On the graded plays (signed toward the play side, so the median says which way the market went on Sharps picks): NBA median -0.85
-(n=57), NFL 0.00 (n=32), CBB +0.86 (n=6), CFB +0.12 (n=44). Sharps plays are not, on the median, sides Pinnacle was moving toward.
+(n=57), NFL 0.00 (n=32), CBB +0.86 (n=6), CFB +0.21 (n=43). Sharps plays are not, on the median, sides Pinnacle was moving toward.
 
 **Threshold `T_A`:** the 80th percentile of the absolute move for the sport and market, rounded to the nearest 0.5 point. It marks
 roughly the largest fifth of moves in either direction (measured fire rate 13% to 26%, either direction), so about one play in ten is "toward".
@@ -163,9 +169,10 @@ roughly the largest fifth of moves in either direction (measured fire rate 13% t
 | CBB | 3.0 | 1.5 | **1.5** (was 1.0) |
 | CFB | **2.5** (was 2.0) | 1.5 | 1.5 |
 
-Fire rate under these thresholds, either direction (toward in brackets), readable games: NBA moneyline 21% (9%), spread 21% (11%), total 24% (13%); NFL 22% (12%), 26% (17%), 21% (15%);
-CBB 18% (8%), 18% (12%), 13% (7%); CFB 20% (9%), 20% (12%), 21% (12%). Under the old thresholds on the new window rule the three changed cells would fire on 41% (NFL total),
-28% (CBB total) and 27% (CFB moneyline) of games, which is why they moved.
+Fire rate under these thresholds, either direction (toward in brackets), readable games: NBA moneyline 21% (9%), spread 20% (11%), total 23% (13%); NFL 22% (12%), 19% (11%), 17% (12%);
+CBB 18% (8%), 18% (12%), 13% (7%); CFB 20% (9%), 20% (11%), 19% (11%). Under the v2f-1 thresholds on the v2f-2 window rule the three changed cells would fire on 36% (NFL total),
+28% (CBB total) and 27% (CFB moneyline) of games, which is why they moved. (The line-start fix of this revision left every threshold unchanged: it moved the NFL spread rate from 26% to 19%,
+the NFL total from 21% to 17% and the CFB total from 21% to 19%.)
 
 **The user's example as a reference:** +105 to -129 is 48.8% to 56.3% raw implied, **+7.5 points** (the request said about 6.7; the
 no-vig figure needs the other side's price, which the screenshot does not show). That is above p95 in every sport and market except
@@ -278,23 +285,15 @@ or a flag on a market with no shown play.
 | NBA (58) | 5 / 12 / 40 / 1 | 7 / 13 / 38 / 0 |
 | NFL (33) | 5 / 2 / 25 / 1 | 4 / 1 / 28 / 0 |
 | CBB (53) | 0 / 0 / 6 / 47 | 1 / 0 / 6 / 46 |
-| CFB (61) | 11 / 8 / 25 / 17 | 10 / 7 / 29 / 15 |
+| CFB (61) | 11 / 7 / 25 / 18 | 10 / 7 / 29 / 15 |
 
 Every graded NBA and NFL play has a limit fact; CBB 9 of 53 and CFB 46 of 61. The "null" counts are the reasons in 1.1 and 1.2: of the 15 CFB plays with neither flag readable, 9 are
 `side_unmapped` (no Vault join, so no team names) and 6 have no Pinnacle row at the cut (4 of them have US-book rows); of the 46 CBB plays, 8 are `side_unmapped` (2 of them have
-tape rows) and 38 have no Pinnacle row at the cut (the CBB tape began 2026-11-19 9:08 AM CT; 1 of the 38 has US-book rows). The 4 plays where only Flag A is null
-(NBA 1, NFL 1, CFB 2 and CBB 1) are first quotes at a new line (`no_same_line_history`), which the first draft read as a move of 0.
+tape rows) and 38 have no Pinnacle row at the cut (the CBB tape began 2026-11-19 9:08 AM CT; 1 of the 38 has US-book rows). The 6 plays where only Flag A is null
+(NBA 1, NFL 1, CBB 1 and CFB 3) are `no_same_line_history`: either a first quote at the current line, or a quote at the current line only from before the window while a different line was
+showing when it opened (the first draft read the first as a move of 0 and the second as a move from a quote days old).
 
 **Live slate:** see the 2026-11-23 build in `docs/side-cards.md` "Market-move flags" (counts are given there with the pinned build time).
-
----|---|---|---|
-| NBA (58) | 5 / 12 / 41 / 0 | 57 / 1 / 0 | 6 / 13 / 39 / 0 |
-| NFL (33) | 5 / 2 / 26 / 0 | 33 / 0 / 0 | 4 / 1 / 28 / 0 |
-| CBB (53) | 0 / 0 / 7 / 46 | 8 / 1 / 44 | 1 / 0 / 7 / 45 |
-| CFB (61) | 10 / 6 / 30 / 15 | 46 / 0 / 15 | 11 / 10 / 26 / 14 |
-
-**Live slate** (1:17 PM CT build, 12 shown plays): NBA 7 (A: 1 away, 6 quiet; B: 7 rising; C: 7 quiet), NFL 1 (all quiet; B rising),
-CBB 2 (A: 1 toward, 1 quiet; B: 1 rising, 1 not; C: 2 toward), CFB 2 (A: 1 quiet, 1 null; B: 2 rising; C: 1 quiet, 1 null).
 
 ---
 
@@ -332,7 +331,7 @@ line and not a slice (D1).
 ### 2.4 History, re-derived point in time
 
 Feasible wherever the tape existed at the cut; the flags read only tape rows with `t <= cut`, so a frozen card's flags re-derive the same
-whenever they are computed (staleness is not read on a frozen card or in the history, see 1.1). Coverage of the 205 graded plays, v2f-2: Flag A readable on NBA 57 of 58, NFL 32 of 33, CFB 44 of
+whenever they are computed (staleness is not read on a frozen card or in the history, see 1.1). Coverage of the 205 graded plays, v2f-2: Flag A readable on NBA 57 of 58, NFL 32 of 33, CFB 43 of
 61, CBB 6 of 53; Flag C readable on NBA 58, NFL 33, CFB 46, **CBB 7 of 53** (the CBB tape began 2026-11-19 9:08 AM CT; plays cut before that are null forever, said so on the card as "No market
 history stored for this game"). Neither flag is readable on 61 plays (CBB 46, CFB 15; the reasons are in 1.7).
 
@@ -342,33 +341,15 @@ one flag readable and neither toward nor away; "Unreadable" = neither readable. 
 | Slice | NBA | NFL | CBB | CFB (no size shown) | NBA+NFL+CBB |
 |---|---|---|---|---|---|
 | A toward | 3-2, +0.35u, n=5 | 4-1, +1.93u, n=5 | n=0 | 5-6, -2.60u, n=11 | 7-3, +2.28u, +22.8% (se 27.8), n=10 |
-| A away | 7-5, +0.98u, n=12 | 0-2, -2.00u, n=2 | n=0 | 4-4, -0.29u, n=8 | 7-7, -1.02u, -7.3% (se 27.0), n=14 |
+| A away | 7-5, +0.98u, n=12 | 0-2, -2.00u, n=2 | n=0 | 3-4, -1.36u, n=7 | 7-7, -1.02u, -7.3% (se 27.0), n=14 |
 | C toward | 4-3, -0.63u, n=7 | 3-1, +1.35u, n=4 | 1-0, +1.06u, n=1 | 4-6, -3.65u, n=10 | 8-4, +1.78u, +14.9% (se 25.5), n=12 |
 | C away | 9-4, +3.75u, n=13 | 0-1, -1.00u, n=1 | n=0 | 1-6, -5.10u, n=7 | 9-5, +2.75u, +19.6% (se 26.9), n=14 |
-| No flag fired | 18-14, -2.49u, n=32 | 17-8, +7.09u, n=25 | 3-3, -0.38u, n=6 | 11-9, -0.66u, n=20 | 38-25, +4.22u, +6.7% (se 11.7), n=63 |
+| No flag fired | 18-14, -2.49u, n=32 | 17-8, +7.09u, n=25 | 3-3, -0.38u, n=6 | 12-8, +1.40u, n=20 | 38-25, +4.22u, +6.7% (se 11.7), n=63 |
 | Unreadable | n=0 | n=0 | 25-21, +3.32u, n=46 | 8-7, -0.61u, n=15 | 25-21, +3.32u, +7.2% (se 14.9), n=46 |
 
 **Flagged for close monitoring (each has units above 0; all in-sample):** NBA A toward +0.35u (n=5), NBA A away +0.98u (n=12), NBA C away +3.75u (n=13, the market moved against the side: the
-"wrong" way for any reading of these flags as a signal), NFL A toward +1.93u (n=5), NFL C toward +1.35u (n=4), NFL no flag fired +7.09u (n=25), CBB C toward +1.06u (n=1), CBB unreadable +3.32u
-(n=46); headline A toward +2.28u (n=10), C toward +1.78u (n=12), C away +2.75u (n=14), no flag fired +4.22u (n=63), unreadable +3.32u (n=46). Under n=30 is a small sample (all but the last three
-lines and CBB unreadable). The standard errors of these slices run from 11.7 to 45.8 points (the CBB n=1 slice has none); none separates from zero or from each other. The first draft's list
-included a "B rising" slice (+8.66u, n=98) that no longer exists, and its "9 to 28" range was measured on different slices.
-
----|---|---|---|---|---|
-| A toward | 3-2, +0.35u, n=5 | 4-1, +1.93u, n=5 | n=0 | 4-6, -2.91u, n=10 | 7-3, +2.28u, +22.8% (se 27.8), n=10 |
-| A away | 7-5, +0.98u, n=12 | 1-1, -0.06u, n=2 | n=0 | 2-4, -2.26u, n=6 | 8-6, +0.92u, +6.6% (se 26.9), n=14 |
-| A quiet | 24-17, -1.24u, n=41 | 17-9, +6.02u, n=26 | 4-3, +0.68u, n=7 | 15-15, -3.55u, n=30 | 45-29, +5.46u, +7.4% (se 10.7), n=74 |
-| A null | n=0 | n=0 | 25-21, +3.32u, n=46 | 8-7, -0.61u, n=15 | 25-21, +3.32u, n=46 |
-| B rising | 34-23, +1.10u, n=57 | 22-11, +7.88u, n=33 | 4-4, -0.32u, n=8 | 21-25, -8.72u, n=46 | 60-38, +8.66u, +8.8% (se 9.3), n=98 |
-| C toward | 4-2, +0.37u, n=6 | 3-1, +1.35u, n=4 | 1-0, +1.06u, n=1 | 5-6, -2.82u, n=11 | 8-3, +2.78u, +25.3% (se 25.5), n=11 |
-| C away | 9-4, +3.75u, n=13 | 0-1, -1.00u, n=1 | n=0 | 2-8, -5.99u, n=10 | 9-5, +2.75u, +19.6% (se 26.9), n=14 |
-| C quiet | 21-18, -4.02u, n=39 | 19-9, +7.53u, n=28 | 4-3, +0.49u, n=7 | 15-11, +1.19u, n=26 | 44-30, +4.00u, +5.4% (se 10.7), n=74 |
-
-**Flagged for close monitoring (each improves; all in-sample and small):** A toward NBA+NFL+CBB +2.28u (n=10); NFL A toward +1.93u (n=5);
-NBA A away +0.98u (n=12); C toward NBA+NFL+CBB +2.78u (n=11); C away NBA+NFL+CBB +2.75u (n=14) and NBA C away +3.75u (n=13), which
-runs the "wrong" way for any reading of these flags as a signal; NFL A quiet +6.02u (n=26) and NFL C quiet +7.53u (n=28); B rising
-NBA+NFL+CBB +8.66u (n=98), which is essentially the whole record because B is near-universal. Every standard error is 9 to 28 points;
-none of these separates from zero or from each other.
+"wrong" way for any reading of these flags as a signal), NFL A toward +1.93u (n=5), NFL C toward +1.35u (n=4), NFL no flag fired +7.09u (n=25), CFB no flag fired +1.40u (n=20, no size shown), CBB C toward +1.06u (n=1), CBB unreadable +3.32u
+(n=46); headline A toward +2.28u (n=10), C toward +1.78u (n=12), C away +2.75u (n=14), no flag fired +4.22u (n=63), unreadable +3.32u (n=46). Under n=30 is a small sample (every slice listed except CBB unreadable and the headline no-flag and unreadable slices). The standard errors of these slices run from 11.7 to 45.8 points (the CBB n=1 slice has none); none separates from zero or from each other.
 
 ---
 

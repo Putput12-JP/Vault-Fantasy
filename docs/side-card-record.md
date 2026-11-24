@@ -323,14 +323,22 @@ new (v2f-2) on the same 205 plays: headline A away 8-6, +0.92u (n=14) to 7-7, -1
 NFL A away 1-1, -0.06u to 0-2, -2.00u; CFB A toward 4-6 (n=10) to 5-6 (n=11), A away 2-4 (n=6) to 4-4 (n=8), C toward 5-6 (n=11) to 4-6 (n=10), C away 1-8 (n=9) to 1-6 (n=7); every other cell is the same.
 Two slices that improved under v2f-1 (headline A away, NBA C toward) no longer do.
 
+**A second fix in the same rule (window start across lines), before anything shipped.** v2f-2 as first written filtered Pinnacle's rows to the current line BEFORE picking the row showing when the window opened, so a quote
+at the current line from days ago became "from" when a different line was showing at the window start (home spread -3.5 three days ago, -3 two days ago, -3.5 an hour ago read as a 6-point move from a 72-hour-old
+quote; real cases cfb-miaoh-kentst total and cfb-ncar-vir spread). The start is now picked across all lines and, when it is at another line, `from` is the first earlier quote at the current line inside the window or the
+flag is null. Two cells moved, none on the headline: CFB A away 4-4, -0.29u, n=8 to 3-4, -1.36u, n=7; CFB no flag fired 11-9, -0.66u, n=20 to 12-8, +1.40u, n=20 (so that CFB slice now improves and is flagged below, n=20, small
+sample). Flag A readable on CFB went from 44 to 43 plays and no other count, threshold or fire rate of Flag C changed; no threshold moved at all. Two smaller changes: every book now needs 2 or more rows to be read, for Flag A and
+Flag C alike (a lone old moneyline row used to read as a move of 0 in Flag C only; no graded play changed), and the swapped-row sign check ignores spread lines within 1.5 points of pick'em (it had dropped rows in 8 NBA and 1 CBB
+spread markets near -1 and +1; now it drops rows only in 4 CFB moneyline and 6 CFB spread markets, none of them graded plays).
+
 **Data read:** `origin/pm-holders-data` at commit `7024604abfd69fa5f16df6b449b80b7a0ccc33e0` (Nov 23), tape at `origin/main` afd35efe33; 205 graded shown plays (sf, variant
 all), 3 voided left out; all 205 flag reads re-derived from the tape (none stored yet). Reproduce with `python3 -I scripts/sharps_v2/tier_history.py --ref <commit>`. No graded play has a
 dropped Pinnacle row.
 
-**Coverage, outright.** Flag A is readable on 57 of 58 NBA plays, 32 of 33 NFL, **6 of 53 CBB** and 44 of 61 CFB; Flag C on 58, 33, **7 of 53 CBB** and 46 of 61 CFB. Neither is readable on 61 plays:
+**Coverage, outright.** Flag A is readable on 57 of 58 NBA plays, 32 of 33 NFL, **6 of 53 CBB** and 43 of 61 CFB; Flag C on 58, 33, **7 of 53 CBB** and 46 of 61 CFB. Neither is readable on 61 plays:
 **CBB 46** = 8 `side_unmapped` (the card has no Vault join, so no team names; 2 of them have tape rows) + 38 with no Pinnacle row at the cut (the CBB tape began 2026-11-19 9:08 AM CT; 1 of
-the 38 has US-book rows); **CFB 15** = 9 `side_unmapped` (no Vault join) + 6 with no Pinnacle row at the cut (4 of them have US-book rows). The 4 plays where only Flag A is null are first
-quotes at a new line.
+the 38 has US-book rows); **CFB 15** = 9 `side_unmapped` (no Vault join) + 6 with no Pinnacle row at the cut (4 of them have US-book rows). The 6 plays where only Flag A is null (NBA 1, NFL 1, CBB 1, CFB 3) are `no_same_line_history`: a first quote at the current line, or a quote at the current line only from before the window while a
+different line was showing when it opened.
 
 A play can sit in an A slice and a C slice (they are separate flags), so the slices overlap. "No flag fired" = at least one flag readable and neither toward nor away.
 "Unreadable" = neither readable. "Improves" in this entry means units above 0, not better than a baseline.
@@ -346,10 +354,10 @@ A play can sit in an A slice and a C slice (they are separate flags), so the sli
 | New (the same plays by flag) | NBA | NFL | CBB | CFB (no size) | Headline NBA+NFL+CBB |
 |---|---|---|---|---|---|
 | A toward | 3-2, +0.35u, n=5 | 4-1, +1.93u, n=5 | n=0 | 5-6, -2.60u, n=11 | 7-3, +2.28u, +22.8% (se 27.8), n=10 |
-| A away | 7-5, +0.98u, n=12 | 0-2, -2.00u, n=2 | n=0 | 4-4, -0.29u, n=8 | 7-7, -1.02u, -7.3% (se 27.0), n=14 |
+| A away | 7-5, +0.98u, n=12 | 0-2, -2.00u, n=2 | n=0 | 3-4, -1.36u, n=7 | 7-7, -1.02u, -7.3% (se 27.0), n=14 |
 | C toward | 4-3, -0.63u, n=7 | 3-1, +1.35u, n=4 | 1-0, +1.06u, n=1 | 4-6, -3.65u, n=10 | 8-4, +1.78u, +14.9% (se 25.5), n=12 |
 | C away | 9-4, +3.75u, n=13 | 0-1, -1.00u, n=1 | n=0 | 1-6, -5.10u, n=7 | 9-5, +2.75u, +19.6% (se 26.9), n=14 |
-| No flag fired | 18-14, -2.49u, n=32 | 17-8, +7.09u, n=25 | 3-3, -0.38u, n=6 | 11-9, -0.66u, n=20 | 38-25, +4.22u, +6.7% (se 11.7), n=63 |
+| No flag fired | 18-14, -2.49u, n=32 | 17-8, +7.09u, n=25 | 3-3, -0.38u, n=6 | 12-8, +1.40u, n=20 | 38-25, +4.22u, +6.7% (se 11.7), n=63 |
 | Unreadable | n=0 | n=0 | 25-21, +3.32u, n=46 | 8-7, -0.61u, n=15 | 25-21, +3.32u, +7.2% (se 14.9), n=46 |
 
 The headline totals are unchanged by construction: every play is in "A or C fired", "No flag fired" or "Unreadable" (a play with both flags fired sits in two slices, so the slice counts add to
@@ -367,6 +375,7 @@ output of `tier_history.py`):
 | NFL A toward | 4-1, +1.93u | 5, small sample | 35.8 |
 | NFL C toward | 3-1, +1.35u | 4, small sample | 45.8 |
 | NFL no flag fired | 17-8, +7.09u | 25, small sample | 18.7 |
+| CFB (no size) no flag fired | 12-8, +1.40u | 20, small sample | 20.5 |
 | CBB C toward | 1-0, +1.06u | 1, small sample | none (n=1) |
 | CBB unreadable | 25-21, +3.32u | 46 | 14.9 |
 | Headline A toward | 7-3, +2.28u | 10, small sample | 27.8 |

@@ -33,6 +33,7 @@ FLAGS_US = ("BetMGM", "BetRivers", "DraftKings", "FanDuel", "bet365")
 FLAGS_BOOKS = ("Pinnacle", "DraftKings", "FanDuel", "BetMGM", "BetRivers", "bet365")   # display order; the only books ever shown
 FLAGS_C_MIN_US = 2                                # US books that must have a row, and (spreads, totals) that must move the same way
 FLAGS_SWAP_MARGIN = 0.05                          # a stored Pinnacle row is on "the other side of even money" only when both it and the reference are this far from 0.5
+FLAGS_SWAP_LINE = 1.5                             # a spread row has "the other sign" only when both it and the reference are at least this many points from pick'em
 FLAGS_C_BOOK_MOVE = 1.0                           # a US book "moved" when its own line moved this many points (the stale-number rule)
 # T_A: points of Pinnacle no-vig fair, the 80th percentile of the absolute 24-hour move for the sport and market (rounded to 0.5), user
 # decision D2 2026-11-23 (docs/sharps-v2-flags-spec.md 1.2). T_C: points of Pinnacle's main line move, the 80th percentile rounded UP to
@@ -111,9 +112,9 @@ def _window_from(rs, asof):
 
 
 def _has_history(rd, asof):
-    """A book can be read for a move when it has two or more readable rows, or its one row was already showing when the window opened (it held
-    all window). A single row first quoted INSIDE the window has nothing to move from."""
-    return len(rd) >= 2 or (len(rd) == 1 and rd[0]["t"] <= asof - FLAGS_WINDOW)
+    """A book can be read for a move only when it has two or more readable rows, the same minimum Flag A applies to Pinnacle: a single stored row is
+    never a move, whether it was first quoted inside the window or showed since before it (the tape cannot say a lone old row was not a feed gap)."""
+    return len(rd) >= 2
 
 
 def _side(v, g):
@@ -123,13 +124,13 @@ def _side(v, g):
     if g == "ml":
         return 1 if v >= 0.5 + FLAGS_SWAP_MARGIN else -1 if v <= 0.5 - FLAGS_SWAP_MARGIN else 0
     if g == "spread":
-        return 1 if v > 0 else -1 if v < 0 else 0
+        return 1 if v >= FLAGS_SWAP_LINE else -1 if v <= -FLAGS_SWAP_LINE else 0
     return None
 
 
 def _pin_clean(by, g, norm):
     """-> (readable Pinnacle rows, rows dropped). A stored Pinnacle row is dropped when it is on the other side of even money (moneyline fair, with a
-    margin; spread: the sign of the line) from every US book showing at its time (2 or more of them), or, with fewer than 2 US books, from BOTH
+    margin of 0.05; spread: the sign of the line, both at least 1.5 points from pick'em, so a pick'em line is never judged) from every US book showing at its time (2 or more of them), or, with fewer than 2 US books, from BOTH
     of Pinnacle's own neighbouring rows (an isolated outlier; a first or last row has only one neighbour and is never dropped on that evidence): a stored
     row with its two sides swapped would otherwise read as a 40-point move. A total has no side."""
     rd = _reads(by.get("Pinnacle"), g, norm)
@@ -181,9 +182,13 @@ def state_of(pts, t):
 # ---------- Flag A ----------
 
 def flag_pin(rows, g, norm, asof, sport, heartbeat=None):
-    """-> (flag or None, why). Pinnacle's no-vig fair for the side, `now` (the last readable row at or before asof) against `from` (the
-    first readable row inside the window; spreads and totals: at the SAME line as `now`, a line change is Flag C's), in points x 100.
-    Needs 2 or more readable Pinnacle rows in all. A `from` that is the `now` row itself reads as a move of 0 (the first quote at this line)."""
+    """-> (flag or None, why). Pinnacle's no-vig fair for the side, `now` (the last readable row at or before asof) against `from` (v2f-2: the
+    row Pinnacle was showing when the 24-hour window opened, i.e. its last readable row at or before the window start across ALL lines, else its first
+    row inside the window), in points x 100. Needs 2 or more readable Pinnacle rows in all. Spreads and totals compare only at the SAME line as `now`
+    (a line change is Flag C's): when the row showing at the window start is at a different line, `from` is the first earlier quote at the current line
+    INSIDE the window, and with none the flag is null (`no_same_line_history`), never a quote from days ago at a line the book has since left.
+    A first quote at the current line is also `no_same_line_history`, never a move of 0. A `from` that is the `now` row itself (every row was already
+    showing before the window opened) reads as a real move of 0."""
     if norm not in SIDES:
         return None, "side_unmapped"
     t_a = (FLAGS_T_A.get(sport) or {}).get(g)
@@ -201,7 +206,12 @@ def flag_pin(rows, g, norm, asof, sport, heartbeat=None):
     cand = rs if g == "ml" else [r for r in rs if _n(r["line"]) and _n(now["line"]) and abs(r["line"] - now["line"]) <= LINE_EPS]
     if len(cand) < 2:                                   # no quote at this line before the current one: a first quote is not a move from nothing
         return None, "no_same_line_history"
-    fr = _window_from(cand, asof)
+    fr = _window_from(rs, asof)                         # the row hanging when the window opened, across every line
+    if g != "ml" and not (_n(fr["line"]) and abs(fr["line"] - now["line"]) <= LINE_EPS):
+        inside = [r for r in cand[:-1] if r["t"] > asof - FLAGS_WINDOW]       # earlier quotes at THIS line inside the window
+        if not inside:
+            return None, "no_same_line_history"
+        fr = inside[0]
     if fr is None or fr["fair"] is None or now["fair"] is None:
         return None, "no_pinnacle_history"
     pts = round((now["fair"] - fr["fair"]) * 100, 2)
@@ -336,14 +346,15 @@ def downsample(pts, n=FLAGS_SERIES_N):
 
 
 def _series_pts(rd, asof, now_line=None):
-    """[(t, value)] of the readable rows inside the window plus the one before it (placed at the window start: the number the book hung when the
-    window opened). `now_line`: keep only rows at that line (the price series of a spread or total)."""
+    """[(t, value)] of the readable rows inside the window plus the row showing when it opened (placed at the window start). `now_line`: the price series
+    of a spread or total at that line only: the row showing at the window start counts only when it is at that line (as in `flag_pin`), else the series
+    starts at the first quote at that line inside the window."""
     ws = asof - FLAGS_WINDOW
-    rows = [r for r in rd if now_line is None or (_n(r["line"]) and abs(r["line"] - now_line) <= LINE_EPS)]
-    before = [r for r in rows if r["t"] <= ws]
-    inw = [r for r in rows if r["t"] > ws]
-    out = ([(ws, before[-1])] if before else []) + [(r["t"], r) for r in inw]
-    return out
+    at = lambda r: now_line is None or (_n(r["line"]) and abs(r["line"] - now_line) <= LINE_EPS)
+    before = [r for r in rd if r["t"] <= ws]
+    hang = before[-1] if before and at(before[-1]) else None                  # the row showing at the window start, only if it is at the current line
+    inw = [r for r in rd if r["t"] > ws and at(r)]
+    return ([(ws, hang)] if hang else []) + [(r["t"], r) for r in inw]
 
 
 def flag_series(rows, g, norm, asof, n=FLAGS_SERIES_N):

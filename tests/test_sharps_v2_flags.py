@@ -137,8 +137,42 @@ class FlagABoundary(unittest.TestCase):
         # the two-row minimum is on the quotes at THIS line: three Pinnacle rows, but one at the current line
         rows = [sp("Pinnacle", ASOF - 9000, -3.5, 0.5), sp("Pinnacle", ASOF - 7200, -3.0, 0.2), sp("Pinnacle", ASOF - 600, -4.5, 0.53)]
         self.assertEqual(flags(rows, "spread")[0]["why"]["pin"], "no_same_line_history")
+        # a first quote at a new line that was already showing before the window opened is also null (both rows are before the window: the move is not "held", there is no earlier quote at this line)
+        rows = [sp("Pinnacle", ASOF - 3 * DAY, -3.0, 0.5), sp("Pinnacle", ASOF - 2 * DAY, -3.5, 0.5)]
+        self.assertEqual(flags(rows, "spread")[0]["why"]["pin"], "no_same_line_history")
         # a moneyline needs two readable rows in all
         self.assertEqual(flags([ml("Pinnacle", ASOF - 600, 0.5)], "ml")[0]["why"]["pin"], "no_pinnacle_history")
+
+    def test_a_row_at_the_current_line_from_before_the_window_is_not_the_start_when_another_line_was_showing(self):
+        """Repro: home spread -3.5 three days ago, -3 two days ago, -3.5 an hour ago. -3 was showing when the window opened, so there is no earlier quote at
+        -3.5 inside the window: null, never a 6-point move from a 72-hour-old quote at a line the book had left."""
+        rows = [sp("Pinnacle", ASOF - 3 * DAY, -3.5, 0.50), sp("Pinnacle", ASOF - 2 * DAY, -3.0, 0.40), sp("Pinnacle", ASOF - 3600, -3.5, 0.56)]
+        fl, se = flags(rows, "spread")
+        self.assertEqual((fl["pin"], fl["why"]["pin"], fl["a"]), (None, "no_same_line_history", None))
+        self.assertNotIn(ASOF - 3 * DAY, [se["t0"] + 60 * x for x, _ in se["pin_px"]])          # the chart does not start from the 72-hour-old quote either
+        self.assertEqual(se["t0"] + 60 * se["pin_px"][0][0], ASOF - 3600)
+        # the total shape (cfb-miaoh-kentst): 50.5 then 49.5 then back to 50.5
+        rows = [tot("Pinnacle", ASOF - 3 * DAY, 50.5, 0.50), tot("Pinnacle", ASOF - 2 * DAY, 49.5, 0.50), tot("Pinnacle", ASOF - 3600, 50.5, 0.56)]
+        self.assertEqual(flags(rows, "total")[0]["why"]["pin"], "no_same_line_history")
+        # the away side of a spread (cfb-ncar-vir): the home line -7 then -6.5 then -7, read for the away team
+        rows = [sp("Pinnacle", ASOF - 4 * DAY, -7.0, 0.50), sp("Pinnacle", ASOF - 40 * 3600, -6.5, 0.50), sp("Pinnacle", ASOF - 600, -7.0, 0.44)]
+        self.assertEqual(flags(rows, "spread", "away")[0]["why"]["pin"], "no_same_line_history")
+        # with an earlier quote at the current line INSIDE the window, from is that quote (not the old one, not the other line)
+        rows = [sp("Pinnacle", ASOF - 3 * DAY, -3.5, 0.50), sp("Pinnacle", ASOF - 2 * DAY, -3.0, 0.40), sp("Pinnacle", ASOF - 5 * 3600, -3.5, 0.50),
+                sp("Pinnacle", ASOF - 3600, -3.5, 0.56)]
+        pin = flags(rows, "spread")[0]["pin"]
+        self.assertEqual((pin["t_from"], pin["pts"], pin["state"]), (ASOF - 5 * 3600, 6.0, "toward"))
+        rows = [sp("Pinnacle", ASOF - 3 * DAY, -3.5, 0.50), sp("Pinnacle", ASOF - 2 * DAY, -3.0, 0.40), sp("Pinnacle", ASOF - 5 * 3600, -3.5, 0.50),
+                sp("Pinnacle", ASOF - 3 * 3600, -3.5, 0.53), sp("Pinnacle", ASOF - 3600, -3.5, 0.56)]
+        pin = flags(rows, "spread")[0]["pin"]
+        self.assertEqual((pin["t_from"], pin["pts"]), (ASOF - 5 * 3600, 6.0))                   # the EARLIEST quote at the current line inside the window
+        # the row showing at the window start at the SAME line is the start (the unchanged rule)
+        rows = [sp("Pinnacle", ASOF - 3 * DAY, -3.0, 0.40), sp("Pinnacle", ASOF - 2 * DAY, -3.5, 0.50), sp("Pinnacle", ASOF - 3600, -3.5, 0.56)]
+        pin = flags(rows, "spread")[0]["pin"]
+        self.assertEqual((pin["t_from"], pin["pts"]), (ASOF - 2 * DAY, 6.0))
+        # the chart of that last shape starts at the window start with the hanging price
+        _, se = flags(rows, "spread")
+        self.assertEqual(se["pin_px"][0][0], 0)
 
     def test_the_window_starts_at_the_row_hanging_when_it_opened(self):
         """v2f-2: the tape writes a row only on a change, so the number showing when the window opened is the LAST row at or before the window start."""
@@ -957,6 +991,17 @@ class SwappedRow(unittest.TestCase):
         rows = [ml("Pinnacle", ASOF - 7000, 0.25), ml("Pinnacle", ASOF - 600, 0.75)]       # two rows that disagree and nothing to say which: both kept
         self.assertEqual(flags(rows, "ml")[0]["pin"]["dropped"], 0)
 
+    def test_a_pickem_spread_is_never_judged_by_its_sign(self):
+        """Lines inside 1.5 points of pick'em (nba:295485 shape: Pinnacle -1 while US books show +1 or -1.5) are not 'the other side': the sign is only read when
+        both lines are at least FLAGS_SWAP_LINE from pick'em."""
+        self.assertEqual(F.FLAGS_SWAP_LINE, 1.5)
+        rows = [sp("Pinnacle", ASOF - 7000, 2.0, 0.5), sp("Pinnacle", ASOF - 6000, -1.0, 0.5), sp("Pinnacle", ASOF - 600, -1.0, 0.5),
+                sp("DraftKings", ASOF - 8000, 1.0), sp("FanDuel", ASOF - 8000, 1.0), sp("BetMGM", ASOF - 8000, 1.0)]
+        self.assertEqual(flags(rows, "spread")[0]["pin"]["dropped"], 0)
+        rows = [sp("Pinnacle", ASOF - 7000, 1.5, 0.5), sp("Pinnacle", ASOF - 6000, -1.5, 0.5), sp("Pinnacle", ASOF - 600, -1.5, 0.5),
+                sp("DraftKings", ASOF - 8000, -1.5), sp("FanDuel", ASOF - 8000, -1.5)]
+        self.assertEqual(flags(rows, "spread")[0]["pin"]["dropped"], 1)                       # at the margin (1.5) the sign is judged
+
     def test_a_spread_line_with_its_sign_flipped_is_dropped_and_totals_are_never_checked(self):
         rows = [sp("Pinnacle", ASOF - 7000, 7.5, 0.5), sp("Pinnacle", ASOF - 6000, -7.5, 0.5), sp("Pinnacle", ASOF - 600, -7.5, 0.5),
                 sp("DraftKings", ASOF - 8000, -7.5), sp("FanDuel", ASOF - 8000, -7.0)]
@@ -982,12 +1027,20 @@ class FirstQuotes(unittest.TestCase):
         fl = flags([r for r in self.base() if r["book"] != "FanDuel"] + [mk("spread", "BetMGM", ASOF - 700, -5.0)], "spread")[0]
         self.assertEqual((fl["line"], fl["why"]["line"]), (None, "too_few_books"))
 
-    def test_a_single_row_that_was_already_showing_when_the_window_opened_held_all_window(self):
+    def test_a_single_row_is_never_a_move_for_any_book_even_one_showing_since_before_the_window(self):
+        """Flag A needs 2 rows; Flag C asks the same of every book (item: both flags agree on a lone moneyline or line row)."""
         ws = ASOF - DAY
         ln = flags(self.base() + [mk("spread", "BetMGM", ws - 3000, -3.0)], "spread")[0]["line"]
-        self.assertEqual(ln["by_book"]["BetMGM"], [-3.0, -3.0])                              # a real move of 0 (it did not change), counted as read
-        self.assertEqual(ln["books"], 4)
-        self.assertEqual(ln["same_way"], 3)
+        self.assertNotIn("BetMGM", ln["by_book"])                                            # a lone old row is not read as a move of 0
+        self.assertEqual((ln["books"], ln["same_way"]), (3, 3))
+        self.assertIsNone(flags([ml("Pinnacle", ws - 5000, 0.4)], "ml")[0]["pin"])           # Flag A: the same reading for a lone Pinnacle row
+        rows = [ml("Pinnacle", ws - 5000, 0.5), ml("Pinnacle", ASOF - 900, 0.6)]
+        for b, to in (("DraftKings", 0.62), ("FanDuel", 0.63)):
+            rows += [ml(b, ws - 5000, 0.5), ml(b, ASOF - 800, to)]
+        rows += [ml("BetMGM", ws - 4000, 0.9)]                                               # a lone row on a moneyline: the same minimum
+        fl = flags(rows, "ml", sport="nfl")[0]
+        self.assertEqual(sorted(fl["line"]["by_book"]), ["DraftKings", "FanDuel"])
+        self.assertEqual(fl["pin"]["state"], "toward")
 
     def test_pinnacle_with_a_first_quote_only_is_too_few_books_for_flag_c(self):
         rows = [mk("spread", "Pinnacle", ASOF - 900, -5.5)]
