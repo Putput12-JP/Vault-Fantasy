@@ -410,8 +410,37 @@
     if (r.status === 'void') return ['void', 'Void'];
     return ['none', 'Not graded'];
   }
-  rec.frozenList = function (rows, file, tierMap, sport) {
-    var s = sport == null ? 'all' : lc(sport), tm = tierMap || {};
+  /* A shown play is `card|group|all|sf`: the key shape of the record's open list and of live.json `locked`. */
+  var SHOWN_KEY = /\|all\|sf$/;
+  /* live.json `locked`: frozen cards awaiting a result, published by every card build (about 10 minutes), where the record's open list only
+     catches up when the record job runs (about every 2 hours). extra = { locked: [...], cards: { key: { price, cut } } }, the frozen card's own
+     stored price and cut when it could be read; a play with none shows no price and takes the card rule for its freeze time. */
+  rec.lockedMissing = function (rows, file, locked, limit) {
+    var done = {}, seen = {}, out = [];
+    (rows || []).forEach(function (r) { if (r && r.kind === 'result' && typeof r.key === 'string') done[r.key] = true; });
+    ((file && Array.isArray(file.open)) ? file.open : []).forEach(function (r) { if (r && typeof r.key === 'string') done[r.key] = true; });
+    (Array.isArray(locked) ? locked : []).forEach(function (r) {
+      if (!r || typeof r !== 'object' || typeof r.key !== 'string' || !SHOWN_KEY.test(r.key) || (r.play != null && r.play !== 'sf')) return;
+      if (SHOWN.indexOf(lc(r.sport)) < 0 || done[r.key] || seen[r.key] || !rec.cardPath(r.key)) return;
+      seen[r.key] = true; out.push(r);
+    });
+    out.sort(function (a, b) { return (isNum(b.gst) ? b.gst : 0) - (isNum(a.gst) ? a.gst : 0) || (a.key < b.key ? -1 : 1); });
+    return out.slice(0, isNum(limit) ? limit : out.length).map(function (r) { return r.key; });
+  };
+  /* the frozen card file behind a key (the part before the first |), only in the shape the builder writes: <sport>/frozen/<date>/<name>.json */
+  rec.cardPath = function (key) {
+    var p = String(key == null ? '' : key).split('|')[0];
+    return /^[a-z]+\/frozen\/[0-9-]+\/[A-Za-z0-9._@-]+\.json$/.test(p) ? p : null;
+  };
+  /* the stored cut and price at the cut from one frozen card file: the price of the key's market, shown play, and only when it is no more than 30 minutes
+     older than the cut (the grader's own rule: an older price is "unpriced"). Missing or unreadable is { price: null, cut: null }. */
+  rec.cardFacts = function (card, key) {
+    var g = String(key || '').split('|')[1], m = card && card.markets && card.markets[g], sf = m && m.sf && m.sf.all || null, cut = card && isNum(card.cut) ? card.cut : null;
+    var fresh = sf && isNum(sf.price) && sf.price > 0 && sf.price < 1 && (!isNum(sf.price_t) || cut == null || sf.price_t >= cut - 1800);
+    return { price: fresh ? sf.price : null, cut: cut };
+  };
+  rec.frozenList = function (rows, file, tierMap, sport, extra) {
+    var s = sport == null ? 'all' : lc(sport), tm = tierMap || {}, ex = extra || {}, cards = ex.cards || {};
     var out = { sport: s, items: [], total: 0, awaiting: 0, settled: 0, tally: rec.tally([], {}), noSize: false };
     if (s !== 'all' && SHOWN.indexOf(s) < 0) { out.noSize = true; return out; }
     var inSport = function (r) { var sp = lc(r.sport); return s === 'all' ? SHOWN.indexOf(sp) >= 0 : sp === s; };
@@ -436,6 +465,14 @@
       seen[r.key] = true;
       items.push(model(r, ['open', r.postponed === true ? 'Postponed' : 'Awaiting result'], tm[r.key]));
     });
+    (Array.isArray(ex.locked) ? ex.locked : []).forEach(function (r) {
+      if (!r || typeof r !== 'object' || typeof r.key !== 'string' || !SHOWN_KEY.test(r.key) || (r.play != null && r.play !== 'sf')) return;
+      if (!inSport(r) || done[r.key] || seen[r.key] || typeof r.side !== 'string' || !r.side) return;   /* no side, no title: not listed */
+      seen[r.key] = true;
+      var cf = cards[r.key] || {}, o = { key: r.key, sport: r.sport, group: r.group, side: r.side, line: r.line, outs: r.outs, gst: r.gst,
+        price: isNum(cf.price) ? cf.price : (isNum(r.price) ? r.price : null), cut: isNum(cf.cut) ? cf.cut : (isNum(r.cut) ? r.cut : undefined) };
+      items.push(model(o, ['open', 'Awaiting result'], tm[r.key]));
+    });
     items.sort(function (a, b) {
       var ao = a.state === 'open' ? 0 : 1, bo = b.state === 'open' ? 0 : 1;
       if (ao !== bo) return ao - bo;
@@ -454,7 +491,7 @@
     if (!L || !L.total) return '';
     var t = L.tally, s = fmt.n(L.total) + ' frozen play' + (L.total === 1 ? '' : 's') + (t.n ? ', ' + rec.fmtWl(t) + ', flat 1u' : '');
     var ng = L.items.filter(function (x) { return x.state !== 'open' && x.state !== 'win' && x.state !== 'loss' && x.state !== 'push'; }).length;   /* void, unpriced: listed, never in the record */
-    if (L.awaiting) s += (t.n ? ', ' : ': ') + fmt.n(L.awaiting) + ' awaiting';
+    if (L.awaiting) s += (t.n ? ', ' : ': ') + fmt.n(L.awaiting) + ' awaiting result';
     if (ng) s += (t.n || L.awaiting ? ', ' : ': ') + fmt.n(ng) + ' not graded';
     return s;
   };
@@ -528,7 +565,7 @@
   if (typeof document === 'undefined') return;
   var S = { sport: 'all', view: 'main', file: null, rows: null, state: 'idle', loadedAt: 0, main: null, page: null, sw: null, swPage: null, busy: false,
     tier: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, mg: { data: null, state: 'idle', loadedAt: 0, stale: false, busy: null }, mgb: 'in_sample', tb: 'all', tSince: false, open: {}, sort: {},
-    fz: { sport: 'all', open: false }, tl: { map: {}, loadedAt: 0, busy: false } };
+    fz: { sport: 'all', open: false }, tl: { map: {}, loadedAt: 0, busy: false }, fzc: { map: {}, tried: {}, busy: false } };
 
   /* Dev: ?recbase=/path/ on localhost reads the record files from a local folder (cards_record.json, cards/<sport>/<month>.jsonl, and the
      tier log at tl/<sport>/<month>.jsonl) instead of pm-holders-data. */
@@ -594,7 +631,7 @@
       r.slice(1).forEach(function (t) { if (t) rows = rows.concat(rec.parseJsonl(t)); });
       if (!r[0] && !rows.length) { if (S.state !== 'ok') S.state = 'none'; else S.stale = true; }
       else { S.file = r[0] || S.file; S.rows = rows; S.closes = rec.closeMap(rows); S.state = 'ok'; S.stale = false; S.loadedAt = Date.now(); }
-      S.busy = false; paint(); paintFrozen(); loadTl(false);
+      S.busy = false; paint(); paintFrozen(); loadTl(false); loadFz(false);
     });
     return S.busy;
   }
@@ -606,12 +643,27 @@
      this module loads the record lazily (the same load() and 5 minute cache as the Record view, so nothing is fetched twice) and
      refreshes the box in place when data lands or the list is opened. The tier at freeze comes from the stored V2 tier log, read only
      for a sport that has a play cut at or after the log's first row (tier_record.json first_logged_cut), so no file is asked for that cannot exist. */
+  function lockedNow() { var c = store && store.cards; return c && Array.isArray(c.locked) ? c.locked : []; }
+  /* frozen cards the record has not caught up with: read each one's own stored price and cut, newest first, at most 12 per pass, 5 minutes between
+     tries of the same card. Never blocks a paint: the row shows at once without a price and the price joins when the file arrives. */
+  function loadFz(force) {
+    var F = S.fzc;
+    if (F.busy || S.state !== 'ok') return;
+    var keys = rec.lockedMissing(S.rows, S.file, lockedNow(), 12).filter(function (k) { return force || !(k in F.map) && !(F.tried[k] && Date.now() - F.tried[k] < 300000); });
+    if (!keys.length) return;
+    F.busy = true;
+    var rb = recBase(), base = rb ? rb + 'pm_cards/' : BASE.replace('pm_record/', 'pm_cards/');
+    Promise.all(keys.map(function (k) {
+      F.tried[k] = Date.now();
+      return getUrl(base + rec.cardPath(k), false, force).then(function (c) { if (c) F.map[k] = rec.cardFacts(c, k); });
+    })).then(function () { F.busy = false; paintFrozen(); });
+  }
   function tlSports() {
     var T = S.tier.data, first = T && isNum(T.first_logged_cut) ? T.first_logged_cut : null, out = [];
     if (first == null) return out;
     SHOWN.forEach(function (sp) {
       var any = rec.playRows(S.rows || [], sp).some(function (r) { return isNum(r.cut) && r.cut >= first; }) ||
-        (S.file && Array.isArray(S.file.open) ? S.file.open : []).some(function (r) { return r && lc(r.sport) === sp && isNum(r.gst) && r.gst - CUT_LEAD >= first; });
+        (S.file && Array.isArray(S.file.open) ? S.file.open : []).concat(lockedNow()).some(function (r) { return r && lc(r.sport) === sp && isNum(r.gst) && r.gst - CUT_LEAD >= first; });
       if (any) out.push(sp);
     });
     return out;
@@ -648,7 +700,7 @@
     var sp = S.fz.sport, h = '<h2 class="sv2-h2" id="sv2-fz-h">Frozen plays</h2>';
     if (S.state === 'none') return h + '<p class="sv2-rec-railn">Could not load. <button type="button" class="sv2-link" data-sv2-fz-retry>Try again</button></p>';
     if (S.state !== 'ok') return h + ui.skel(3, 'Loading the frozen plays', 'sv2-fz-skel');
-    var L = rec.frozenList(S.rows, S.file, S.tl.map, sp);
+    var L = rec.frozenList(S.rows, S.file, S.tl.map, sp, { locked: lockedNow(), cards: S.fzc.map });
     if (L.noSize) return h + '<p class="sv2-rec-railn">CFB shows no size, so no play is listed here. The record tab keeps a tracked CFB record.</p><p class="sv2-rec-railn"><button type="button" class="sv2-sp-lnk" data-sv2-open-record>See the full record</button></p>';
     if (!L.total) return h + '<p class="sv2-rec-railn">No frozen plays yet' + (sp === 'all' ? '' : ' for ' + esc(sportName(sp))) + '.</p>';
     var many = L.total > rec.FROZEN_SHOW, open = many && S.fz.open, list = open ? L.items : L.items.slice(0, rec.FROZEN_SHOW);
@@ -673,7 +725,7 @@
   rec.frozenBox = function (sport) {
     S.fz.sport = sport == null ? 'all' : lc(sport);
     if (S.state === 'idle' || (S.state === 'ok' && !S.busy && Date.now() - S.loadedAt >= 300000)) load(false);   /* lazy: the first paint is never blocked */
-    loadTl(false);
+    loadTl(false); loadFz(false);
     return '<section class="sv2-box sv2-sp-rb sv2-fz" data-sv2-fz aria-labelledby="sv2-fz-h" aria-busy="' + (S.state === 'ok' ? 'false' : 'true') + '">' + frozenInner() + '</section>';
   };
 

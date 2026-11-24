@@ -451,13 +451,61 @@ console.log('frozen list (Sharps rail box)');
   /* empty and bad input */
   eq('empty inputs', [R.frozenList([], null, null, 'all').total, R.frozenList(null, { open: 'x' }, undefined, undefined).total, R.frozenList(undefined, undefined, undefined, 'nba').items], [0, 0, []]);
   eq('subtitle is empty for an empty list', R.frozenSub(R.frozenList([], null, {}, 'all')), '');
-  eq('subtitle: total, record, flat 1u, awaiting', R.frozenSub(L), '8 frozen plays, ' + R.fmtWl(L.tally) + ', flat 1u, 3 awaiting, 2 not graded');
-  eq('subtitle with nothing settled omits the record', R.frozenSub(R.frozenList([], { open: [open({ key: 'z' })] }, {}, 'all')), '1 frozen play: 1 awaiting');
+  eq('subtitle: total, record, flat 1u, awaiting', R.frozenSub(L), '8 frozen plays, ' + R.fmtWl(L.tally) + ', flat 1u, 3 awaiting result, 2 not graded');
+  eq('subtitle with nothing settled omits the record', R.frozenSub(R.frozenList([], { open: [open({ key: 'z' })] }, {}, 'all')), '1 frozen play: 1 awaiting result');
   /* parity with the Record page across a bigger set */
   const big = []; for (let i = 0; i < 40; i++) big.push(row({ key: 'big' + i, cut: CUT + i, res: i % 3 ? 'win' : 'loss', flat: i % 3 ? 0.5 : -1, sport: ['nba', 'nfl', 'cbb'][i % 3] }));
   const LB = R.frozenList(big, { open: [] }, {}, 'all'), RT = R.tally(R.playRows(big, 'all'), {});
   eq('list total equals the Record n when nothing is open or unpriced', [LB.total, LB.tally.n, LB.tally.units], [RT.n, RT.n, RT.units]);
   eq('the box holds 12 first (FROZEN_SHOW), newest first', [R.FROZEN_SHOW, LB.items[0].key, LB.items[39].key], [12, 'big39', 'big0']);
+}
+
+console.log('frozen list: live.json locked entries');
+{
+  const KEY = 'cbb/frozen/2026-11-24/cbb-pitt-okl-2026-11-24@1795545000.json|ml|all|sf';
+  const LOCKED = { key: KEY, sport: 'cbb', ev: 'cbb-pitt-okl-2026-11-24', gst: 1795545000, group: 'ml', play: 'sf', side: 'Oklahoma Sooners', line: null, outs: ['Pittsburgh Panthers', 'Oklahoma Sooners'], units: 2.0 };
+  const lk = (o) => Object.assign({}, LOCKED, o);
+  const L = R.frozenList([], { open: [] }, {}, 'all', { locked: [LOCKED] });
+  const it = L.items[0];
+  eq('the exact live entry becomes one awaiting play', [L.total, L.awaiting, it.key, it.state, it.word], [1, 1, KEY, 'open', 'Awaiting result']);
+  eq('title, sport, freeze time (game start minus 15 minutes), no price when none is stored', [it.label, it.sport, it.cut, it.price, it.tier], ['Oklahoma Sooners ML', 'cbb', 1795545000 - 900, null, null]);
+  eq('freeze time reads 12:15 PM Central', SV2.ct.time(it.cut), '12:15 PM');
+  eq('units of the live entry (the old ladder) are never shown', [it.units, it.flat], [null, null]);
+  /* price and cut from the card file */
+  const cardOk = R.cardFacts({ cut: 1795544100, markets: { ml: { sf: { all: { price: 0.465, price_t: 1795543806 } } } } }, KEY);
+  eq('cardFacts: stored price and cut', cardOk, { price: 0.465, cut: 1795544100 });
+  eq('cardFacts: a price older than 30 minutes before the cut is not shown', R.cardFacts({ cut: 1795544100, markets: { ml: { sf: { all: { price: 0.465, price_t: 1795544100 - 1801 } } } } }, KEY).price, null);
+  eq('cardFacts: missing market, price or card', [R.cardFacts({ cut: 5, markets: {} }, KEY), R.cardFacts(null, KEY), R.cardFacts({ markets: { ml: { sf: { all: { price: 'x' } } } } }, KEY)], [{ price: null, cut: 5 }, { price: null, cut: null }, { price: null, cut: null }]);
+  const L2 = R.frozenList([], null, {}, 'all', { locked: [LOCKED], cards: { [KEY]: { price: 0.465, cut: 1795544100 } } });
+  eq('the card price and cut are used when read', [L2.items[0].price, L2.items[0].cut], [SV2.fmt.cents(0.465), 1795544100]);
+  /* regex, fields, sport */
+  const bad = [lk({ key: 'cbb/frozen/2026-11-24/a.json|ml|fwd|sf' }), lk({ key: 'cbb/frozen/2026-11-24/a.json|ml|all|lock' }), lk({ key: 'cbb/frozen/2026-11-24/a.json|ml|all|sf', play: 'lock' }),
+    lk({ key: 'cbb/frozen/2026-11-24/b.json|ml|all|sf', sport: 'cfb' }), null, 5, { side: 'x' }, lk({ key: 7 })];
+  eq('only shown plays (key |all|sf, play sf, NBA/NFL/CBB) are taken, junk ignored', R.frozenList([], null, {}, 'all', { locked: bad }).total, 0);
+  eq('a missing side is not listed (no title), a missing line or outs still is', [R.frozenList([], null, {}, 'all', { locked: [lk({ side: undefined })] }).total, R.frozenList([], null, {}, 'all', { locked: [lk({ line: undefined, outs: undefined })] }).total], [0, 1]);
+  eq('not an array is ignored', [R.frozenList([], null, {}, 'all', { locked: 'x' }).total, R.frozenList([], null, {}, 'all', { locked: null }).total], [0, 0]);
+  /* dedupe against graded rows and the record's open list */
+  const graded = [{ kind: 'result', play: 'sf', variant: 'all', counts: true, status: 'graded', sport: 'cbb', group: 'ml', res: 'win', flat: 0.5, cut: 10, key: KEY, side: 'Oklahoma Sooners' }];
+  eq('a graded twin wins: not listed twice', R.frozenList(graded, null, {}, 'all', { locked: [LOCKED] }).items.map((x) => x.state), ['win']);
+  const openRow = { key: KEY, counts: true, sport: 'cbb', gst: 1795545000, group: 'ml', play: 'sf', side: 'Oklahoma Sooners', outs: [], price: 0.47 };
+  const LD = R.frozenList([], { open: [openRow] }, {}, 'all', { locked: [LOCKED, LOCKED] });
+  eq('the record open row wins, the live twin and a duplicate are dropped', [LD.total, LD.items[0].price], [1, SV2.fmt.cents(0.47)]);
+  /* ordering and filter */
+  const A = lk({ key: 'nba/frozen/2026-11-24/n.json|spread|all|sf', sport: 'nba', gst: 1795550000, group: 'spread', side: 'Hornets', line: -2.5, outs: ['Grizzlies', 'Hornets'] });
+  const sets = [row({ key: 's1', cut: 1795549999, sport: 'nba' })];
+  const M = R.frozenList(sets, { open: [] }, {}, 'all', { locked: [LOCKED, A] });
+  eq('awaiting first, newest freeze first, then settled even when the settled play is newer', M.items.map((x) => x.key), [A.key, KEY, 's1']);
+  eq('spread title uses the stored line the Record way', M.items[0].label, 'Hornets +2.5');
+  eq('sport filter applies to live entries', [R.frozenList([], null, {}, 'nba', { locked: [LOCKED, A] }).items.map((x) => x.sport), R.frozenList([], null, {}, 'cbb', { locked: [LOCKED, A] }).items.map((x) => x.sport), R.frozenList([], null, {}, 'cfb', { locked: [LOCKED] }).noSize], [['nba'], ['cbb'], true]);
+  eq('the settled W-L-P is untouched by live entries', JSON.stringify(R.frozenList(sets, { open: [] }, {}, 'all', { locked: [LOCKED, A] }).tally), JSON.stringify(R.frozenList(sets, { open: [] }, {}, 'all').tally));
+  eq('subtitle keeps the record and states the awaiting count apart', R.frozenSub(M), '3 frozen plays, 1-0, flat 1u, 2 awaiting result');
+  eq('tier at freeze joins a live entry by key', R.frozenList([], null, R.tierLogMap([{ key: KEY, tier: 'mixed' }]), 'all', { locked: [LOCKED] }).items[0].tier, 'mixed');
+  /* which cards to read */
+  const many = []; for (let i = 0; i < 20; i++) many.push(lk({ key: 'cbb/frozen/2026-11-24/g' + i + '.json|ml|all|sf', gst: 1795545000 + i }));
+  const miss = R.lockedMissing(graded, { open: [{ key: many[19].key }] }, [LOCKED].concat(many), 12);
+  eq('lockedMissing: newest first, capped at 12, skips the record twin, the graded twin and the open row', [miss.length, miss[0], miss.includes(KEY), miss.includes(many[19].key)], [12, many[18].key, false, false]);
+  eq('lockedMissing: nothing to read when there is no locked list', [R.lockedMissing([], null, null, 12), R.lockedMissing([], null, [{ key: 'bad|ml|all|sf', sport: 'nba' }], 12)], [[], []]);
+  eq('cardPath only accepts the builder path shape', [R.cardPath(KEY), R.cardPath('../../x.json|ml|all|sf'), R.cardPath('https://evil/x.json|a'), R.cardPath(null)], ['cbb/frozen/2026-11-24/cbb-pitt-okl-2026-11-24@1795545000.json', null, null, null]);
 }
 
 console.log('copy rules');
