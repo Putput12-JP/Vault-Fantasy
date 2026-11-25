@@ -372,6 +372,10 @@
                   (nba/scripts/prop_rules.py writes board.rules from build_prop_signals.py). Not checked against fair.
        nba-aplus  NBA prop: A+ grade on Pts + Reb + Ast, Reb + Ast or Pts + Ast, on the grade's side, at the main line (build_prop_grades.py).
        nba-reb-a  NBA prop: Rebounds graded A+, A or A- with the grade on the Vault model's side, at the main line (build_prop_grades.py).
+                  Capped at REB_CAP a night (Jacob, 2026-11-25): ranked by grade (A+, then A, then A-), then by model edge (the model's chance of
+                  its side minus the no-vig market's, board.rules[6]), then the better price, then the id. Like rule C's cap, the slots lock
+                  NBA_LOCK_MIN before the night's first tip (shown, not logged, until then); a slot logged earlier in the night stays taken.
+                  Outside the top REB_CAP it is a Pass. A rebounds prop that also matches nba-sig5 plays as nba-sig5 and is not capped.
        cfb-novig  CFB game priced at Novig (exchange_edge_live.json) that beats a reference by 2%+ (on the board at all: Watch or Passed).
                   Also sorts first in Plays, ahead of the gates' plays, as do CFB Novig prices that clear every gate.
      A rule play still needs a live pregame price (the board's US book for NBA, Novig for CFB), keeps one side per market (against the logged
@@ -379,10 +383,10 @@
   const RULES = {
     'nba-sig5': { label: '5 of 5 signals', why: 'All five checks (market, matchup, minutes, shot volume, form) agree with the Vault model.', rec: 'NBA prop board record when the rule was set: 20-3, ROI +28.3% on 23 (Oct 22 - Nov 24), 12-1 (+40.8%) after the Nov 8 freeze.' },
     'nba-aplus': { label: 'A+ grade', why: 'A+ prop grade on a combo stat (Pts + Reb + Ast, Reb + Ast, Pts + Ast).', rec: 'NBA prop board record when the rule was set: PRA 21-11 (+20.3%) on 32, RA 16-5 (+42.3%) on 21, PA 21-9 (+21.4%) on 30. The stats were picked on these rows.' },
-    'nba-reb-a': { label: 'Rebounds A grade', why: 'Rebounds graded A+, A or A-, on the Vault model\u2019s side.', rec: 'NBA prop board record when the rule was set: 199-133, +38.8u, ROI +12.4% on 332 (Oct 22 - Nov 24): A+ +9.1%, A +14.0%, A- +12.6%. Rebounds were picked on these rows.' },
+    'nba-reb-a': { label: 'Rebounds A grade', why: 'Rebounds graded A+, A or A-, on the Vault model\u2019s side, in tonight\u2019s top ' + 3 + ' by grade then model edge.', rec: 'NBA prop board record when the rule was set: 199-133, +38.8u, ROI +12.4% on 332 (Oct 22 - Nov 24): A+ +9.1%, A +14.0%, A- +12.6%. Rebounds were picked on these rows.' },
     'cfb-novig': { label: 'CFB Novig', why: 'College football at Novig, beating a reference by ' + Math.round(GATES.MIN_EDGE * 100) + '% or more.', rec: 'Rebuilt from the Watch and Passed logs when the rule was set: 197-172, +50.2u, ROI +13.6% on 369; +11.6% on 164 first seen Nov 9 on.' }
   };
-  const RULE_STATS = new Set(['pra', 'ra', 'pa']), REB_GRADES = new Set(['A+', 'A', 'A-']);
+  const RULE_STATS = new Set(['pra', 'ra', 'pa']), REB_GRADES = new Set(['A+', 'A', 'A-']), REB_CAP = 3, GRADE_RANK = { 'A+': 3, 'A': 2, 'A-': 1 };
   const ruleUntested = id => 'Untested rule (' + RULES[id].label + '). ' + RULES[id].rec;
   /* The rule ids a candidate matches, from its own fields and X.N.rules (NBA). */
   function rulesOf(c, X) {
@@ -391,6 +395,7 @@
       const R = X.N && X.N.rules, r = R && R.rows && X.now - R.t <= GATES.MAX_AGE ? R.rows[c.row.game + '|' + c.row.espnId + '|' + c.row.mkt] : null;
       const sd = c.side === 'over' ? 'O' : 'U';
       if (r && sameLine(r[0], c.row.line)) {
+        c.ruleRow = r;
         if (r[2] === 5 && r[1] === sd) out.push('nba-sig5');
         if (r[4] === 'A+' && r[5] === sd && RULE_STATS.has(c.row.mkt)) out.push('nba-aplus');
         if (c.row.mkt === 'reb' && REB_GRADES.has(r[4]) && r[5] === sd && r[1] === sd) out.push('nba-reb-a');
@@ -416,8 +421,28 @@
     Object.values(pick).forEach(({ c }) => {
       c.rule = c.rules[0]; c.gateTier = c.tier; c.gateReasons = c.reasons; c.tier = 'play';
       c.reasons = ['Rule play: ' + RULES[c.rule].why + (c.gateTier === 'none' ? ' No reference edge.' : ' The gates said: ' + (c.reasons || []).join(' '))];
-      c.cautions = [ruleUntested(c.rule), ...(c.cautions || [])];
+      c.gateCautions = c.cautions; c.cautions = [ruleUntested(c.rule), ...(c.cautions || [])];
     });
+    capReb(Object.values(pick).map(x => x.c).filter(c => c.rule === 'nba-reb-a'), X);
+  }
+  /* nba-reb-a nightly cap: see the rule list above. */
+  const REB_CAP_WHY = 'Outside tonight\u2019s top ' + REB_CAP + ' rebounds plays (ranked by grade, then the model\u2019s edge over the market). The rebounds rule is capped at ' + REB_CAP + ' a night.';
+  const rebEdge = c => c.ruleRow && c.ruleRow[6] != null ? c.ruleRow[6] : -9;
+  const rebRank = (a, b) => (GRADE_RANK[b.ruleRow[4]] || 0) - (GRADE_RANK[a.ruleRow[4]] || 0) || rebEdge(b) - rebEdge(a) || a.price.p - b.price.p || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  function capReb(cs, X) {
+    if (!cs.length) return;
+    const tips = nightTips(X.N), taken = {}, by = {};
+    Object.values((X.L && X.L.plays) || {}).forEach(r => { if (r && r.rule === 'nba-reb-a' && r.status !== 'void') taken[nightOf(r.start)] = (taken[nightOf(r.start)] || 0) + 1 });
+    cs.forEach(c => (by[nightOf(c.start)] || (by[nightOf(c.start)] = [])).push(c));
+    for (const [k, list] of Object.entries(by)) {
+      list.sort(rebRank);
+      const slots = Math.max(0, REB_CAP - (taken[k] || 0)), lock = (tips[k] || Math.min(...list.map(c => c.start))) - GATES.NBA_LOCK_MIN * 60;
+      list.forEach((c, i) => {
+        c.capLock = lock;
+        if (i >= slots) { c.tier = 'pass'; c.rebCapped = true; delete c.rule; c.reasons = [REB_CAP_WHY]; c.cautions = c.gateCautions || []; return }
+        if (X.now < lock) { c.capPending = true; c.cautions = ['Not locked yet: tonight\u2019s top ' + REB_CAP + ' rebounds plays lock at ' + ctTime(lock) + ' CT.', ...c.cautions] }
+      });
+    }
   }
   /* A stored rule row re-scored from its own fields (heldBack): a price, and an NBA prop inside the early-call window. */
   function ruleHeld(p) {

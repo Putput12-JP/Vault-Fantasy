@@ -22,8 +22,9 @@ TEAMMATE OUT (grade part 4) reads the board's injury and lineup tags (Out, Doubt
 player_projections.json (min0, else last season's), the same as the Props page's live grade column. The rebuilt record counted a teammate as
 out when he had no game that night, which knows late scratches, so the live grade can be a notch lower than the rebuild's on a late scratch.
 
-Writes board['rules'] = {'v': 1, 't': poll time, 'rows': {'<game>|<pid>|<stat>': [line, model side, agree, against, grade, grade side]}}
-  model side and grade side are 'O' or 'U'; grade is 'A+'..'D'. Only rows in at least one rule group are written, to keep the board small.
+Writes board['rules'] = {'v': 1, 't': poll time, 'rows': {'<game>|<pid>|<stat>': [line, model side, agree, against, grade, grade side, model edge]}}
+  model side and grade side are 'O' or 'U'; grade is 'A+'..'D'; model edge = model chance of its side minus the no-vig market chance of that side
+  (gates.js ranks the nightly nba-reb-a cap by it). Only rows in at least one rule group are written, to keep the board small.
 """
 import datetime as dt, json, os, re, sys
 
@@ -62,7 +63,7 @@ def roster_mins(proj):
 
 
 def evaluate(lrows, lmeta, status, roster, L):
-    """{lean key: [line, model side, agree, against, grade, grade side]} for the leans in a rule group.
+    """{lean key: [line, model side, agree, against, grade, grade side, model edge]} for the leans in a rule group.
     lrows / lmeta: lean_record.log output. status: pid -> injury / lineup tag. roster: roster_mins(). L: Logs."""
     out = {}
     for k, v in lrows.items():
@@ -93,7 +94,8 @@ def evaluate(lrows, lmeta, status, roster, L):
             *_, total = GR.points(rank, p, md, mo)
             gr, gs = (GR.grade_of(total), 'O' if total > 0 else 'U') if total else ('D', ms)
         if kf == 5 or (gr == 'A+' and s_ in APLUS_STATS) or (s_ == 'reb' and gr in REB_GRADES and gs == ms):
-            out[k] = [line, ms, kf, ka, gr, gs]
+            edge = round((p - p_mkt) if ms == 'O' else (p_mkt - p), 4)   # model edge: the model's chance of its side minus the no-vig market's
+            out[k] = [line, ms, kf, ka, gr, gs, edge]
     return out
 
 

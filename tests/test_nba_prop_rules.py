@@ -57,7 +57,7 @@ class PropRules(unittest.TestCase):
         # rank 28 (+2), level 3 projection (+2), minutes +3 (+1) = 5: A- over, model over
         rows, meta = lean(stat='reb', line=7.5, p=0.62, p_mkt=0.5)
         out = R.evaluate(rows, meta, {}, {}, FakeLogs(rank=28))
-        self.assertEqual(out['g1|1|reb'][4:], ['A-', 'O'])
+        self.assertEqual(out['g1|1|reb'][4:], ['A-', 'O', 0.12])     # model edge: .62 model vs .50 market
         rows, meta = lean(stat='reb', line=7.5, p=0.62, p_mkt=0.5)
         self.assertEqual(R.evaluate(rows, meta, {}, {}, FakeLogs(rank=15)), {}, 'B (3 points) is left off')
 

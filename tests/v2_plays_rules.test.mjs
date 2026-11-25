@@ -82,6 +82,44 @@ test('nba-reb-a: rebounds graded A+, A or A- with grade and model on the same si
   assert.equal(pra.tier, 'none', 'A on a combo stat is not a rule');
 });
 
+/* five rebounds props, all fair-priced (no gate edge), for the nightly cap */
+function rebBoard(grades, edges, tip = TIP) {
+  const extra = grades.map((g, i) => ({ p: 11 + i, s: 'reb', g: 'g1', kal: [[5.5, 0.49, 0.51, 0.5, 10, 10, NOW - 100]], books: [DK(5.5, '-110', '-110'), PIN(5.5, '-105', '-105')] }));
+  const rows = {}; grades.forEach((g, i) => { rows['g1|' + (11 + i) + '|reb'] = [5.5, 'O', 2, 0, g, 'O', edges[i]] });
+  const N = board(rows, extra); N.games[0].tip = tip;
+  grades.forEach((g, i) => { N.players[11 + i] = ['Reb ' + i, 'BOS', null, 's'] });
+  return N;
+}
+const rebPlays = r => r.all.filter(c => c.row && c.row.mkt === 'reb' && c.side === 'over' && /^Reb /.test(c.title));
+
+test('nba-reb-a cap: top 3 a night by grade, then model edge; the rest are Passes', () => {
+  const r = build(rebBoard(['A-', 'A+', 'A', 'A-', 'A'], [0.09, 0.01, 0.02, 0.05, 0.04]));
+  const rs = rebPlays(r), play = rs.filter(c => c.tier === 'play').map(c => c.title).sort();
+  assert.deepEqual(play, ['Reb 1 Over 5.5 Rebounds', 'Reb 2 Over 5.5 Rebounds', 'Reb 4 Over 5.5 Rebounds'], 'A+, then both A (edge breaks no tie needed), A- left out');
+  const out = rs.filter(c => c.rebCapped);
+  assert.equal(out.length, 2); assert.ok(out.every(c => c.tier === 'pass' && !c.rule && /top 3 rebounds/.test(c.reasons[0])));
+  const r2 = build(rebBoard(['A-', 'A-', 'A-', 'A-'], [0.01, 0.04, 0.03, 0.02]));
+  assert.deepEqual(rebPlays(r2).filter(c => c.tier === 'play').map(c => c.title).sort(), ['Reb 1 Over 5.5 Rebounds', 'Reb 2 Over 5.5 Rebounds', 'Reb 3 Over 5.5 Rebounds'], 'same grade: the bigger model edge wins');
+});
+
+test('nba-reb-a cap: before the lock the top 3 show but are not logged; rows already logged tonight hold slots', () => {
+  const early = build(rebBoard(['A', 'A', 'A', 'A'], [0.04, 0.03, 0.02, 0.01], NOW + 5 * 3600));
+  const top = rebPlays(early).filter(c => c.tier === 'play');
+  assert.equal(top.length, 3); assert.ok(top.every(c => c.capPending && /Not locked yet/.test(c.cautions[0])));
+  const L = { plays: {} };
+  assert.equal(logPlays(L, early.cand, NOW, {}).filter(id => /\|reb\|/.test(id)).length, 0, 'pending plays are not logged');
+  const held = { plays: { a: { id: 'a', sport: 'nba', kind: 'prop', status: 'open', start: TIP, firstSeen: NOW - 600, rule: 'nba-reb-a', first: { price: { p: 0.5 } }, prop: { pid: 'nba:99', mkt: 'reb', side: 'over', line: 4.5 } },
+    b: { id: 'b', sport: 'nba', kind: 'prop', status: 'won', start: TIP, firstSeen: NOW - 600, rule: 'nba-reb-a', first: { price: { p: 0.5 } }, prop: { pid: 'nba:98', mkt: 'reb', side: 'over', line: 4.5 } } } };
+  assert.equal(rebPlays(build(rebBoard(['A', 'A', 'A'], [0.04, 0.03, 0.02]), held)).filter(c => c.tier === 'play').length, 1, 'two slots taken: one left');
+});
+
+test('a rebounds prop that is also five of five plays as nba-sig5, outside the cap', () => {
+  const N = rebBoard(['A', 'A', 'A', 'A'], [0.04, 0.03, 0.02, 0.01]); N.rules.rows['g1|14|reb'][2] = 5;
+  const c = rebPlays(build(N)).find(x => x.title === 'Reb 3 Over 5.5 Rebounds');
+  assert.equal(c.tier, 'play'); assert.equal(c.rule, 'nba-sig5');
+  assert.equal(rebPlays(build(N)).filter(x => x.rule === 'nba-reb-a').length, 3);
+});
+
 test('a rule C play that also matches is tagged but stays rule C (no rule id), and rule plays never take a cap slot', () => {
   const r = build(board({ 'g1|1|pts': [24.5, 'O', 5, 0, 'A', 'O'] }));
   const c = nba(r, 'Play Er Over 24.5 Points');
