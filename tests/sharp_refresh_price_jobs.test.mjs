@@ -63,7 +63,7 @@ test('update-lineup keeps its ParlayAPI budget: 36 runs an in-season week, under
   assert.ok(LINEUP_MAX_CLICK < LINEUP_MAX_SCHEDULED);
 });
 
-function mockGitHub({ busy = {}, monthRuns = 0, dispatchStatus = 204 } = {}) {
+function mockGitHub({ busy = {}, busyAt = '2026-11-25T10:35:00Z', monthRuns = 0, dispatchStatus = 204 } = {}) {
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), method: init.method || 'GET' });
@@ -71,7 +71,7 @@ function mockGitHub({ busy = {}, monthRuns = 0, dispatchStatus = 204 } = {}) {
     const wf = u.pathname.split('/workflows/')[1]?.split('/')[0];
     if (u.pathname.endsWith('/dispatches')) return new Response(null, { status: dispatchStatus });
     const st = u.searchParams.get('status');
-    if (st) return Response.json({ total_count: busy[wf] === st ? 1 : 0 });
+    if (st) { const hit = busy[wf] === st; return Response.json({ total_count: hit ? 1 : 0, workflow_runs: hit ? [{ status: st, created_at: busyAt }] : [] }); }
     if (u.searchParams.get('created')) return Response.json({ total_count: monthRuns });
     return Response.json({});
   };
@@ -98,4 +98,8 @@ test('runPriceJobs starts due jobs, skips busy ones, and stops update-lineup at 
   calls = mockGitHub();
   assert.deepEqual(await runPriceJobs({ ...env, PRICE_JOBS: 'off' }, Date.parse('2026-11-25T10:40:00Z')), { off: true });
   assert.equal(calls.length, 0);
+
+  // A run stuck as "queued" for weeks (GitHub left one on update-polymarket from Oct 7) must not block the feed.
+  mockGitHub({ busy: { 'update-polymarket.yml': 'queued' }, busyAt: '2026-10-07T16:57:41Z' });
+  assert.equal((await runPriceJobs(env, Date.parse('2026-11-25T10:40:00Z')))['update-polymarket.yml'], 'started');
 });

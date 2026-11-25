@@ -74,10 +74,15 @@ const ghHeaders = env => ({ Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept:
 const gh = (env, path, init = {}) => fetch(`https://api.github.com/repos/${env.REPO}/actions/${path}`, { ...init, headers: ghHeaders(env) });
 
 // A run already queued or running covers this tick: skip, so slow runs never pile up behind each other.
-async function busy(env, wf) {
+// Only runs created in the last BUSY_MAX_AGE_MIN count: GitHub can leave a run stuck as "queued" for weeks
+// (update-polymarket has one from Oct 7), and that must not block the feed forever.
+export const BUSY_MAX_AGE_MIN = 120;
+async function busy(env, wf, nowMs = Date.now()) {
   for (const status of ['queued', 'in_progress']) {
-    const r = await gh(env, `workflows/${wf}/runs?status=${status}&per_page=1`);
-    if (r.ok && (await r.json()).total_count > 0) return status;
+    const r = await gh(env, `workflows/${wf}/runs?status=${status}&per_page=10`);
+    if (!r.ok) continue;
+    const runs = (await r.json()).workflow_runs || [];
+    if (runs.some(x => nowMs - Date.parse(x.created_at) < BUSY_MAX_AGE_MIN * 60000)) return status;
   }
   return null;
 }
@@ -98,7 +103,7 @@ export async function runPriceJobs(env, tickMs) {
   const out = {};
   for (const j of dueJobs(tickMs)) {
     try {
-      const b = await busy(env, j.wf);
+      const b = await busy(env, j.wf, tickMs);
       if (b) { out[j.wf] = 'skipped ' + b; continue; }
       if (j.budget) {
         const n = await lineupRunsThisMonth(env, j.wf, tickMs);
