@@ -4,6 +4,8 @@
 #   - live cards: every upcoming game, published as ONE parentless commit holding live.json, wallets.json and since.json on `pm-cards-live`
 #     (force-pushed, like nba-live), so a file rewritten every 10 minutes never grows any history. wallets.json is held to its size budget
 #     (docs/sharps-v2-accounts-spec.md section 2): an over-budget file stops the run before the publish step and the last good file stays live.
+# Grading freshness (last step): GitHub skips many scheduled pm-record.yml runs, so when the record is stale and a shown play is overdue this build
+# starts pm-record.yml itself (scripts/grading_stale.py holds the rule and a loop guard; fail-soft, it never touches the build or the publish).
 # Sharp money is context only: the cards never feed Top Reads, SM_GATE or an agree total. lock_shadow is the pre-registered
 # forward test of docs/sharp-card-prereg.md.
 name: Proven-sharps side cards
@@ -18,6 +20,7 @@ concurrency:
   cancel-in-progress: false
 permissions:
   contents: write
+  actions: write     # only for the grading freshness step: `gh workflow run pm-record.yml` (workflow_dispatch) and `gh run list`
 
 jobs:
   cards:
@@ -29,7 +32,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Unit tests
-        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets tests.test_sharps_v2_plays tests.test_sharps_v2_flags tests.test_sharps_v2_movegrade tests.test_sharps_v2_spread_ctx
+        run: python3 -m unittest tests.test_side_cards tests.test_sf_rungs tests.test_sharps_v2_wallets tests.test_sharps_v2_plays tests.test_sharps_v2_flags tests.test_sharps_v2_movegrade tests.test_sharps_v2_spread_ctx tests.test_grading_stale
       - name: Inputs (holders, ledger, Vault games)
         run: |
           if ! git ls-remote --exit-code --heads origin pm-holders-data >/dev/null 2>&1; then
@@ -129,3 +132,20 @@ jobs:
           tree=$(printf '%s\n' "$entries" | git mktree)
           c=$(git commit-tree "$tree" -m "pm cards live $(date -u +%FT%TZ)")
           git push -q --force origin "$c:refs/heads/pm-cards-live"
+      - name: Grading freshness (starts the record job when it is behind, never blocks the build)
+        if: ${{ !cancelled() && env.SKIP != '1' }}
+        # Stale = cards_record.json generated more than 45 min ago AND a shown frozen play started more than 2.5 h ago with no result row, with
+        # fewer than 3 workflow_dispatch runs of pm-record.yml in the last 6 h and none queued or in progress (scripts/grading_stale.py).
+        # Fail-soft: any failure here is a warning; the card build and the publish above are already done and are never undone.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rc=0
+          python3 -I scripts/grading_stale.py --live live/live.json --data-dir pmdata || rc=$?
+          if [ "$rc" = "10" ]; then
+            gh workflow run pm-record.yml && echo "grading freshness: started pm-record.yml" \
+              || echo "::warning::grading freshness: could not start pm-record.yml"
+          elif [ "$rc" != "0" ]; then
+            echo "::warning::grading freshness: could not decide (exit $rc), nothing started"
+          fi

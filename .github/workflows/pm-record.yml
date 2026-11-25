@@ -5,6 +5,8 @@
 #      pm_record/pinclose_record.json; it never blocks step 1 or 2
 #   2. scripts/benchmark_h2h.py archives what the benchmark showed at each of our cuts (from its public repo's commit history, since
 #      it rewrites its files every 10 minutes), grades the benchmark's real plays the same way, and rebuilds pm_record/h2h_record.json
+# GitHub skips many scheduled runs, so the card build (pm-cards.yml, every 10 minutes) also starts this workflow when grading is stale
+# (scripts/grading_stale.py). Runs queue behind each other in the `pm-record` concurrency group and are never cancelled.
 # Rows are append-only on `pm-holders-data` (never force-pushed). Sharp money is context only: nothing here is a pick feed.
 name: Proven-sharps record
 
