@@ -4,6 +4,11 @@ compatibility_date = "2026-09-01"
 
 # Every 10 minutes, UTC. The workflow's own gate decides whether a run is worth doing
 # (busy windows every 10 min, otherwise every 30 min, nothing overnight).
+# The same */10 tick also starts the price-feed workflows on their old schedules (src/price-jobs.js):
+# nfl-book-tape, update-props, update-prop-history, update-game-history, update-kalshi, update-polymarket,
+# update-line-history and update-lineup. Their GitHub schedule: triggers are removed, so this Worker is their only clock.
+# No new cron triggers: the free plan allows 5 per account, and sharp-refresh (2) + nba-refresh (2) already use 4.
+# Set PRICE_JOBS = "off" under [vars] to stop the price jobs without touching the Sharp Money dispatch.
 [triggers]
 crons = ["*/10 * * * *", "*/2 * * * *"]
 
