@@ -44,6 +44,7 @@ UNPRICED_FAIL = 0.10               # prereg: unpriced over 10% of a sport's coun
 NO_CLOSES = {"cfb", "cbb"}         # prereg: CFB has no stored close, read on ROI only; CBB likewise (data/pm_closes.json has none)
 BOOT_N, BOOT_SEED = 10000, 20261111
 VERSION = 1
+NOT_PLAYS = ("close", "pinclose")  # row kinds that hold a close, not a play: `close` (Polymarket CLV) and `pinclose` (Pinnacle's close, scripts/sharps_v2/pinclose.py)
 SHADOWS = ("pub", "solo") + SHD.RULES + TIERS.RULES      # shadows of the shown size: graded beside it, never listed as open plays
 
 
@@ -344,7 +345,7 @@ def record(rows, cards, now, sig=None):
             for w in (c.get("test") or {}).get("why_not") or []:
                 why[w] = why.get(w, 0) + 1
         closes = {r["of"]: r for r in rows if r["sport"] == sport and r.get("kind") == "close"}
-        rs = [r for r in rows if r["sport"] == sport and r.get("kind") != "close"]
+        rs = [r for r in rows if r["sport"] == sport and r.get("kind") not in NOT_PLAYS]
         s = {"cards": {"frozen": len(cs), "counted": sum(1 for c in cs if (c.get("test") or {}).get("counts")),
                        "not_counted_by_reason": why},
              "lock": {}, "sf": {}, **{k: {} for k in SHADOWS}}

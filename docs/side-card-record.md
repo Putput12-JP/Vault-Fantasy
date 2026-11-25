@@ -484,3 +484,48 @@ present it as anything more.
 Moneyline plays now carry a **spread fact line** (`v2.spread_ctx`, written up in `docs/side-cards.md` "Spread context"): Pinnacle's spread line for the play's side from and to over the 24 hours before the cut, and how many books
 moved toward or away from the side. **It is not tracked and not graded.** There is no record by it, no slice, no row in `tier_record.json`, `flag_record.json` or `move_grade_record.json`, and no count of any kind; the forward log keeps it
 (`sc`, `sc_why`) only so a frozen card can be read back as it was shown. It changes no number on this page: not a tier, a size, a Move grade or a result. It carries no claim about results.
+
+## Pinnacle close rows `pinclose` (2026-11-24)
+
+A new append-only row kind beside `result` and `close` in `pm_record/cards/<sport>/<YYYY-MM>.jsonl` (key `<sf key>|pinclose`): Pinnacle's closing no-vig price for the side of every graded shown
+play (sf, variant all), the price at the cut it is compared with, and the move after the cut. Written by `scripts/sharps_v2/pinclose.py` (a fail-soft step of `pm-record.yml`), once per play, after the
+result row and at least 30 minutes after game start. It is a record input, not a signal: sharp money stays context only, and nothing here feeds Top Reads, SM_GATE or an agree total. The case for building it
+(and for not building the spec's `v2_tier`, `shown` and `v2_tier_record.json`) is `docs/sharps-v2-grader-note.md`.
+
+- **Close** = Pinnacle's last readable tape row at or before game start (inclusive), no-vig by the flags' read (`flags_v2._reads`). `close_t` is that row's time (the tape writes on change). A tape row after start is never read.
+- **CLV** (`clv`, `pts`) = close fair minus the stored price at the cut, in probability and in points, null unless the close is at the ticket's line (`ticket_line_not_main_at_close`). **Move** (`move_pts`) = close fair minus Pinnacle's own fair at
+  the cut, null unless both reads are at the same Pinnacle line. A null stores its reason; nothing is estimated and nothing is 0.
+- **Held, not written null:** a play whose sport's tape does not run past its start, or whose card file is missing, gets no row until it can be read.
+- **What changed for existing records: nothing.** The grader's `record()` and `benchmark_h2h.py` now skip the new kind (they raised on it), and that is the only edit to either. Old versus new on a copy of `pm-holders-data` (`309fe8039b7d`, same inputs, `--no-fetch`):
+  every file under `pm_record` is byte for byte the same except the four month files, which keep every old byte as an exact prefix and gain 225 `pinclose` lines, plus the new `pinclose_record.json`.
+  `cards_record.json`, `h2h_record.json` and `markets.json` are also identical after a second grader run with the new rows present.
+
+**Backfill** (the first run after merge writes these; numbers are the same code run on that copy): 225 graded shown plays, **163 now have a stored Pinnacle close** (old: 0), 104 with a CLV at the ticket's line (old: 0),
+162 with a move after the cut. Not backfilled: 45 CBB plays with no tape (the CBB tape starts Nov 19, 9:08 AM CT), 15 CFB plays with no tape, 2 CBB plays whose side does not map to a team (`side_unmapped`); and 59 plays
+keep a close but have no CLV because the close is at another line than the ticket (NBA 14, NFL 15, CBB 7, CFB 23). Every stored value agrees with the on-the-fly derivation the repo already had (104 of 104 CLV values, 162 of 162 moves, within 0.01 point).
+
+**Pinnacle CLV and the move after the cut, by sport and evidence tier** (points; mean, one standard error, n; in-sample: the tiers are derived after the fact for plays cut before the log, so every cell is in-sample; "small sample" under n=30;
+`python3 -I scripts/sharps_v2/pinclose_history.py --data-dir <pm-holders-data copy> --book-tape <tape at 2066d9a0a57>`):
+
+| Slice | Plays | Stored close | Pinnacle CLV | Move after the cut |
+|---|---|---|---|---|
+| NBA all shown plays | 69 | 69 | +0.05, se 0.22, n=55 | -0.16, se 0.08, n=69 |
+| NBA Contested | 61 | 61 | +0.03, se 0.24, n=50 | -0.10, se 0.09, n=61 |
+| NBA not derivable | 8 | 8 | +0.21, se 0.29, n=5, small sample | -0.57, se 0.27, n=8, small sample |
+| NFL all shown plays | 33 | 33 | -0.59, se 0.24, n=18, small sample | +0.12, se 0.11, n=32 |
+| NFL Contested | 30 | 30 | -0.59, se 0.24, n=18, small sample | +0.14, se 0.12, n=29, small sample |
+| CBB all shown plays | 62 | 15 | +0.27, se 0.33, n=8, small sample | +0.18, se 0.16, n=15, small sample |
+| CBB Clear / Mixed / Thin / Contested | 1 / 4 / 8 / 6 | 1 / 4 / 6 / 4 | +1.01 (n=1) / +0.65 (se 0.44, n=3) / none / -0.19 (se 0.51, n=4), all small sample | 0.00 (n=1) / 0.00 (n=4) / 0.00 (n=6) / +0.67 (se 0.60, n=4) |
+| CBB not derivable | 43 | 0 | none (no tape) | none |
+| CFB (no size shown) all | 61 | 46 | -0.19, se 0.11, n=23, small sample | +0.01, se 0.08, n=46 |
+| Headline NBA + NFL + CBB | 164 | 117 | -0.07, se 0.17, n=81 | -0.04, se 0.06, n=116 |
+
+Old, for the same plays: the Record page's "vs the close" (Polymarket's close, unchanged): NBA -0.03 points (se 0.10, n=69), NFL +0.36 (se 0.14, n=33), CBB none, CFB none. On the 18 NFL plays that have both closes, Polymarket's close reads **+0.56** and
+Pinnacle's **-0.59**; on the 55 NBA plays that have both, +0.04 and +0.05. Pinnacle is the sharper reference and the two disagree in sign on 9 of 18 NFL plays.
+
+**Flagged for close monitoring: every cell whose mean Pinnacle CLV is above 0, with its n** (all in-sample, none promoted, none a signal; the list is the output of `pinclose_history.py`): NBA all shown plays +0.05 (n=55); NBA Contested +0.03 (n=50);
+NBA not derivable +0.21 (n=5, small sample); CBB all +0.27 (n=8, small sample); CBB Clear +1.01 (n=1, small sample); CBB Mixed +0.65 (n=3, small sample); CFB Mixed +0.03 (n=9, small sample); headline Clear +1.01 (n=1, small sample); headline Mixed +0.65 (n=3, small sample);
+headline not derivable +0.21 (n=5, small sample). No cell is distinguishable from 0: the largest has n=55 and a standard error of 0.22 points, more than four times its mean.
+
+**Not changed, and why:** the Record page (it reads only `result` and `close` rows, so the new rows are inert; showing a second "close" next to Polymarket's is a design decision: `docs/sharps-v2-grader-note.md`, "Record page"),
+`tier_record.json` (still the per-tier record the page reads; it has no CLV), the preregistrations (the move and CLV the tier and flag tests read now exist as stored rows, no rule or threshold moved).

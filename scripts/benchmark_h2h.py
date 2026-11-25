@@ -176,7 +176,7 @@ def summarize(rows, units_key="units", pl_key="units_pl"):
 
 def h2h(sf_rows, card_rows, now):
     """Head-to-head per sport and market group. Vault plays are variant `all` (the card's primary)."""
-    card_rows = [r for r in card_rows if r.get("kind") != "close"]     # close rows hold CLV only; the plays are the result rows
+    card_rows = [r for r in card_rows if r.get("kind") not in ("close", "pinclose")]     # close rows hold CLV only; the plays are the result rows
     out = {"generated": now, "v": VERSION, "context_only": True,
            "note": "The benchmark headline: real plays (units > 0, not cancelled) in the picks file public at Vault's cut, graded by "
                    "Polymarket resolution at that file's oddsLock, later cancels included; spread picks name no line, so they "
@@ -452,7 +452,7 @@ def main():
 
     # 4. head-to-head record
     sf_rows = list(have.values()) + new
-    card_rows = [r for r in load_jsonl(os.path.join(a.out, "cards", "*", "*.jsonl")).values() if r.get("kind") != "close"]
+    card_rows = [r for r in load_jsonl(os.path.join(a.out, "cards", "*", "*.jsonl")).values() if r.get("kind") not in ("close", "pinclose")]
     rec = h2h(sf_rows, card_rows, now)
     rec["open"] = open_picks(games, root, {r["key"] for r in sf_rows}, now)
     rec["archive"] = {"games_in_window": len(games), "archived_now": archived, "finals_now": finals, "problems": problems[:20]}

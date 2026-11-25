@@ -264,6 +264,13 @@ a duplicate). On the 166 graded shown plays so far every card counts.
 
 ### 5.3 Grader additions (`scripts/grade_side_cards.py`)
 
+> **Status 2026-11-24 (`docs/sharps-v2-grader-note.md`).** Item 1 is built, with these differences: it lives in `scripts/sharps_v2/pinclose.py` (a separate fail-soft
+> workflow step, not inside `grade_side_cards.py`, whose only change is to skip the new row kind), the close is read with `flags_v2._reads` (same side mapping and
+> no-vig as the flags), a spread or total close at another line keeps `close_fair` and `close_line` with a null `pts` and the reason `ticket_line_not_main_at_close`, and the
+> row also stores `fair_cut`, `line_cut` and `move_pts` (the registered market move after the cut). Items 2 to 5 are **not built**: `tier_record.json` already publishes the
+> per-tier record the page reads, `at_the_time` is printed by `tier_history.py` and read by nothing, and nothing reads `live.json` `v2_tier_record`. The per-tier Pinnacle CLV
+> is a report from the stored rows (`scripts/sharps_v2/pinclose_history.py`). The table at the top of this file and sections 7.1 and 8 are the plan as written.
+
 1. **`pinclose` rows.** For every `sf` play (variant `all`, every sport, every card old and new), once its result row exists, append once:
    `{"key": "<sf key>|pinclose", "kind": "pinclose", "of": "<sf key>", "v": 1, "sport", "ev", "gst", "close_fair", "close_t",
    "close_line", "clv": close_fair - price, "pts": (close_fair - price) x 100, "why", "graded_at"}`.
