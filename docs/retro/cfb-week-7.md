@@ -190,3 +190,28 @@ The 3 to 5 band is below break-even in the tuning seasons, the test seasons (46.
 
 **What is left that is untested:** a prior that uses the market's own PRESEASON number (season win totals or the week 1 lines, which embed preseason belief) instead of a rebuilt rating. That needs data we do not store (preseason win totals), so it is a data collection task before it is a test.
 
+## Round 7: the market's preseason win totals (data collected; improves the prior, not the picks)
+
+**Data.** There is no free API for season win totals, so `scripts/fetch_win_totals.py` reads them once a season from two public pages and stores them with the source in `data/win_totals/win_totals_<year>.json`: SportsBettingDime's historical page for 2022-2025 and Sharp Football Analysis's table for 2026. Coverage is partial and recorded in each file: 80 teams in 2022, 69 in 2023, 69 in 2024, 133 in 2025, 25 in 2026 so far. A team a page does not list is absent, never estimated. The collector is run by hand each preseason (July); the 2026 file needs a refresh once the source lists all 138 teams.
+
+**Does a win total know something our prior does not?** `scripts/cfb_week7_wintotals_study.py`, leave one season out over 2023-25 on the listed teams. Predicting a team's final-season strength:
+
+| target | RMSE, live prior only | RMSE, prior + win total | win total weight |
+|---|---|---|---|
+| final market strength (closing margins) | 4.51 | 3.19 | 1.5 to 1.8 points per win |
+| the model's own final EPA rating | 6.58 | 5.68 | 1.9 to 2.3 points per win |
+
+Better in every held-out season on both targets. The first target is partly circular (the market's final view agrees with its own preseason view), so the second, which is our own measure, is the one to trust: about 14% less error. The win total correlates 0.79 with final market strength, the live prior 0.76, and the two correlate 0.59 with each other, so they carry different information.
+
+**Does it help the model?** `scripts/cfb_week7_wintotals_prior_study.py`: the live model with its prior shifted by 2.0 points per win above the season mean for listed teams (the weight the EPA-target fit gave; fixed, not tuned), judged on games where both teams are listed, weeks 4+, 2023-25 (1,167 games). Underdog-side 5+ picks at the live count:
+
+| | miss | picks vs close | picks vs open |
+|---|---|---|---|
+| live model | 12.378 | 185-131 (58.5%) | 143-107 (57.2%) |
+| live + win totals | 12.162 | 172-143 (54.6%) | 125-125 (50.0%) |
+| close | 11.916 | | |
+
+By season the miss improves in 2023 (12.536 to 12.157) and 2025 (12.341 to 11.995) and worsens in 2024 (12.290 to 12.518), and the picks get worse in each of 2024 and 2025 against the open. NO-GO for picks, the same pattern as every other change that moves the model toward the market: accuracy improves by 0.2 points, the model's edge shrinks (standard deviation 5.0 to 4.1) and the picks lose.
+
+**What this closes.** The prior is not where our pick edge is lost. A better prior makes the model more accurate and its picks worse, which says our picks are produced by the model's disagreement with the market, and that disagreement is exactly what market information removes. The remaining gap to the market on accuracy (about 0.5 points on the listed games) is not worth buying at the cost of the picks.
+
