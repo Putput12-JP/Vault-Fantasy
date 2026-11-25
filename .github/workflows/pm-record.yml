@@ -1,6 +1,8 @@
 # Proven-sharps side card record (docs/side-card-record.md). Every 2 hours:
 #   1. scripts/grade_side_cards.py grades every frozen card's lock and shown size by Polymarket resolution, with CLV from
 #      data/pm_closes.json, and rebuilds pm_record/cards_record.json (the pre-registered read, report-only until the final date)
+#   1b. scripts/sharps_v2/pinclose.py appends a `pinclose` row per graded shown play (Pinnacle's closing no-vig price, from data/book_tape) and writes
+#      pm_record/pinclose_record.json; it never blocks step 1 or 2
 #   2. scripts/benchmark_h2h.py archives what the benchmark showed at each of our cuts (from its public repo's commit history, since
 #      it rewrites its files every 10 minutes), grades the benchmark's real plays the same way, and rebuilds pm_record/h2h_record.json
 # Rows are append-only on `pm-holders-data` (never force-pushed). Sharp money is context only: nothing here is a pick feed.
@@ -45,6 +47,15 @@ jobs:
         run: |
           python3 scripts/grade_side_cards.py --cards pmdata/pm_cards --holders pmdata/pm_holders --closes data/pm_closes.json \
             --out pmdata/pm_record
+      - name: Pinnacle close rows (context only, never blocks the grade)
+        if: env.SKIP != '1'
+        # `pinclose` rows: Pinnacle's closing no-vig price for each graded shown play, from the book tape in this checkout (scripts/sharps_v2/pinclose.py,
+        # docs/sharps-v2-grader-note.md). Append-only, written once per play, after the result row. Any failure is a warning: the rows written by the
+        # grade step above and every other file are untouched, and the next run tries again.
+        run: |
+          python3 -m unittest tests.test_pinclose || { echo "::warning::pinclose tests failed; no pinclose rows written this run"; exit 0; }
+          python3 -I scripts/sharps_v2/pinclose.py --cards pmdata/pm_cards --out pmdata/pm_record --book-tape data/book_tape \
+            || echo "::warning::pinclose rows not written this run"
       - name: Benchmark head-to-head
         if: env.SKIP != '1'
         env:

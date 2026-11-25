@@ -57,7 +57,8 @@ jobs:
       - name: Build
         if: env.SKIP != '1'
         run: |
-          # --v2-tier-record points at a file nothing writes yet (future grader work), so the key is simply absent: harmless
+          # --v2-tier-record points at a file nothing writes (docs/sharps-v2-grader-note.md: tier_record.json is the per-tier record, so no second copy is
+          # planned), so the key is simply absent: harmless
           python3 scripts/build_side_cards.py --holders pmdata/pm_holders --ledger hist/pm_ledger --sharp-data sharp_data.json \
             --frozen-out pmdata/pm_cards --live-out live/live.json --closes data/pm_closes.json --prev-live prev_live.json \
             --sf-excluded sf_excluded.json --scorecard-dir data --wallets-out live/wallets.json --prev-wallets prev_wallets.json \
