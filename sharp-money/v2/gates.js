@@ -371,6 +371,7 @@
        nba-sig5   NBA prop: all five counted Signals checks agree with the Vault model, on the model's side, at the board's main line
                   (nba/scripts/prop_rules.py writes board.rules from build_prop_signals.py). Not checked against fair.
        nba-aplus  NBA prop: A+ grade on Pts + Reb + Ast, Reb + Ast or Pts + Ast, on the grade's side, at the main line (build_prop_grades.py).
+       nba-reb-a  NBA prop: Rebounds graded A+, A or A- with the grade on the Vault model's side, at the main line (build_prop_grades.py).
        cfb-novig  CFB game priced at Novig (exchange_edge_live.json) that beats a reference by 2%+ (on the board at all: Watch or Passed).
                   Also sorts first in Plays, ahead of the gates' plays, as do CFB Novig prices that clear every gate.
      A rule play still needs a live pregame price (the board's US book for NBA, Novig for CFB), keeps one side per market (against the logged
@@ -378,9 +379,10 @@
   const RULES = {
     'nba-sig5': { label: '5 of 5 signals', why: 'All five checks (market, matchup, minutes, shot volume, form) agree with the Vault model.', rec: 'NBA prop board record when the rule was set: 20-3, ROI +28.3% on 23 (Oct 22 - Nov 24), 12-1 (+40.8%) after the Nov 8 freeze.' },
     'nba-aplus': { label: 'A+ grade', why: 'A+ prop grade on a combo stat (Pts + Reb + Ast, Reb + Ast, Pts + Ast).', rec: 'NBA prop board record when the rule was set: PRA 21-11 (+20.3%) on 32, RA 16-5 (+42.3%) on 21, PA 21-9 (+21.4%) on 30. The stats were picked on these rows.' },
+    'nba-reb-a': { label: 'Rebounds A grade', why: 'Rebounds graded A+, A or A-, on the Vault model\u2019s side.', rec: 'NBA prop board record when the rule was set: 199-133, +38.8u, ROI +12.4% on 332 (Oct 22 - Nov 24): A+ +9.1%, A +14.0%, A- +12.6%. Rebounds were picked on these rows.' },
     'cfb-novig': { label: 'CFB Novig', why: 'College football at Novig, beating a reference by ' + Math.round(GATES.MIN_EDGE * 100) + '% or more.', rec: 'Rebuilt from the Watch and Passed logs when the rule was set: 197-172, +50.2u, ROI +13.6% on 369; +11.6% on 164 first seen Nov 9 on.' }
   };
-  const RULE_IDS = Object.keys(RULES), RULE_STATS = new Set(['pra', 'ra', 'pa']);
+  const RULE_STATS = new Set(['pra', 'ra', 'pa']), REB_GRADES = new Set(['A+', 'A', 'A-']);
   const ruleUntested = id => 'Untested rule (' + RULES[id].label + '). ' + RULES[id].rec;
   /* The rule ids a candidate matches, from its own fields and X.N.rules (NBA). */
   function rulesOf(c, X) {
@@ -391,6 +393,7 @@
       if (r && sameLine(r[0], c.row.line)) {
         if (r[2] === 5 && r[1] === sd) out.push('nba-sig5');
         if (r[4] === 'A+' && r[5] === sd && RULE_STATS.has(c.row.mkt)) out.push('nba-aplus');
+        if (c.row.mkt === 'reb' && REB_GRADES.has(r[4]) && r[5] === sd && r[1] === sd) out.push('nba-reb-a');
       }
     }
     if (c.sport === 'cfb' && c.kind === 'exch' && c.best != null && c.best >= GATES.MIN_EDGE) out.push('cfb-novig');

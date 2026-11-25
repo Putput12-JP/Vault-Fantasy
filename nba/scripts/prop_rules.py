@@ -10,6 +10,9 @@ board, which of those groups it is in, so sharp-money/v2/gates.js (applyRules) c
   nba-aplus  an A+ grade (build_prop_grades.py, |points| 7+) on Pts + Reb + Ast, Reb + Ast or Pts + Ast, on the side the grade favours.
              Record when the rule was set (prop_grades.json 'stat', through Nov 24 2026): PRA 21-11 on 32 (+20.3%), RA 16-5 on 21 (+42.3%),
              PA 21-9 on 30 (+21.4%). The stat split was chosen on those same rows: in-sample.
+  nba-reb-a  Rebounds graded A+, A or A- on the Vault model's side (grade side = model side). Record when the rule was set (lean files, the same
+             rebuild, Oct 22 - Nov 24 2026): 199-133 on 332, +38.78u, +12.4% ROI on 313 priced (A+ +9.1%, A +14.0%, A- +12.6%). In-sample:
+             rebounds were picked because they were positive at every A grade.
 
 Nothing is fitted here: every cut comes from build_prop_signals.py and build_prop_grades.py, which were frozen before the records above were read.
 The inputs are the lean recorder's rows for this poll (lean_record.log: line, model chance, no-vig market chance, projected minutes) and the
@@ -31,6 +34,7 @@ import build_prop_grades as GR      # noqa: E402
 
 RULES_V = 1
 APLUS_STATS = ('pra', 'ra', 'pa')
+REB_GRADES = ('A+', 'A', 'A-')
 ET = dt.timezone(dt.timedelta(hours=-5))      # the lean files name a night by its ET date; only the date matters, so a fixed offset is enough a few hours either side
 OUT_RE = re.compile(r'out|doubt|inactive', re.I)
 
@@ -88,7 +92,7 @@ def evaluate(lrows, lmeta, status, roster, L):
             mo = [mp for q, mp in roster.get(team, []) if q != pid and mp >= GR.MATE_MPG and OUT_RE.search(status.get(q) or '')]
             *_, total = GR.points(rank, p, md, mo)
             gr, gs = (GR.grade_of(total), 'O' if total > 0 else 'U') if total else ('D', ms)
-        if kf == 5 or (gr == 'A+' and s_ in APLUS_STATS):
+        if kf == 5 or (gr == 'A+' and s_ in APLUS_STATS) or (s_ == 'reb' and gr in REB_GRADES and gs == ms):
             out[k] = [line, ms, kf, ka, gr, gs]
     return out
 

@@ -73,6 +73,15 @@ test('nba-aplus: A+ on PRA, RA or PA on the grade side; not on other stats', () 
   assert.notEqual(nba(r, 'Assist Al Over 6.5 Assists').tier, 'play', 'A+ on assists alone is not in the rule');
 });
 
+test('nba-reb-a: rebounds graded A+, A or A- with grade and model on the same side', () => {
+  const ok = c => nba(build(board({ 'g1|2|reb': c })), 'Disagree Dan Over 8.5 Rebounds');
+  for (const g of ['A+', 'A', 'A-']) { const c = ok([8.5, 'O', 3, 1, g, 'O']); assert.equal(c.tier, 'play', g); assert.equal(c.rule, 'nba-reb-a'); }
+  assert.equal(ok([8.5, 'O', 3, 1, 'B+', 'O']).tier, 'pass', 'B+ is not in the rule');
+  assert.equal(ok([8.5, 'U', 3, 1, 'A', 'O']).tier, 'pass', 'the grade and the model must point the same way');
+  const pra = nba(build(board({ 'g1|7|pra': [30.5, 'O', 2, 0, 'A', 'O'] })), 'Combo Cal Over 30.5 Pts + Reb + Ast');
+  assert.equal(pra.tier, 'none', 'A on a combo stat is not a rule');
+});
+
 test('a rule C play that also matches is tagged but stays rule C (no rule id), and rule plays never take a cap slot', () => {
   const r = build(board({ 'g1|1|pts': [24.5, 'O', 5, 0, 'A', 'O'] }));
   const c = nba(r, 'Play Er Over 24.5 Points');

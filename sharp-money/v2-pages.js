@@ -544,7 +544,7 @@
       /* Plays rules (gates.js Plays rules block): each rule's own record, from the plays that matched it. CFB Novig also shows its rebuild from the
          Watch and Passed logs before the rule existed (in-sample: the rule was chosen on those rows). Not added to the record above. */
       var rl = [];
-      [['nba-sig5', '5 of 5 signals', 'nba'], ['nba-aplus', 'A+ grade (PRA, RA, PA)', 'nba'], ['cfb-novig', 'CFB Novig', 'cfb']].forEach(function (x) {
+      [['nba-sig5', '5 of 5 signals', 'nba'], ['nba-aplus', 'A+ grade (PRA, RA, PA)', 'nba'], ['nba-reb-a', 'Rebounds A grades', 'nba'], ['cfb-novig', 'CFB Novig', 'cfb']].forEach(function (x) {
         if (sport && sport !== 'all' && sport !== x[2]) return;
         var mine = rows.filter(function (r) { return r.p.rules && r.p.rules.indexOf(x[0]) >= 0; }), t = stat(mine);
         rl.push(x[1] + ' ' + (t.n ? t.w + '-' + t.l + ' ' + (t.units == null ? '+0.0u' : su(t.units)) : mine.length ? mine.length + ' open' : 'none yet'));

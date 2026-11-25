@@ -53,6 +53,14 @@ class PropRules(unittest.TestCase):
             k = f'g1|1|{stat}'
             self.assertEqual(k in out and out[k][4] == 'A+', want, stat)
 
+    def test_rebounds_a_grades_on_the_model_side(self):
+        # rank 28 (+2), level 3 projection (+2), minutes +3 (+1) = 5: A- over, model over
+        rows, meta = lean(stat='reb', line=7.5, p=0.62, p_mkt=0.5)
+        out = R.evaluate(rows, meta, {}, {}, FakeLogs(rank=28))
+        self.assertEqual(out['g1|1|reb'][4:], ['A-', 'O'])
+        rows, meta = lean(stat='reb', line=7.5, p=0.62, p_mkt=0.5)
+        self.assertEqual(R.evaluate(rows, meta, {}, {}, FakeLogs(rank=15)), {}, 'B (3 points) is left off')
+
     def test_no_market_chance_no_row(self):
         rows, meta = lean(p_mkt=None)
         self.assertEqual(R.evaluate(rows, meta, {}, {}, FakeLogs()), {})
