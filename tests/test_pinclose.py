@@ -55,8 +55,10 @@ def card(sport="nba", g="ml", side="A", line=None, price=0.55, ev="nba-bos-nyk-2
             "vault": {"key": gk, "teams": names or {"away": ["B"], "home": ["A"]}}, "markets": {g: m}}
 
 
-def result(rel, c, g="ml", side="A", line=None, price=0.55, status="graded", play="sf", variant="all", gst=None):
-    return {"kind": "result", "play": play, "variant": variant, "status": status, "card": rel, "group": g, "side": side, "line": line,
+def result(rel, c, g="ml", side="A", line=None, price=0.55, status="graded", play="sf", variant="all", gst=None, outs=None):
+    if outs is None:
+        outs = ["Over", "Under"] if g == "total" else ["A", "B"]
+    return {"kind": "result", "outs": outs, "play": play, "variant": variant, "status": status, "card": rel, "group": g, "side": side, "line": line,
             "price": price, "cut": c["cut"], "gst": gst or c["gst"], "sport": c["sport"], "ev": c["ev"], "res": "win", "flat": 0.8, "units": 3,
             "graded_at": c["gst"] + 3600, "key": f"{rel}|{g}|{variant}|{play}"}
 
@@ -79,7 +81,7 @@ class Env:
             json.dump(c, f)
         g = next(iter(c["markets"]))
         sf = c["markets"][g]["sf"]["all"]
-        r = result(rel, c, g=g, side=kw.pop("side", sf["side"]), line=sf.get("line"), price=sf.get("price"), **kw)
+        r = result(rel, c, g=g, side=kw.pop("side", sf["side"]), line=kw.pop("line", sf.get("line")), price=sf.get("price"), **kw)
         self.rows[r["key"]] = r
         return rel, r
 
@@ -113,8 +115,8 @@ ML_ROWS = [tape_row(CUT - 3600, ml=[150, -170]), tape_row(GST - 30, ml=[130, -15
 
 
 class ReadClose(unittest.TestCase):
-    def read(self, rows, g="ml", norm="home", line=None, price=0.55, cut=CUT, gst=GST, how=None):
-        return PC.read_close(pin_rows(rows), g, norm, gst, cut, line, price, how)
+    def read(self, rows, g="ml", norm="home", line=None, price=0.55, cut=CUT, gst=GST, how=None, **kw):
+        return PC.read_close(pin_rows(rows), g, norm, gst, cut, line, price, how, **kw)
 
     def test_the_close_is_the_last_row_at_or_before_start_and_a_later_row_is_never_read(self):
         r = self.read(ML_ROWS)
@@ -176,7 +178,7 @@ class ReadClose(unittest.TestCase):
         rows = [tape_row(GST - 60, tot=[221.5, -110, -110])]
         self.assertIsNotNone(self.read(rows, g="total", norm="over", line=221.5 + PC.F.LINE_EPS - 0.001)["clv"])
         self.assertIsNone(self.read(rows, g="total", norm="over", line=221.5 + PC.F.LINE_EPS + 0.01)["clv"])
-        self.assertEqual(self.read(rows, g="total", norm="over", line=None)["why"], PC.WHY_LINE_CLOSE)
+        self.assertEqual(self.read(rows, g="total", norm="over", line=None)["why"], PC.WHY_NO_TICKET_LINE)     # an unknown own line is its own reason, not "another line"
 
     def test_no_tape_a_missing_price_and_an_unmapped_side_are_stored_reasons_never_zero(self):
         r = PC.read_close([], "ml", "home", GST, CUT, None, 0.5, "no_tape_rows_for_game")
@@ -206,10 +208,38 @@ class ReadClose(unittest.TestCase):
         r2 = self.read([tape_row(CUT - 100, ml=[150, -170]), tape_row(CUT + 5, ml=[100, -120]), tape_row(GST - 30, ml=[130, -150])])
         self.assertAlmostEqual(r2["fair_cut"], fair2(-170, 150), places=5)
 
-    def test_no_change_in_the_last_fifteen_minutes_is_a_move_of_exactly_zero_not_unreadable(self):
-        r = self.read([tape_row(CUT - 600, ml=[130, -150])])
+    def test_no_change_while_the_tape_was_alive_is_a_move_of_exactly_zero(self):
+        r = self.read([tape_row(CUT - 600, ml=[130, -150])], tape_after_cut=True)           # another game or book wrote a row after the cut: Pinnacle really held
         self.assertEqual((r["move_pts"], r["move_why"]), (0.0, None))
         self.assertEqual(r["close_t"], CUT - 600)
+
+    def test_a_tape_that_saw_nothing_after_the_cut_has_no_move_never_a_zero(self):
+        r = self.read([tape_row(CUT - 600, ml=[130, -150])])                                # the game's own rows are the only witness: none after the cut
+        self.assertEqual((r["move_pts"], r["move_why"]), (None, PC.WHY_NO_TAPE_AFTER_CUT))
+        self.assertIsNotNone(r["fair_cut"])                                                  # the read at the cut and the CLV are still stored
+        self.assertIsNotNone(r["clv"])
+        r = self.read([tape_row(CUT - 600, ml=[130, -150])], tape_after_cut=False)
+        self.assertEqual((r["move_pts"], r["move_why"]), (None, PC.WHY_NO_TAPE_AFTER_CUT))
+        self.assertEqual(self.read([tape_row(CUT + 1, ml=[130, -150]), tape_row(CUT - 5, ml=[130, -150])])["move_pts"], 0.0)
+
+    def test_a_stale_close_is_stored_with_its_age_and_flagged_as_not_after_the_cut(self):
+        gst = GST
+        r = self.read([tape_row(gst - int(6.8 * 3600), ml=[130, -150])], tape_last_t=gst - 100, tape_after_cut=False)   # the nfl-ne-det case: close 6.8 h before, cut 0.25 h
+        self.assertEqual((r["close_age_min"], r["close_after_cut"]), (408.0, False))
+        self.assertIsNotNone(r["clv"])                                                        # stored, but a statistic must keep it apart (record tests)
+        self.assertIsNone(r["move_pts"])
+        fresh = self.read(ML_ROWS)
+        self.assertEqual((fresh["close_age_min"], fresh["close_after_cut"]), (0.5, True))
+        edge = self.read([tape_row(CUT, ml=[130, -150])], tape_after_cut=True)
+        self.assertFalse(edge["close_after_cut"])                                             # a close exactly at the cut is the cut's own row
+
+    def test_the_tapes_liveness_is_stored_beside_the_close(self):
+        r = self.read(ML_ROWS, tape_last_t=GST - 90, tape_after_cut=True)
+        self.assertEqual((r["tape_last_t"], r["tape_age_min"]), (GST - 90, 1.5))
+        r = self.read(ML_ROWS)                                                                 # not given: read from the game's rows at or before start
+        self.assertEqual(r["tape_last_t"], GST - 30)
+        none = PC.read_close([], "ml", "home", GST, CUT, None, 0.5, None, tape_last_t=GST - 600, tape_after_cut=False)
+        self.assertEqual((none["tape_last_t"], none["tape_age_min"], none["why"]), (GST - 600, 10.0, PC.WHY_NO_TAPE))
 
     def test_no_row_at_the_cut_leaves_the_clv_readable_and_the_move_with_a_reason(self):
         r = self.read([tape_row(CUT + 100, ml=[130, -150])])
@@ -354,13 +384,54 @@ class Rows(unittest.TestCase):
         self.assertIn("read_error", out)
         self.assertIn("::warning::pinclose", err)
 
-    def test_an_unmapped_side_is_a_stored_reason(self):
-        self.env.add(card(names={"away": ["Nope"], "home": ["Never"]}))
+    def test_an_unmapped_side_is_held_not_written_and_a_later_spelling_fix_writes_it(self):
+        c = card(names={"away": ["Nope"], "home": ["Never"]})
+        rel, _ = self.env.add(c)
+        self.env.write_rows()
+        self.env.write_tape(ML_ROWS)
+        _, out, _ = self.env.run()
+        self.assertEqual(self.env.pin_rows(), [])
+        self.assertIn('"side_unmapped":1', out.replace(" ", ""))
+        c["vault"]["teams"] = {"away": ["B"], "home": ["A"]}
+        with open(os.path.join(self.env.cards, rel), "w") as f:
+            json.dump(c, f)
+        self.env.run()
+        (p,) = self.env.pin_rows()
+        self.assertIsNotNone(p["close_fair"])
+
+    def test_a_game_with_no_tape_gets_its_final_null_even_when_the_side_cannot_be_mapped(self):
+        self.env.add(card(names={"away": ["Nope"], "home": ["Never"]}, gk="nba:99", ev="nba-zzz-yyy-2026-11-20"))
         self.env.write_rows()
         self.env.write_tape(ML_ROWS)
         self.env.run()
         (p,) = self.env.pin_rows()
-        self.assertEqual((p["why"], p["close_fair"]), (PC.WHY_UNMAPPED, None))
+        self.assertEqual(p["why"], "no_tape_rows_for_game")
+
+    def test_the_other_side_of_a_two_sided_market_resolves_by_complement(self):
+        names = {"away": ["Loyola (MD) Greyhounds", "Loyola (MD)"], "home": ["Virginia Cavaliers", "Virginia"]}
+        sides = ["Loyola Maryland Greyhounds", "Virginia Cavaliers"]
+        self.assertEqual(PC.side_norm("spread", sides, names, "Loyola Maryland Greyhounds"), "away")
+        self.assertEqual(PC.side_norm("spread", sides, names, "Virginia Cavaliers"), "home")
+        self.assertEqual(PC.side_norm("ml", sides, names, "Loyola Maryland Greyhounds"), "away")
+        self.assertEqual(PC.side_norm("ml", list(reversed(sides)), names, "Loyola Maryland Greyhounds"), "away")
+        home_unmapped = ["Mystery Team", "Loyola (MD)"]
+        self.assertEqual(PC.side_norm("ml", home_unmapped, names, "Mystery Team"), "home")           # the other side is the away team: this one is home
+        self.assertIsNone(PC.side_norm("ml", ["Nobody", "Nothing"], names, "Nobody"))                 # neither maps: unresolved
+        self.assertIsNone(PC.side_norm("ml", ["Virginia", "Virginia Cavaliers"], names, "Virginia"))   # both land on one team: side_norms refuses, so no complement
+        self.assertIsNone(PC.side_norm("ml", ["A", "B", "C"], names, "A"))                            # not two-sided
+        self.assertIsNone(PC.side_norm("ml", ["Virginia Cavaliers", "X", "Y"], names, "X"))           # three sides: the complement of one is not the third
+        self.assertIsNone(PC.side_norm("spread", sides, None, "Virginia Cavaliers"))                  # no team names at all
+        self.assertEqual(PC.side_norm("total", ["Over", "Under"], names, "Under"), "under")
+        self.assertIsNone(PC.side_norm("total", ["Nope", "Under"], names, "Nope"))                    # a total never takes the complement
+
+    def test_a_side_the_name_table_cannot_map_but_the_other_side_can_gets_a_row(self):
+        c = card(names={"away": ["Bee"], "home": ["Ay"]}, sides=["Ay", "Zed"], side="Zed")             # "Zed" is not any team name; "Ay" is the home team
+        self.env.add(c, side="Zed")
+        self.env.write_rows()
+        self.env.write_tape(ML_ROWS)
+        self.env.run()
+        (p,) = self.env.pin_rows()
+        self.assertAlmostEqual(p["close_fair"], fair2(130, -150), places=5)                              # away
 
     def test_a_second_run_writes_nothing_and_changes_no_byte(self):
         self.basic()
@@ -433,26 +504,53 @@ class Rows(unittest.TestCase):
 class Record(unittest.TestCase):
     def plays_and_closes(self):
         mk = lambda i, sp, g: {"kind": "result", "play": "sf", "variant": "all", "status": "graded", "key": f"{sp}{i}|{g}|all|sf", "sport": sp, "group": g}
-        ps = [mk(1, "nba", "ml"), mk(2, "nba", "ml"), mk(3, "nba", "spread"), mk(4, "nba", "total"), mk(5, "nba", "ml")]
-        base = {"kind": "pinclose", "v": 1}
+        ps = [mk(1, "nba", "ml"), mk(2, "nba", "ml"), mk(3, "nba", "spread"), mk(4, "nba", "total"), mk(5, "nba", "ml"), mk(6, "nba", "ml")]
+        base = {"kind": "pinclose", "v": 1, "close_after_cut": True, "close_age_min": 1.0}
         cs = [dict(base, key=ps[0]["key"] + "|pinclose", of=ps[0]["key"], close_fair=0.5, pts=1.0, move_pts=0.0, why=None),
               dict(base, key=ps[1]["key"] + "|pinclose", of=ps[1]["key"], close_fair=0.5, pts=-3.0, move_pts=0.5, why=None),
-              dict(base, key=ps[2]["key"] + "|pinclose", of=ps[2]["key"], close_fair=0.5, pts=None, move_pts=None, why=PC.WHY_LINE_CLOSE),
-              dict(base, key=ps[3]["key"] + "|pinclose", of=ps[3]["key"], close_fair=None, pts=None, move_pts=None, why=PC.WHY_NO_TAPE)]
+              dict(base, key=ps[2]["key"] + "|pinclose", of=ps[2]["key"], close_fair=0.5, pts=None, move_pts=None, why=PC.WHY_LINE_CLOSE, move_why=PC.WHY_LINE_MOVED),
+              dict(base, key=ps[3]["key"] + "|pinclose", of=ps[3]["key"], close_fair=None, pts=None, move_pts=None, why=PC.WHY_NO_TAPE, close_after_cut=None, close_age_min=None),
+              # ps[4] has no row yet. ps[5]: a close at or before the cut, 90 minutes old: not a CLV vs the close
+              dict(base, key=ps[5]["key"] + "|pinclose", of=ps[5]["key"], close_fair=0.5, pts=2.0, move_pts=None, why=None, move_why=PC.WHY_NO_TAPE_AFTER_CUT,
+                   close_after_cut=False, close_age_min=90.0)]
         return ps, cs
 
     def test_counts_reasons_means_and_standard_errors(self):
         ps, cs = self.plays_and_closes()
         rec = PC.record(ps + cs, 5)["sports"]["nba"]
-        self.assertEqual((rec["graded"], rec["with_close"], rec["pending"]), (5, 3, 1))
+        self.assertEqual((rec["graded"], rec["with_close"], rec["pending"]), (6, 4, 1))
         self.assertEqual(rec["no_close_by_reason"], {PC.WHY_NO_TAPE: 1})
         self.assertEqual(rec["clv_unreadable_by_reason"], {PC.WHY_LINE_CLOSE: 1})
-        self.assertEqual((rec["clv"]["n"], rec["clv"]["mean_pts"]), (2, -1.0))
+        self.assertEqual((rec["clv"]["n"], rec["clv"]["mean_pts"]), (2, -1.0))                  # closes after the cut only
         self.assertAlmostEqual(rec["clv"]["se_pts"], 2.0, places=3)                 # sd of (1, -3) = 2.828, over sqrt(2)
         self.assertEqual((rec["move"]["n"], rec["move"]["mean_pts"]), (2, 0.25))
         self.assertTrue(rec["clv"]["small_sample"])
-        self.assertEqual(rec["by_market"]["ml"]["graded"], 3)
+        self.assertEqual(rec["by_market"]["ml"]["graded"], 4)
         self.assertEqual(rec["by_market"]["spread"]["clv"]["n"], 0)
+        self.assertEqual(rec["close_after_cut"], {"true": 3, "false": 1, "false_share": 0.25, "older_than_60_min": 1, "older_share": 0.25})
+        self.assertEqual((rec["price_vs_fair_at_cut"]["n"], rec["price_vs_fair_at_cut"]["mean_pts"]), (1, 2.0))   # kept apart from the CLV
+        self.assertEqual(rec["move_by_reason"], {PC.WHY_LINE_MOVED: 1, PC.WHY_NO_TAPE_AFTER_CUT: 1})
+
+    def test_a_close_exactly_an_hour_old_is_not_stale_and_one_minute_more_is(self):
+        ps, cs = self.plays_and_closes()
+        edge = dict(cs[4], close_age_min=60.0)
+        self.assertEqual(PC.record([ps[5], edge], 5)["sports"]["nba"]["close_after_cut"]["older_than_60_min"], 0)
+        self.assertEqual(PC.record([ps[5], dict(edge, close_age_min=60.1)], 5)["sports"]["nba"]["close_after_cut"]["older_than_60_min"], 1)
+
+    def test_a_close_at_or_before_the_cut_never_enters_the_clv_vs_the_close(self):
+        ps, cs = self.plays_and_closes()
+        only_before = [c for c in cs if c["of"] == ps[5]["key"]]
+        s = PC.record([ps[5]] + only_before, 5)["sports"]["nba"]
+        self.assertEqual((s["clv"]["n"], s["clv"]["mean_pts"]), (0, None))
+        self.assertEqual((s["price_vs_fair_at_cut"]["n"], s["price_vs_fair_at_cut"]["mean_pts"]), (1, 2.0))
+        legacy = dict(only_before[0]); del legacy["close_after_cut"]                              # a row without the flag is not trusted as after the cut
+        s = PC.record([ps[5], legacy], 5)["sports"]["nba"]
+        self.assertEqual(s["clv"]["n"], 0)
+
+    def test_held_plays_are_listed_in_the_record(self):
+        ps, cs = self.plays_and_closes()
+        self.assertEqual(PC.record(ps + cs, 5, {"side_unmapped": 2, "too_soon_after_start": 1})["held_last_run"], {"side_unmapped": 2, "too_soon_after_start": 1})
+        self.assertEqual(PC.record(ps + cs, 5)["held_last_run"], {})
 
     def test_a_slice_with_nothing_readable_has_null_means_never_zero(self):
         s = PC.stat([])
@@ -476,7 +574,7 @@ class Record(unittest.TestCase):
     def test_rows_that_are_not_graded_shown_plays_do_not_count(self):
         ps, cs = self.plays_and_closes()
         extra = [dict(ps[0], key="x|ml|all|lock", play="lock"), dict(ps[0], key="y|ml|fwd|sf", variant="fwd"), dict(ps[0], key="z|ml|all|sf", status="void")]
-        self.assertEqual(PC.record(ps + cs + extra, 5)["sports"]["nba"]["graded"], 5)
+        self.assertEqual(PC.record(ps + cs + extra, 5)["sports"]["nba"]["graded"], 6)
 
 
 class NothingExistingMoves(unittest.TestCase):
@@ -566,7 +664,8 @@ class Consistency(unittest.TestCase):
 
     def test_clv_matches_tier_history_and_the_move_matches_after_moves(self):
         rows = self.cases()
-        cases = [("ml", "A", None, 0.55), ("ml", "B", None, 0.45), ("spread", "A", -3.5, 0.52), ("spread", "B", 3.5, 0.48), ("total", "Over", 221.5, 0.5),
+        # the stored line is outcomes[0]'s (A, the home favourite at -3.5): side B is the same -3.5 on the card and +3.5 for the play itself
+        cases = [("ml", "A", None, 0.55), ("ml", "B", None, 0.45), ("spread", "A", -3.5, 0.52), ("spread", "B", -3.5, 0.48), ("total", "Over", 221.5, 0.5),
                  ("total", "Under", 222.5, 0.5)]
         tape = BSC.BookTape(self._t.name + "/tape")
         self.env.write_tape(rows)
@@ -590,7 +689,10 @@ class Consistency(unittest.TestCase):
         for r in results:
             c, p = cards[r["card"]], stored[r["key"]]
             clv, _ = TH.pin_close_pts(c, r["group"], c["markets"][r["group"]]["sf"]["all"], tape)
-            if p["pts"] is None or clv is None:
+            if r["group"] == "spread" and r["side"] == "B":
+                self.assertIsNotNone(p["pts"])                                          # readable: Pinnacle's away line +3.5 is the play's own line
+                self.assertIsNone(clv)                                                  # tier_history / ev_read compare it with the card's -3.5: the wrong sign
+            elif p["pts"] is None or clv is None:
                 self.assertEqual((p["pts"], clv), (None, None), r["key"])
             else:
                 self.assertLessEqual(abs(p["pts"] - clv), 0.0101, r["key"])
@@ -612,7 +714,27 @@ class Consistency(unittest.TestCase):
         self.assertEqual((x["clv_mismatch"], x["move_mismatch"]), (0, 0))
         self.assertGreaterEqual(x["clv_compared"], 4)
         self.assertGreaterEqual(x["move_compared"], 4)
-        self.assertEqual((x["clv_only_stored"], x["clv_only_derived"], x["move_only_stored"], x["move_only_derived"]), (0, 0, 0, 0))
+        self.assertEqual((x["clv_only_stored"], x["clv_only_derived"], x["move_only_stored"], x["move_only_derived"]), (1, 0, 0, 0))
+        self.assertEqual(x["clv_only_stored_outs1_spread"], 1)                       # the one stored-only CLV is the outcomes[1] spread play: the known flaw in the old read
+        # the independent check re-derives every row from the raw tape with an explicit side line and finds nothing to disagree with
+        stored_rows = {k: v for k, v in stored.items()}
+        ind = PH.independent_check(results, stored_rows, lambda rel: cards[rel], tape)
+        self.assertEqual((ind["fair_mismatch"], ind["line_mismatch"], ind["clv_readable_disagree"], ind["pts_mismatch"]), (0, 0, 0, 0))
+        self.assertEqual(ind["compared"], 6)
+        self.assertEqual(ind["sign_audit"], {"outs0": {"equals_side_line": 1, "equals_negative": 0, "neither": 0},
+                                             "outs1": {"equals_side_line": 1, "equals_negative": 0, "neither": 0}})
+        self.assertEqual(ind["stored_line_vs_pinnacle"], {"outs0": {"equals_line": 1, "equals_negative_line": 0}, "outs1": {"equals_line": 0, "equals_negative_line": 1}})
+        doctored = copy.deepcopy(stored_rows)
+        k2 = next(k for k, v in doctored.items() if v["group"] == "ml" and v["side"] == "A")
+        doctored[k2]["close_fair"] = round(doctored[k2]["close_fair"] + 0.01, 6)
+        self.assertEqual(PH.independent_check(results, doctored, lambda rel: cards[rel], tape)["fair_mismatch"], 1)
+        late = copy.deepcopy(stored_rows)
+        late[k2]["close_t"] += 1                                                       # the close row's time is checked too, not only its price
+        self.assertEqual(PH.independent_check(results, late, lambda rel: cards[rel], tape)["fair_mismatch"], 1)
+        k3 = next(k for k, v in stored_rows.items() if v["group"] == "spread" and v["side"] == "B")
+        flipped = copy.deepcopy(stored_rows)
+        flipped[k3]["pts"] = None                                                     # a row that wrongly says "not at the ticket line" is caught
+        self.assertEqual(PH.independent_check(results, flipped, lambda rel: cards[rel], tape)["clv_readable_disagree"], 1)
         bad = copy.deepcopy(stored)
         k = next(k for k, p in bad.items() if p["pts"] is not None and p["move_pts"] is not None)
         bad[k]["pts"] += 0.5
@@ -626,16 +748,18 @@ class History(unittest.TestCase):
     def test_the_report_joins_tiers_to_stored_closes_and_flags_every_improving_cell(self):
         ps = [{"key": "a", "sport": "nba", "tier": "contested"}, {"key": "b", "sport": "nba", "tier": "contested"}, {"key": "c", "sport": "cbb", "tier": "clear"},
               {"key": "d", "sport": "nba", "tier": "none"}]
-        closes = {"a": {"key": "a|pinclose", "close_fair": 0.5, "pts": 1.0, "move_pts": 0.0, "why": None},
-                  "b": {"key": "b|pinclose", "close_fair": 0.5, "pts": 0.5, "move_pts": 0.0, "why": None},
-                  "c": {"key": "c|pinclose", "close_fair": 0.5, "pts": -0.2, "move_pts": 0.0, "why": None}}
+        closes = {"a": {"key": "a|pinclose", "close_fair": 0.5, "pts": 1.0, "move_pts": 0.0, "why": None, "close_after_cut": True},
+                  "b": {"key": "b|pinclose", "close_fair": 0.5, "pts": 0.5, "move_pts": 0.0, "why": None, "close_after_cut": False},
+                  "c": {"key": "c|pinclose", "close_fair": 0.5, "pts": -0.2, "move_pts": 0.0, "why": None, "close_after_cut": True}}
         t = PH.compute(ps, closes)
-        self.assertEqual(t["nba"]["contested"]["clv"]["n"], 2)
+        self.assertEqual((t["nba"]["contested"]["clv"]["n"], t["nba"]["contested"]["price_vs_fair_at_cut"]["n"]), (1, 1))     # b is a close at or before the cut
         self.assertEqual(t["nba"]["none"]["pending"], 1)
         self.assertEqual(t["headline"]["all"]["graded"], 4)
         fl = PH.flagged(t)
         names = [f["slice"] for f in fl]
         self.assertIn("nba contested", names)
+        self.assertEqual({(f["slice"], f["metric"]) for f in fl if f["slice"] == "nba contested"},
+                         {("nba contested", "CLV vs the close"), ("nba contested", "price vs Pinnacle fair at the cut")})   # the two are flagged apart
         self.assertNotIn("cbb clear", names)                                         # negative CLV is not an improving cell
         self.assertTrue(all(f["small_sample"] for f in fl))                           # n=2: tagged small sample
         self.assertEqual(sorted(t["headline"]), ["all", "clear", "contested", "none"])  # the headline pools NBA, NFL and CBB (tiers with plays only)
@@ -643,26 +767,180 @@ class History(unittest.TestCase):
         self.assertNotIn("nba", {f["slice"].split()[0] for f in PH.flagged(PH.compute([ps[0]], {"a": dict(closes["a"], pts=-1.0)}))})
 
 
+class SideLine(unittest.TestCase):
+    """The stored line belongs to outcomes[0]; Pinnacle's line for the side is compared with the play's OWN line (the nba-mem-cha-2026-11-23 Hornets bug)."""
+
+    def test_spread_line_is_for_outcomes_zero_and_negated_for_outcomes_one(self):
+        outs = ["Grizzlies", "Hornets"]
+        self.assertEqual(PC.side_line("spread", "Grizzlies", outs, 2.5), 2.5)
+        self.assertEqual(PC.side_line("spread", "Hornets", outs, 2.5), -2.5)
+        self.assertEqual(PC.side_line("spread", "Hornets", outs, -2.5), 2.5)
+        self.assertEqual(PC.side_line("spread", "Grizzlies", outs, -2.5), -2.5)
+        self.assertEqual(PC.side_line("spread", "Hornets", outs, 0.0) + 0, 0)                 # pick'em: the same either way
+
+    def test_a_total_has_one_line_for_both_sides_and_a_moneyline_none(self):
+        for side in ("Over", "Under"):
+            self.assertEqual(PC.side_line("total", side, ["Over", "Under"], 221.5), 221.5)
+            self.assertEqual(PC.side_line("total", side, None, 221.5), 221.5)
+        self.assertIsNone(PC.side_line("ml", "Hornets", ["Grizzlies", "Hornets"], 2.5))
+
+    def test_an_unreadable_line_or_outcome_list_is_none_never_a_guess(self):
+        self.assertIsNone(PC.side_line("spread", "Hornets", None, 2.5))
+        self.assertIsNone(PC.side_line("spread", "Hornets", ["Grizzlies"], 2.5))
+        self.assertIsNone(PC.side_line("spread", "Hornets", ["Grizzlies", "Hornets", "Tie"], 2.5))
+        self.assertIsNone(PC.side_line("spread", "Nobody", ["Grizzlies", "Hornets"], 2.5))
+        self.assertIsNone(PC.side_line("spread", "Hornets", ["Grizzlies", "Hornets"], None))
+        self.assertIsNone(PC.side_line("spread", "Hornets", ["Grizzlies", "Hornets"], True))
+
+    def end_to_end(self, side, outs, stored_line, tape_sp):
+        with tempfile.TemporaryDirectory() as d:
+            env = Env(d)
+            env.add(card(g="spread", side=side, line=stored_line, price=0.52), side=side, outs=outs)
+            env.write_rows()
+            env.write_tape([tape_row(CUT - 600, sp=tape_sp), tape_row(GST - 60, sp=tape_sp), tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
+            env.run()
+            (p,) = env.pin_rows()
+            return p
+
+    def test_the_outcomes_one_spread_play_reads_its_own_line_end_to_end(self):
+        # home A is the favourite at -2.5 (outcomes[0]); the play is B, +2.5 away. The card stores -2.5 for both sides.
+        b = self.end_to_end("B", ["A", "B"], -2.5, [-2.5, -110, -110])
+        self.assertEqual((b["line"], b["side_line"], b["close_line"], b["why"]), (-2.5, 2.5, 2.5, None))
+        self.assertIsNotNone(b["pts"])
+        self.assertIsNotNone(b["move_pts"])
+        a = self.end_to_end("A", ["A", "B"], -2.5, [-2.5, -110, -110])
+        self.assertEqual((a["side_line"], a["close_line"], a["why"]), (-2.5, -2.5, None))
+        self.assertIsNotNone(a["pts"])
+
+    def test_a_close_at_a_real_other_line_is_still_not_the_ticket_line_for_either_position(self):
+        for side in ("A", "B"):
+            p = self.end_to_end(side, ["A", "B"], -2.5, [-3.5, -110, -110])
+            self.assertEqual((p["pts"], p["why"]), (None, PC.WHY_LINE_CLOSE), side)
+
+    def test_a_missing_outcome_list_stores_ticket_line_unknown_not_a_wrong_comparison(self):
+        with tempfile.TemporaryDirectory() as d:
+            env = Env(d)
+            env.add(card(g="spread", side="B", line=-2.5), side="B", outs=None)
+            for r in env.rows.values():
+                r["outs"] = None
+            env.write_rows()
+            env.write_tape([tape_row(GST - 60, sp=[-2.5, -110, -110]), tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
+            env.run()
+            (p,) = env.pin_rows()
+            self.assertEqual((p["pts"], p["why"], p["side_line"]), (None, PC.WHY_NO_TICKET_LINE, None))
+            self.assertIsNotNone(p["close_fair"])
+
+    def test_totals_read_the_same_line_for_over_and_under_end_to_end(self):
+        for side in ("Over", "Under"):
+            with tempfile.TemporaryDirectory() as d:
+                env = Env(d)
+                env.add(card(g="total", side=side, line=221.5, price=0.5), side=side)
+                env.write_rows()
+                env.write_tape([tape_row(GST - 60, tot=[221.5, -110, -110]), tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
+                env.run()
+                (p,) = env.pin_rows()
+                self.assertEqual((p["side_line"], p["close_line"], p["why"]), (221.5, 221.5, None), side)
+
+
+class RawClose(unittest.TestCase):
+    def test_the_independent_close_reads_a_row_at_start_and_never_a_later_one_and_takes_the_later_of_equal_times(self):
+        rows = [{"t": GST - 5, "ml": [130, -150]}, {"t": GST, "ml": [200, -230]}, {"t": GST + 1, "ml": [-500, 400]}]
+        f, line, t = PH.raw_close(rows, "ml", "home", GST)
+        self.assertEqual((t, line), (GST, None))
+        self.assertAlmostEqual(f, fair2(-230, 200), places=6)
+        self.assertEqual(PH.raw_close(rows, "ml", "away", GST)[0] + f, 1.0)
+        tie = [{"t": GST - 5, "ml": [130, -150]}, {"t": GST - 5, "ml": [200, -230]}]
+        self.assertAlmostEqual(PH.raw_close(tie, "ml", "home", GST)[0], fair2(-230, 200), places=6)
+        self.assertIsNone(PH.raw_close([{"t": GST + 1, "ml": [130, -150]}, {"t": GST - 1, "ml": [130]}, {"t": GST - 2, "ml": ["a", 1]}], "ml", "home", GST))
+        sp = [{"t": GST - 5, "sp": [-3.5, -105, -115]}]
+        self.assertEqual(PH.raw_close(sp, "spread", "home", GST)[1], -3.5)
+        self.assertEqual(PH.raw_close(sp, "spread", "away", GST)[1], 3.5)
+        self.assertAlmostEqual(PH.raw_close(sp, "spread", "away", GST)[0], fair2(-115, -105), places=6)
+        tot = [{"t": GST - 5, "tot": [221.5, -108, -112]}]
+        self.assertAlmostEqual(PH.raw_close(tot, "total", "under", GST)[0], fair2(-112, -108), places=6)
+
+
+class Liveness(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.env = Env(self._t.name)
+
+    def tearDown(self):
+        self._t.cleanup()
+
+    def test_a_stale_close_with_no_tape_after_the_cut_stores_no_move_and_its_age(self):
+        # the nfl-ne-det case: the last Pinnacle row is 6.8 hours before kickoff, the cut was 15 minutes before it, nothing else wrote after the cut
+        self.env.add(card(sport="nfl", ev="nfl-ne-det-2026-11-15", gk="nfl:1"))
+        self.env.write_rows("nfl")
+        self.env.write_tape([tape_row(GST - int(6.8 * 3600), ml=[130, -150], gk="nfl:1"), tape_row(GST - 1800, ml=[100, -100], gk="nfl:2", book="DraftKings"),
+                             tape_row(GST + 60, ml=[100, -100], gk="nfl:2")], "nfl")
+        self.env.run()
+        (p,) = self.env.pin_rows("nfl")
+        self.assertEqual((p["close_after_cut"], p["close_age_min"]), (False, 408.0))
+        self.assertEqual((p["move_pts"], p["move_why"]), (None, "no_tape_after_cut"))
+        self.assertNotEqual(p["move_pts"], 0.0)
+        self.assertIsNotNone(p["pts"])
+        self.assertEqual((p["tape_last_t"], p["tape_age_min"]), (GST - 1800, 30.0))              # any book counts for the tape's liveness
+
+    def test_another_game_writing_after_the_cut_makes_an_unchanged_pinnacle_a_real_zero(self):
+        self.env.add(card())
+        self.env.write_rows()
+        self.env.write_tape([tape_row(CUT - 3000, ml=[130, -150]), tape_row(CUT + 100, ml=[100, -100], gk="nba:2"), tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
+        self.env.run()
+        (p,) = self.env.pin_rows()
+        self.assertEqual((p["move_pts"], p["move_why"], p["close_after_cut"]), (0.0, None, False))
+        self.assertEqual(p["tape_last_t"], CUT + 100)
+
+    def test_a_row_of_a_book_other_than_pinnacle_counts_and_a_backfill_row_does_not(self):
+        self.env.add(card())
+        self.env.write_rows()
+        bf = dict(tape_row(CUT + 200, ml=[100, -100], gk="nba:2"), bf=True)
+        self.env.write_tape([tape_row(CUT - 3000, ml=[130, -150]), bf, tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
+        self.env.run()
+        self.assertEqual(self.env.pin_rows()[0]["move_why"], "no_tape_after_cut")
+
+
+class Clock(unittest.TestCase):
+    def test_the_tape_clock_reads_every_book_and_game_and_skips_backfill_and_junk(self):
+        with tempfile.TemporaryDirectory() as d:
+            env = Env(d)
+            env.write_tape([tape_row(100, book="Pinnacle"), tape_row(200, book="DraftKings", gk="x"), dict(tape_row(300), bf=True), {"t": "x"}, {"nope": 1},
+                            tape_row(400, book="Consensus", gk="y")])
+            with open(os.path.join(d, "tape", "nba", MONTH + ".jsonl"), "a") as f:
+                f.write("torn line {\n")
+            c = PC.TapeClock(env.tape)
+            self.assertEqual(c.last("nba"), 400)
+            self.assertIsNone(c.last("nfl"))                                                      # no folder: no liveness
+            self.assertEqual((c.last_at("nba", 399), c.last_at("nba", 400), c.last_at("nba", 99)), (200, 400, None))
+            # (lo, hi]: a row at lo is not between, a row at hi is
+            self.assertTrue(c.any_between("nba", 199, 200))
+            self.assertFalse(c.any_between("nba", 200, 399))
+            self.assertTrue(c.any_between("nba", 200, 400))
+            self.assertFalse(c.any_between("nba", 400, 500))
+            self.assertFalse(c.any_between("nfl", 0, 10 ** 12))
+
+
 class MoveAtTicketLine(unittest.TestCase):
     def test_a_moneyline_move_is_always_at_its_line_and_a_spread_move_needs_the_ticket_line_at_both_reads(self):
         ml = {"group": "ml", "move_pts": 0.7}
         self.assertEqual(PC.move_at_ticket_line(ml), 0.7)
-        sp = {"group": "spread", "move_pts": -0.4, "line": -3.5, "line_cut": -3.5, "close_line": -3.5}
+        sp = {"group": "spread", "move_pts": -0.4, "side_line": -3.5, "line_cut": -3.5, "close_line": -3.5}
         self.assertEqual(PC.move_at_ticket_line(sp), -0.4)
-        self.assertIsNone(PC.move_at_ticket_line(dict(sp, line=-4.5)))                       # Pinnacle held -3.5 but the ticket was on -4.5
+        self.assertIsNone(PC.move_at_ticket_line(dict(sp, side_line=-4.5)))                  # Pinnacle held -3.5 but the ticket was on -4.5
+        self.assertEqual(PC.move_at_ticket_line(dict(sp, line=9.5)), -0.4)                   # the stored Polymarket line (outcomes[0]'s) is never the comparison
         self.assertIsNone(PC.move_at_ticket_line(dict(sp, close_line=-4.5)))
         self.assertIsNone(PC.move_at_ticket_line(dict(sp, line_cut=-4.5)))
         self.assertEqual(PC.move_at_ticket_line(dict(sp, move_pts=0.0)), 0.0)                # a measured zero stays a zero
         self.assertIsNone(PC.move_at_ticket_line(dict(sp, move_pts=None)))
-        self.assertIsNone(PC.move_at_ticket_line(dict(sp, line=None)))
+        self.assertIsNone(PC.move_at_ticket_line(dict(sp, side_line=None)))
         self.assertIsNone(PC.move_at_ticket_line(dict(ml, move_pts=None)))
         self.assertIsNone(PC.move_at_ticket_line(dict(ml, move_pts="0.7")))                  # a stored value that is not a number is not a move
         self.assertIsNone(PC.move_at_ticket_line(dict(ml, move_pts=True)))
 
     def test_the_record_counts_it_beside_the_same_line_move(self):
         ps = [{"kind": "result", "play": "sf", "variant": "all", "status": "graded", "key": f"k{i}", "sport": "nfl", "group": "spread"} for i in range(2)]
-        cs = [{"kind": "pinclose", "key": "k0|pinclose", "of": "k0", "close_fair": 0.5, "pts": 1.0, "move_pts": 0.5, "why": None, "group": "spread", "line": -3.5, "line_cut": -3.5, "close_line": -3.5},
-              {"kind": "pinclose", "key": "k1|pinclose", "of": "k1", "close_fair": 0.5, "pts": None, "move_pts": 0.5, "why": PC.WHY_LINE_CLOSE, "group": "spread", "line": -4.5, "line_cut": -3.5, "close_line": -3.5}]
+        cs = [{"kind": "pinclose", "key": "k0|pinclose", "of": "k0", "close_fair": 0.5, "pts": 1.0, "move_pts": 0.5, "why": None, "group": "spread", "side_line": -3.5, "line_cut": -3.5, "close_line": -3.5},
+              {"kind": "pinclose", "key": "k1|pinclose", "of": "k1", "close_fair": 0.5, "pts": None, "move_pts": 0.5, "why": PC.WHY_LINE_CLOSE, "group": "spread", "side_line": -4.5, "line_cut": -3.5, "close_line": -3.5}]
         s = PC.record(ps + cs, 1)["sports"]["nfl"]
         self.assertEqual((s["move"]["n"], s["move_at_ticket_line"]["n"]), (2, 1))
 

@@ -485,47 +485,68 @@ Moneyline plays now carry a **spread fact line** (`v2.spread_ctx`, written up in
 moved toward or away from the side. **It is not tracked and not graded.** There is no record by it, no slice, no row in `tier_record.json`, `flag_record.json` or `move_grade_record.json`, and no count of any kind; the forward log keeps it
 (`sc`, `sc_why`) only so a frozen card can be read back as it was shown. It changes no number on this page: not a tier, a size, a Move grade or a result. It carries no claim about results.
 
+
 ## Pinnacle close rows `pinclose` (2026-11-24)
 
 A new append-only row kind beside `result` and `close` in `pm_record/cards/<sport>/<YYYY-MM>.jsonl` (key `<sf key>|pinclose`): Pinnacle's closing no-vig price for the side of every graded shown
 play (sf, variant all), the price at the cut it is compared with, and the move after the cut. Written by `scripts/sharps_v2/pinclose.py` (a fail-soft step of `pm-record.yml`), once per play, after the
 result row and at least 30 minutes after game start. It is a record input, not a signal: sharp money stays context only, and nothing here feeds Top Reads, SM_GATE or an agree total. The case for building it
-(and for not building the spec's `v2_tier`, `shown` and `v2_tier_record.json`) is `docs/sharps-v2-grader-note.md`.
+(and for not building the spec's `v2_tier`, `shown` and `v2_tier_record.json`) and the corrections made in review are in `docs/sharps-v2-grader-note.md`.
 
-- **Close** = Pinnacle's last readable tape row at or before game start (inclusive), no-vig by the flags' read (`flags_v2._reads`). `close_t` is that row's time (the tape writes on change). A tape row after start is never read.
-- **CLV** (`clv`, `pts`) = close fair minus the stored price at the cut, in probability and in points, null unless the close is at the ticket's line (`ticket_line_not_main_at_close`). **Move** (`move_pts`) = close fair minus Pinnacle's own fair at
-  the cut, null unless both reads are at the same Pinnacle line. A null stores its reason; nothing is estimated and nothing is 0.
-- **Held, not written null:** a play whose sport's tape does not run past its start, or whose card file is missing, gets no row until it can be read.
+- **Close** = Pinnacle's last readable tape row at or before game start (inclusive), no-vig by the flags' read (`flags_v2._reads`). `close_t` is that row's time (the tape writes on change), `close_age_min` its age at the start, and
+  `close_after_cut` whether it is after the cut. A tape row after start is never read.
+- **CLV vs the close** counts only closes after the cut. A close at or before the cut (the row the cut already saw, or an older one) is stored but is reported apart as the **price against Pinnacle's fair at the cut**. The `clv`/`pts` field is
+  close fair minus the stored price, null unless the close is at the play's own line (`side_line`: the stored Polymarket line for outcomes[0], its negative for outcomes[1]; the first version compared the wrong sign and was fixed before any row was written).
+- **Move** (`move_pts`) = close fair minus Pinnacle's own fair at the cut, null unless both reads are at the same Pinnacle line and the tape (any book, any game of the sport) wrote a row between the cut and the start; with nothing seen a 0 is not a
+  measurement and the row stores `no_tape_after_cut`. A null stores its reason; a stored 0.0 is a measured zero.
+- **Held, not written:** a play whose sport's tape (any book) does not run past its start, whose card file is missing, or whose side cannot be mapped to a team while the game has tape rows.
 - **What changed for existing records: nothing.** The grader's `record()` and `benchmark_h2h.py` now skip the new kind (they raised on it), and that is the only edit to either. Old versus new on a copy of `pm-holders-data` (`309fe8039b7d`, same inputs, `--no-fetch`):
   every file under `pm_record` is byte for byte the same except the four month files, which keep every old byte as an exact prefix and gain 225 `pinclose` lines, plus the new `pinclose_record.json`.
   `cards_record.json`, `h2h_record.json` and `markets.json` are also identical after a second grader run with the new rows present.
+- **Known flaw in two frozen reads (not changed):** `sf_signals.ev_read` is given the card's `sf.line`, which is outcomes[0]'s line, as the ticket line, so `tier_history.pin_close_pts`, `card_signals` and the stored `sf.signals.ev` call a main line "not main" on outcomes[1] spread plays
+  (7 of the 225 plays on the CLV side; the effect on the a4/b2 tier facts is not measured). The stored rows were checked against an independent re-derivation from the raw tape instead (165 of 165 agree).
 
-**Backfill** (the first run after merge writes these; numbers are the same code run on that copy): 225 graded shown plays, **163 now have a stored Pinnacle close** (old: 0), 104 with a CLV at the ticket's line (old: 0),
-162 with a move after the cut. Not backfilled: 45 CBB plays with no tape (the CBB tape starts Nov 19, 9:08 AM CT), 15 CFB plays with no tape, 2 CBB plays whose side does not map to a team (`side_unmapped`); and 59 plays
-keep a close but have no CLV because the close is at another line than the ticket (NBA 14, NFL 15, CBB 7, CFB 23). Every stored value agrees with the on-the-fly derivation the repo already had (104 of 104 CLV values, 162 of 162 moves, within 0.01 point).
+**Backfill** (the first run after merge writes these; numbers are the same code run on that copy). Old = the first version of this PR, new = after review:
 
-**Pinnacle CLV and the move after the cut, by sport and evidence tier** (points; mean, one standard error, n; in-sample: the tiers are derived after the fact for plays cut before the log, so every cell is in-sample; "small sample" under n=30;
-`python3 -I scripts/sharps_v2/pinclose_history.py --data-dir <pm-holders-data copy> --book-tape <tape at 2066d9a0a57>`):
+| | Old | New |
+|---|---|---|
+| Graded shown plays with a stored Pinnacle close | 0 on the data branch; first version 163 | **165** (NBA 69, NFL 33, CBB 17, CFB 46) |
+| ... closes after the cut (a real "close") | not tracked | **67** (NBA 31, NFL 8, CBB 3, CFB 25) |
+| ... closes at or before the cut | not tracked | **98** (NBA 38, NFL 25, CBB 14, CFB 21), of which more than 60 minutes old at the start: 25 (NFL 18) |
+| Plays with a price-vs-close readable (at the play's own line) | first version 104 | **111** (NBA 58, NFL 19, CBB 9, CFB 25) |
+| ... counted as CLV vs the close (close after the cut) | first version counted all 104 | **48** (NBA 28, NFL 4, CBB 2, CFB 14) |
+| ... counted as price vs Pinnacle fair at the cut | | **63** (NBA 30, NFL 15, CBB 7, CFB 11) |
+| Plays with a move after the cut | first version 162 | **94** (NBA 44, NFL 7, CBB 6, CFB 37) |
+| Held plays in this data | | 0 |
 
-| Slice | Plays | Stored close | Pinnacle CLV | Move after the cut |
-|---|---|---|---|---|
-| NBA all shown plays | 69 | 69 | +0.05, se 0.22, n=55 | -0.16, se 0.08, n=69 |
-| NBA Contested | 61 | 61 | +0.03, se 0.24, n=50 | -0.10, se 0.09, n=61 |
-| NBA not derivable | 8 | 8 | +0.21, se 0.29, n=5, small sample | -0.57, se 0.27, n=8, small sample |
-| NFL all shown plays | 33 | 33 | -0.59, se 0.24, n=18, small sample | +0.12, se 0.11, n=32 |
-| NFL Contested | 30 | 30 | -0.59, se 0.24, n=18, small sample | +0.14, se 0.12, n=29, small sample |
-| CBB all shown plays | 62 | 15 | +0.27, se 0.33, n=8, small sample | +0.18, se 0.16, n=15, small sample |
-| CBB Clear / Mixed / Thin / Contested | 1 / 4 / 8 / 6 | 1 / 4 / 6 / 4 | +1.01 (n=1) / +0.65 (se 0.44, n=3) / none / -0.19 (se 0.51, n=4), all small sample | 0.00 (n=1) / 0.00 (n=4) / 0.00 (n=6) / +0.67 (se 0.60, n=4) |
-| CBB not derivable | 43 | 0 | none (no tape) | none |
-| CFB (no size shown) all | 61 | 46 | -0.19, se 0.11, n=23, small sample | +0.01, se 0.08, n=46 |
-| Headline NBA + NFL + CBB | 164 | 117 | -0.07, se 0.17, n=81 | -0.04, se 0.06, n=116 |
+Move not readable, by reason: `no_tape_after_cut` NBA 25, NFL 25, CBB 11, CFB 9 (the tape wrote nothing between the cut and the start); `no_tape_rows_for_game` CBB 45, CFB 15; `pinnacle_line_changed_since_cut` NFL 1. Not backfilled as a close: 45 CBB plays (no tape: the CBB tape starts Nov 19, 9:08 AM CT) and
+15 CFB plays (no tape for the game). A close stored but not at the play's line: NBA 11, NFL 14, CBB 8, CFB 21 (old: 14, 15, 7, 23). Side mapping: the old mapping left 18 sides unmapped; the complement rule resolves 3, the other 15 have no tape rows at all.
 
-Old, for the same plays: the Record page's "vs the close" (Polymarket's close, unchanged): NBA -0.03 points (se 0.10, n=69), NFL +0.36 (se 0.14, n=33), CBB none, CFB none. On the 18 NFL plays that have both closes, Polymarket's close reads **+0.56** and
-Pinnacle's **-0.59**; on the 55 NBA plays that have both, +0.04 and +0.05. Pinnacle is the sharper reference and the two disagree in sign on 9 of 18 NFL plays.
+**Pinnacle numbers by sport and evidence tier** (points; mean, one standard error, n; all in-sample: the tiers are derived after the fact for plays cut before the log; "small sample" under n=30;
+`python3 -I scripts/sharps_v2/pinclose_history.py --data-dir <pm-holders-data copy> --book-tape <tape at 2066d9a0a57>`). Old column = the first version's single "Pinnacle CLV" (every close, wrong side line on outcomes[1]):
 
-**Flagged for close monitoring: every cell whose mean Pinnacle CLV is above 0, with its n** (all in-sample, none promoted, none a signal; the list is the output of `pinclose_history.py`): NBA all shown plays +0.05 (n=55); NBA Contested +0.03 (n=50);
-NBA not derivable +0.21 (n=5, small sample); CBB all +0.27 (n=8, small sample); CBB Clear +1.01 (n=1, small sample); CBB Mixed +0.65 (n=3, small sample); CFB Mixed +0.03 (n=9, small sample); headline Clear +1.01 (n=1, small sample); headline Mixed +0.65 (n=3, small sample);
-headline not derivable +0.21 (n=5, small sample). No cell is distinguishable from 0: the largest has n=55 and a standard error of 0.22 points, more than four times its mean.
+| Slice | Plays | Stored close | Old CLV (all closes) | New CLV vs the close (after the cut) | New price vs Pinnacle fair at the cut | Move after the cut |
+|---|---|---|---|---|---|---|
+| NBA all | 69 | 69 | +0.05, se 0.22, n=55 | -0.19, se 0.13, n=28, small sample | +0.23, se 0.39, n=30 | -0.25, se 0.13, n=44 |
+| NBA Contested | 61 | 61 | +0.03, se 0.24, n=50 | -0.24, se 0.14, n=25, small sample | +0.27, se 0.43, n=27, small sample | -0.17, se 0.14, n=37 |
+| NBA not derivable | 8 | 8 | +0.21, se 0.29, n=5 | +0.21, se 0.51, n=3, small sample | -0.19, se 0.42, n=3, small sample | -0.65, se 0.29, n=7, small sample |
+| NFL all (all Contested but 3) | 33 | 33 | -0.59, se 0.24, n=18 | +0.12, se 0.59, n=4, small sample | -0.77, se 0.23, n=15, small sample | +0.57, se 0.50, n=7, small sample |
+| CBB all | 62 | 17 | +0.27, se 0.33, n=8 | +0.45, se 0.84, n=2, small sample | +0.35, se 0.36, n=7, small sample | +0.78, se 0.46, n=6, small sample |
+| CBB Clear / Mixed / Thin / Contested | 1 / 4 / 8 / 6 | 1 / 4 / 7 / 5 | +1.01 / +0.65 / none / -0.19 (n=1 / 3 / 0 / 4) | none / none / none / +0.45 (se 0.84, n=2) | +1.01 (n=1) / +0.65 (se 0.44, n=3) / none / -0.17 (se 0.68, n=3) | 0.00 (n=1) / none / +1.00 (n=2) / +0.90 (se 0.78, n=3) |
+| CBB not derivable | 43 | 0 | none | none | none | none |
+| CFB (no size shown) all | 61 | 46 | -0.19, se 0.11, n=23 | -0.17, se 0.15, n=14, small sample | -0.36, se 0.15, n=11, small sample | +0.02, se 0.10, n=37 |
+| Headline NBA + NFL + CBB | 164 | 119 | -0.07, se 0.17, n=81 | -0.12, se 0.13, n=34 | -0.04, se 0.24, n=52 | -0.04, se 0.13, n=57 |
+
+**The NFL Pinnacle-versus-Polymarket comparison in the first version was mostly stale reads.** It said Polymarket's close read +0.56 and Pinnacle's -0.59 on 18 NFL plays, with the sign different on 9. Fourteen of those 18 Pinnacle reads were at or before the cut, up to 6.8 hours
+old; counting only closes after the cut, NFL Pinnacle CLV is +0.12 (se 0.59) on n=4 (Polymarket's close on the same four: +0.75). Four plays support no claim, and the statement that Pinnacle is the sharper reference and the two "should" be shown side by side is withdrawn.
+
+Old, for the same plays: the Record page's "vs the close" (Polymarket's close, unchanged): NBA -0.03 points (se 0.10, n=69), NFL +0.36 (se 0.14, n=33), CBB none, CFB none.
+
+**Flagged for close monitoring: every cell whose mean is above 0, with its n** (all in-sample, none promoted, none a signal; the output of `pinclose_history.py`; "CLV" = vs a close after the cut, "price" = price vs Pinnacle fair at the cut): NBA all price +0.23 (n=30);
+NBA Contested price +0.27 (n=27, small sample); NBA not derivable CLV +0.21 (n=3, small sample); NFL all CLV +0.12 (n=4, small sample); NFL Contested CLV +0.12 (n=4, small sample); CBB all CLV +0.45 (n=2, small sample) and price +0.35 (n=7, small sample);
+CBB Clear price +1.01 (n=1, small sample); CBB Mixed price +0.65 (n=3, small sample); CBB Contested CLV +0.45 (n=2, small sample); CFB Mixed price +0.17 (n=4, small sample); headline Clear price +1.01 (n=1, small sample); headline Mixed price +0.65 (n=3, small sample);
+headline not derivable CLV +0.21 (n=3, small sample). No cell is distinguishable from 0: the largest has n=30 and a standard error of 0.39 points.
 
 **Not changed, and why:** the Record page (it reads only `result` and `close` rows, so the new rows are inert; showing a second "close" next to Polymarket's is a design decision: `docs/sharps-v2-grader-note.md`, "Record page"),
-`tier_record.json` (still the per-tier record the page reads; it has no CLV), the preregistrations (the move and CLV the tier and flag tests read now exist as stored rows, no rule or threshold moved).
+`tier_record.json` (still the per-tier record the page reads; it has no CLV), the preregistrations (the move and CLV the tier and flag tests read now exist as stored rows, no rule or threshold moved). **A prereg gap, not implemented here:**
+the data-quality kill rule of `docs/sharp-tier-v2-prereg.md` (forward log rows whose tier differs from a re-derivation from the stored card, over 5%) is implemented nowhere yet.

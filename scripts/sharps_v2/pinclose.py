@@ -7,11 +7,18 @@ docs/sharps-v2-plays-spec.md section 5.3). A new append-only row kind beside `re
   close_t     epoch seconds of that tape row (the tape writes on change, so this is the last change, not "read at")
   close_line  the side's own line at that row (spread, total); null on a moneyline
   price       the stored price at the cut (the result row's price), copied so CLV needs no other row
-  clv, pts    close_fair - price, and the same times 100 (points). Null unless the close is at the ticket's line (a moneyline always is)
+  line        the stored Polymarket line, which belongs to outcomes[0] (the favourite); side_line is the PLAY'S OWN line (line for outcomes[0], -line for
+              outcomes[1] on a spread; a total's line is the same for both sides). Pinnacle's line for the side is compared with side_line, never with line.
+  clv, pts    close_fair - price, and the same times 100 (points). Null unless the close is at the ticket's side line (a moneyline always is).
+              It is a CLV "vs the close" only when close_after_cut is true; with it false the close is the same Pinnacle row the cut saw (or an older one),
+              so the number is the price against Pinnacle's fair at the cut, and every statistic keeps the two apart.
+  close_age_min, close_after_cut   minutes from close_t to start, and whether close_t is after the cut
+  tape_last_t, tape_age_min   the last tape row of ANY book for the sport at or before start, and its age before start (the tape's liveness)
   fair_cut, line_cut   Pinnacle's no-vig fair and line for the side at its last readable row at or before the CUT
-  move_pts    (close_fair - fair_cut) x 100, the market move after the cut; null unless both reads exist at the same Pinnacle line
-              (move_at_ticket_line() narrows it to reads at the ticket's own line, the tier prereg's wording)
-  why, move_why   null when clv / move_pts is readable, else the stored reason (never 0, never estimated)
+  move_pts    (close_fair - fair_cut) x 100, the market move after the cut; null unless both reads exist at the same Pinnacle line AND the tape saw any
+              row (any book, any game of the sport) between the cut and the start: with nothing seen, "unchanged" is not a measurement
+              (move_at_ticket_line() narrows it to reads at the ticket's own side line, the tier prereg's wording)
+  why, move_why   null when clv / move_pts is readable, else the stored reason (a null is a stored reason, never a 0 and never estimated)
 
 Same side mapping and no-vig method as the market-move flags (scripts/sharps_v2/flags_v2.py `_reads`: two-way multiplicative, home / away /
 over / under from the card's own team names). The close read is outcome-free and point in time: a tape row after game start is never read.
@@ -19,9 +26,9 @@ over / under from the card's own team names). The close read is outcome-free and
 is a subset a reader can check from the stored `line`, `line_cut` and `close_line`.
 
 Written once per graded sf play of variant all (voided and unpriced results get none), after the result row exists and at least GRACE seconds
-after game start. A play is HELD, not written null, when the sport's tape does not run past its start (a missing or stale tape checkout must
-never turn into permanent null rows) or when its card file is missing. A null row stores its reason and is final: the tape only ever grows
-forward, so a started game gets no later rows.
+after game start. A play is HELD, not written null, when the sport's tape (any book) does not run past its start (a missing or stale tape checkout must
+never turn into permanent null rows), when its card file is missing, or when its side cannot be mapped to home or away. A null row stores its reason
+and is final: the tape only ever grows forward, so a started game gets no later rows.
 
 Sharp money is context only (CLAUDE.md): this is a record input, never a bet signal, never an input to Top Reads, SM_GATE or an agree total.
 
@@ -29,7 +36,7 @@ Sharp money is context only (CLAUDE.md): this is a record input, never a bet sig
 
 The step never breaks the grade: any problem prints a ::warning:: and writes nothing for the rows it could not read.
 """
-import argparse, collections, json, math, os, sys, time
+import argparse, bisect, collections, glob, json, math, os, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.dirname(HERE)
@@ -53,6 +60,9 @@ WHY_NO_CUT = "no_pinnacle_at_or_before_cut"
 WHY_UNMAPPED = "side_unmapped"
 WHY_NO_PRICE = "no_price"
 WHY_LINE_CLOSE = "ticket_line_not_main_at_close"
+WHY_NO_TICKET_LINE = "ticket_line_unknown"
+WHY_NO_TAPE_AFTER_CUT = "no_tape_after_cut"
+STALE_MIN = 60                     # a close older than this many minutes before start is reported as stale
 WHY_LINE_MOVED = "pinnacle_line_changed_since_cut"
 
 
@@ -68,11 +78,45 @@ def last_read(rows, g, norm, t):
     return rd[-1] if rd else None
 
 
-def read_close(rows, g, norm, gst, cut, ticket_line, price, how=None):
-    """The stored fields of one pinclose row (everything except the identity keys), from the tape rows of the game. `rows` empty means no tape
-    for the game (`how` is the tape's own reason)."""
-    out = {"close_fair": None, "close_t": None, "close_line": None, "fair_cut": None, "line_cut": None, "clv": None, "pts": None,
-           "move_pts": None, "why": None, "move_why": None}
+def side_line(g, side, outs, line):
+    """The play's own line from the stored result row. Polymarket stores a spread's `line` for outcomes[0] and the other side has the opposite sign
+    (page: "The stored line belongs to the first outcome"); a total has one line for both sides; a moneyline has none. None when it cannot be told."""
+    if g == "ml" or not F._n(line):
+        return None
+    if g == "total":
+        return line
+    if isinstance(outs, (list, tuple)) and len(outs) == 2 and side in outs:
+        return line if outs[0] == side else -line
+    return None
+
+
+def side_norm(g, sides, names, side):
+    """home / away / over / under for the shown side. A two-sided moneyline or spread whose OTHER side maps to a team is the opposite team, so a
+    name the card spells differently from the tape ("Loyola (MD)") still resolves; when neither side maps it is None (the play is held)."""
+    norms = BSC.side_norms(g, sides, names)
+    n = norms.get(side)
+    if n in F.SIDES:
+        return n
+    other = [x for x in sides if x != side]            # exactly one other side, and it is a team (a total's sides are over / under, never a team)
+    if len(other) == 1 and norms.get(other[0]) in ("home", "away"):
+        return "away" if norms[other[0]] == "home" else "home"
+    return None
+
+
+def read_close(rows, g, norm, gst, cut, ticket_line, price, how=None, tape_last_t=None, tape_after_cut=None):
+    """The stored fields of one pinclose row (everything except the identity keys), from the tape rows of the game. `ticket_line` is the play's OWN
+    line (side_line). `rows` empty means no tape for the game (`how` is the tape's own reason). `tape_last_t` and `tape_after_cut` are the sport's
+    tape liveness (any book, any game: the last row at or before start, and whether any row lies in (cut, start]); when not given they are read from
+    `rows` alone."""
+    out = {"close_fair": None, "close_t": None, "close_line": None, "close_age_min": None, "close_after_cut": None, "tape_last_t": None,
+           "tape_age_min": None, "fair_cut": None, "line_cut": None, "clv": None, "pts": None, "move_pts": None, "why": None, "move_why": None}
+    times = [r["t"] for r in rows if isinstance(r, dict) and F._n(r.get("t"))]
+    if tape_last_t is None:
+        tape_last_t = max((t for t in times if t <= gst), default=None)
+    if tape_after_cut is None:
+        tape_after_cut = any(cut < t <= gst for t in times)
+    out["tape_last_t"] = tape_last_t
+    out["tape_age_min"] = round((gst - tape_last_t) / 60, 1) if F._n(tape_last_t) else None
     if not rows:
         out["why"] = out["move_why"] = how or WHY_NO_TAPE
         return out
@@ -83,11 +127,14 @@ def read_close(rows, g, norm, gst, cut, ticket_line, price, how=None):
     if close is None:
         out["why"] = out["move_why"] = WHY_NO_CLOSE
         return out
-    out.update(close_fair=_r(close["fair"]), close_t=close["t"], close_line=_r(close["line"]))
+    out.update(close_fair=_r(close["fair"]), close_t=close["t"], close_line=_r(close["line"]),
+               close_age_min=round((gst - close["t"]) / 60, 1), close_after_cut=bool(close["t"] > cut))
     # CLV is close minus the price at the cut, so the close must be the same line the price was for
     if not (isinstance(price, (int, float)) and not isinstance(price, bool) and 0 < price < 1):
         out["why"] = WHY_NO_PRICE
-    elif g != "ml" and not (F._n(ticket_line) and F._n(close["line"]) and abs(close["line"] - ticket_line) <= F.LINE_EPS):
+    elif g != "ml" and not F._n(ticket_line):
+        out["why"] = WHY_NO_TICKET_LINE
+    elif g != "ml" and not (F._n(close["line"]) and abs(close["line"] - ticket_line) <= F.LINE_EPS):
         out["why"] = WHY_LINE_CLOSE
     else:
         out["clv"] = _r(out["close_fair"] - price)
@@ -97,7 +144,9 @@ def read_close(rows, g, norm, gst, cut, ticket_line, price, how=None):
         out["move_why"] = WHY_NO_CUT
         return out
     out.update(fair_cut=_r(at_cut["fair"]), line_cut=_r(at_cut["line"]))
-    if g != "ml" and not (F._n(at_cut["line"]) and F._n(close["line"]) and abs(at_cut["line"] - close["line"]) <= F.LINE_EPS):
+    if not tape_after_cut:
+        out["move_why"] = WHY_NO_TAPE_AFTER_CUT
+    elif g != "ml" and not (F._n(at_cut["line"]) and F._n(close["line"]) and abs(at_cut["line"] - close["line"]) <= F.LINE_EPS):
         out["move_why"] = WHY_LINE_MOVED
     else:
         out["move_pts"] = round((out["close_fair"] - out["fair_cut"]) * 100, 2)
@@ -113,20 +162,49 @@ def move_at_ticket_line(row):
         return None
     if row.get("group") == "ml":
         return m
-    ticket, at_cut, at_close = row.get("line"), row.get("line_cut"), row.get("close_line")
+    ticket, at_cut, at_close = row.get("side_line"), row.get("line_cut"), row.get("close_line")
     if all(F._n(x) for x in (ticket, at_cut, at_close)) and abs(ticket - at_cut) <= F.LINE_EPS and abs(ticket - at_close) <= F.LINE_EPS:
         return m
     return None
 
 
-def tape_through(tape, sport, cache):
-    """The last Pinnacle row time of the sport's tape (any game), or None when the sport has no rows. A started game can only be called "no
-    close" when the tape runs past its start."""
-    if sport not in cache:
-        gk, teams = tape._load(sport)
-        ts = [r["t"] for rs in list(gk.values()) + list(teams.values()) for r in rs if isinstance(r.get("t"), (int, float))]
-        cache[sport] = max(ts) if ts else None
-    return cache[sport]
+class TapeClock:
+    """The times of every non-backfill row of a sport's tape files, any book and any game (data/book_tape/<sport>/<YYYY-MM>.jsonl): the tape's
+    liveness. A tape that wrote nothing between a play's cut and its start tells nothing about whether Pinnacle moved."""
+
+    def __init__(self, root):
+        self.root, self.ts = root, {}
+
+    def _times(self, sport):
+        if sport not in self.ts:
+            out = []
+            for fn in sorted(glob.glob(os.path.join(self.root or "", sport, "[0-9][0-9][0-9][0-9]-[0-9][0-9].jsonl"))):
+                with open(fn) as f:
+                    for line in f:
+                        try:
+                            r = json.loads(line)
+                        except ValueError:
+                            continue
+                        if isinstance(r, dict) and not r.get("bf") and F._n(r.get("t")):
+                            out.append(r["t"])
+            out.sort()
+            self.ts[sport] = out
+        return self.ts[sport]
+
+    def last(self, sport):
+        t = self._times(sport)
+        return t[-1] if t else None
+
+    def last_at(self, sport, at):
+        t = self._times(sport)
+        i = bisect.bisect_right(t, at)
+        return t[i - 1] if i else None
+
+    def any_between(self, sport, lo, hi):
+        """True when a row lies in (lo, hi]."""
+        t = self._times(sport)
+        i = bisect.bisect_right(t, lo)
+        return i < len(t) and t[i] <= hi
 
 
 def shown_graded(r):
@@ -135,10 +213,11 @@ def shown_graded(r):
             and r.get("status") == "graded" and isinstance(r.get("key"), str))
 
 
-def build_rows(have, cards_dir, tape, now):
+def build_rows(have, cards_dir, tape, now, clock=None):
     """-> (new rows, held {reason: n}). `have`: every stored row by key (the append-only guard: a key that exists is never written again)."""
     new, held = [], collections.Counter()
-    cards, through = {}, {}
+    clock = clock or TapeClock(getattr(tape, "root", None))
+    cards = {}
     for key in sorted(k for k, r in have.items() if shown_graded(r)):
         r = have[key]
         pk = key + "|pinclose"
@@ -160,21 +239,25 @@ def build_rows(have, cards_dir, tape, now):
             held["card_missing"] += 1
             continue
         sport = r.get("sport")
-        top = tape_through(tape, sport, through)
+        top = clock.last(sport)
         if top is None or top < gst:
             held["tape_not_through_start"] += 1
             continue
         try:
             rows, how = tape.game(sport, c.get("vault"), c.get("ev"), c.get("gst"))
             sides = list((c["markets"][g].get("sides") or {}).keys())
-            norm = BSC.side_norms(g, sides, BSC.team_names(c.get("vault"), c.get("ev"), sport)).get(r.get("side"))
-            f = read_close(rows, g, norm, gst, cut, r.get("line"), r.get("price"), how)
+            norm = side_norm(g, sides, BSC.team_names(c.get("vault"), c.get("ev"), sport), r.get("side"))
+            if rows and norm is None:                     # no tape for the game needs no side: that null is final whatever the names are
+                held["side_unmapped"] += 1                # hold: a spelling fix later can still resolve it; a final null row could not be undone
+                continue
+            sl = side_line(g, r.get("side"), r.get("outs"), r.get("line"))
+            f = read_close(rows, g, norm, gst, cut, sl, r.get("price"), how, clock.last_at(sport, gst), clock.any_between(sport, cut, gst))
         except Exception as e:                   # one unreadable play is held for the next run, never a stop for the others
             print("::warning::pinclose %s held: %s: %s" % (key, type(e).__name__, e), file=sys.stderr)
             held["read_error"] += 1
             continue
         new.append({"key": pk, "kind": "pinclose", "of": key, "v": VERSION, "sport": sport, "ev": r.get("ev"), "gst": gst, "cut": cut,
-                    "group": g, "side": r.get("side"), "line": r.get("line"), "price": r.get("price"), "graded_at": now, **f})
+                    "group": g, "side": r.get("side"), "line": r.get("line"), "side_line": sl, "price": r.get("price"), "graded_at": now, **f})
     return new, dict(held)
 
 
@@ -197,27 +280,41 @@ def stat(xs):
 
 
 def summary(plays, closes):
-    """One slice: the graded shown plays, how many have a stored close and why the rest do not, the CLV and the move after the cut."""
+    """One slice: the graded shown plays, how many have a stored close and why the rest do not, how fresh those closes are, and the numbers.
+    `clv` is CLV vs the close and counts only closes AFTER the cut; a close at or before the cut (the same Pinnacle row the cut saw, or an older one)
+    is reported apart as `price_vs_fair_at_cut`, because it is the price against Pinnacle's fair at the cut, not against a close."""
     have = [closes[p["key"]] for p in plays if p["key"] in closes]
+    withc = [c for c in have if c.get("close_fair") is not None]
     why = collections.Counter(c.get("why") or "" for c in have if c.get("close_fair") is None)
-    clv_why = collections.Counter(c["why"] for c in have if c.get("close_fair") is not None and c.get("pts") is None)
-    return {"graded": len(plays), "pending": len(plays) - len(have), "with_close": sum(1 for c in have if c.get("close_fair") is not None),
+    clv_why = collections.Counter(c["why"] for c in withc if c.get("pts") is None)
+    pts = lambda cs: [c["pts"] for c in cs if isinstance(c.get("pts"), (int, float))]
+    after = [c for c in withc if c.get("close_after_cut") is True]
+    before = [c for c in withc if c.get("close_after_cut") is not True]
+    old = [c for c in withc if isinstance(c.get("close_age_min"), (int, float)) and c["close_age_min"] > STALE_MIN]
+    share = lambda n: round(n / len(withc), 4) if withc else None
+    return {"graded": len(plays), "pending": len(plays) - len(have), "with_close": len(withc),
             "no_close_by_reason": dict(sorted(why.items())), "clv_unreadable_by_reason": dict(sorted(clv_why.items())),
-            "clv": stat([c["pts"] for c in have if isinstance(c.get("pts"), (int, float))]),
+            "close_after_cut": {"true": len(after), "false": len(before), "false_share": share(len(before)),
+                                "older_than_%d_min" % STALE_MIN: len(old), "older_share": share(len(old))},
+            "clv": stat(pts(after)),
+            "price_vs_fair_at_cut": stat(pts(before)),
             "move": stat([c["move_pts"] for c in have if isinstance(c.get("move_pts"), (int, float))]),
+            "move_by_reason": dict(sorted(collections.Counter(c["move_why"] for c in have if c.get("move_why")).items())),
             "move_at_ticket_line": stat([m for m in (move_at_ticket_line(c) for c in have) if m is not None])}
 
 
-def record(rows, now):
+def record(rows, now, held=None):
     """pinclose_record.json: per sport (and market) the share of graded shown plays with a stored close, the reasons, and the mean CLV and move
     after the cut in points with one standard error. In-sample for every play graded before the rule existed; context only, never a signal."""
     closes = {r["of"]: r for r in rows if isinstance(r, dict) and r.get("kind") == "pinclose" and isinstance(r.get("of"), str)}
     plays = [r for r in rows if shown_graded(r)]
     out = {"generated": now, "v": VERSION, "rule": RULE, "context_only": True,
            "basis": ("Pinnacle's no-vig fair for the play's side at its last readable tape row at or before game start, against the price at the cut "
-                     "(clv = close fair minus price) and against Pinnacle's own fair at the cut (move). Points. A play whose tape does not cover the game, "
-                     "or whose close is at another line, is counted by reason, never estimated. Report only: sharp money is context, not a signal."),
-           "sports": {}}
+                     "(clv = close fair minus price, counted as CLV vs the close only when that row is after the cut; otherwise price_vs_fair_at_cut) and "
+                     "against Pinnacle's own fair at the cut (move, null when the tape saw no row between the cut and the start). Points. A play whose "
+                     "tape does not cover the game, or whose close is at another line, is counted by reason, never estimated. Report only: sharp money "
+                     "is context, not a signal."),
+           "held_last_run": dict(sorted((held or {}).items())), "sports": {}}
     for sp in SPORTS:
         ps = [p for p in plays if p.get("sport") == sp]
         if not ps:
@@ -240,7 +337,7 @@ def main(argv=None):
         have = G.load_rows(a.out)
         new, held = build_rows(have, a.cards, BSC.BookTape(a.book_tape), now)
         G.append_rows(a.out, new)
-        rec = record(list(have.values()) + new, now)
+        rec = record(list(have.values()) + new, now, held)
         G.save_record(os.path.join(a.out, "pinclose_record.json"), rec)
     except Exception as e:                       # context: never breaks the grade or the other files
         print("::warning::pinclose step skipped: %s: %s" % (type(e).__name__, e), file=sys.stderr)
