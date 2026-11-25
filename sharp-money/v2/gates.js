@@ -384,10 +384,27 @@
     'nba-sig5': { label: '5 of 5 signals', why: 'All five checks (market, matchup, minutes, shot volume, form) agree with the Vault model.', rec: 'NBA prop board record when the rule was set: 20-3, ROI +28.3% on 23 (Oct 22 - Nov 24), 12-1 (+40.8%) after the Nov 8 freeze.' },
     'nba-aplus': { label: 'A+ grade', why: 'A+ prop grade on a combo stat (Pts + Reb + Ast, Reb + Ast, Pts + Ast).', rec: 'NBA prop board record when the rule was set: PRA 21-11 (+20.3%) on 32, RA 16-5 (+42.3%) on 21, PA 21-9 (+21.4%) on 30. The stats were picked on these rows.' },
     'nba-reb-a': { label: 'Rebounds A grade', why: 'Rebounds graded A+, A or A-, on the Vault model\u2019s side, in tonight\u2019s top ' + 3 + ' by grade then model edge.', rec: 'NBA prop board record when the rule was set: 199-133, +38.8u, ROI +12.4% on 332 (Oct 22 - Nov 24): A+ +9.1%, A +14.0%, A- +12.6%. Rebounds were picked on these rows.' },
-    'cfb-novig': { label: 'CFB Novig', why: 'College football at Novig, beating a reference by ' + Math.round(GATES.MIN_EDGE * 100) + '% or more.', rec: 'Rebuilt from the Watch and Passed logs when the rule was set: 197-172, +50.2u, ROI +13.6% on 369; +11.6% on 164 first seen Nov 9 on.' }
+    'cfb-novig': { label: 'CFB Novig', why: 'College football at Novig, beating a reference by ' + Math.round(GATES.MIN_EDGE * 100) + '% or more.', rec: null }   // rec: computed, cfbNovigRebuild (one number for this chip and the Record card)
   };
   const RULE_STATS = new Set(['pra', 'ra', 'pa']), REB_GRADES = new Set(['A+', 'A', 'A-']), REB_CAP = 3, GRADE_RANK = { 'A+': 3, 'A': 2, 'A-': 1 };
-  const ruleUntested = id => 'Untested rule (' + RULES[id].label + '). ' + RULES[id].rec;
+  /* CFB Novig's in-sample record, rebuilt from the stored Play, Watch and Passed rows logged before the rule (no row.rules): one row per id (its first
+     sighting), CFB at the exchange, first-sight edge at least MIN_EDGE (the rule's own test), settled. Used by the Record card and by the chip below. */
+  function cfbNovigRebuild(lists) {
+    const cf = {};
+    (lists || []).forEach(rows => (rows || []).forEach(p => {
+      if (p && p.sport === 'cfb' && p.kind === 'exch' && !p.rules && p.first && p.first.best != null && p.first.best >= GATES.MIN_EDGE && (!cf[p.id] || p.firstSeen < cf[p.id].firstSeen)) cf[p.id] = p;
+    }));
+    let w = 0, l = 0, u = 0;
+    Object.values(cf).forEach(p => { if (p.status === 'won') { w++; u += p.units || 0 } else if (p.status === 'lost') { l++; u += p.units || 0 } });
+    const n = w + l;
+    return { w, l, n, units: Math.round(u * 100) / 100, roi: n ? u / n : null };
+  }
+  const recText = (id, X) => {
+    if (id !== 'cfb-novig') return RULES[id].rec;
+    const r = X && X.CR;
+    return r && r.n ? 'Rebuilt from the Play, Watch and Passed logs before the rule (in-sample): ' + r.w + '-' + r.l + ', ' + (r.units < 0 ? '-' : '+') + Math.abs(r.units).toFixed(1) + 'u, ROI ' + spct(r.roi, 1) + ' on ' + r.n + '.' : 'Its in-sample rebuild is on the Record card.';
+  };
+  const ruleUntested = (id, X) => 'Untested rule (' + RULES[id].label + '). ' + recText(id, X);
   /* The rule ids a candidate matches, from its own fields and X.N.rules (NBA). */
   function rulesOf(c, X) {
     const out = [];
@@ -421,7 +438,7 @@
     Object.values(pick).forEach(({ c }) => {
       c.rule = c.rules[0]; c.gateTier = c.tier; c.gateReasons = c.reasons; c.tier = 'play';
       c.reasons = ['Rule play: ' + RULES[c.rule].why + (c.gateTier === 'none' ? ' No reference edge.' : ' The gates said: ' + (c.reasons || []).join(' '))];
-      c.gateCautions = c.cautions; c.cautions = [ruleUntested(c.rule), ...(c.cautions || [])];
+      c.gateCautions = c.cautions; c.cautions = [ruleUntested(c.rule, X), ...(c.cautions || [])];
     });
     capReb(Object.values(pick).map(x => x.c).filter(c => c.rule === 'nba-reb-a'), X);
   }
@@ -471,12 +488,13 @@
   /* One side per market. For each prop (player, stat, line) and each game market keep the side with the better edge and drop the other, so a bet never
      shows up as both Over and Under. Candidates on the favoured side stay (the same side can be priced at a book and at an exchange). */
   function stance(list) {
-    const score = c => c.worst != null && c.refs.length > 1 ? c.worst : c.best != null ? c.best : -9;
+    // A rule Play (Plays rules block) always wins its market: applyRules already kept one side per market, and its reference edge is often none or negative.
+    const score = c => c.rule && c.tier === 'play' ? Infinity : c.worst != null && c.refs.length > 1 ? c.worst : c.best != null ? c.best : -9;
     const key = c => c.kind === 'prop' ? 'p|' + c.row.pid + '|' + c.row.mkt + '|' + c.row.line : 'g|' + c.gk + '|' + c.m;
     const top = {};
     list.forEach(c => { const k = key(c), v = score(c); if (!top[k] || v > top[k].v) top[k] = { v, side: c.side } });
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, sideOut, capStamp, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
+  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, sideOut, capStamp, cfbNovigRebuild, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });

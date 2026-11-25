@@ -47,11 +47,13 @@
   /* Take a stance: one side per market. For each prop (player, stat, line) and each game market, keep the side with the better edge and drop the other, so a
      bet never shows up as both Over and Under. Candidates on the favoured side stay (the same side can be priced at a book and at an exchange). */
   function stance(list) { return G().stance(list); }
+  /* CFB Novig's in-sample rebuild from the stored Play, Watch and Passed rows (backfill included): one function, so the Record card and the rule chip agree. */
+  function cfbRebuild(F) { return G().cfbNovigRebuild(['play', 'watch', 'pass'].map(function (t) { return rowsRaw(F, t).map(function (r) { return r.p; }); })); }
   function useBuilt(D, F) {
     var U = kit().U;
     return U.useMemo(function () {
       if (!D || !G()) return { all: [], cand: [] };
-      var b = G().build({ D: D, P: F.props, T: F.tape, E: F.edge, N: F.nba, L: F.plays, now: Date.now() / 1000 });
+      var b = G().build({ D: D, P: F.props, T: F.tape, E: F.edge, N: F.nba, L: F.plays, CR: cfbRebuild(F), now: Date.now() / 1000 });
       return { all: stance(b.all), cand: stance(b.cand) };
     }, [D && D.ts, STORE.ts]);
   }
@@ -551,9 +553,8 @@
       });
       if (rl.length) hbNote += ' Untested Plays rules, live, each tracked on its own: ' + rl.join(' · ') + '.';
       if (!sport || sport === 'all' || sport === 'cfb') {
-        var cf = {}; ['play', 'watch', 'pass'].forEach(function (t) { rowsRaw(F, t).forEach(function (r) { var p = r.p; if (p.sport === 'cfb' && p.kind === 'exch' && !p.rules && p.first && p.first.best >= G().GATES.MIN_EDGE && (!cf[p.id] || p.firstSeen < cf[p.id].p.firstSeen)) cf[p.id] = r; }); });
-        var cfs = stat(Object.keys(cf).map(function (k) { return cf[k]; }));
-        if (cfs.n) hbNote += ' CFB Novig rebuilt from the logs before the rule: ' + cfs.w + '-' + cfs.l + ' ' + (cfs.units == null ? '+0.0u' : su(cfs.units)) + ' on ' + cfs.n + ', in-sample.';
+        var cfs = cfbRebuild(F);     // the same number the CFB Novig rule chip shows (gates.js cfbNovigRebuild)
+        if (cfs.n) hbNote += ' CFB Novig rebuilt from the logs before the rule: ' + cfs.w + '-' + cfs.l + ' ' + su(cfs.units) + ' on ' + cfs.n + ', in-sample.';
       }
     }
     var lsu = ls.units == null ? '+0.0u' : su(ls.units);
@@ -564,7 +565,7 @@
 
   /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */
   var core = {
-    STORE: STORE, rowsAll: rowsAll, openRows: openRows, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
+    STORE: STORE, cfbRebuild: cfbRebuild, rowsAll: rowsAll, openRows: openRows, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
     ensure: function () { loadAssets(); if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
     subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
   };

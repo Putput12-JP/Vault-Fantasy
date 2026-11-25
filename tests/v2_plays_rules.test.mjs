@@ -82,6 +82,29 @@ test('nba-reb-a: rebounds graded A+, A or A- with grade and model on the same si
   assert.equal(pra.tier, 'none', 'A on a combo stat is not a rule');
 });
 
+test('stance(): a rule Play wins its market even when the other side has the better reference edge (QA: Brunson PRA Over 35.5)', () => {
+  const extra = [{ p: 9, s: 'pra', g: 'g1', kal: [[35.5, 0.44, 0.46, 0.45, 10, 10, NOW - 100]], books: [DK(35.5, '-110', '-110'), PIN(35.5, '+105', '-125')] }];
+  const N = board({ 'g1|9|pra': [35.5, 'O', 3, 1, 'A+', 'O'] }, extra); N.players[9] = ['Jalen Brunson', 'NYK', null, 's'];
+  const r = build(N), over = nba(r, 'Jalen Brunson Over 35.5 Pts + Reb + Ast'), under = nba(r, 'Jalen Brunson Under 35.5 Pts + Reb + Ast');
+  assert.equal(over.rule, 'nba-aplus'); assert.equal(over.tier, 'play');
+  assert.ok((under.best ?? -9) > (over.best ?? -9), 'the Under has the better reference edge');
+  for (const list of [r.all, r.cand]) {
+    const kept = gates.stance(list).filter(c => /Jalen Brunson .* 35\.5 Pts \+ Reb \+ Ast/.test(c.title));
+    assert.ok(kept.includes(over), 'the rule Play is shown'); assert.ok(!kept.includes(under), 'the Under is dropped');
+  }
+  /* without the rule the reference edge still decides */
+  const M = board(undefined, extra); M.players[9] = ['Jalen Brunson', 'NYK', null, 's'];
+  const plain = gates.stance(build(M).all).filter(c => /Jalen Brunson/.test(c.title)).map(c => c.title);
+  assert.deepEqual(plain, ['Jalen Brunson Under 35.5 Pts + Reb + Ast']);
+});
+
+test('cfb-novig: the chip and the Record card share one computed rebuild (cfbNovigRebuild)', () => {
+  const row = (id, best, status, units, extra = {}) => ({ id, sport: 'cfb', kind: 'exch', status, units, firstSeen: 1, first: { best }, ...extra });
+  const r = gates.cfbNovigRebuild([[row('a', 0.03, 'won', 1), row('b', 0.01, 'won', 1)], [row('a', 0.05, 'lost', -1, { firstSeen: 2 }), row('c', 0.02, 'lost', -1), row('d', 0.04, 'push', 0), row('e', 0.04, 'won', 1, { rules: ['cfb-novig'] })]]);
+  assert.deepEqual([r.w, r.l, r.n, r.units], [1, 1, 2, 0], 'first sighting per id, edge 2%+ only, pushes and rule rows out');
+  assert.ok(!/197-172|369/.test(JSON.stringify(gates.RULES || {})), 'no hard-coded record left');
+});
+
 /* five rebounds props, all fair-priced (no gate edge), for the nightly cap */
 function rebBoard(grades, edges, tip = TIP) {
   const extra = grades.map((g, i) => ({ p: 11 + i, s: 'reb', g: 'g1', kal: [[5.5, 0.49, 0.51, 0.5, 10, 10, NOW - 100]], books: [DK(5.5, '-110', '-110'), PIN(5.5, '-105', '-105')] }));
