@@ -423,14 +423,23 @@ async function polymarket(sk, cfg, games, S, W) {
     if (!st || st < t - 5 * H || st > t + (cfg.ahead + 1) * DAY) continue;
     const vs = String(ev.title || '').split(/\s+vs\.?\s+/i); if (vs.length !== 2) continue;
     const hit = matchGame(games, vs[0], vs[1], st); if (!hit) continue;
-    const mk = { ml: null, sp: null, tot: null };
+    const mk = { ml: null, sp: null, tot: null }, x = { t, sp: [], tot: [] };
     for (const m of ev.markets || []) {
       const ty = m.sportsMarketType, v = +m.volumeNum || 0, outs = JSON.parse(m.outcomes || '[]'), px = JSON.parse(m.outcomePrices || '[]').map(Number);
       const k = ty === 'moneyline' ? 'ml' : ty === 'spreads' ? 'sp' : ty === 'totals' ? 'tot' : null;
       if (!k || outs.length !== 2) continue;
       if (!mk[k] || v > mk[k].vol) mk[k] = { cid: m.conditionId, outs, px, vol: v, line: m.line != null ? +m.line : null };
+      // Every spread and total line with its order-book quote, for the gate's second price (sharp-money/v2/gates.js lineRefs).
+      // bestBid / bestAsk are the first outcome's; turned into the home side (spreads) or the over (totals).
+      const bb = +m.bestBid, ba = +m.bestAsk;
+      if (k !== 'ml' && m.line != null && bb > 0 && ba > 0 && ba < 1 && m.acceptingOrders !== false && !m.closed) {
+        const liq = Math.round(+m.liquidityNum || 0);
+        if (k === 'tot') x.tot.push([+m.line, r3(bb), r3(ba), liq]);
+        else if (teamSide(hit.g, outs[0]) === 'home') x.sp.push([+m.line, r3(bb), r3(ba), liq]);   // first outcome is home at m.line
+        else x.sp.push([-m.line, r3(1 - ba), r3(1 - bb), liq]);                                     // first outcome is away: home is at -line
+      }
     }
-    out.set(hit.g, { slug: ev.slug, vol: Math.round(+ev.volume || 0), vol24: Math.round(+ev.volume24hr || 0), mk });
+    out.set(hit.g, { slug: ev.slug, vol: Math.round(+ev.volume || 0), vol24: Math.round(+ev.volume24hr || 0), mk, x });
     for (const [k, m] of Object.entries(mk)) if (m && m.vol >= 500) todo.push([hit.g, k, m]);
   }
   // Pull each market's trades newer than the cursor (first run: 24h back).
@@ -584,6 +593,54 @@ async function kalshi(sk, cfg, games, S) {
   return out;
 }
 
+// Second prices for spreads and totals, one block per free exchange: { kal|pm|nov: { t, sp: [[home line, bid, ask, $]], tot: [[line, over bid, over ask, $]] } }.
+// Read by sharp-money/v2/gates.js lineRefs, which decides what counts. Lines more than XREF_SPAN points off the market's main line are
+// dropped to keep data.json small: the books' own lines sit near it.
+const XREF_SPAN = 4;
+function freeRefs(g) {
+  const c = g.consensus || {}, near = (m, ln) => c[m]?.line == null || Math.abs(Math.abs(ln) - Math.abs(c[m].line)) <= XREF_SPAN;
+  const trim = o => o && { t: o.t, sp: (o.sp || []).filter(r => near('sp', r[0])), tot: (o.tot || []).filter(r => near('tot', r[0])) };
+  const out = {};
+  if (g._kx) out.kal = trim(g._kx);
+  if (g._pm?.x) out.pm = trim(g._pm.x);
+  const nv = g._nov;
+  if (nv?.t) {
+    const q = (k, a, b) => { const z = nv[k]; return z && z.line != null && z.bid != null && z.ask != null ? [[z.line, z.bid, z.ask, Math.round((z.depth?.[a] || 0) + (z.depth?.[b] || 0))]] : []; };
+    out.nov = { t: nv.t, sp: q('sp', 'home', 'away'), tot: q('tot', 'over', 'under') };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// ── 4b. Kalshi: spread and total ladders, for the gate's second price ──
+// Same events as the winner market (the ticker after the series name matches), keyless public reads. A spread market is
+// "<team> wins by over N points"; a total is "Over N points". Stored as the home side's (or the over's) bid and ask at each
+// number, with the dollars resting at the top of the book on both sides as the liquidity.
+async function kalshiLines(sk, cfg, games, K) {
+  const out = new Map(), bySfx = new Map(), t = now();
+  for (const g of games) { const tk = K.get(g)?.ticker; if (tk) bySfx.set(tk.split('-').slice(1).join('-'), g); }
+  if (!bySfx.size || !/GAME$/.test(cfg.kal)) return out;
+  const B = 'https://api.elections.kalshi.com/trade-api/v2';
+  for (const [m, series] of [['sp', cfg.kal.replace(/GAME$/, 'SPREAD')], ['tot', cfg.kal.replace(/GAME$/, 'TOTAL')]]) {
+    let cursor = '';
+    for (let p = 0; p < 6; p++) {
+      const r = await getJSON(`${B}/markets?series_ticker=${series}&status=open&limit=1000${cursor ? '&cursor=' + cursor : ''}`, {}, 4).catch(() => null);   // extra 429 retries: this read runs right after the winner-market and props reads
+      for (const x of r?.markets || []) {
+        const g = bySfx.get(String(x.event_ticker || '').split('-').slice(1).join('-')); if (!g) continue;
+        const bid = +x.yes_bid_dollars, ask = +x.yes_ask_dollars, N = +x.floor_strike;
+        if (!(bid > 0 && ask > 0 && ask < 1) || !Number.isFinite(N)) continue;
+        const liq = Math.round(bid * (+x.yes_bid_size_fp || 0) + (1 - ask) * (+x.yes_ask_size_fp || 0));
+        const o = out.get(g) || out.set(g, { t, sp: [], tot: [] }).get(g);
+        if (m === 'tot') { if (/^over /i.test(x.yes_sub_title || '')) o.tot.push([N, r3(bid), r3(ask), liq]); continue; }
+        const mt = /^(.+?) wins by over /i.exec(x.yes_sub_title || ''); if (!mt) continue;
+        if (teamSide(g, mt[1]) === 'home') o.sp.push([-N, r3(bid), r3(ask), liq]);   // home wins by over N: home -N covers
+        else o.sp.push([N, r3(1 - ask), r3(1 - bid), liq]);                          // away wins by over N: home +N covers on No
+      }
+      cursor = r?.cursor; if (!cursor || !(r?.markets || []).length) break;
+    }
+  }
+  return out;
+}
+
 // ── 4a. Novig: the exchange's winner market, book depth and big tickets ──
 // Novig is a peer-to-peer exchange with a public, keyless, edge-cached read API (docs.novig.com).
 // One contract pays 1 cent, so dollars = price * qty / 100. Trades are anonymous, like Kalshi's.
@@ -606,7 +663,7 @@ async function novig(sk, cfg, games, S) {
       sp: cs != null ? open.find(x => x.marketType === 'SPREAD' && Math.abs(homeHcap(x) - cs) < 0.01) : null,
       tot: ct != null ? open.find(x => x.marketType === 'TOTAL' && Math.abs(+x.strike - ct) < 0.01) : null };
     if (!pick.ml) return;
-    const G = S.games[hit.g.key] ||= {}, tape = G.nov ||= [], info = { id: ev.eventId, rest: 0, vol: 0 };
+    const G = S.games[hit.g.key] ||= {}, tape = G.nov ||= [], info = { id: ev.eventId, t: now(), rest: 0, vol: 0 };
     for (const [m, mk] of Object.entries(pick)) {
       if (!mk) continue;
       const [o0, o1] = mk.outcomes;
@@ -1374,6 +1431,7 @@ function payload(S, byGame, W, status) {
       splitHist: G.split || [],
       pm: pm ? { slug: pm.slug, vol: pm.vol, vol24: pm.vol24, px: Object.fromEntries(Object.entries(pm.mk).filter(([, v]) => v).map(([k, v]) => [k, { line: v.line, outs: v.outs, px: v.px, vol: Math.round(v.vol) }])) } : null,
       kal: K || null, nov: g._nov || null, flow, tickets, behind: G.behind || [], stale: G.stale || [], final: G.final || null,
+      xref: freeRefs(g),
     });
   }
   games.sort((a, b) => a.start - b.start);
@@ -1484,6 +1542,9 @@ async function pollOnce() {
     ]);
     st.pinnacle ??= P.size; st.polymarket ??= PM.size; st.kalshi ??= K.size; st.novig ??= NV.size; st.games = games.length;
     const KP = await kalshiProps(sk, games, K).catch(e => { st.kalshiProps = 'error: ' + e.message; return new Map(); });
+    const KX = await kalshiLines(sk, cfg, games, K).catch(e => { st.kalshiLines = 'error: ' + e.message; return new Map(); });
+    st.kalshiLines ??= KX.size;
+    for (const g of games) g._kx = KX.get(g) || null;
     if (cfg.espnTeams) st.espnTeams = await espnTeams(sk, cfg, games).catch(e => 'error: ' + e.message);
     for (const g of games) g._kp = KP.get(g) || null;
     for (const g of games) {

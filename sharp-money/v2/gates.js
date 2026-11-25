@@ -29,6 +29,12 @@
     NBA_CAP_SINCE: 1793795408, // the cap shipped Nov 4, 2026 6:30 AM Central. NBA props logged before it for a night that locks after it compete at the lock like any other
                          // candidate: the ledger stamps each capPick or capOut then (capStamp), instead of letting them hold the night's slots    // minutes before the night's first NBA tip when the top plays lock
     NBA_FAIR_SINCE: 1793750400, // Nov 3, 2026 6:00 PM Central: NBA prop rows first seen before this are re-scored from stored fields, after it they were judged live
+    /* Second prices for spreads and totals (2026-11-25, Jacob's free-references plan; fixed before looking, not tuned). A free exchange quote counts
+       as a source only at the exact same line, read within REF_WINDOW of the poll that read the book price, with a bid-ask gap of REF_MAX_GAP or
+       less and REF_MIN_LIQ dollars or more behind it. A play still needs two sources (Pinnacle counts as one); several exchange quotes are one
+       liquidity-weighted fair; any two sources REF_AGREE apart and it is a Pass. Kalshi and Novig may move together (market makers quote both),
+       so two exchange sources may be less independent than they look: flagged, not solved. */
+    REF_WINDOW: 10 * 60, REF_MAX_GAP: 0.03, REF_MIN_LIQ: 1000, REF_MIN_SRC: 2, REF_AGREE: 0.04,
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
   const EXCH = ['Kalshi', 'Novig'];
@@ -61,6 +67,25 @@
     const us = [...US].filter(b => p[b] != null).map(b => p[b]); if (us.length) r.books = mean(us);
     return r;
   }
+  /* Free exchange quotes for one side of a spread or total at the exact line (g.xref, written by scripts/fetch-sharp-money.mjs freeRefs):
+     { kal|pm|nov: { t, sp: [[home line, home bid, home ask, liquidity $]], tot: [[line, over bid, over ask, liquidity $]] } }. Returns the
+     quotes that qualify under the REF_* gates as [{ n, p: fair chance of THIS side (the mid; a two-sided exchange quote carries no vig), liq, t }]. */
+  const XREF = [['kal', 'Kalshi'], ['pm', 'Polymarket'], ['nov', 'Novig']];
+  function lineRefs(X, g, m, side, ln) {
+    const out = [], xr = g && g.xref, t0 = X.D && X.D.ts; if (!xr || ln == null || (m !== 'sp' && m !== 'tot')) return out;
+    for (const [k, n] of XREF) {
+      const s = xr[k]; if (!s || !s[m] || s.t == null) continue;
+      if ((t0 != null && Math.abs(t0 - s.t) > GATES.REF_WINDOW) || X.now - s.t > GATES.MAX_AGE) continue;
+      const q = s[m].find(r => Math.abs(r[0] - ln) < 1e-9); if (!q) continue;
+      const bid = q[1], ask = q[2], liq = q[3];
+      if (!(bid > 0 && ask < 1 && ask >= bid) || ask - bid > GATES.REF_MAX_GAP + 1e-9 || !(liq >= GATES.REF_MIN_LIQ)) continue;
+      const ph = (bid + ask) / 2;
+      out.push({ n, p: side === 'home' || side === 'over' ? ph : 1 - ph, liq, t: s.t });
+    }
+    return out;
+  }
+  const lwFair = xs => { const L = xs.reduce((a, r) => a + r.liq, 0); return L > 0 ? xs.reduce((a, r) => a + r.p * r.liq, 0) / L : null };
+  const spanOf = ps => ps.length > 1 ? Math.max(...ps) - Math.min(...ps) : 0;
   /* The two strict gates, from stored fields only so the same test re-scores a ledger row (heldBack) and judges a live candidate (held). */
   const EARLY_WHY = 'Called ' + GATES.EARLY_H + ' hours or more before the game. Early calls decay: 18-27 (ROI -22%) on 45 settled live plays, 110-159 (ROI -16%) on 269 before that.';
   const PRICE_WHY = 'The price is under ' + Math.round(GATES.MIN_PRICE * 100) + '%. Plays priced under that went 67-79 (ROI -6%) on 146 settled live plays; at ' + Math.round(GATES.MIN_PRICE * 100) + '% and up inside ' + GATES.EARLY_H + ' hours they went 33-11 (ROI +26%).';
@@ -125,6 +150,7 @@
     if (c.price.exch) { c.tier = weak ? 'none' : 'pass'; c.reasons = ['The only price is at an exchange, the same market used as the check.']; return c }
     if (c.contradicted) { c.tier = weak ? 'none' : 'pass'; c.reasons = ['Both sides of this market look good against a reference. That is noise, not an edge.']; return c }
     if (rs.length < 2) { c.tier = (rs.length === 1 && c.best >= GATES.MIN_EDGE) ? 'watch' : 'none'; c.reasons = rs.length === 1 ? ['One reference only (' + rs[0].n + '). A play needs two independent prices to agree.'] : ['No fair price from Pinnacle or an exchange right now.']; return c }
+    if (c.srcGap != null && c.srcGap > GATES.REF_AGREE) { c.tier = 'pass'; c.reasons = ['The prices behind the fair (' + (c.srcs || []).join(', ') + ') disagree by ' + (c.srcGap * 100).toFixed(1) + ' points, so none is trusted.']; return c }
     const gap = Math.abs(rs[0].p - rs[1].p);
     if (anchored) {
       if (gap > GATES.AGREE) { c.tier = 'pass'; c.reasons = ['Pinnacle and the exchange disagree by ' + (gap * 100).toFixed(1) + ' points, so neither is trusted.']; return c }
@@ -238,6 +264,14 @@
     }
     return out;
   }
+  function bookCand(g, b, rl, srcs, srcGap) {
+    const t = g[b.side]; const nm2 = t ? t.short || t.name : b.side;
+    const title = b.m === 'ml' ? nm2 + ' to win' : b.m === 'sp' ? nm2 + ' ' + sgn(b.side === 'home' ? b.hline : -b.hline) : (b.side === 'over' ? 'Over ' : 'Under ') + b.line;
+    const c = { id: 'b|' + g.key + '|' + b.m + '|' + b.side + '|' + b.book + '|' + b.line, kind: 'book', sport: g.sport, start: g.start, gk: g.key, m: b.m, side: b.side, title, sub: g.away.abbr + ' @ ' + g.home.abbr + ' (' + MKT[b.m] + ')',
+      price: { am: b.price, p: imp(b.price), book: b.book, dfs: false, exch: false }, refs: rl, cautions: [], game: g, market: MKT[b.m], bookRow: b };
+    if (srcGap != null) { c.srcGap = srcGap; c.srcs = srcs }
+    return c;
+  }
   function gameCands(X) {
     const { D, E, now: NOW } = X, out = []; if (!D) return out; const G = Object.fromEntries((D.games || []).map(g => [g.key, g]));
     /* a) Novig priced below Pinnacle fair (data/exchange_edge_live.json), with Kalshi and Polymarket as the second prices */
@@ -254,14 +288,36 @@
       if (g.start <= NOW || !g.behind) continue;
       for (const b of g.behind) {
         const rl = [{ n: 'Pinnacle', p: b.fair }];
+        let srcGap = null, srcs = null;
         if (b.m === 'ml') {
           const nm = g.nov && g.nov.ml && g.nov.ml.mid, kl = g.kal && g.kal.bid != null && g.kal.ask != null ? (g.kal.bid + g.kal.ask) / 2 : null;
           const x = [nm, kl].filter(v => v != null).map(v => b.side === 'home' ? v : 1 - v); if (x.length) rl.push({ n: 'Exchange', p: mean(x) });
+        } else {
+          /* spreads and totals: the free exchange quotes at this exact number (lineRefs), as one liquidity-weighted fair */
+          const xs = lineRefs(X, g, b.m, b.side, b.m === 'sp' ? b.hline : b.line);
+          if (xs.length) { rl.push({ n: 'Exchange', p: lwFair(xs) }); srcs = ['Pinnacle', ...xs.map(r => r.n)]; srcGap = spanOf([b.fair, ...xs.map(r => r.p)]) }
         }
-        const t = g[b.side]; const nm2 = t ? t.short || t.name : b.side;
-        const title = b.m === 'ml' ? nm2 + ' to win' : b.m === 'sp' ? nm2 + ' ' + sgn(b.side === 'home' ? b.hline : -b.hline) : (b.side === 'over' ? 'Over ' : 'Under ') + b.line;
-        out.push({ id: 'b|' + g.key + '|' + b.m + '|' + b.side + '|' + b.book + '|' + b.line, kind: 'book', sport: g.sport, start: g.start, gk: g.key, m: b.m, side: b.side, title, sub: g.away.abbr + ' @ ' + g.home.abbr + ' (' + MKT[b.m] + ')',
-          price: { am: b.price, p: imp(b.price), book: b.book, dfs: false, exch: false }, refs: rl, cautions: [], game: g, market: MKT[b.m], bookRow: b });
+        out.push(bookCand(g, b, rl, srcs, srcGap));
+      }
+    }
+    /* c) a spread or total Pinnacle is not quoting at all: a US book price checked against two or more free exchange quotes at the same number.
+       Each exchange is its own reference here, so the worst-case edge must clear every one of them. */
+    for (const g of D.games || []) {
+      if (g.start <= NOW || !g.soft || !g.xref) continue;
+      for (const m of ['sp', 'tot']) {
+        if (g.pin && g.pin[m]) continue;                                // Pinnacle prices this market: block b decides with its fair
+        for (const [book, q] of Object.entries(g.soft)) {
+          if (!q || !q[m] || q[m].line == null) continue;
+          const ln = q[m].line;
+          for (const side of m === 'sp' ? ['home', 'away'] : ['over', 'under']) {
+            const price = q[m][side]; if (price == null || price < -300 || price > 300) continue;   // the same price window as the behind rows
+            const xs = lineRefs(X, g, m, side, ln); if (xs.length < GATES.REF_MIN_SRC) continue;
+            const fair = lwFair(xs), ev = fair * (imp(price) ? 1 / imp(price) : 0) - 1;
+            if (!(ev >= GATES.MIN_EDGE)) continue;                       // nothing to show: no reference sees an edge on the fair
+            const b = { book, m, side, price, hline: m === 'sp' ? ln : null, line: m === 'sp' ? (side === 'home' ? ln : -ln) : ln, fair: Math.round(fair * 1000) / 1000, ev: Math.round(ev * 1000) / 1000, move: null, noPin: true };
+            out.push(bookCand(g, b, xs.map(r => ({ n: r.n, p: r.p })), xs.map(r => r.n), spanOf(xs.map(r => r.p))));
+          }
+        }
       }
     }
     /* one row per pick: when several US books hang the same side, keep the best price */
@@ -388,5 +444,5 @@
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, sideOut, capStamp, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
+  return { GATES, US, EXCH, MKT, held, heldBack, setKalshiReads, promoted, oldGate, capOut, sideOut, capStamp, nightOf, hoursOut, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, lineRefs, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });
