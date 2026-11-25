@@ -69,7 +69,7 @@ already rewrote stored tape rows once, though it never touches Pinnacle) and a r
 (2) the Record page reads only `pm-holders-data` files, so a stored row is the only way it could ever show a Pinnacle close without shipping a 40 MB tape;
 (3) the registered tests (`docs/sharp-tier-v2-prereg.md`, "Primary metric" and the flags section) name "the grader's `pinclose` row" as the source of the close, and
 the move after the cut. That sentence is in a frozen file and says the grader work "is not built yet"; this PR is that work, and the prereg is not edited.
-The cost is 146 KB of rows across the four month files (+44 KB NBA, +21 KB NFL, +40 KB CFB, +41 KB CBB, about 650 bytes a row), a 10 KB summary file and one fail-soft workflow step.
+The cost is 156 KB of rows across the four month files (+47 KB NBA, +23 KB NFL, +42 KB CFB, +44 KB CBB, about 690 bytes a row), a 10 KB summary file and one fail-soft workflow step.
 
 ## What was built
 
@@ -100,15 +100,17 @@ The cost is 146 KB of rows across the four month files (+44 KB NBA, +21 KB NFL, 
    unreadable for that reason are 7 of the 225 on the CLV side alone; how many a4/b2 facts and tiers that moves has not been measured and is not fixed here (a tier rule change is a new registration). That is why the cross-check
    against `tier_history` is no proof: it shares the flaw (7 of its 7 disagreements, all "stored only", are outcomes[1] spread plays). The independent check above is the proof.
 2. **A close at or before the cut is not a close, and a tape that saw nothing is not a zero.** Each row now stores `close_age_min`, `close_after_cut` and the tape's liveness (`tape_last_t`, the last row of ANY book for the sport at or before
-   start, and `tape_age_min`). `move_pts` is null with `move_why: "no_tape_after_cut"` when no row of any book or game of the sport lies between the cut and the start (it was a stored 0.0 before: nfl-ne-det-2026-11-15 had a close 6.8 hours before kickoff).
+   start, and `tape_age_min`). `move_pts` is null with `move_why: "no_pinnacle_tape_after_cut"` when no Pinnacle row of any game of the sport lies between the cut and the start (see item 5) (it was a stored 0.0 before: nfl-ne-det-2026-11-15 had a close 6.8 hours before kickoff).
    Decision: a close at or before the cut is **stored** (the price against Pinnacle's fair at the cut is information) but flagged `close_after_cut: false`, and **excluded from every statistic labelled CLV vs the close**; the record
    and the report give it separately as `price_vs_fair_at_cut`. The stale-close share by sport is in `pinclose_record.json` (`close_after_cut.false_share`, `older_than_60_min`) and in the Record docs.
-   Reading the liveness: a tape outage across a kickoff **is** detectable: no row from any book in the window, and no tape commits (`tape_age_min` large, `move_why` `no_tape_after_cut`); the row records it and the held rule stops a stale
+   Reading the liveness: a tape outage across a kickoff **is** detectable: no row from any book in the window, and no tape commits (`tape_age_min` large, `move_why` `no_pinnacle_tape_after_cut`); the row records it and the held rule stops a stale
    checkout from becoming a final null.
 3. **A prereg gap found in review, not implemented here.** `docs/sharp-tier-v2-prereg.md` (the data-quality kill rule: more than 5% of forward log rows whose tier differs from a re-derivation from the stored card) is implemented nowhere yet.
 4. **Side mapping.** A side the card names differently from the tape ("Loyola Maryland Greyhounds" against "Loyola (MD)") now resolves by complement on a two-sided moneyline or spread: when the other side maps to a team this side is the opposite one.
    Of the 225 plays, the old mapping could not map 18 sides (2 CBB plays with tape, 16 without tape); with the complement 3 resolve (Loyola Maryland, "Delaware Fightin' Blue Hens", and one CBB play with no tape) and the remaining 15 (6 CBB, 9 CFB) have no tape
    rows for the game at all, so their final `no_tape_rows_for_game` null does not depend on the names. A side that cannot be mapped while the game HAS tape rows is held, not written (none in this data).
+5. **The move's liveness is Pinnacle-only.** The first review fix counted a row of ANY book in the cut-to-start window as proof the tape was alive. Pinnacle's rows sit on a 10 to 20 minute grid in the same feed while other books write in between, so a DraftKings row does not show Pinnacle was re-read.
+   `move_pts` now needs at least one Pinnacle row of the sport in (cut, start], else null with `no_pinnacle_tape_after_cut`; `pin_last_t` / `pin_age_min` are stored beside `tape_last_t` / `tape_age_min` (any book, unchanged). Ten stored zeros became nulls (NBA 6, CBB 1, CFB 3): moves readable 94 to 84.
 
 ## Record page
 

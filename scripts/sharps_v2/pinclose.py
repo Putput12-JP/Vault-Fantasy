@@ -14,9 +14,11 @@ docs/sharps-v2-plays-spec.md section 5.3). A new append-only row kind beside `re
               so the number is the price against Pinnacle's fair at the cut, and every statistic keeps the two apart.
   close_age_min, close_after_cut   minutes from close_t to start, and whether close_t is after the cut
   tape_last_t, tape_age_min   the last tape row of ANY book for the sport at or before start, and its age before start (the tape's liveness)
+  pin_last_t, pin_age_min     the same for Pinnacle rows only (any game of the sport)
   fair_cut, line_cut   Pinnacle's no-vig fair and line for the side at its last readable row at or before the CUT
-  move_pts    (close_fair - fair_cut) x 100, the market move after the cut; null unless both reads exist at the same Pinnacle line AND the tape saw any
-              row (any book, any game of the sport) between the cut and the start: with nothing seen, "unchanged" is not a measurement
+  move_pts    (close_fair - fair_cut) x 100, the market move after the cut; null unless both reads exist at the same Pinnacle line AND the tape saw a
+              PINNACLE row (any game of the sport) between the cut and the start: with no Pinnacle row seen, "unchanged" is not a measurement
+              (other books write between Pinnacle's 10 to 20 minute reads, so their rows do not show Pinnacle was re-read; move_why no_pinnacle_tape_after_cut)
               (move_at_ticket_line() narrows it to reads at the ticket's own side line, the tier prereg's wording)
   why, move_why   null when clv / move_pts is readable, else the stored reason (a null is a stored reason, never a 0 and never estimated)
 
@@ -61,7 +63,7 @@ WHY_UNMAPPED = "side_unmapped"
 WHY_NO_PRICE = "no_price"
 WHY_LINE_CLOSE = "ticket_line_not_main_at_close"
 WHY_NO_TICKET_LINE = "ticket_line_unknown"
-WHY_NO_TAPE_AFTER_CUT = "no_tape_after_cut"
+WHY_NO_TAPE_AFTER_CUT = "no_pinnacle_tape_after_cut"
 STALE_MIN = 60                     # a close older than this many minutes before start is reported as stale
 WHY_LINE_MOVED = "pinnacle_line_changed_since_cut"
 
@@ -103,20 +105,24 @@ def side_norm(g, sides, names, side):
     return None
 
 
-def read_close(rows, g, norm, gst, cut, ticket_line, price, how=None, tape_last_t=None, tape_after_cut=None):
+def read_close(rows, g, norm, gst, cut, ticket_line, price, how=None, tape_last_t=None, tape_after_cut=None, pin_last_t=None):
     """The stored fields of one pinclose row (everything except the identity keys), from the tape rows of the game. `ticket_line` is the play's OWN
-    line (side_line). `rows` empty means no tape for the game (`how` is the tape's own reason). `tape_last_t` and `tape_after_cut` are the sport's
-    tape liveness (any book, any game: the last row at or before start, and whether any row lies in (cut, start]); when not given they are read from
-    `rows` alone."""
+    line (side_line). `rows` empty means no tape for the game (`how` is the tape's own reason). `tape_last_t` is the sport's tape liveness (any book, any game: the last row
+    at or before start); `pin_last_t` the same for Pinnacle rows only; `tape_after_cut` whether a PINNACLE row of the sport lies in (cut, start]. When
+    not given they are read from `rows` (the game's Pinnacle rows) alone."""
     out = {"close_fair": None, "close_t": None, "close_line": None, "close_age_min": None, "close_after_cut": None, "tape_last_t": None,
-           "tape_age_min": None, "fair_cut": None, "line_cut": None, "clv": None, "pts": None, "move_pts": None, "why": None, "move_why": None}
+           "tape_age_min": None, "pin_last_t": None, "pin_age_min": None, "fair_cut": None, "line_cut": None, "clv": None, "pts": None, "move_pts": None, "why": None, "move_why": None}
     times = [r["t"] for r in rows if isinstance(r, dict) and F._n(r.get("t"))]
     if tape_last_t is None:
         tape_last_t = max((t for t in times if t <= gst), default=None)
+    if pin_last_t is None:
+        pin_last_t = max((t for t in times if t <= gst), default=None)
     if tape_after_cut is None:
         tape_after_cut = any(cut < t <= gst for t in times)
     out["tape_last_t"] = tape_last_t
     out["tape_age_min"] = round((gst - tape_last_t) / 60, 1) if F._n(tape_last_t) else None
+    out["pin_last_t"] = pin_last_t
+    out["pin_age_min"] = round((gst - pin_last_t) / 60, 1) if F._n(pin_last_t) else None
     if not rows:
         out["why"] = out["move_why"] = how or WHY_NO_TAPE
         return out
@@ -170,13 +176,15 @@ def move_at_ticket_line(row):
 
 class TapeClock:
     """The times of every non-backfill row of a sport's tape files, any book and any game (data/book_tape/<sport>/<YYYY-MM>.jsonl): the tape's
-    liveness. A tape that wrote nothing between a play's cut and its start tells nothing about whether Pinnacle moved."""
+    liveness. A tape that wrote nothing between a play's cut and its start tells nothing about whether Pinnacle moved, and rows of other books do not
+    say Pinnacle was re-read either (its rows sit on a 10 to 20 minute grid), so the move rule asks for a PINNACLE row of the sport in the window."""
 
     def __init__(self, root):
         self.root, self.ts = root, {}
 
-    def _times(self, sport):
-        if sport not in self.ts:
+    def _times(self, sport, pin=False):
+        """Sorted times of the sport's rows: every book, or with pin=True only Pinnacle's."""
+        if (sport, pin) not in self.ts:
             out = []
             for fn in sorted(glob.glob(os.path.join(self.root or "", sport, "[0-9][0-9][0-9][0-9]-[0-9][0-9].jsonl"))):
                 with open(fn) as f:
@@ -185,24 +193,24 @@ class TapeClock:
                             r = json.loads(line)
                         except ValueError:
                             continue
-                        if isinstance(r, dict) and not r.get("bf") and F._n(r.get("t")):
+                        if isinstance(r, dict) and not r.get("bf") and F._n(r.get("t")) and (not pin or r.get("book") == "Pinnacle"):
                             out.append(r["t"])
             out.sort()
-            self.ts[sport] = out
-        return self.ts[sport]
+            self.ts[(sport, pin)] = out
+        return self.ts[(sport, pin)]
 
     def last(self, sport):
         t = self._times(sport)
         return t[-1] if t else None
 
-    def last_at(self, sport, at):
-        t = self._times(sport)
+    def last_at(self, sport, at, pin=False):
+        t = self._times(sport, pin)
         i = bisect.bisect_right(t, at)
         return t[i - 1] if i else None
 
-    def any_between(self, sport, lo, hi):
-        """True when a row lies in (lo, hi]."""
-        t = self._times(sport)
+    def any_between(self, sport, lo, hi, pin=False):
+        """True when a row (of Pinnacle only, with pin=True) lies in (lo, hi]."""
+        t = self._times(sport, pin)
         i = bisect.bisect_right(t, lo)
         return i < len(t) and t[i] <= hi
 
@@ -251,7 +259,7 @@ def build_rows(have, cards_dir, tape, now, clock=None):
                 held["side_unmapped"] += 1                # hold: a spelling fix later can still resolve it; a final null row could not be undone
                 continue
             sl = side_line(g, r.get("side"), r.get("outs"), r.get("line"))
-            f = read_close(rows, g, norm, gst, cut, sl, r.get("price"), how, clock.last_at(sport, gst), clock.any_between(sport, cut, gst))
+            f = read_close(rows, g, norm, gst, cut, sl, r.get("price"), how, clock.last_at(sport, gst), clock.any_between(sport, cut, gst, pin=True), clock.last_at(sport, gst, pin=True))
         except Exception as e:                   # one unreadable play is held for the next run, never a stop for the others
             print("::warning::pinclose %s held: %s: %s" % (key, type(e).__name__, e), file=sys.stderr)
             held["read_error"] += 1

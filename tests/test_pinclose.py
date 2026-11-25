@@ -872,15 +872,38 @@ class Liveness(unittest.TestCase):
         # the nfl-ne-det case: the last Pinnacle row is 6.8 hours before kickoff, the cut was 15 minutes before it, nothing else wrote after the cut
         self.env.add(card(sport="nfl", ev="nfl-ne-det-2026-11-15", gk="nfl:1"))
         self.env.write_rows("nfl")
-        self.env.write_tape([tape_row(GST - int(6.8 * 3600), ml=[130, -150], gk="nfl:1"), tape_row(GST - 1800, ml=[100, -100], gk="nfl:2", book="DraftKings"),
+        self.env.write_tape([tape_row(GST - int(6.8 * 3600), ml=[130, -150], gk="nfl:1"), tape_row(CUT + 100, ml=[100, -100], gk="nfl:2", book="DraftKings"),
                              tape_row(GST + 60, ml=[100, -100], gk="nfl:2")], "nfl")
         self.env.run()
         (p,) = self.env.pin_rows("nfl")
         self.assertEqual((p["close_after_cut"], p["close_age_min"]), (False, 408.0))
-        self.assertEqual((p["move_pts"], p["move_why"]), (None, "no_tape_after_cut"))
+        self.assertEqual((p["move_pts"], p["move_why"]), (None, "no_pinnacle_tape_after_cut"))     # a DraftKings row in the window does not show Pinnacle was re-read
         self.assertNotEqual(p["move_pts"], 0.0)
         self.assertIsNotNone(p["pts"])
-        self.assertEqual((p["tape_last_t"], p["tape_age_min"]), (GST - 1800, 30.0))              # any book counts for the tape's liveness
+        self.assertEqual((p["tape_last_t"], p["tape_age_min"]), (CUT + 100, 13.3))                # any book still sets the tape's liveness
+        self.assertEqual((p["pin_last_t"], p["pin_age_min"]), (GST - int(6.8 * 3600), 408.0))     # and Pinnacle's own liveness is stored apart
+
+    def test_a_window_with_only_other_books_gives_a_null_and_a_pinnacle_row_of_another_game_gives_the_measured_value(self):
+        self.env.add(card())
+        self.env.write_rows()
+        self.env.write_tape([tape_row(CUT - 3000, ml=[130, -150]), tape_row(CUT + 100, ml=[100, -100], gk="nba:2", book="DraftKings"),
+                             tape_row(CUT + 200, ml=[100, -100], gk="nba:3", book="FanDuel"), tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
+        self.env.run()
+        (p,) = self.env.pin_rows()
+        self.assertEqual((p["move_pts"], p["move_why"]), (None, "no_pinnacle_tape_after_cut"))
+        self.assertEqual((p["tape_last_t"], p["pin_last_t"]), (CUT + 200, CUT - 3000))
+        self.assertIsNotNone(p["fair_cut"])
+        # the same game with a Pinnacle row of another game in the window (a fresh environment: the stored null above is append-only)
+        with tempfile.TemporaryDirectory() as d:
+            env = Env(d)
+            env.add(card())
+            env.write_rows()
+            env.write_tape([tape_row(CUT - 3000, ml=[130, -150]), tape_row(CUT + 100, ml=[100, -100], gk="nba:2", book="DraftKings"),
+                            tape_row(CUT + 300, ml=[100, -100], gk="nba:3"), tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
+            env.run()
+            (q,) = env.pin_rows()
+            self.assertEqual((q["move_pts"], q["move_why"]), (0.0, None))
+            self.assertEqual((q["pin_last_t"], q["tape_last_t"]), (CUT + 300, CUT + 300))
 
     def test_another_game_writing_after_the_cut_makes_an_unchanged_pinnacle_a_real_zero(self):
         self.env.add(card())
@@ -897,7 +920,7 @@ class Liveness(unittest.TestCase):
         bf = dict(tape_row(CUT + 200, ml=[100, -100], gk="nba:2"), bf=True)
         self.env.write_tape([tape_row(CUT - 3000, ml=[130, -150]), bf, tape_row(GST + 60, ml=[100, -100], gk="nba:2")])
         self.env.run()
-        self.assertEqual(self.env.pin_rows()[0]["move_why"], "no_tape_after_cut")
+        self.assertEqual(self.env.pin_rows()[0]["move_why"], "no_pinnacle_tape_after_cut")
 
 
 class Clock(unittest.TestCase):
@@ -918,6 +941,10 @@ class Clock(unittest.TestCase):
             self.assertTrue(c.any_between("nba", 200, 400))
             self.assertFalse(c.any_between("nba", 400, 500))
             self.assertFalse(c.any_between("nfl", 0, 10 ** 12))
+            # Pinnacle only: the DraftKings row at 200 and the Consensus row at 400 are not Pinnacle's
+            self.assertFalse(c.any_between("nba", 100, 10 ** 6, pin=True))
+            self.assertTrue(c.any_between("nba", 99, 100, pin=True))
+            self.assertEqual((c.last_at("nba", 399, pin=True), c.last_at("nba", 99, pin=True)), (100, None))
 
 
 class MoveAtTicketLine(unittest.TestCase):
