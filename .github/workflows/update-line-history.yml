@@ -6,11 +6,11 @@ name: Update line history
 
 on:
   workflow_dispatch: {}
-  schedule:
-    # Hourly, year-round. Freezes each game+market's first-seen line as the
-    # "open" and rolls "cur" forward; only commits when something actually
-    # moved, so quiet hours are free. Off the hour (:47) to dodge congestion.
-    - cron: '47 * * * *'
+  # No schedule: here on purpose. GitHub's scheduler fired this every 4-7 hours, so the sharp-refresh Cloudflare Worker
+  # (workers/sharp-refresh/src/price-jobs.js) starts it with workflow_dispatch on the same UTC schedule: 47 * * * *
+  # Hourly, year-round. Freezes each game+market's first-seen line as the
+  # "open" and rolls "cur" forward; only commits when something actually
+  # moved, so quiet hours are free. Off the hour (:47) to dodge congestion.
 
 concurrency:
   group: line-history
