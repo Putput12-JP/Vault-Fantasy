@@ -2,7 +2,7 @@
  "version": 1,
  "paper_only": true,
  "live_orders": false,
- "updated": "2026-11-25T04:00:25Z",
+ "updated": "2026-11-25T04:38:07Z",
  "bankroll_start": 1000.0,
  "cash": 913.0,
  "trades": [
@@ -12365,7 +12365,7 @@
   {
    "id": "KXNBATOTAL-26NOV24DETORL-213:1795528684",
    "ts": "2026-11-24T13:58:04Z",
-   "status": "open",
+   "status": "settled",
    "source": "nba_total",
    "ticker": "KXNBATOTAL-26NOV24DETORL-213",
    "event": "KXNBATOTAL-26NOV24DETORL",
@@ -12400,21 +12400,21 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-11-25T04:38:07Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -7.8,
    "close_mid": 0.485,
-   "clv": null,
+   "clv": -0.015,
    "mark_value": 7.2,
-   "won": null,
+   "won": false,
    "fee_total": 0.3,
    "mark_ts": "2026-11-24T23:05:14Z"
   },
   {
    "id": "KXNBATOTAL-26NOV24DETORL-215:1795528684",
    "ts": "2026-11-24T13:58:04Z",
-   "status": "open",
+   "status": "settled",
    "source": "nba_total",
    "ticker": "KXNBATOTAL-26NOV24DETORL-215",
    "event": "KXNBATOTAL-26NOV24DETORL",
@@ -12449,21 +12449,21 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-11-25T04:38:07Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -18.72,
    "close_mid": 0.435,
-   "clv": null,
+   "clv": -0.025,
    "mark_value": 16.77,
-   "won": null,
+   "won": false,
    "fee_total": 0.78,
    "mark_ts": "2026-11-24T23:05:14Z"
   },
   {
    "id": "KXNBATOTAL-26NOV24DETORL-217:1795528684",
    "ts": "2026-11-24T13:58:04Z",
-   "status": "open",
+   "status": "settled",
    "source": "nba_total",
    "ticker": "KXNBATOTAL-26NOV24DETORL-217",
    "event": "KXNBATOTAL-26NOV24DETORL",
@@ -12498,21 +12498,21 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-11-25T04:38:07Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -4.2,
    "close_mid": 0.405,
-   "clv": null,
+   "clv": 0.005,
    "mark_value": 4.0,
-   "won": null,
+   "won": false,
    "fee_total": 0.2,
    "mark_ts": "2026-11-24T23:05:14Z"
   },
   {
    "id": "KXNBATOTAL-26NOV24DETORL-219:1795528684",
    "ts": "2026-11-24T13:58:04Z",
-   "status": "open",
+   "status": "settled",
    "source": "nba_total",
    "ticker": "KXNBATOTAL-26NOV24DETORL-219",
    "event": "KXNBATOTAL-26NOV24DETORL",
@@ -12547,21 +12547,21 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-11-25T04:38:07Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -19.11,
    "close_mid": 0.355,
-   "clv": null,
+   "clv": -0.015,
    "mark_value": 17.15,
-   "won": null,
+   "won": false,
    "fee_total": 0.98,
    "mark_ts": "2026-11-24T23:05:14Z"
   },
   {
    "id": "KXNBATOTAL-26NOV24DETORL-231:1795561514",
    "ts": "2026-11-24T23:05:14Z",
-   "status": "open",
+   "status": "settled",
    "source": "nba_total",
    "ticker": "KXNBATOTAL-26NOV24DETORL-231",
    "event": "KXNBATOTAL-26NOV24DETORL",
@@ -12596,14 +12596,14 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-11-25T04:38:07Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -0.17,
    "close_mid": null,
    "clv": null,
    "mark_value": 0.14,
-   "won": null,
+   "won": false,
    "fee_total": 0.01
   }
  ],
@@ -12782,6 +12782,11 @@
    "ts": "2026-11-24T23:05:14Z",
    "cash": 913.0,
    "equity": 958.26
+  },
+  {
+   "ts": "2026-11-25T04:38:07Z",
+   "cash": 913.0,
+   "equity": 913.0
   }
  ],
  "runs": [
@@ -13347,6 +13352,20 @@
    ],
    "equity": 958.26,
    "cash": 913.0
+  },
+  {
+   "ts": "2026-11-25T04:38:07Z",
+   "settled": 5,
+   "opened": 0,
+   "vetoed": 0,
+   "skipped": 0,
+   "halt": "daily loss stop (-67.63 vs -50.00)",
+   "notes": [
+    "strategies paused: daily loss stop (-67.63 vs -50.00)",
+    "daily loss stop (-67.63 vs -50.00)"
+   ],
+   "equity": 913.0,
+   "cash": 913.0
   }
  ],
  "summary": {
@@ -13442,17 +13461,17 @@
    }
   },
   "overall": {
-   "settled": 31,
+   "settled": 36,
    "wins": 12,
-   "losses": 19,
+   "losses": 24,
    "pending": 0,
-   "stake": 468.0,
-   "pnl": -37.0,
-   "roi": -0.0791,
-   "clv_n": 24,
-   "clv_mean": -0.001,
-   "brier": 0.2517,
-   "open": 5,
+   "stake": 518.0,
+   "pnl": -87.0,
+   "roi": -0.168,
+   "clv_n": 28,
+   "clv_mean": -0.0027,
+   "brier": 0.2529,
+   "open": 0,
    "void": 0,
    "vetoed": 0
   },
@@ -13486,17 +13505,17 @@
     "vetoed": 0
    },
    "nba_total": {
-    "settled": 23,
+    "settled": 28,
     "wins": 11,
-    "losses": 12,
+    "losses": 17,
     "pending": 0,
-    "stake": 331.99,
-    "pnl": 70.01,
-    "roi": 0.2109,
-    "clv_n": 17,
-    "clv_mean": -0.0035,
-    "brier": 0.2591,
-    "open": 5,
+    "stake": 381.99,
+    "pnl": 20.01,
+    "roi": 0.0524,
+    "clv_n": 21,
+    "clv_mean": -0.0052,
+    "brier": 0.2593,
+    "open": 0,
     "vetoed": 0
    }
   },
@@ -13507,9 +13526,9 @@
     "n": 6
    },
    "2026-11": {
-    "pnl": 33.92,
-    "stake": 368.08,
-    "n": 25
+    "pnl": -16.08,
+    "stake": 418.08,
+    "n": 30
    }
   },
   "calibration": [
@@ -13530,9 +13549,9 @@
    {
     "lo": 0.2,
     "hi": 0.3,
-    "n": 2,
+    "n": 3,
     "hit": 0.0,
-    "pred": 0.2641
+    "pred": 0.2593
    },
    {
     "lo": 0.3,
@@ -13544,23 +13563,23 @@
    {
     "lo": 0.4,
     "hi": 0.5,
-    "n": 8,
-    "hit": 0.5,
-    "pred": 0.4597
+    "n": 9,
+    "hit": 0.4444,
+    "pred": 0.463
    },
    {
     "lo": 0.5,
     "hi": 0.6,
-    "n": 14,
-    "hit": 0.4286,
-    "pred": 0.5555
+    "n": 16,
+    "hit": 0.375,
+    "pred": 0.5554
    },
    {
     "lo": 0.6,
     "hi": 0.7,
-    "n": 1,
+    "n": 2,
     "hit": 0.0,
-    "pred": 0.6752
+    "pred": 0.647
    },
    {
     "lo": 0.7,
@@ -13586,7 +13605,7 @@
   ],
   "fees": 26.1,
   "cash": 913.0,
-  "open_mark": 45.26
+  "open_mark": 0
  },
  "config": {
   "paper_only": true,
