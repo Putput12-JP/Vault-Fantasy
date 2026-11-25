@@ -3,6 +3,16 @@
 `.github/workflows/pm-record.yml` runs every 2 hours and keeps two records on `pm-holders-data` under `pm_record/`. Rows are
 append-only and the branch is never force-pushed. Sharp money is context only (CLAUDE.md): these are records, not a pick feed.
 
+**Grading freshness (2026-11-24).** GitHub's scheduler skips many scheduled runs (on 2026-11-24 this workflow ran at about 03:04Z, 06:49Z, 15:20Z and
+16:39Z, then not for 7 hours), so games that finished mid-afternoon stayed "Awaiting result" until evening. The card build
+(`.github/workflows/pm-cards.yml`, every 10 minutes, far more reliable) now ends with a fail-soft step that starts this workflow with
+`gh workflow run pm-record.yml` when the grading is stale: `generated` in `cards_record.json` is more than 45 minutes old AND a shown frozen play
+started more than 2.5 hours ago (and no more than 24 hours ago, not postponed) with no `result` row, with fewer than 3 `workflow_dispatch` runs of this
+workflow in the last 6 hours and none queued or in progress. The rule is `scripts/grading_stale.py` (tests: `tests/test_grading_stale.py`). Grading
+still waits on Polymarket's resolution, so some lag after a game ends is normal. The Frozen plays box shows "Result delayed" for an awaiting play whose game
+started more than 3.5 hours ago, the count ("2 delayed") beside the awaiting count, and "Last graded 10:39 AM CT" from `generated`, with "Grading is
+behind." when that is more than 3 hours old.
+
 ## 1. Vault's cards (`scripts/grade_side_cards.py`)
 
 Every frozen card (`pm_cards/<sport>/frozen/...`) is graded once its markets resolve. Per market group (ml, spread, total) and

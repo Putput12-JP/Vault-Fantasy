@@ -448,9 +448,36 @@
     var fresh = sf && isNum(sf.price) && sf.price > 0 && sf.price < 1 && (!isNum(sf.price_t) || cut == null || sf.price_t >= cut - 1800);
     return { price: fresh ? sf.price : null, cut: cut };
   };
+  /* ---- Delayed results. An awaiting play whose game started more than 3.5 hours ago has no graded result yet: the box says "Result delayed" for it, and
+     says when the record was last graded (cards_record.json `generated`) and, past 3 hours, that grading is behind. Stored times only: with no
+     `generated` the box shows no graded line at all. Grading runs about every 2 hours and waits on Polymarket, so a lag after a game ends is normal;
+     3.5 hours is that cadence plus a game's own wait. */
+  var DELAYED_AFTER = 12600, BEHIND_AFTER = 10800;
+  rec.DELAYED_AFTER = DELAYED_AFTER; rec.BEHIND_AFTER = BEHIND_AFTER;
+  rec.DELAYED_WORD = 'Result delayed';
+  rec.DELAYED_TIP = 'The game started over 3.5 hours ago and has no graded result yet. Grading runs about every 2 hours and waits on Polymarket.';
+  /* a play still awaiting its result (not postponed, not graded) whose game started more than 3.5 hours before nowT */
+  rec.isDelayed = function (m, nowT) {
+    return !!m && m.state === 'open' && m.word === 'Awaiting result' && isNum(m.gst) && isNum(nowT) && nowT - m.gst > DELAYED_AFTER;
+  };
+  /* the result chip of one row: visible word, spoken text, tooltip. A delayed play keeps the awaiting word for everything but this chip. */
+  rec.chipText = function (m) {
+    var word = m.state === 'open' || m.units == null ? m.word : m.word + ' ' + m.units;
+    var say = m.state === 'win' ? 'Win' : m.state === 'loss' ? 'Loss' : m.state === 'push' ? 'Push' : m.word;
+    if (m.delayed) return { word: rec.DELAYED_WORD, say: rec.DELAYED_WORD + '. ' + rec.DELAYED_TIP, title: rec.DELAYED_TIP };
+    return { word: word, say: say + (m.units && m.state !== 'open' ? ', ' + m.units.replace('u', ' units') : ''), title: null };
+  };
+  /* "Last graded 10:39 AM CT" (with the date when it was not today, Central), plus "Grading is behind." when more than 3 hours old. '' when generated is missing. */
+  rec.gradedLine = function (generated, nowT) {
+    if (!isNum(generated)) return '';
+    var today = isNum(nowT) ? ct.dateKey(generated) === ct.dateKey(nowT) : true;
+    var s = 'Last graded ' + (today ? '' : ct.md(generated) + ', ') + ct.time(generated, true) + '.';
+    if (isNum(nowT) && nowT - generated > BEHIND_AFTER) s += ' Grading is behind.';
+    return s;
+  };
   rec.frozenList = function (rows, file, tierMap, sport, extra) {
     var s = sport == null ? 'all' : lc(sport), tm = tierMap || {}, ex = extra || {}, cards = ex.cards || {};
-    var out = { sport: s, items: [], total: 0, awaiting: 0, settled: 0, tally: rec.tally([], {}), noSize: false };
+    var out = { sport: s, items: [], total: 0, awaiting: 0, delayed: 0, settled: 0, tally: rec.tally([], {}), noSize: false };
     if (s !== 'all' && SHOWN.indexOf(s) < 0) { out.noSize = true; return out; }
     var inSport = function (r) { var sp = lc(r.sport); return s === 'all' ? SHOWN.indexOf(sp) >= 0 : sp === s; };
     var done = {}, items = [];
@@ -489,8 +516,10 @@
       if (ac !== bc) return bc - ac;
       return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
     });
+    items.forEach(function (x) { if (rec.isDelayed(x, ex.now)) x.delayed = true; });   /* the clock is passed in (extra.now): none means nothing is delayed, no hidden Date.now() in a pure list */
     out.items = items; out.total = items.length;
     out.awaiting = items.filter(function (x) { return x.state === 'open'; }).length;
+    out.delayed = items.filter(function (x) { return x.delayed === true; }).length;   /* a part of awaiting, never in addition to it */
     out.settled = out.total - out.awaiting;
     out.tally = rec.tally(settledRows, {});
     return out;
@@ -501,6 +530,7 @@
     var t = L.tally, s = fmt.n(L.total) + ' frozen play' + (L.total === 1 ? '' : 's') + (t.n ? ', ' + rec.fmtWl(t) + ', flat 1u' : '');
     var ng = L.items.filter(function (x) { return x.state !== 'open' && x.state !== 'win' && x.state !== 'loss' && x.state !== 'push'; }).length;   /* void, unpriced: listed, never in the record */
     if (L.awaiting) s += (t.n ? ', ' : ': ') + fmt.n(L.awaiting) + ' awaiting result';
+    if (L.delayed) s += ', ' + fmt.n(L.delayed) + ' delayed';   /* a part of the awaiting count */
     if (ng) s += (t.n || L.awaiting ? ', ' : ': ') + fmt.n(ng) + ' not graded';
     return s;
   };
@@ -693,27 +723,28 @@
     });
   }
   function fzRow(m) {
-    var word = m.state === 'open' || m.units == null ? m.word : m.word + ' ' + m.units;
-    var kind = m.state === 'win' ? 'win' : m.state === 'loss' ? 'loss' : 'muted';
-    var say = m.state === 'win' ? 'Win' : m.state === 'loss' ? 'Loss' : m.state === 'push' ? 'Push' : m.word;
+    var kind = m.state === 'win' ? 'win' : m.state === 'loss' ? 'loss' : m.delayed ? 'ink' : 'muted';
+    var chip = rec.chipText(m);
     var meta = '';
     if (isNum(m.cut)) meta += '<span class="sv2-num">' + esc(ct.md(m.cut) + ', ' + ct.time(m.cut)) + '</span>';
     meta += '<span class="sv2-chip sv2-chip--muted"><span>' + esc(sportName(m.sport)) + '</span></span>';
-    return '<li class="sv2-fz-r" data-state="' + m.state + '"><div class="sv2-fz-l"><span class="sv2-fz-top"><b class="sv2-fz-title">' + esc(m.label) + '</b>' +
+    return '<li class="sv2-fz-r" data-state="' + m.state + '"' + (m.delayed ? ' data-delayed="1"' : '') + '><div class="sv2-fz-l"><span class="sv2-fz-top"><b class="sv2-fz-title">' + esc(m.label) + '</b>' +
       (m.price ? '<span class="sv2-num sv2-fz-px"><span class="sv2-sr">Price at the freeze </span>' + esc(m.price) + '</span>' : '') + '</span>' +
       '<span class="sv2-fz-meta">' + meta + '</span></div>' +
-      '<div class="sv2-fz-rt"><span class="sv2-chip sv2-chip--' + kind + ' sv2-fz-res"><span aria-hidden="true">' + esc(word) + '</span><span class="sv2-sr">' + esc(say + (m.units && m.state !== 'open' ? ', ' + m.units.replace('u', ' units') : '')) + '</span></span>' +
+      '<div class="sv2-fz-rt"><span class="sv2-chip sv2-chip--' + kind + ' sv2-fz-res"' + (chip.title ? ' title="' + esc(chip.title) + '"' : '') + '><span aria-hidden="true">' + esc(chip.word) + '</span><span class="sv2-sr">' + esc(chip.say) + '</span></span>' +
       (m.tier ? ui.tier(m.tier) : '') + '</div></li>';
   }
   function frozenInner() {
     var sp = S.fz.sport, h = '<h2 class="sv2-h2" id="sv2-fz-h">Frozen plays</h2>';
     if (S.state === 'none') return h + '<p class="sv2-rec-railn">Could not load. <button type="button" class="sv2-link" data-sv2-fz-retry>Try again</button></p>';
     if (S.state !== 'ok') return h + ui.skel(3, 'Loading the frozen plays', 'sv2-fz-skel');
-    var L = rec.frozenList(S.rows, S.file, S.tl.map, sp, { locked: lockedNow(), cards: S.fzc.map });
+    var now = SV2.now(), L = rec.frozenList(S.rows, S.file, S.tl.map, sp, { locked: lockedNow(), cards: S.fzc.map, now: now });
     if (L.noSize) return h + '<p class="sv2-rec-railn">CFB shows no size, so no play is listed here. The record tab keeps a tracked CFB record.</p><p class="sv2-rec-railn"><button type="button" class="sv2-sp-lnk" data-sv2-open-record>See the full record</button></p>';
     if (!L.total) return h + '<p class="sv2-rec-railn">No frozen plays yet' + (sp === 'all' ? '' : ' for ' + esc(sportName(sp))) + '.</p>';
     var many = L.total > rec.FROZEN_SHOW, open = many && S.fz.open, list = open ? L.items : L.items.slice(0, rec.FROZEN_SHOW);
     h += '<p class="sv2-fz-sub">' + esc(rec.frozenSub(L)) + '</p>';
+    var gl = rec.gradedLine(S.file && S.file.generated, now);
+    if (gl) h += '<p class="sv2-fz-sub sv2-fz-graded">' + esc(gl) + '</p>';
     var ul = '<ul class="sv2-fz-list">' + list.map(fzRow).join('') + '</ul>';
     h += open ? '<div class="sv2-fz-scroll" id="sv2-fz-list" tabindex="0" role="region" aria-label="All frozen plays, newest first">' + ul + '</div>' : '<div id="sv2-fz-list">' + ul + '</div>';
     if (many) h += '<button type="button" class="sv2-sp-ctxbtn sv2-press sv2-press-btn sv2-fz-more" data-sv2-fz-more aria-expanded="' + open + '" aria-controls="sv2-fz-list"><span>' +
