@@ -39,10 +39,40 @@ when the true main is 1.5. A main line that flips because of where the budget ra
 
 ## Refresh age
 
-Roughly 48 book calls plus the trades calls of the books that changed per game, so 2 to 4 games per poll at 220 requests.
-Polls run every 5 minutes inside 3 hours of the next tip and every 15 minutes otherwise, so a 14-game slate is refreshed in
-about 4 to 7 polls: 20 to 35 minutes at the fast cadence. The measured ages from the 2026-10-19 live run are in the pull
-request. Raising `NOVIG_BUDGET` shortens it (about 100 requests per extra game).
+Roughly 48 book calls plus the trades calls of the books that changed per game. At first sight every book counts as changed,
+so a game costs about 95 requests and a poll reads 2 games at 220 requests. Polls run every 5 minutes inside 3 hours of the
+next tip and every 15 minutes otherwise.
+
+**Measured 2026-10-19 (07:00 to 07:27 CT), 14 games listed by Novig for 10/20 to 10/21, six polls back to back, fresh state,
+default budget.** Each poll took about 290 s (lines and props, paced at 0.35 s a request), so the ages below are what a 5-minute
+cadence would also show.
+
+| Poll | Games read whole | Carried (with age) | No complete read yet | Oldest age (s) | Line requests |
+|---|---|---|---|---|---|
+| 1 | 2 | 0 | 12 | none | 190 |
+| 2 | 2 | 2 | 10 | 374 | 186 |
+| 3 | 2 | 4 | 8 | 665 | 190 |
+| 4 | 2 | 6 | 6 | 955 | 196 |
+| 5 | 2 | 8 | 4 | 1,246 | 196 |
+| 6 | 2 | 10 | 2 | 1,413 | 192 |
+
+The first cycle needs 7 polls (about 35 minutes at 5-minute polls). After that a game costs only its moneyline, spread and
+total books plus the trades of the books that moved, so later cycles are shorter; that steady state has not been measured yet.
+Raising `NOVIG_BUDGET` shortens it (about 100 requests per extra game). A game with no complete read is published empty, not
+from a partial ladder.
+
+**Same slate, old code (`origin/main` before the fix), one poll, 300 requests used:** 2 games complete, OKC @ SAS read
+15 of its 35 totals (main total 241.5, the complete read says 231.5), and 11 games with nothing.
+
+**Full-ladder check, 2 games** (budget lifted so each game is read whole in one poll, then compared with the rotation's
+carried result from the same session):
+
+| Game | Full read: moneyline / main spread / main total | Rotation (carried, age 1,413 s and 1,318 s) |
+|---|---|---|
+| BOS @ DET | 0.485 / DET +1.5 at 0.515 / 223.5 at 0.48 | same |
+| PHI @ NYK | 0.6225 / NY -4.5 at 0.51 / 231.5 at 0.51 | same |
+
+Across the six polls no game's `quotes()` main spread or main total key changed line.
 
 ## Limits
 
