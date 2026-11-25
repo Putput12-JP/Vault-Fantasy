@@ -1114,6 +1114,19 @@ def shadow(root, day, board, now, polls):
             lrows, lmeta = lean_record.log(board, now)
             rec['leans'] = len(lrows)
             day.record('leans', now, lrows, lmeta)
+            try:                                                # Sharp Money V2 Plays rules (prop_rules.py): this poll's 5-of-5 and A+ groups onto the board before it is pushed
+                import prop_rules
+                rr = prop_rules.attach(board, lrows, lmeta, now)
+                rec['rules'] = len(rr['rows'])
+                with open(BOARD) as f:
+                    bj = json.load(f)
+                bj['rules'] = rr
+                with open(BOARD + '.tmp', 'w') as f:
+                    json.dump(bj, f, separators=(',', ':'))
+                os.replace(BOARD + '.tmp', BOARD)
+            except Exception as e:
+                rec['rules_err'] = str(e)[:120]
+                traceback.print_exc(limit=2)
         except Exception as e:
             rec['leans_err'] = str(e)[:120]
             traceback.print_exc(limit=2)
