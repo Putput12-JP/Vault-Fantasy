@@ -178,14 +178,9 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 a.btn{text-decoration:none}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .tap:focus-visible{outline-offset:-2px;border-radius:24px}
-/* Skip link (a11y): hidden until it has keyboard focus, then a small chip at the top left with the global focus ring. #scr only takes focus for the skip, so it gets no ring. */
-.skip{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
-.skip:focus{position:fixed;left:calc(env(safe-area-inset-left) + 12px);top:calc(env(safe-area-inset-top) + 12px);z-index:100;width:auto;height:auto;margin:0;padding:8px 14px;overflow:visible;clip:auto;clip-path:none;border-radius:12px;background:var(--card2);color:var(--ink);font-weight:600;font-size:14px;text-decoration:none}
-#scr:focus{outline:none}
 @media (prefers-reduced-motion:reduce){.skel{animation:none}.spin{animation-duration:2s}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<a class="skip" href="#scr">Skip to content</a>
 <div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
 <script src="../line-chart.js?v=2"></script>
 <script src="../edge-board.js"></script>
@@ -1222,7 +1217,6 @@ function route(){
  const cn=sc.querySelector('.chip.on[data-v2nav]');if(cn&&cn.parentElement){const pr=cn.parentElement,a=cn.getBoundingClientRect(),b=pr.getBoundingClientRect();pr.scrollLeft+=a.left-b.left-(b.width-a.width)/2}  /* keep the open Plays/Sharps/Following chip in view on a phone */
 }
 function rerender(){const y=scrollY;route();window.scrollTo(0,y)}
-document.addEventListener('click',e=>{const a=e.target.closest('a.skip');if(!a)return;e.preventDefault();e.stopImmediatePropagation();const m=$('scr');m.setAttribute('tabindex','-1');m.focus({preventScroll:true});m.addEventListener('blur',()=>m.removeAttribute('tabindex'),{once:true})});  /* skip link: focus the screen, leave the hash route alone */
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-go],[data-back],[data-sit],[data-fs]')){e.preventDefault();e.target.click()}});
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-refresh]')){refresh();return}

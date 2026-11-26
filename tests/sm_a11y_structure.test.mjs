@@ -1,5 +1,5 @@
 /* Sharp Money structure-only accessibility fixes: page language, an h1 page title, a main landmark,
-   a skip link, and Enter/Space on the desktop Passed and Open rows. None of these may change pixels;
+   and Enter/Space on the desktop Passed and Open rows. None of these may change pixels;
    the pixel diff lives in the PR, these guard the markup.
    run: node --test tests/sm_a11y_structure.test.mjs */
 import test from 'node:test';
@@ -38,45 +38,19 @@ test('the visible page title is the h1, with its old type and no new margin', ()
 });
 
 test('the content column is the main landmark', () => {
-  assert.ok(desk.includes('(0,a.jsxs)("main",{className:"sm-main",id:"sm-main",children:['));
+  assert.ok(desk.includes('(0,a.jsxs)("main",{className:"sm-main",children:['));
   assert.ok(!desk.includes('(0,a.jsxs)("div",{className:"sm-main"'));
   assert.equal((phone.match(/<main /g) || []).length, 1);
   assert.match(phone, /<main id="scr" aria-live="polite"><\/main>/);
 });
 
-test('desktop skip link: first in the shell, hidden until focused, shell focus ring, no hash change', () => {
-  assert.ok(desk.includes('children:[(0,a.jsx)("a",{className:"sm-skip",href:"#sm-main",children:"Skip to content"}),(0,a.jsx)(SmSide,'));
-  const hid = rule(desk, '.sm-skip');
-  for (const d of ['position:absolute', 'width:1px', 'height:1px', 'overflow:hidden', 'clip-path:inset(50%)']) assert.ok(hid.includes(d), d);
-  const on = rule(desk, '.sm-skip:focus');
-  assert.ok(on.includes('position:fixed') && on.includes('clip-path:none'));
-  assert.doesNotMatch(hid + on, /transition|animation/);
-  // same ring as the sidebar links (.sm-a:focus-visible)
-  assert.equal(rule(desk, '.sm-skip:focus-visible'), 'outline:2px solid var(--sm-acc);outline-offset:1px');
-  assert.equal(rule(desk, '.sm-a:focus-visible'), 'outline:2px solid var(--sm-acc);outline-offset:1px');
-  assert.equal(rule(desk, '#sm-main:focus'), 'outline:none');
-  const js = desk.slice(desk.indexOf('<script>/* Skip link (a11y)'), desk.indexOf('</script>', desk.indexOf('<script>/* Skip link (a11y)')));
-  assert.match(js, /e\.preventDefault\(\)/);
-  assert.match(js, /setAttribute\("tabindex","-1"\);m\.focus\(\{preventScroll:true\}\)/);
-  assert.match(js, /removeAttribute\("tabindex"\)/);
-  assert.doesNotMatch(js, /location\.hash/);
-});
-
-test('phone skip link: before the app, hidden until focused, global focus ring, no hash change', () => {
-  const i = phone.indexOf('<a class="skip" href="#scr">Skip to content</a>');
-  assert.ok(i > 0 && i < phone.indexOf('<div class="app">'));
-  const hid = rule(phone, '.skip');
-  for (const d of ['position:absolute', 'width:1px', 'height:1px', 'overflow:hidden', 'clip-path:inset(50%)']) assert.ok(hid.includes(d), d);
-  const on = rule(phone, '.skip:focus');
-  assert.ok(on.includes('position:fixed') && on.includes('clip-path:none'));
-  assert.doesNotMatch(hid + on + rule(phone, '.skip:focus'), /transition|animation|outline/);
-  assert.ok(phone.includes(':focus-visible{outline:2px solid var(--acc);outline-offset:2px}'));
-  assert.equal(rule(phone, '#scr:focus'), 'outline:none');
-  const line = phone.split('\n').find(l => l.includes("closest('a.skip')"));
-  assert.ok(line);
-  assert.match(line, /e\.preventDefault\(\)/);
-  assert.match(line, /m\.focus\(\{preventScroll:true\}\)/);
-  assert.doesNotMatch(line, /location\.hash/);
+test('no skip link on either shell (dropped from this PR by request)', () => {
+  for (const [name, src] of [['desktop', desk], ['phone', phone]]) {
+    assert.doesNotMatch(src, /Skip to content|sm-skip|class="skip"|a\.skip/, name);
+    assert.doesNotMatch(src, /#sm-main:focus|#scr:focus/, name);
+  }
+  assert.doesNotMatch(desk, /id:"sm-main"/);
+  assert.doesNotMatch(phone, /setAttribute\('tabindex','-1'\)/);
 });
 
 test('the desktop patch script is idempotent on the committed file', () => {
@@ -122,5 +96,6 @@ test('the changelog entry is newest first and has no em dash', () => {
   const entry = head.slice(a, b);
   assert.match(entry, /easier to use with a keyboard or screen reader/);
   assert.match(entry, /Nothing on the page looks different/);
+  assert.doesNotMatch(entry, /skip/i);
   assert.doesNotMatch(entry, /\u2014|\u2013/);
 });
