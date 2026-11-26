@@ -6,7 +6,7 @@
 
 import { runPriceJobs, lineupRunsThisMonth, LINEUP_MAX_CLICK } from './price-jobs.js';
 
-const ORIGINS = ['https://vaultfantasy.com', 'https://www.vaultfantasy.com', 'http://localhost:8000', 'http://127.0.0.1:8000'];
+const ORIGINS = ['https://vaultfantasy.com', 'https://www.vaultfantasy.com', 'http://localhost:8000', 'http://127.0.0.1:8000', 'http://localhost:4173', 'http://127.0.0.1:4173'];
 const COOLDOWN_S = 60;
 
 // The US books (DraftKings, FanDuel, ...) only come from the ParlayAPI job (update-lineup.yml), which costs credits per run.
@@ -25,9 +25,47 @@ async function maybeLineup(env) {
     // the scheduled runs use, so clicking can never take the scheduled runs' credits.
     const n = await lineupRunsThisMonth(env, env.LINEUP_WORKFLOW, Date.now());
     if (n == null || n >= LINEUP_MAX_CLICK) return 'budget';
-    const d = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.LINEUP_WORKFLOW}/dispatches`, { method: 'POST', headers: gh, body: JSON.stringify({ ref: env.REF }) });
+    const d = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.LINEUP_WORKFLOW}/dispatches`, { method: 'POST', headers: gh, body: JSON.stringify({ ref: env.REF, inputs: { source: 'click' } }) });
     return d.status === 204 ? 'started' : 'error';
   } catch { return 'error'; }
+}
+
+
+// Named jobs the Control Room "Run now" button may start. A Refresh click (no job field) still starts
+// update-sharp-money plus maybeLineup, unchanged. Unknown job names are rejected.
+export const CLICK_JOBS = {
+  'update-sharp-money': { wf: 'update-sharp-money.yml', force: true },
+  'nfl-book-tape': { wf: 'nfl-book-tape.yml' },
+  'update-props': { wf: 'update-props.yml' },
+  'update-prop-history': { wf: 'update-prop-history.yml' },
+  'update-game-history': { wf: 'update-game-history.yml' },
+  'update-kalshi': { wf: 'update-kalshi.yml' },
+  'update-polymarket': { wf: 'update-polymarket.yml' },
+  'update-line-history': { wf: 'update-line-history.yml' },
+  'update-lineup': { wf: 'update-lineup.yml', lineup: true },
+};
+
+async function dispatchNamed(env, job) {
+  const spec = CLICK_JOBS[job];
+  if (!spec) return { ok: false, error: 'job', status: 400 };
+  if (spec.lineup) {
+    const lineup = await maybeLineup(env);
+    const ok = lineup === 'started';
+    const status = lineup === 'started' ? 204 : lineup === 'recent' || lineup === 'budget' ? 409 : 502;
+    return { ok, status, lineup };
+  }
+  const inputs = spec.force ? { force: 'true' } : { source: 'click' };
+  const r = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${spec.wf}/dispatches`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'vault-sharp-refresh',
+    },
+    body: JSON.stringify({ ref: env.REF, inputs }),
+  });
+  return { ok: r.status === 204, status: r.status };
 }
 
 async function dispatch(env, force) {
@@ -121,14 +159,21 @@ export default {
     if (!ORIGINS.includes(origin)) return new Response(JSON.stringify({ ok: false, error: 'origin' }), { status: 403, headers: h });
     // Fail closed. Cron (scheduled) does not come through here and stays unauthenticated.
     if (!env.TURNSTILE_SECRET || !env.GATE) return new Response(JSON.stringify({ ok: false, error: 'unconfigured' }), { status: 503, headers: h });
-    let token = '';
-    try { token = (await req.json()).token || ''; } catch { token = ''; }
+    let token = '', job = '';
+    try { const body = await req.json(); token = body.token || ''; job = body.job || ''; } catch { token = ''; }
+    if (job && !CLICK_JOBS[job]) return new Response(JSON.stringify({ ok: false, error: 'job' }), { status: 400, headers: h });
     const ok = await siteverify(env, token, req.headers.get('CF-Connecting-IP') || '');
     if (!ok) return new Response(JSON.stringify({ ok: false, error: 'turnstile' }), { status: 403, headers: h });
-    const gate = await env.GATE.get(env.GATE.idFromName('sharp-refresh')).fetch('https://gate/claim', { method: 'POST' });
+    const gateName = job ? 'sharp-refresh-' + job : 'sharp-refresh';
+    const gate = await env.GATE.get(env.GATE.idFromName(gateName)).fetch('https://gate/claim', { method: 'POST' });
     if (gate.status === 429) {
       const j = await gate.json().catch(() => ({}));
       return new Response(JSON.stringify({ ok: false, error: 'cooldown', retry: j.retry || COOLDOWN_S }), { status: 429, headers: h });
+    }
+    if (job) {
+      const r = await dispatchNamed(env, job);
+      const status = r.error === 'job' ? 400 : r.status === 409 ? 409 : r.ok ? 202 : 502;
+      return new Response(JSON.stringify({ ok: r.ok, status: r.status, lineup: r.lineup, error: r.error || undefined }), { status, headers: h });
     }
     const r = await dispatch(env, true);
     const lineup = r.ok ? await maybeLineup(env) : 'skipped';
