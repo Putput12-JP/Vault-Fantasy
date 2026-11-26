@@ -78,15 +78,15 @@ _When Pinnacle's no-vig line sat half a point or more off the recreational books
 
 ```
 spread  Pinnacle    n= 89  toward  55 / away  21  avg move toward +0.36 pts ±0.10
-spread  FanDuel     n= 89  toward  51 / away  26  avg move toward +0.19 pts ±0.13
+spread  FanDuel     n= 90  toward  52 / away  26  avg move toward +0.19 pts ±0.13
         -> NO-GO: not ahead of the control (+0.17 pts, z +1.0)
 total   Pinnacle    n= 46  toward  27 / away  16  avg move toward +0.21 pts ±0.15
-total   FanDuel     n= 61  toward  36 / away  19  avg move toward +0.30 pts ±0.14
+total   FanDuel     n= 62  toward  37 / away  19  avg move toward +0.34 pts ±0.14
         -> too few games (46 of 50)
-props   Pinnacle    n=313  toward 161 / away  24  net share toward +0.44 ±0.05
-props   FanDuel     n= 95  toward  46 / away  11  net share toward +0.37 ±0.10
-props   DraftKings  n= 45  toward  15 / away   7  net share toward +0.18 ±0.15
-        -> NO-GO: not ahead of the controls (+0.07, z +0.6)
+props   Pinnacle    n=317  toward 161 / away  24  net share toward +0.43 ±0.05
+props   FanDuel     n= 95  toward  47 / away  11  net share toward +0.38 ±0.10
+props   DraftKings  n= 45  toward  15 / away   8  net share toward +0.16 ±0.15
+        -> NO-GO: not ahead of the controls (+0.05, z +0.5)
 ```
 
 ## Signals: Kalshi, Polymarket sharp accounts, withheld props
