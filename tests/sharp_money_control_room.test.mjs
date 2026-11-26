@@ -18,7 +18,11 @@ test('the nine jobs are present, with a workflow file and a how-it-runs line tha
     assert.match(j.wf, /\.yml$/);
     assert.ok(j.name);
     assert.match(j.how, /Worker/);
+    assert.ok(j.howShort);
+    assert.doesNotMatch(j.howShort, /\n/);
+    assert.ok(j.howShort.length <= 36);
     assert.doesNotMatch(j.how, /\u2014|\u2013/);
+    assert.doesNotMatch(j.howShort, /\u2014|\u2013/);
     assert.doesNotMatch(j.name, /\u2014|\u2013/);
   }
   assert.match(CR.JOBS[0].how, /sharp-refresh Cloudflare Worker/);
@@ -111,6 +115,10 @@ test('renderHtml is the NBA Control Room structure: tiles, pipelines table, rece
   assert.match(html, /update-sharp-money\.yml/);
   assert.match(html, /data-run="update-props"/);
   assert.match(html, />Run now</);
+  assert.match(html, /class="how-full"/);
+  assert.match(html, /class="how-short"/);
+  assert.match(html, /Busy windows, 10 to 30 min/);
+  assert.match(html, /:10 past each hour/);
   assert.doesNotMatch(html, /\u2014|\u2013/);
   assert.match(html, /Board /);
 });
@@ -120,6 +128,8 @@ test('the CSS and JS files exist and the CSS is scoped under .sm-cr', () => {
   assert.match(css, /^\.sm-cr\{/m);
   assert.match(css, /\.sm-cr \.kpis/);
   assert.match(css, /\.sm-cr table\.nt/);
+  assert.match(css, /how-short/);
+  assert.match(css, /grid-template-areas:"job run" "how how" "last result"/);
   assert.doesNotMatch(css, /\u2014/);
 });
 

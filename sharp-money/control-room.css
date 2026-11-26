@@ -108,6 +108,8 @@
 .sm-cr table.nt tr:last-child td{border-bottom:0}
 .sm-cr table.nt tr.stale td.num{color:var(--warn)}
 .sm-cr table.nt td.num,.sm-cr .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:inherit;font-weight:inherit;min-width:0;text-align:right;color:inherit}
+.sm-cr table.nt td.how .how-full{white-space:normal;max-width:46ch}
+.sm-cr table.nt td.how .how-short{display:none}
 .sm-cr .muted{color:var(--fg3)}
 
 .sm-cr .cr-ms{display:grid}
@@ -127,4 +129,21 @@
   .sm-cr .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
   .sm-cr .kpi .val{font-size:20px}
   .sm-cr .kpi .hint{white-space:normal;overflow:visible;text-overflow:clip}
+  /* Stack each pipeline row so job, cadence, last run, result, and Run now all fit at 390px. */
+  .sm-cr .nt-tw{overflow:visible}
+  .sm-cr table.nt{min-width:0;width:100%;display:block}
+  .sm-cr table.nt thead{display:none}
+  .sm-cr table.nt tbody{display:block}
+  .sm-cr table.nt tr{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"job run" "how how" "last result";column-gap:10px;row-gap:4px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .sm-cr table.nt tr:last-child{border-bottom:0}
+  .sm-cr table.nt th,.sm-cr table.nt td{display:block;border:0;padding:0;white-space:normal;min-width:0;text-align:left}
+  .sm-cr table.nt td.job{grid-area:job}
+  .sm-cr table.nt td.job b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sm-cr table.nt td.how{grid-area:how}
+  .sm-cr table.nt td.how .how-full{display:none}
+  .sm-cr table.nt td.how .how-short{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sm-cr table.nt td.num{grid-area:last;text-align:left}
+  .sm-cr table.nt td.num,.sm-cr table.nt td.num .num,.sm-cr table.nt .num{text-align:left}
+  .sm-cr table.nt td.res{grid-area:result;justify-self:end;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}
+  .sm-cr table.nt td.act{grid-area:run;justify-self:end;align-self:start}
 }

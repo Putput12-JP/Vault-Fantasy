@@ -22,27 +22,35 @@
   var JOBS = [
     { id: 'update-sharp-money', wf: 'update-sharp-money.yml', name: 'Sharp Money refresh',
       kind: 'sharp', cadenceSec: 10 * 60,
-      how: 'The sharp-refresh Cloudflare Worker starts it on every 10-minute tick. The job then decides whether to run: busy windows (Central) Monday and Thursday 5-11pm, Saturday 10am-11pm, and Sunday 8am-8pm every 10 minutes; other days 9am-11pm every 30 minutes; plus one 6:00 AM Central run. A GitHub schedule at 3 minutes past each 10-minute mark is the backup. Run now or Refresh forces a run.' },
+      howShort: 'Busy windows, 10 to 30 min',
+      how: 'The sharp-refresh Cloudflare Worker starts it on every 10-minute tick. It then runs in busy Central windows (Mon and Thu 5-11pm, Sat 10am-11pm, Sun 8am-8pm) every 10 minutes; other days 9am-11pm every 30 minutes; plus 6:00 AM CT. A GitHub schedule at :03 is the backup. Run now or Refresh forces a run.' },
     { id: 'nfl-book-tape', wf: 'nfl-book-tape.yml', name: 'NFL book tape',
       crons: ['*/20 * * * *'], cadenceSec: 20 * 60,
+      howShort: 'Every 20 min',
       how: 'The sharp-refresh Cloudflare Worker starts it on its 10-minute tick whenever the old schedule is due, every 20 minutes.' },
     { id: 'update-props', wf: 'update-props.yml', name: 'PrizePicks props',
       crons: ['17 * * * *'], cadenceSec: 60 * 60,
+      howShort: ':10 past each hour',
       how: 'The Worker starts it on its 10-minute tick at :10 past each hour, for the :17 UTC slot it used to run on.' },
     { id: 'update-prop-history', wf: 'update-prop-history.yml', name: 'Prop history',
       crons: ['27 * * * *'], cadenceSec: 60 * 60,
+      howShort: ':20 past each hour',
       how: 'The Worker starts it on its 10-minute tick at :20 past each hour, for the :27 UTC slot it used to run on.' },
     { id: 'update-game-history', wf: 'update-game-history.yml', name: 'Game line history',
       crons: ['29 * * * *'], cadenceSec: 60 * 60,
+      howShort: ':20 past each hour',
       how: 'The Worker starts it on its 10-minute tick at :20 past each hour, for the :29 UTC slot it used to run on. The Sharp Money refresh also starts it when that job goes.' },
     { id: 'update-kalshi', wf: 'update-kalshi.yml', name: 'Kalshi prices',
       crons: ['37 * * * *'], cadenceSec: 60 * 60,
+      howShort: ':30 past each hour',
       how: 'The Worker starts it on its 10-minute tick at :30 past each hour, for the :37 UTC slot it used to run on.' },
     { id: 'update-polymarket', wf: 'update-polymarket.yml', name: 'Polymarket prices',
       crons: ['47 * * * *'], cadenceSec: 60 * 60,
+      howShort: ':40 past each hour',
       how: 'The Worker starts it on its 10-minute tick at :40 past each hour, for the :47 UTC slot it used to run on.' },
     { id: 'update-line-history', wf: 'update-line-history.yml', name: 'Line history',
       crons: ['47 * * * *'], cadenceSec: 60 * 60,
+      howShort: ':40 past each hour',
       how: 'The Worker starts it on its 10-minute tick at :40 past each hour, for the :47 UTC slot it used to run on.' },
     { id: 'update-lineup', wf: 'update-lineup.yml', name: 'US books (ParlayAPI)',
       crons: [
@@ -54,7 +62,8 @@
         '0 13,14,15,16,18,19,20,22,23 * 9,10,11,12,1 0',
         '0 17,19,21,23 * 9,10,11,12,1 1'
       ], cadenceSec: 60 * 60,
-      how: 'The Worker starts it on its 10-minute tick when the seasonal schedule is due: one morning run every day, plus extra game-day slots in season (September through January). A Refresh click can start it at most once per 45 minutes, and never past the monthly credit cap. Run now uses the same cap.' }
+      howShort: 'Daily, plus game-day slots',
+      how: 'The Worker starts it on its 10-minute tick when the seasonal schedule is due: one morning run every day, plus extra game-day slots in season (September through January). Refresh and Run now can start it at most once per 45 minutes, and never past the monthly credit cap.' }
   ];
 
   var JOB_BY_WF = {};
@@ -368,11 +377,11 @@
       var ok = lastOkOf(runs, j.id);
       var stale = loaded && isStale(j, ok ? ok.t : null, nowMs);
       var result = r ? crStatus(r) + (stale ? ' ' + pill('warn', 'Stale') : '') : (stale ? pill('warn', 'Stale') : '');
-      return '<tr' + (stale ? ' class="stale"' : '') + '><td class="l"><b>' + esc(j.name) + '</b><small>' + esc(j.wf) + '</small></td>' +
-        '<td class="l"><small style="white-space:normal;max-width:46ch">' + esc(j.how) + '</small></td>' +
+      return '<tr' + (stale ? ' class="stale"' : '') + '><td class="l job"><b>' + esc(j.name) + '</b><small>' + esc(j.wf) + '</small></td>' +
+        '<td class="l how"><small class="how-full">' + esc(j.how) + '</small><small class="how-short">' + esc(j.howShort) + '</small></td>' +
         '<td class="num">' + (r ? agoFrom(r.t, now) + '<small>' + stamp(r.t) + ' ' + TZL + '</small>' : '<span class="muted">n/a</span>') + '</td>' +
-        '<td>' + result + '</td>' +
-        '<td>' + (site ? '<button class="btn" type="button" data-run="' + esc(j.id) + '">Run now</button>' : '') + '</td></tr>';
+        '<td class="res">' + result + '</td>' +
+        '<td class="act">' + (site ? '<button class="btn" type="button" data-run="' + esc(j.id) + '">Run now</button>' : '') + '</td></tr>';
     }).join('');
 
     var jobs = '<section class="card"><div class="card-h"><div><h2>Pipelines</h2><p>What keeps the board and the models fresh, and when each last ran.</p></div></div>' +
