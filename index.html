@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-11-25T22:10', tag:'Improved', title:'Sharp Money: spreads and totals get a second price check',
+    items:[
+      'Spread and total picks on the Sharps page are now checked against free exchange prices (Kalshi, Polymarket and Novig) at the exact same number, not only against Pinnacle.',
+      'An exchange price only counts when it is fresh, has a tight bid and ask, and has real money behind it. When the prices disagree by more than 4 points, the pick is passed.',
+      'Before this, every spread and total stopped at Watch. Most will now show as Passed rather than Played, because the price rules that already apply to every pick still apply.',
+      'A spread or total Pinnacle is not pricing can still show when two or more exchanges agree on it.'
+    ]
+  },
+  {
     ts:'2026-11-25T21:53', tag:'Fixed', title:'Sharp Money: the phone page fills a wide screen without cutting off labels',
     items:[
       'On a wide phone the Sharp Money page, the bottom menu, and the play cards now use the full width of the screen, instead of sitting in a narrow column with empty space on both sides.',
