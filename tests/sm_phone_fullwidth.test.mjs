@@ -73,9 +73,12 @@ test('the changelog entry is present, newest first, and has no em dash', () => {
   const i = index.indexOf('const VAULT_CHANGELOG = [');
   assert.ok(i > 0);
   const head = index.slice(i, i + 1800);
+  assert.match(head, /ts:'2026-11-25T21:53'/);
+  assert.match(head, /play cards fill a wide phone without cutting off labels/);
   assert.match(head, /ts:'2026-11-25T21:29'/);
   assert.match(head, /the phone page fills the screen/);
-  // The new entry must sit above the Control Room entry.
+  // Newest first: label fix, then full-width shell, then Control Room.
+  assert.ok(head.indexOf("ts:'2026-11-25T21:53'") < head.indexOf("ts:'2026-11-25T21:29'"));
   assert.ok(head.indexOf("ts:'2026-11-25T21:29'") < head.indexOf("ts:'2026-11-25T20:33'"));
   assert.doesNotMatch(head.slice(0, head.indexOf("ts:'2026-11-25T20:33'")), /\u2014|\u2013/);
 });
@@ -85,8 +88,14 @@ test('play cards keep an existing max-width (none) and are not restyled', () => 
   const side = readFileSync(join(root, 'sharp-money/side-cards.js'), 'utf8');
   const neu = readFileSync(join(root, 'sharp-money/new/index.html'), 'utf8');
   // cardHtml itself is untouched; the phone wrapper still uses the 16px side margins.
-  assert.match(neu, /function v2card\(c,F\)\{return `<div class="\$\{c\.gk\?'tap':''\}" style="margin:0 16px 12px;border-radius:22px"/);
+  assert.match(neu, /function v2card\(c,F\)\{return `<div class="v2card \$\{c\.gk\?'tap':''\}" style="margin:0 16px 12px;border-radius:22px"/);
+  assert.match(neu, /class="v2rec" style="margin:0 16px 12px"/);
   assert.match(pages, /function cardHtml\(/);
+  // Desktop and classic still use auto-fit; the 2x2 override lives only in the phone shell CSS.
+  assert.match(pages, /repeat\(auto-fit,minmax\(' \+ \(tiles\.length > 3 \? 128 : 100\) \+ 'px,1fr\)\)/);
+  assert.match(pages, /repeat\(auto-fit,minmax\(130px,1fr\)\)/);
+  assert.match(style, /\.v2card \[style\*="minmax\(128px"\]\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(style, /\.v2rec \[style\*="minmax\(130px"\]\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   // The poster card already declares max-width:none and fills its container.
   assert.match(html.includes('VSC_CSS') ? html : side + html, /max-width:none/);
 });
