@@ -37,7 +37,7 @@ jobs:
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
           # Rebase in case another data cron pushed while we ran.
-          git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
           # Stage first, then check the index — `git diff` alone can't see a
           # brand-new untracked file, so the first-ever run must add before test.
           git add data/game_line_history.json data/line_news.json 2>/dev/null || true
@@ -51,5 +51,19 @@ jobs:
             echo "No game-history changes."
           else
             git commit -m "games: snapshot game line history [skip ci]"
-            git push
+            # Rebase on the latest main before pushing so jobs started on the same tick
+            # never fail with "fetch first" / "cannot lock ref". Retry, then fail loudly.
+            pushed=0
+            for i in 1 2 3; do
+              if git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push; then pushed=1; break; fi
+              # A conflicting rebase stops half-way: abort it so the next try (and the runner) starts clean.
+              if [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; then
+                git rebase --abort || true
+              fi
+              echo "push race, retrying ($i)..."; sleep 3
+            done
+            if [ "$pushed" != 1 ]; then
+              echo "::error::git push failed after 3 tries; this run's data was NOT published."
+              exit 1
+            fi
           fi

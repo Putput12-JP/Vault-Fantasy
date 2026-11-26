@@ -63,7 +63,7 @@ test('update-lineup keeps its ParlayAPI budget: 36 runs an in-season week, under
   assert.ok(LINEUP_MAX_CLICK < LINEUP_MAX_SCHEDULED);
 });
 
-function mockGitHub({ busy = {}, busyAt = '2026-11-25T10:35:00Z', monthRuns = 0, dispatchStatus = 204, runsError = {} } = {}) {
+function mockGitHub({ busy = {}, busyAt = '2026-11-25T10:35:00Z', monthRuns = 0, dispatchStatus = 204, runsError = {}, runsThrow = {}, runsBadJson = {} } = {}) {
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), method: init.method || 'GET' });
@@ -72,6 +72,8 @@ function mockGitHub({ busy = {}, busyAt = '2026-11-25T10:35:00Z', monthRuns = 0,
     if (u.pathname.endsWith('/dispatches')) return new Response(null, { status: dispatchStatus });
     const st = u.searchParams.get('status');
     if (st && runsError[wf]) return new Response('boom', { status: runsError[wf] });
+    if (st && runsThrow[wf]) throw new TypeError('network down');
+    if (st && runsBadJson[wf]) return new Response('<html>not json</html>', { status: 200 });
     if (st) { const hit = busy[wf] === st; return Response.json({ total_count: hit ? 1 : 0, workflow_runs: hit ? [{ status: st, created_at: busyAt }] : [] }); }
     if (u.searchParams.get('created')) return Response.json({ total_count: monthRuns });
     return Response.json({});
@@ -110,4 +112,13 @@ test('runPriceJobs starts due jobs, skips busy ones, and stops update-lineup at 
   assert.equal(r3['update-polymarket.yml'], 'skipped unknown (runs API 502)');
   assert.equal(r3['nfl-book-tape.yml'], 'started');
   assert.ok(!calls.some(c => c.method === 'POST' && c.url.includes('update-polymarket.yml')));
+
+  // Also fail closed when the runs request throws or returns a body that isn't JSON.
+  for (const opt of [{ runsThrow: { 'update-polymarket.yml': true } }, { runsBadJson: { 'update-polymarket.yml': true } }]) {
+    calls = mockGitHub(opt);
+    const r4 = await runPriceJobs(env, Date.parse('2026-11-25T10:40:00Z'));
+    assert.match(r4['update-polymarket.yml'], /^error /);
+    assert.equal(r4['nfl-book-tape.yml'], 'started');
+    assert.ok(!calls.some(c => c.method === 'POST' && c.url.includes('update-polymarket.yml')));
+  }
 });
