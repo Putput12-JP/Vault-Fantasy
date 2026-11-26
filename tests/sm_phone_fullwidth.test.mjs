@@ -74,12 +74,12 @@ test('the changelog entry is present, newest first, and has no em dash', () => {
   assert.ok(i > 0);
   const head = index.slice(i, i + 1800);
   assert.match(head, /ts:'2026-11-25T21:53'/);
-  assert.match(head, /play cards fill a wide phone without cutting off labels/);
-  assert.match(head, /ts:'2026-11-25T21:29'/);
-  assert.match(head, /the phone page fills the screen/);
-  // Newest first: label fix, then full-width shell, then Control Room.
-  assert.ok(head.indexOf("ts:'2026-11-25T21:53'") < head.indexOf("ts:'2026-11-25T21:29'"));
-  assert.ok(head.indexOf("ts:'2026-11-25T21:29'") < head.indexOf("ts:'2026-11-25T20:33'"));
+  assert.match(head, /the phone page fills a wide screen without cutting off labels/);
+  assert.match(head, /the Sharp Money page, the bottom menu, and the play cards now use the full width/);
+  assert.match(head, /price labels on those cards stay fully readable/);
+  assert.doesNotMatch(head, /ts:'2026-11-25T21:29'/);
+  // Newest first: combined full-width + labels entry, then Control Room.
+  assert.ok(head.indexOf("ts:'2026-11-25T21:53'") < head.indexOf("ts:'2026-11-25T20:33'"));
   assert.doesNotMatch(head.slice(0, head.indexOf("ts:'2026-11-25T20:33'")), /\u2014|\u2013/);
 });
 
