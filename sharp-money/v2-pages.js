@@ -554,7 +554,7 @@
       if (rl.length) hbNote += ' Untested Plays rules, live, each tracked on its own: ' + rl.join(' · ') + '.';
       if (!sport || sport === 'all' || sport === 'cfb') {
         var cfs = cfbRebuild(F);     // the same number the CFB Novig rule chip shows (gates.js cfbNovigRebuild)
-        if (cfs.n) hbNote += ' CFB Novig rebuilt from the logs before the rule: ' + cfs.w + '-' + cfs.l + ' ' + su(cfs.units) + ' on ' + cfs.n + ', in-sample.';
+        if (cfs.n) hbNote += ' CFB Novig rebuilt from the logs before the rule: ' + cfs.w + '-' + cfs.l + ' ' + su(cfs.units) + ', ROI ' + spct(cfs.roi, 1) + ' on ' + cfs.n + ', in-sample.';
       }
     }
     var lsu = ls.units == null ? '+0.0u' : su(ls.units);

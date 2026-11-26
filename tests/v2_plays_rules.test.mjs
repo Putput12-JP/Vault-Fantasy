@@ -125,6 +125,20 @@ test('nba-reb-a cap: top 3 a night by grade, then model edge; the rest are Passe
   assert.deepEqual(rebPlays(r2).filter(c => c.tier === 'play').map(c => c.title).sort(), ['Reb 1 Over 5.5 Rebounds', 'Reb 2 Over 5.5 Rebounds', 'Reb 3 Over 5.5 Rebounds'], 'same grade: the bigger model edge wins');
 });
 
+test('stance(): a capped rebounds Pass keeps its side in Passed even when the other side has the better reference edge', () => {
+  /* four rebounds A props; Reb 3 (lowest edge) is capped, and its Under has the better reference edge */
+  const N = rebBoard(['A', 'A', 'A', 'A'], [0.04, 0.03, 0.02, 0.01]);
+  const x = N.props.find(p => p.p === 14); x.kal = [[5.5, 0.44, 0.46, 0.45, 10, 10, NOW - 100]]; x.books = [DK(5.5, '-110', '-110'), PIN(5.5, '+105', '-125')];
+  const r = build(N), over = nba(r, 'Reb 3 Over 5.5 Rebounds'), under = nba(r, 'Reb 3 Under 5.5 Rebounds');
+  assert.equal(over.rebCapped, true); assert.equal(over.tier, 'pass'); assert.ok(!over.rule, 'not a rule play');
+  assert.ok(!over.cautions.some(t => /^Untested rule/.test(t)), 'no rule chip');
+  assert.ok((under.best ?? -9) > (over.best ?? -9), 'the Under has the better reference edge');
+  const kept = gates.stance(r.all).filter(c => /^Reb 3 /.test(c.title));
+  assert.deepEqual(kept.map(c => c.title), ['Reb 3 Over 5.5 Rebounds']);
+  assert.match(kept[0].reasons[0], /Outside tonight\u2019s top 3 rebounds plays/);
+  assert.equal(gates.stance(r.all).filter(c => c.rebCapped).length, r.all.filter(c => c.rebCapped).length, 'every capped row is shown');
+});
+
 test('nba-reb-a cap: before the lock the top 3 show but are not logged; rows already logged tonight hold slots', () => {
   const early = build(rebBoard(['A', 'A', 'A', 'A'], [0.04, 0.03, 0.02, 0.01], NOW + 5 * 3600));
   const top = rebPlays(early).filter(c => c.tier === 'play');

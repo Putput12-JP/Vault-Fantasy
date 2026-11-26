@@ -488,8 +488,8 @@
   /* One side per market. For each prop (player, stat, line) and each game market keep the side with the better edge and drop the other, so a bet never
      shows up as both Over and Under. Candidates on the favoured side stay (the same side can be priced at a book and at an exchange). */
   function stance(list) {
-    // A rule Play (Plays rules block) always wins its market: applyRules already kept one side per market, and its reference edge is often none or negative.
-    const score = c => c.rule && c.tier === 'play' ? Infinity : c.worst != null && c.refs.length > 1 ? c.worst : c.best != null ? c.best : -9;
+    // A rule Play (Plays rules block), and a rebounds rule row the nightly cap made a Pass (c.rebCapped, no rule tag or chip), always win their market: applyRules already kept one side per market, and its reference edge is often none or negative.
+    const score = c => (c.rule && c.tier === 'play') || c.rebCapped ? Infinity : c.worst != null && c.refs.length > 1 ? c.worst : c.best != null ? c.best : -9;
     const key = c => c.kind === 'prop' ? 'p|' + c.row.pid + '|' + c.row.mkt + '|' + c.row.line : 'g|' + c.gk + '|' + c.m;
     const top = {};
     list.forEach(c => { const k = key(c), v = score(c); if (!top[k] || v > top[k].v) top[k] = { v, side: c.side } });
