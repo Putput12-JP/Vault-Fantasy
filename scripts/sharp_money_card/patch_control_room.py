@@ -28,6 +28,16 @@ def sub(old, new, label):
     n_changes += 1
     print('patched', label)
 
+def sub_if_present(old, new, label):
+    """Repair a previous insert without failing on an unpatched file."""
+    global s, n_changes
+    if new in s or s.count(old) == 0:
+        return
+    assert s.count(old) == 1, '%s: anchor found %d times (the bundle changed)' % (label, s.count(old))
+    s = s.replace(old, new)
+    n_changes += 1
+    print('patched', label)
+
 
 sub('<script src="v2-pages.js?v=rules2"></script>',
     '<script src="v2-pages.js?v=rules2"></script>\n<link rel="stylesheet" href="control-room.css?v=1">\n<script src="control-room.js?v=1"></script>',
@@ -54,9 +64,13 @@ ico = (ce + '(U.Fragment,null,' +
        ce + '("rect",{x:14,y:3,width:7,height:7,rx:1}),' +
        ce + '("rect",{x:3,y:14,width:7,height:7,rx:1}),' +
        ce + '("rect",{x:14,y:14,width:7,height:7,rx:1}))')
-sub('["Edge Board","Novig against Pinnacle, biggest +EV",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 17l6-6 4 4 8-8"}),U.createElement("path",{d:"M15 7h6v6"}))]]]];',
-    '["Edge Board","Novig against Pinnacle, biggest +EV",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 17l6-6 4 4 8-8"}),U.createElement("path",{d:"M15 7h6v6"}))]],["System",[["Control Room","What keeps the board and the feeds fresh",' + ico + ']]]]];',
-    'nav Control Room')
+edge = '["Edge Board","Novig against Pinnacle, biggest +EV",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 17l6-6 4 4 8-8"}),U.createElement("path",{d:"M15 7h6v6"}))'
+# System is a top-level SmNav section, sibling of Reads, not a third element inside it.
+nav_ok = edge + ']]],["System",[["Control Room","What keeps the board and the feeds fresh",' + ico + ']]]];'
+# A previous insert closed one too few brackets after Edge Board, nesting System under Reads.
+nav_broken = edge + ']],["System",[["Control Room","What keeps the board and the feeds fresh",' + ico + ']]]]];'
+sub_if_present(nav_broken, nav_ok, 'nav Control Room repair')
+sub(edge + ']]]];', nav_ok, 'nav Control Room')
 
 sub('if(location.hash==="#edge")return{page:"edge",key:null};',
     'if(location.hash==="#edge")return{page:"edge",key:null};if(location.hash==="#control")return{page:"control",key:null};',

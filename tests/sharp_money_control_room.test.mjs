@@ -130,6 +130,8 @@ test('the CSS and JS files exist and the CSS is scoped under .sm-cr', () => {
   assert.match(css, /\.sm-cr table\.nt/);
   assert.match(css, /how-short/);
   assert.match(css, /grid-template-areas:"job run" "how how" "last result"/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.doesNotMatch(css, /fonts\.googleapis\.com/);
   assert.doesNotMatch(css, /\u2014/);
 });
 
@@ -148,4 +150,31 @@ test('a failed GitHub load does not mark every job stale', () => {
     CR._state.err = prev.err;
     CR._state.at = prev.at;
   }
+});
+
+test('a short update-sharp-money success is a gate skip and does not count as a refresh', () => {
+  const now = 2_000_000;
+  const skip = { flow: 'update-sharp-money', st: 'completed', c: 'success', t: now - 60, end: now - 50 }; // 10s
+  const real = { flow: 'update-sharp-money', st: 'completed', c: 'success', t: now - 3600, end: now - 3600 + 8 * 60 };
+  assert.equal(CR.isSharpRefresh(skip), false);
+  assert.equal(CR.isSharpRefresh(real), true);
+  const hit = CR.lastRefreshOf([skip, real]);
+  assert.equal(hit.t, real.t);
+  const board = { ts: now - 180 };
+  const fallback = CR.lastRefreshOf([skip], board);
+  assert.equal(fallback.t, board.ts);
+  assert.equal(fallback.fromBoard, true);
+});
+
+test('feedStatus lists failed names separately from stale names', () => {
+  const nowMs = Date.parse('2026-11-25T18:00:00Z');
+  const now = nowMs / 1000;
+  const runs = [
+    { flow: 'update-kalshi', st: 'completed', c: 'failure', t: now - 60, end: now - 30 },
+    { flow: 'nfl-book-tape', st: 'completed', c: 'success', t: now - 3 * 3600, end: now - 3 * 3600 + 20 }
+  ];
+  const s = CR.feedStatus(runs, nowMs, {});
+  assert.match(s.value, /failed/);
+  assert.match(s.hint, /Kalshi/);
+  assert.doesNotMatch(s.hint, /book tape/i);
 });

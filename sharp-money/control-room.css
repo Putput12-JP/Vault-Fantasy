@@ -1,8 +1,6 @@
 /* Sharp Money Control Room: the same layout, hierarchy and styles as Vault NBA's Control Room
    (nba/ui/projections.template.html). Tokens and rules are scoped under .sm-cr so the host page
    (classic or new/) cannot restyle the tiles, table or pills. */
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500;600&display=swap');
-
 .sm-cr{
   --bg:#1a1a1a; --surface:#252525; --surface2:#2a2a2a; --raised:#333333;
   --border:#2f2f2f; --border2:#3a3a3a;
@@ -93,9 +91,12 @@
 .sm-cr .pill.bad{color:var(--down);border-color:rgba(248,113,113,.45)}
 .sm-cr .pill.idle{color:var(--fg3)}
 
-.sm-cr .btn{height:34px;padding:0 14px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;font-weight:500;transition:transform .16s ease-out,background .12s;white-space:nowrap}
+.sm-cr .btn{height:34px;padding:0 14px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap;transition:transform var(--dur-release,500ms) var(--ease-spring,cubic-bezier(.22,1,.36,1)),background .12s ease}
 .sm-cr .btn:hover{background:var(--raised)}
-.sm-cr .btn:active{transform:scale(.94);transition:transform 80ms ease-out}
+.sm-cr .btn:active{transform:scale(var(--press-btn,.94));transition:transform var(--dur-press,80ms) ease-out}
+@media (prefers-reduced-motion:reduce){
+  .sm-cr .btn,.sm-cr .btn:hover,.sm-cr .btn:active{transition:none;transform:none}
+}
 .sm-cr .btn:disabled{opacity:.6;cursor:default}
 
 .sm-cr .nt-tw{overflow-x:auto}

@@ -2,6 +2,8 @@
    run: node --test tests/sharp_refresh_dispatch.test.mjs */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import worker, { CLICK_JOBS, Gate } from '../workers/sharp-refresh/src/index.js';
 
 const JOBS = [
@@ -72,7 +74,7 @@ test('a Refresh click (no job) still starts update-sharp-money with force=true a
   assert.ok(dispatches.some(c => c.url.includes('update-sharp-money.yml') && c.body.includes('"force":"true"')));
 });
 
-test('Run now for a price job dispatches that workflow with source=click', async () => {
+test('Run now for a price job sends no inputs (the workflow does not declare any)', async () => {
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), method: init.method || 'GET', body: init.body });
@@ -86,8 +88,9 @@ test('Run now for a price job dispatches that workflow with source=click', async
   assert.equal(j.ok, true);
   const d = calls.find(c => c.url.includes('/dispatches'));
   assert.match(d.url, /update-kalshi\.yml/);
-  assert.match(d.body, /"source":"click"/);
-  assert.doesNotMatch(d.body, /force/);
+  assert.doesNotMatch(d.body, /"source"/);
+  assert.doesNotMatch(d.body, /"inputs"/);
+  assert.match(d.body, /"ref"/);
 });
 
 test('Run now for Sharp Money refresh sends force=true and does not also start lineup', async () => {
@@ -130,4 +133,71 @@ test('localhost:4173 is an allowed origin, matching the Vault dev server', async
 
 test('Gate is still exported for the Durable Object binding', () => {
   assert.equal(typeof Gate, 'function');
+});
+
+
+function workflowText(name) {
+  try {
+    return execSync('git show HEAD:.github/workflows/' + name, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch {
+    return readFileSync(new URL('../.github/workflows/' + name, import.meta.url), 'utf8');
+  }
+}
+
+function declaredDispatchInputs(yml) {
+  const m = yml.match(/workflow_dispatch:\s*\n((?:[ \t].*\n)*)/);
+  if (!m || !/^\s+inputs:/m.test(m[1])) return [];
+  const keys = [];
+  let inInputs = false, base = null;
+  for (const line of m[1].split('\n')) {
+    if (/^\s+inputs:\s*$/.test(line)) { inInputs = true; base = line.search(/\S/); continue; }
+    if (!inInputs) continue;
+    const ind = line.search(/\S/);
+    if (ind === -1) continue;
+    if (ind <= base) break;
+    if (ind === base + 2 && /^[A-Za-z0-9_]+:/.test(line.trim())) keys.push(line.trim().split(':')[0]);
+  }
+  return keys;
+}
+
+test('dispatch bodies only include inputs each workflow declares on HEAD', async () => {
+  for (const id of JOBS) {
+    const wf = CLICK_JOBS[id].wf;
+    const declared = declaredDispatchInputs(workflowText(wf));
+    const calls = [];
+    globalThis.fetch = async (url, init = {}) => {
+      calls.push({ url: String(url), body: init.body });
+      if (String(url).includes('siteverify')) return Response.json({ success: true });
+      if (String(url).includes('/runs?')) return Response.json({ workflow_runs: [{ created_at: '2020-01-01T00:00:00Z' }], total_count: 0 });
+      if (String(url).includes('/dispatches')) return new Response(null, { status: 204 });
+      return Response.json({});
+    };
+    const r = await worker.fetch(post({ token: 'tok', job: id }), env());
+    // lineup may 409 if treated as recent/budget depending on stub; allow 202 or 409
+    const d = calls.find(c => c.url.includes('/dispatches'));
+    assert.ok(d, id + ' did not dispatch: ' + r.status);
+    const body = JSON.parse(d.body);
+    const sent = Object.keys(body.inputs || {});
+    assert.deepEqual(sent, declared, id + ' sent ' + JSON.stringify(sent) + ' but yml declares ' + JSON.stringify(declared));
+    if (declared.includes('force')) assert.equal(body.inputs.force, 'true');
+    assert.ok(!('source' in (body.inputs || {})), id + ' must not send source until the yml declares it');
+  }
+});
+
+test('a Refresh click (maybeLineup) does not send source on update-lineup', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), body: init.body });
+    if (String(url).includes('siteverify')) return Response.json({ success: true });
+    if (String(url).includes('/runs?')) return Response.json({ workflow_runs: [{ created_at: '2020-01-01T00:00:00Z' }], total_count: 0 });
+    if (String(url).includes('/dispatches')) return new Response(null, { status: 204 });
+    return Response.json({});
+  };
+  const r = await worker.fetch(post({ token: 'tok' }), env());
+  assert.equal(r.status, 202);
+  const lineup = calls.find(c => c.url.includes('update-lineup.yml') && c.url.includes('/dispatches'));
+  assert.ok(lineup);
+  const body = JSON.parse(lineup.body);
+  assert.equal(body.inputs, undefined);
+  assert.ok(!JSON.stringify(body).includes('source'));
 });

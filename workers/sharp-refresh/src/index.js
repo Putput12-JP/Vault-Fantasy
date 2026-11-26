@@ -25,7 +25,7 @@ async function maybeLineup(env) {
     // the scheduled runs use, so clicking can never take the scheduled runs' credits.
     const n = await lineupRunsThisMonth(env, env.LINEUP_WORKFLOW, Date.now());
     if (n == null || n >= LINEUP_MAX_CLICK) return 'budget';
-    const d = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.LINEUP_WORKFLOW}/dispatches`, { method: 'POST', headers: gh, body: JSON.stringify({ ref: env.REF, inputs: { source: 'click' } }) });
+    const d = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.LINEUP_WORKFLOW}/dispatches`, { method: 'POST', headers: gh, body: JSON.stringify({ ref: env.REF }) });
     return d.status === 204 ? 'started' : 'error';
   } catch { return 'error'; }
 }
@@ -54,7 +54,11 @@ async function dispatchNamed(env, job) {
     const status = lineup === 'started' ? 204 : lineup === 'recent' || lineup === 'budget' ? 409 : 502;
     return { ok, status, lineup };
   }
-  const inputs = spec.force ? { force: 'true' } : { source: 'click' };
+  // Only send inputs the workflow actually declares. On main, the eight price
+  // jobs have workflow_dispatch: {} (no inputs). Sending source:click would 422
+  // until those ymls declare it. update-sharp-money already declares force.
+  const body = { ref: env.REF };
+  if (spec.force) body.inputs = { force: 'true' };
   const r = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${spec.wf}/dispatches`, {
     method: 'POST',
     headers: {
@@ -63,7 +67,7 @@ async function dispatchNamed(env, job) {
       'X-GitHub-Api-Version': '2022-11-28',
       'User-Agent': 'vault-sharp-refresh',
     },
-    body: JSON.stringify({ ref: env.REF, inputs }),
+    body: JSON.stringify(body),
   });
   return { ok: r.status === 204, status: r.status };
 }

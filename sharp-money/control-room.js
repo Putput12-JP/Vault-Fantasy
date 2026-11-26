@@ -239,18 +239,46 @@
   function lastOf(runs, id) { return (runs || []).filter(function (r) { return r.flow === id; })[0]; }
   function lastOkOf(runs, id) { return (runs || []).filter(function (r) { return r.flow === id && r.c === 'success'; })[0]; }
 
+  /* A successful update-sharp-money run under SM_REFRESH_MIN_SEC is a gate skip
+     (the job only evaluates the Central-window gate and exits in about 10 seconds).
+     Those do not rewrite the board, so they are not a refresh. The public Actions
+     API has no gate flag, so we use duration. If none of the fetched runs qualify,
+     lastRefreshOf falls back to the board timestamp (data.json ts). */
+  var SM_REFRESH_MIN_SEC = 45;
+  function runDurationSec(r) {
+    if (!r || r.end == null || r.t == null) return 0;
+    return r.end - r.t;
+  }
+  function isSharpRefresh(r) {
+    return !!(r && r.flow === 'update-sharp-money' && r.st === 'completed' && r.c === 'success' && runDurationSec(r) >= SM_REFRESH_MIN_SEC);
+  }
+  function lastRefreshOf(runs, board) {
+    var hit = (runs || []).filter(isSharpRefresh)[0];
+    if (hit) return hit;
+    if (board && board.ts) return { t: board.ts, c: 'success', st: 'completed', flow: 'update-sharp-money', fromBoard: true };
+    return null;
+  }
+  function lastOkForJob(runs, job, board) {
+    if (job && job.id === 'update-sharp-money') return lastRefreshOf(runs, board);
+    return lastOkOf(runs, job.id);
+  }
+
+  function nameList(names) {
+    return names.slice(0, 3).join(', ') + (names.length > 3 ? ' and ' + (names.length - 3) + ' more' : '');
+  }
   function feedStatus(runs, nowMs, meta) {
     if (meta && meta.err) return { value: 'n/a', hint: 'could not load run history', tone: '' };
     if (!runs) return { value: '...', hint: 'loading run history', tone: '' };
-    var failed = 0, stale = 0, running = 0, names = [];
+    var failed = 0, stale = 0, running = 0, failedNames = [], staleNames = [];
+    var board = meta && meta.board;
     JOBS.forEach(function (j) {
-      var last = lastOf(runs, j.id), ok = lastOkOf(runs, j.id);
+      var last = lastOf(runs, j.id), ok = lastOkForJob(runs, j, board);
       if (last && last.st !== 'completed' ) { running++; return; }
-      if (last && last.c && last.c !== 'success' && last.c !== 'cancelled') { failed++; names.push(j.name); return; }
-      if (isStale(j, ok ? ok.t : null, nowMs)) { stale++; names.push(j.name); }
+      if (last && last.c && last.c !== 'success' && last.c !== 'cancelled') { failed++; failedNames.push(j.name); return; }
+      if (isStale(j, ok ? ok.t : null, nowMs)) { stale++; staleNames.push(j.name); }
     });
-    if (failed) return { value: failed === 1 ? '1 failed' : failed + ' failed', hint: names.slice(0, 3).join(', ') + (names.length > 3 ? ' and ' + (names.length - 3) + ' more' : ''), tone: 'bad' };
-    if (stale) return { value: stale === 1 ? '1 stale' : stale + ' stale', hint: names.slice(0, 3).join(', ') + (names.length > 3 ? ' and ' + (names.length - 3) + ' more' : ''), tone: 'warn' };
+    if (failed) return { value: failed === 1 ? '1 failed' : failed + ' failed', hint: nameList(failedNames), tone: 'bad' };
+    if (stale) return { value: stale === 1 ? '1 stale' : stale + ' stale', hint: nameList(staleNames), tone: 'warn' };
     if (running && !(runs || []).length) return { value: '...', hint: 'loading run history', tone: '' };
     return { value: 'All fresh', hint: running ? running + ' running now' : 'all nine jobs on cadence', tone: 'ok' };
   }
@@ -349,14 +377,14 @@
     var loaded = CR.runs != null && !CR.err;
     var runs = loaded ? CR.runs : [];
     var bc = boardCounts(D, now);
-    var feeds = feedStatus(loaded ? runs : (CR.err ? [] : null), nowMs, { err: CR.err });
+    var feeds = feedStatus(loaded ? runs : (CR.err ? [] : null), nowMs, { err: CR.err, board: D });
     var lastSm = lastOf(runs, 'update-sharp-money');
-    var lastSmOk = lastOkOf(runs, 'update-sharp-money');
+    var lastSmOk = lastRefreshOf(runs, D);
     var nxt = nextDueJob(nowMs);
     var boardVal = bc.ts ? agoFrom(bc.ts, now) : 'n/a';
     var boardHint = (bc.upcoming ? bc.upcoming + ' upcoming · ' : '') + bc.games + ' games' + (bc.props ? ' · ' + bc.props + ' props' : '');
     var smVal = lastSmOk ? agoFrom(lastSmOk.t, now) : (site ? (CR.err || loaded ? 'n/a' : '...') : 'n/a');
-    var smHint = lastSmOk ? 'last success' : (CR.err ? 'could not load run history' : (site ? (loaded ? 'needs a successful run' : 'loading run history') : 'needs the website'));
+    var smHint = lastSmOk ? (lastSmOk.fromBoard ? 'from the board timestamp' : 'last refresh') : (CR.err ? 'could not load run history' : (site ? (loaded ? 'needs a successful run' : 'loading run history') : 'needs the website'));
     var nxtVal = nxt ? inFrom(nxt.at, nowMs) : 'None';
     var nxtHint = nxt ? esc(nxt.job.name) : 'No job is scheduled';
 
@@ -374,7 +402,7 @@
 
     var rows = JOBS.map(function (j) {
       var r = lastOf(runs, j.id);
-      var ok = lastOkOf(runs, j.id);
+      var ok = lastOkForJob(runs, j, D);
       var stale = loaded && isStale(j, ok ? ok.t : null, nowMs);
       var result = r ? crStatus(r) + (stale ? ' ' + pill('warn', 'Stale') : '') : (stale ? pill('warn', 'Stale') : '');
       return '<tr' + (stale ? ' class="stale"' : '') + '><td class="l job"><b>' + esc(j.name) + '</b><small>' + esc(j.wf) + '</small></td>' +
@@ -466,6 +494,11 @@
     agoFrom: agoFrom,
     boardCounts: boardCounts,
     feedStatus: feedStatus,
+    lastOf: lastOf,
+    lastOkOf: lastOkOf,
+    lastRefreshOf: lastRefreshOf,
+    isSharpRefresh: isSharpRefresh,
+    SM_REFRESH_MIN_SEC: SM_REFRESH_MIN_SEC,
     renderHtml: renderHtml,
     loadRuns: loadRuns,
     runNow: runNow,
