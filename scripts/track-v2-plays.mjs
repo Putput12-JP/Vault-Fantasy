@@ -138,6 +138,7 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
       row.game = { gk: c.gk, away: g.away ? g.away.abbr : c.edgeRow.away, home: g.home ? g.home.abbr : c.edgeRow.home, ...gamePick(c) };
       if (c.kind === 'exch') first.edgeGenerated = edgeGenerated;
     }
+    if (c.rules && c.rules.length) { row.rules = c.rules; if (c.rule) row.rule = c.rule; }   // gates.js Plays rules block: the rule that made it a Play, and every rule it matches
     L.plays[id] = row; added.push(id);
     if (!ix.has(pk)) ix.set(pk, []); ix.get(pk).push(row);
   }
