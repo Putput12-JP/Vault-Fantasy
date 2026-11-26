@@ -72,7 +72,7 @@ test('the changelog entry is present, newest first, and has no em dash', () => {
   const index = readFileSync(join(root, 'index.html'), 'utf8');
   const i = index.indexOf('const VAULT_CHANGELOG = [');
   assert.ok(i > 0);
-  const head = index.slice(i, i + 1800);
+  const head = index.slice(i, i + 4000); // room for newer entries on top
   assert.match(head, /ts:'2026-11-25T21:53'/);
   assert.match(head, /the phone page fills a wide screen without cutting off labels/);
   assert.match(head, /the Sharp Money page, the bottom menu, and the play cards now use the full width/);
