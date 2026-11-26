@@ -93,6 +93,12 @@
   }
 
   /* ---------- view kit ---------- */
+  /* Keyboard for clickable rows (Passed, Open): Enter and Space do what a click does, like the kit's card handler.
+     Only when the row itself has focus, so a key press inside a nested control is left alone. */
+  function rowKeys(onClick) {
+    if (!onClick) return undefined;
+    return function (e) { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(e); } };
+  }
   function ui() {
     var k = kit(), n = k.V(), h = k.U.createElement, z = k.z;
     var lab = { textTransform: 'uppercase', letterSpacing: '0.1em' };
@@ -108,7 +114,7 @@
     };
     var grid = function (min, kids, gap) { return h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(' + min + 'px,100%),1fr))', gap: gap || 12, alignItems: 'start' } }, kids); };
     var row = function (cols, cells, key, onClick, head) {
-      return h('div', { key: key, onClick: onClick, role: onClick ? 'button' : undefined, tabIndex: onClick ? 0 : undefined,
+      return h('div', { key: key, onClick: onClick, role: onClick ? 'button' : undefined, tabIndex: onClick ? 0 : undefined, onKeyDown: rowKeys(onClick),
         style: { display: 'grid', gridTemplateColumns: cols, gap: 10, alignItems: 'center', padding: head ? '8px 14px' : '10px 14px', borderTop: head ? 'none' : '1px solid ' + n.borderSubtle, cursor: onClick ? 'pointer' : 'default', minWidth: 0 } }, cells);
     };
     var th = function (t, i) { return h('span', { key: i, style: { textAlign: i ? 'right' : 'left' } }, h(k.Lp, null, t)); };
@@ -569,5 +575,5 @@
     ensure: function () { loadAssets(); if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
     subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
   };
-  window.VaultV2 = { Plays: Plays, Signals: Signals, Record: Record, GameTells: GameTells, stat: stat, rules: rules, core: core };
+  window.VaultV2 = { Plays: Plays, Signals: Signals, Record: Record, GameTells: GameTells, stat: stat, rules: rules, core: core, rowKeys: rowKeys };
 })();
