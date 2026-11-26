@@ -1,0 +1,150 @@
+/* Sharp Money Control Room: the same layout, hierarchy and styles as Vault NBA's Control Room
+   (nba/ui/projections.template.html). Tokens and rules are scoped under .sm-cr so the host page
+   (classic or new/) cannot restyle the tiles, table or pills. */
+.sm-cr{
+  --bg:#1a1a1a; --surface:#252525; --surface2:#2a2a2a; --raised:#333333;
+  --border:#2f2f2f; --border2:#3a3a3a;
+  --fg:#d8d8d8; --fg2:#999999; --fg3:#6a6a6a;
+  --primary:#d8d8d8; --on-primary:#1a1a1a; --primary-hover:#e6e6e6;
+  --up:#4ade80; --down:#f87171; --warn:#fbbf24;
+  --font-sans:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'Geist Mono','SFMono-Regular',Menlo,monospace;
+  --r-card:24px; --r-ctl:8px; --r-pill:9999px;
+  --gap:16px; --pad:24px;
+  --ink:255 255 255; --shc:0 0 0; --shk:1;
+  color:var(--fg);
+  font-family:var(--font-sans);
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  display:flex;
+  flex-direction:column;
+  gap:24px;
+  min-width:0;
+}
+:root[data-theme="light"] .sm-cr{
+  --bg:#f6f6f7; --surface:#ffffff; --surface2:#f1f1f3; --raised:#ebebee;
+  --border:#e6e6e9; --border2:#d6d6db;
+  --fg:#1d1e22; --fg2:#5a5d66; --fg3:#767983;
+  --primary:#1d1e22; --on-primary:#ffffff; --primary-hover:#383a42;
+  --up:#15803d; --down:#c62828; --warn:#a05a00;
+  --ink:20 22 30; --shc:30 36 60; --shk:.3;
+}
+:root[data-palette="teal"][data-theme="dark"] .sm-cr{
+  --bg:#080e0f; --surface:#101a1c; --surface2:#142022; --raised:#182529;
+  --border:#223639; --border2:#384a4d;
+  --fg:#eff7f7; --fg2:#9fb6b8; --fg3:#7c9396;
+  --primary:#ff8f56; --on-primary:#220c01;
+  --up:#6ee09a; --down:#ff6478;
+}
+:root[data-palette="teal"][data-theme="light"] .sm-cr{
+  --bg:#eef5f5; --surface:#ffffff; --surface2:#e7f0f0; --raised:#e0ecec;
+  --border:#dfeaeb; --border2:#d0e0e1;
+  --fg:#0e1b1c; --fg2:#41585a; --fg3:#62797c;
+  --primary:#bf4f10; --on-primary:#ffffff;
+  --up:#12805a; --down:#c8283c;
+}
+:root[data-palette="warm"][data-theme="dark"] .sm-cr{
+  --bg:#0d0c0a; --surface:#171512; --surface2:#1c1a16; --raised:#221f1a;
+  --border:#2e2a23; --border2:#433f39;
+  --fg:#f6f3ee; --fg2:#b0a99c; --fg3:#8d8678;
+  --primary:#8fb8ec; --on-primary:#0b1420;
+  --up:#5fe09a; --down:#ff6478;
+}
+:root[data-palette="warm"][data-theme="light"] .sm-cr{
+  --bg:#f6f3ee; --surface:#ffffff; --surface2:#f1ede6; --raised:#ece7de;
+  --border:#ebe6dd; --border2:#e0d9cc;
+  --fg:#1c1812; --fg2:#58503f; --fg3:#7a7260;
+  --primary:#2a62b5; --on-primary:#ffffff;
+  --up:#12805a; --down:#c8283c;
+}
+:root[data-contrast="high"][data-theme] .sm-cr{
+  --fg:#ffffff; --fg2:#e6e8ed; --fg3:#c7cbd3;
+  --border:#8b909b; --border2:#c7cbd3;
+  --up:#6ff0a0; --down:#ff9a9a; --warn:#ffd36b;
+}
+
+.sm-cr *,.sm-cr *::before,.sm-cr *::after{box-sizing:border-box}
+.sm-cr button{font:inherit;color:inherit}
+
+.sm-cr .mode{display:flex;align-items:center;gap:10px;margin:0;font-size:12.5px;color:var(--fg2);min-width:0}
+.sm-cr .banner{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px 16px;border:1px dashed var(--border2);border-radius:var(--r-ctl);color:var(--fg2);font-size:13px;margin:0}
+.sm-cr .banner b{color:var(--fg);font-weight:500}
+
+.sm-cr .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
+.sm-cr .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:0 1px 0 rgb(var(--ink) / .03) inset,0 12px 32px -14px rgb(var(--shc) / calc(.6 * var(--shk)));min-width:0;margin:0;padding:0}
+.sm-cr .card-h{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;padding:var(--pad) var(--pad) 0}
+.sm-cr .card-h h2{margin:0;font-size:15px;font-weight:600;color:var(--fg);letter-spacing:0;text-transform:none}
+.sm-cr .card-h p{margin:2px 0 0;color:var(--fg2);font-size:13px;font-weight:400}
+.sm-cr .card-b{padding:16px var(--pad) var(--pad)}
+.sm-cr .kpi{display:flex;flex-direction:column;justify-content:center;text-align:center;position:relative}
+.sm-cr .kpi .card-h{align-items:center;justify-content:center;flex-direction:column;gap:6px}
+.sm-cr .kpi .card-h h2{font-size:13px;font-weight:500;color:var(--fg2)}
+.sm-cr .kpi .card-h svg{width:18px;height:18px;color:var(--fg3)}
+.sm-cr .kpi .val{font-size:26px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg);min-width:0;text-align:center}
+.sm-cr .kpi .hint{margin:2px 0 0;font-size:12px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+
+.sm-cr .pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:var(--r-pill);font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid var(--border2);color:var(--fg2);background:transparent}
+.sm-cr .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.sm-cr .pill.ok{color:var(--up);border-color:rgba(74,222,128,.35)}
+.sm-cr .pill.warn{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.sm-cr .pill.bad{color:var(--down);border-color:rgba(248,113,113,.45)}
+.sm-cr .pill.idle{color:var(--fg3)}
+
+.sm-cr .btn{height:34px;padding:0 14px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap;transition:transform var(--dur-release,500ms) var(--ease-spring,cubic-bezier(.22,1,.36,1)),background .12s ease}
+.sm-cr .btn:hover{background:var(--raised)}
+.sm-cr .btn:active{transform:scale(var(--press-btn,.94));transition:transform var(--dur-press,80ms) ease-out}
+@media (prefers-reduced-motion:reduce){
+  .sm-cr .btn,.sm-cr .btn:hover,.sm-cr .btn:active{transition:none;transform:none}
+}
+.sm-cr .btn:disabled{opacity:.6;cursor:default}
+
+.sm-cr .nt-tw{overflow-x:auto}
+.sm-cr table.nt{width:100%;min-width:640px;border-collapse:collapse;font-size:13px}
+.sm-cr table.nt th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:8px 8px;border-bottom:1px solid var(--border);white-space:nowrap;background:transparent}
+.sm-cr table.nt td{padding:8px 8px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle;color:var(--fg)}
+.sm-cr table.nt th.l,.sm-cr table.nt td.l{text-align:left}
+.sm-cr table.nt td.l b{display:block;font-weight:500;color:var(--fg)}
+.sm-cr table.nt td small{display:block;font-size:11.5px;color:var(--fg3);font-weight:400}
+.sm-cr table.nt tr:last-child td{border-bottom:0}
+.sm-cr table.nt tr.stale td.num{color:var(--warn)}
+.sm-cr table.nt td.num,.sm-cr .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:inherit;font-weight:inherit;min-width:0;text-align:right;color:inherit}
+.sm-cr table.nt td.how .how-full{white-space:normal;max-width:46ch}
+.sm-cr table.nt td.how .how-short{display:none}
+.sm-cr .muted{color:var(--fg3)}
+
+.sm-cr .cr-ms{display:grid}
+.sm-cr .cr-ms>div{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--border)}
+.sm-cr .cr-ms>div:first-child{border-top:0}
+.sm-cr .cr-ms b{display:block;font-weight:500;color:var(--fg)}
+.sm-cr .cr-ms small{display:block;color:var(--fg3);font-size:12px;line-height:1.45}
+.sm-cr .cr-ms .num{text-align:left;font-size:13px}
+.sm-cr .cr-ms .num small{display:block}
+
+.sm-cr .sm-cr-foot{padding:0;color:var(--fg3);font-size:12.5px;display:grid;gap:6px;max-width:92ch}
+.sm-cr .sm-cr-foot b{color:var(--fg2);font-weight:500}
+
+@media (max-width:1100px){ .sm-cr .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:480px){
+  .sm-cr{gap:16px;--pad:16px;--gap:10px}
+  .sm-cr .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  .sm-cr .kpi .val{font-size:20px}
+  .sm-cr .kpi .hint{white-space:normal;overflow:visible;text-overflow:clip}
+  /* Stack each pipeline row so job, cadence, last run, result, and Run now all fit at 390px. */
+  .sm-cr .nt-tw{overflow:visible}
+  .sm-cr table.nt{min-width:0;width:100%;display:block}
+  .sm-cr table.nt thead{display:none}
+  .sm-cr table.nt tbody{display:block}
+  .sm-cr table.nt tr{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"job run" "how how" "last result";column-gap:10px;row-gap:4px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+  .sm-cr table.nt tr:last-child{border-bottom:0}
+  .sm-cr table.nt th,.sm-cr table.nt td{display:block;border:0;padding:0;white-space:normal;min-width:0;text-align:left}
+  .sm-cr table.nt td.job{grid-area:job}
+  .sm-cr table.nt td.job b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sm-cr table.nt td.how{grid-area:how}
+  .sm-cr table.nt td.how .how-full{display:none}
+  .sm-cr table.nt td.how .how-short{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sm-cr table.nt td.num{grid-area:last;text-align:left}
+  .sm-cr table.nt td.num,.sm-cr table.nt td.num .num,.sm-cr table.nt .num{text-align:left}
+  .sm-cr table.nt td.res{grid-area:result;justify-self:end;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}
+  .sm-cr table.nt td.act{grid-area:run;justify-self:end;align-self:start}
+}

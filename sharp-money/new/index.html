@@ -174,6 +174,8 @@ a.btn{text-decoration:none}
 <div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
 <script src="../line-chart.js?v=2"></script>
 <script src="../edge-board.js"></script>
+<link rel="stylesheet" href="../control-room.css?v=1">
+<script src="../control-room.js?v=1"></script>
 <script src="../v2/gates.js?v=rules2"></script>
 <script src="../v2-pages.js?v=rules2"></script>
 <script src="../side-cards.js?v=61"></script>
@@ -242,7 +244,7 @@ const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
 const live=g=>g.status==='inprogress';
 const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
 const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',trsplit:false,trall:false,msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30,ptier:'play',pprops:12};
-const ICON={plays:'<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/>',board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+const ICON={plays:'<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/>',board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',control:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'};
 $('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${({reads:'Reads'})[k]||k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
 const head=(t,s)=>`<div class="trow"><div class="title">${t}</div><button class="rf" data-refresh aria-label="Refresh the data"${rfState==='busy'?' disabled':''}>${rfHtml()}</button></div>${s?`<p class="ctx">${s}</p>`:''}`;
@@ -1190,6 +1192,7 @@ function route(){
  if(r==='plays'||r==='signals'||r==='vrecord'){tab='plays';html=r==='plays'?v2Plays():r==='signals'?v2Signals():v2Record()}
  else if(r==='following'){tab='plays';html=head('Sharp Accounts','Every bet the sharp accounts have open. Star one to follow it. Context only')+v2nav('following')+'<div data-following></div>'}
  else if(r==='sharps'){tab='plays';html=head('Sharps','Who holds each side on Polymarket. Context, with a suggested size from an untested rule')+v2nav('sharps')+'<div data-side-cards></div>'}
+ else if(r==='control'){tab='control';html=head('Control Room','What keeps the board and the feeds fresh, and when each last ran')+'<div data-control-room></div>'}
  else if(r.startsWith('game/')){const gk=decodeURIComponent(r.slice(5));html=gamePage(gk)+(GM[gk]?'<div data-side-card="'+gk.replace(/"/g,'&quot;')+'"></div>':'');tab='board'}
  else if(r==='models'||r.startsWith('pick/')){['nfl','cfb','sb'].forEach(k=>loadModel(k));tab='models';if(r==='models')html=modelsPage();else{const q=r.split('/');html=pickPage(q[1],decodeURIComponent(q.slice(2).join('/')))}}
  else{tab=r;html=({board,props,reads:topPage,alerts,record,edge}[r]||board)()}
@@ -1199,6 +1202,7 @@ function route(){
  if(window.VaultFollowing){const fp=sc.querySelector('[data-following]');if(fp)VaultFollowing.mountPage(fp,{skin:'new'})}
  if(window.VaultSideCards){const so={skin:'new',logo:(c,n)=>{const g=GM[c.vault&&c.vault.key];if(!g)return null;const t=[g.away,g.home].find(x=>x&&(x.name===n||x.abbr===n||String(x.name||'').endsWith(' '+n)));return t?teamUrl(g.sport,t):null}};const sp=sc.querySelector('[data-side-cards]');if(sp)VaultSideCards.mountPage(sp,so);const sg=sc.querySelector('[data-side-card]');if(sg)VaultSideCards.mountGame(sg,sg.dataset.sideCard,so)}
  if(window.VaultEdgeBoard){const eh=sc.querySelector('[data-edge-host]');if(eh)VaultEdgeBoard.mount(eh,{games:G,logo:(g,side)=>teamUrl(g.sport,g[side])})}
+ if(window.VaultControlRoom){const ch=sc.querySelector('[data-control-room]');if(ch){if(!ch._cr)ch._cr=VaultControlRoom.mount(ch,{board:D});else ch._cr.refresh({board:D})}}
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
  const cn=sc.querySelector('.chip.on[data-v2nav]');if(cn&&cn.parentElement){const pr=cn.parentElement,a=cn.getBoundingClientRect(),b=pr.getBoundingClientRect();pr.scrollLeft+=a.left-b.left-(b.width-a.width)/2}  /* keep the open Plays/Sharps/Following chip in view on a phone */
 }
