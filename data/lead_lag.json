@@ -1,7 +1,7 @@
 {
- "tape_through": 1795720125,
+ "tape_through": 1795721949,
  "games": 852,
- "rows": 180418,
+ "rows": 180506,
  "pinnacle_median_gap_min": 89.8,
  "rule": {
   "event": "Pinnacle line moved 0.5+ (spread, total) or no-vig chance moved 2+ points (moneyline), time known to within 30 minutes, 3+ hours before kickoff",
@@ -675,47 +675,94 @@
     }
    },
    "sp": {
-    "events": 5,
+    "events": 6,
     "by_book": {
      "DraftKings": {
-      "n": 4,
+      "n": 5,
       "led": 1,
-      "not_followed": 2,
+      "not_followed": 3,
       "followed": 1
      },
      "FanDuel": {
-      "n": 4,
+      "n": 5,
       "led": 0,
-      "not_followed": 2,
+      "not_followed": 3,
       "followed": 2
      },
      "BetMGM": {
-      "n": 4,
+      "n": 5,
       "led": 0,
-      "not_followed": 2,
+      "not_followed": 3,
       "followed": 2
      },
      "BetRivers": {
-      "n": 4,
+      "n": 5,
       "led": 0,
-      "not_followed": 2,
+      "not_followed": 3,
       "followed": 2
      },
      "bet365": {
-      "n": 4,
+      "n": 5,
       "led": 0,
-      "not_followed": 2,
+      "not_followed": 3,
       "followed": 2
      },
      "US books (all five)": {
-      "n": 20,
+      "n": 25,
       "led": 1,
-      "not_followed": 10,
+      "not_followed": 15,
       "followed": 9,
-      "pct_led": 0.05,
-      "pct_not_followed": 0.5,
+      "pct_led": 0.04,
+      "pct_not_followed": 0.6,
       "pct_followed_within_15": 0.0,
-      "pct_followed_within_60": 0.1
+      "pct_followed_within_60": 0.08
+     }
+    }
+   },
+   "ml": {
+    "events": 1,
+    "by_book": {
+     "DraftKings": {
+      "n": 1,
+      "led": 1,
+      "not_followed": 0,
+      "followed": 0
+     },
+     "FanDuel": {
+      "n": 1,
+      "led": 0,
+      "not_followed": 1,
+      "followed": 0
+     },
+     "BetMGM": {
+      "n": 1,
+      "led": 1,
+      "not_followed": 0,
+      "followed": 0
+     },
+     "BetRivers": {
+      "n": 1,
+      "led": 0,
+      "not_followed": 1,
+      "followed": 0
+     },
+     "bet365": {
+      "n": 1,
+      "led": 1,
+      "not_followed": 0,
+      "followed": 0
+     },
+     "Novig": {
+      "n": 1,
+      "led": 0,
+      "not_followed": 1,
+      "followed": 0
+     },
+     "US books (all five)": {
+      "n": 5,
+      "led": 3,
+      "not_followed": 2,
+      "followed": 0
      }
     }
    }
