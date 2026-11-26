@@ -49,9 +49,9 @@ rush_yd               61%   +0.1pp        48%    -58.3u         47%    -87.5u
 ## Game markets (at the close)
 
 ```
-games   n= 447  LL 0.6917 vs 0.6712  skill -0.031 z -2.6    market better than Vault                 beat close   29%  units  -29.0u
+games   n= 447  LL 0.6914 vs 0.6712  skill -0.030 z -2.6    market better than Vault                 beat close   29%  units  -29.0u
 ml      n= 131  LL 0.6330 vs 0.6172  skill -0.025 z -1.1    level with the market (within noise)     beat close   44%  units   -5.1u
-spread  n= 156  LL 0.7200 vs 0.6944  skill -0.037 z -2.0    market better than Vault                 beat close   24%  units  -18.6u
+spread  n= 156  LL 0.7191 vs 0.6944  skill -0.035 z -2.0    market better than Vault                 beat close   24%  units  -18.6u
 total   n= 160  LL 0.7122 vs 0.6927  skill -0.028 z -1.4    level with the market (within noise)     beat close   21%  units   -5.4u
 ```
 
@@ -140,17 +140,17 @@ under 6 hours           24-14         +8.2u           +4.2u        8/31
 ## By week (props at the close / games at the close)
 
 ```
-Wk  1  props n= 514  LL 0.7137 vs 0.6891  skill -0.036 z -2.3     games n=  40  LL 0.7275 vs 0.6807  skill -0.069 z -1.6
-Wk  2  props n= 553  LL 0.6919 vs 0.6826  skill -0.014 z -0.8     games n=  44  LL 0.7218 vs 0.6851  skill -0.054 z -1.2
+Wk  1  props n= 514  LL 0.7137 vs 0.6891  skill -0.036 z -2.3     games n=  40  LL 0.7268 vs 0.6807  skill -0.068 z -1.6
+Wk  2  props n= 553  LL 0.6919 vs 0.6826  skill -0.014 z -0.8     games n=  44  LL 0.7211 vs 0.6851  skill -0.053 z -1.2
 Wk  3  props n= 590  LL 0.6974 vs 0.6883  skill -0.013 z -0.9     games n=  43  LL 0.6656 vs 0.6847  skill +0.028 z +0.7
-Wk  4  props n= 676  LL 0.7079 vs 0.6950  skill -0.019 z -1.8     games n=  44  LL 0.6998 vs 0.6903  skill -0.014 z -0.4
+Wk  4  props n= 676  LL 0.7079 vs 0.6950  skill -0.019 z -1.8     games n=  44  LL 0.6999 vs 0.6903  skill -0.014 z -0.4
 Wk  5  props n= 597  LL 0.6944 vs 0.6794  skill -0.022 z -1.9     games n=  42  LL 0.6743 vs 0.6863  skill +0.017 z +0.6
-Wk  6  props n= 585  LL 0.7006 vs 0.6834  skill -0.025 z -2.0     games n=  37  LL 0.7700 vs 0.7216  skill -0.067 z -2.4
-Wk  7  props n= 587  LL 0.6877 vs 0.6835  skill -0.006 z -0.5     games n=  41  LL 0.7082 vs 0.6723  skill -0.053 z -1.3
-Wk  8  props n= 608  LL 0.7138 vs 0.6850  skill -0.042 z -3.4     games n=  38  LL 0.6601 vs 0.6433  skill -0.026 z -0.9
-Wk  9  props n= 624  LL 0.6999 vs 0.6856  skill -0.021 z -1.9     games n=  42  LL 0.6494 vs 0.6208  skill -0.046 z -1.5
-Wk 10  props n= 622  LL 0.7036 vs 0.6937  skill -0.014 z -1.3     games n=  41  LL 0.6276 vs 0.6524  skill +0.038 z +1.0
-Wk 11  props n= 602  LL 0.7028 vs 0.6869  skill -0.023 z -2.1     games n=  35  LL 0.7136 vs 0.6423  skill -0.111 z -2.4
+Wk  6  props n= 585  LL 0.7006 vs 0.6834  skill -0.025 z -2.0     games n=  37  LL 0.7693 vs 0.7216  skill -0.066 z -2.4
+Wk  7  props n= 587  LL 0.6877 vs 0.6835  skill -0.006 z -0.5     games n=  41  LL 0.7078 vs 0.6723  skill -0.053 z -1.3
+Wk  8  props n= 608  LL 0.7138 vs 0.6850  skill -0.042 z -3.4     games n=  38  LL 0.6599 vs 0.6433  skill -0.026 z -0.9
+Wk  9  props n= 624  LL 0.6999 vs 0.6856  skill -0.021 z -1.9     games n=  42  LL 0.6493 vs 0.6208  skill -0.046 z -1.5
+Wk 10  props n= 622  LL 0.7036 vs 0.6937  skill -0.014 z -1.3     games n=  41  LL 0.6278 vs 0.6524  skill +0.038 z +1.0
+Wk 11  props n= 602  LL 0.7028 vs 0.6869  skill -0.023 z -2.1     games n=  35  LL 0.7124 vs 0.6423  skill -0.109 z -2.4
 ```
 
 ## How to read this
