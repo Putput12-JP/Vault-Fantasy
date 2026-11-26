@@ -80,7 +80,8 @@ export const BUSY_MAX_AGE_MIN = 120;
 async function busy(env, wf, nowMs = Date.now()) {
   for (const status of ['queued', 'in_progress']) {
     const r = await gh(env, `workflows/${wf}/runs?status=${status}&per_page=10`);
-    if (!r.ok) continue;
+    // Fail closed: if GitHub can't tell us whether a run is going, skip this tick rather than risk a double run.
+    if (!r.ok) { console.warn('busy check failed', wf, status, r.status); return `unknown (runs API ${r.status})`; }
     const runs = (await r.json()).workflow_runs || [];
     if (runs.some(x => nowMs - Date.parse(x.created_at) < BUSY_MAX_AGE_MIN * 60000)) return status;
   }
