@@ -1,4 +1,4 @@
-# Spread and total price floor: held-out result (2026-11-25, 10:20 PM CT)
+# Spread and total price floor: held-out result (2026-11-25, 10:09 PM CT)
 
 Pre-registration: `docs/sptot-price-floor-prereg.md` (committed before this was run). Script: `scripts/sptot_floor_test.py`.
 Ledgers: `sharp-data/v2_watch.json` and `v2_passed.json` as of Nov 25, 2026 about 10:10 PM CT. Graded at the first-sight price at the

@@ -90,10 +90,19 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .pb{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 0;border-top:1px solid var(--line)}.pb:first-of-type{border-top:0}
 .pb .a{font-weight:600}.pb .b{text-align:right;font-size:20px;font-weight:600}.pb .c{color:var(--mut);font-size:12px;grid-column:1/3}
 
-.app{max-width:560px;margin:0 auto;min-height:100dvh;position:relative;background:var(--bg)}
+.app{margin:0 auto;min-height:100dvh;position:relative;background:var(--bg);width:100%;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 #scr{padding-bottom:110px}
 .title{margin-top:calc(env(safe-area-inset-top) + 18px)}
-.tabbar{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:560px;right:auto}
+.tabbar{position:fixed;left:0;right:0;width:auto;max-width:none;padding-left:calc(6px + env(safe-area-inset-left));padding-right:calc(6px + env(safe-area-inset-right))}
+/* The phone layout is used up to 767px. Cap the shell only if someone forces ?view=new on a desktop-width screen. */
+@media (min-width:768px){
+  .app{max-width:560px}
+  .tabbar{left:50%;transform:translateX(-50%);width:100%;max-width:560px;right:auto}
+}
+/* Four price tiles and the play-record stats stay on a 2x2 grid in this shell.
+   auto-fit would pack them into one tight row from about 600px up and cut off labels. */
+.v2card [style*="minmax(128px"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.v2rec [style*="minmax(130px"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 .tab-hide{display:none}
 .dots2{display:inline-flex;gap:4px}.dots2 i{width:8px;height:8px;border-radius:50%;background:#3a3a3e;display:inline-block}.dots2 i.on{background:var(--acc)}
 .lrr{padding:10px 0;border-top:1px solid var(--line)}.lrr:first-of-type{border-top:0}
@@ -174,8 +183,10 @@ a.btn{text-decoration:none}
 <div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
 <script src="../line-chart.js?v=2"></script>
 <script src="../edge-board.js"></script>
-<script src="../v2/gates.js?v=side1"></script>
-<script src="../v2-pages.js?v=stale1"></script>
+<link rel="stylesheet" href="../control-room.css?v=1">
+<script src="../control-room.js?v=1"></script>
+<script src="../v2/gates.js?v=rules2"></script>
+<script src="../v2-pages.js?v=rules2"></script>
 <script src="../side-cards.js?v=61"></script>
 <script src="../following.js?v=13"></script>
 <script src="../sharps-v2/embed.js?v=30"></script>
@@ -242,7 +253,7 @@ const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
 const live=g=>g.status==='inprogress';
 const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
 const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',trsplit:false,trall:false,msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30,ptier:'play',pprops:12};
-const ICON={plays:'<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/>',board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+const ICON={plays:'<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/>',board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',control:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'};
 $('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${({reads:'Reads'})[k]||k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
 const head=(t,s)=>`<div class="trow"><div class="title">${t}</div><button class="rf" data-refresh aria-label="Refresh the data"${rfState==='busy'?' disabled':''}>${rfHtml()}</button></div>${s?`<p class="ctx">${s}</p>`:''}`;
@@ -1111,11 +1122,11 @@ const V2P={key:'',built:null};
 const v2c=()=>window.VaultV2&&window.V2Gates?VaultV2.core:null;
 const v2pct=(x,d=1)=>V2Gates.pct(x,d),v2spct=(x,d=1)=>V2Gates.spct(x,d);
 const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],['vrecord','Play record'],['sharps','Sharps'],['following','Sharp Accounts']].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-v2nav="${v}">${l}</button>`).join('')}</div>`;
-function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){const b=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,N:F.nba,L:F.plays,now:Date.now()/1000});V2P.built={all:c.stance(b.all),cand:c.stance(b.cand)};V2P.key=k}return V2P.built}
+function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){const b=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,N:F.nba,L:F.plays,CR:c.cfbRebuild(F),now:Date.now()/1000});V2P.built={all:c.stance(b.all),cand:c.stance(b.cand)};V2P.key=k}return V2P.built}
 const v2wait=(t,s,cur)=>head(t,s)+v2nav(cur)+'<div class="skel"></div><div class="skel"></div>';
 function v2when(ts){return v2c().when(ts)}
 const V2PAL={text:'#fff',mut:'var(--mut)',dim:'var(--dim)',line:'var(--line)',bg:'#0b0b0d',tile:'rgba(255,255,255,.07)',acc:'var(--acc)',good:'var(--good)',bad:'var(--bad)',warn:'var(--warn)'};
-function v2card(c,F){return `<div class="${c.gk?'tap':''}" style="margin:0 16px 12px;border-radius:22px"${c.gk?` data-go="game/${esc(c.gk)}"`:''}>${v2c().cardHtml(c,F,V2PAL,D)}</div>`}
+function v2card(c,F){return `<div class="v2card ${c.gk?'tap':''}" style="margin:0 16px 12px;border-radius:22px"${c.gk?` data-go="game/${esc(c.gk)}"`:''}>${v2c().cardHtml(c,F,V2PAL,D)}</div>`}
 function v2Plays(){
  const c=v2c(),title='Plays',sub='Prices that beat two independent fair prices. '+snap();
  if(!c)return head(title,sub)+'<div class="card empty">The V2 rules did not load. Reload the page.</div>';
@@ -1124,7 +1135,7 @@ function v2Plays(){
  const B=v2built(),F=c.STORE.files,cnt={all:0,nfl:0,cfb:0,nba:0};
  B.cand.filter(x=>x.tier==='play').forEach(x=>{cnt.all++;cnt[x.sport]++});
  const L=t=>B.cand.filter(x=>x.tier===t&&(st.sport==='all'||x.sport===st.sport)),OR=c.openRows(F,st.sport);
- let h=head(title,sub)+v2nav('plays')+`<div style="margin:0 16px 12px">${c.recordHtml(F,V2PAL,st.ptier==='open'?'play':st.ptier,st.sport)}</div>`+chips(Object.keys(TRSPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['open','Open',OR.length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
+ let h=head(title,sub)+v2nav('plays')+`<div class="v2rec" style="margin:0 16px 12px">${c.recordHtml(F,V2PAL,st.ptier==='open'?'play':st.ptier,st.sport)}</div>`+chips(Object.keys(TRSPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['open','Open',OR.length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
  const list=L(st.ptier);
  if(st.ptier==='open')h+=`<div class="card">${OR.length?OR.map(r=>{const p=r.p,f=p.first||{},gk=p.game&&p.game.gk;return `<div class="row"${gk?` data-go="game/${esc(gk)}" style="cursor:pointer"`:''}><div class="grow"><b>${esc(f.title)}</b><div class="m">${esc(f.price.book)} ${am(f.price.am)} · ${esc(f.sub||'')} · first seen ${v2when(p.firstSeen)} · ${(f.refs||[]).map(x=>esc(x.n)+' '+v2spct(x.edge)).join(', ')}</div></div><div class="m" style="text-align:right">${SPORT[p.sport]}<br>${p.start?v2when(p.start).split(' ').slice(0,3).join(' '):''}</div></div>`}).join(''):'<div class="empty">No open plays. Plays that were logged and are still waiting on the game show here.</div>'}</div>`;
  else if(st.ptier==='pass')h+=`<div class="card">${list.length?list.map(x=>`<div class="row"${x.gk?` data-go="game/${esc(x.gk)}" style="cursor:pointer"`:''}><div class="grow"><b>${esc(x.title)}</b><div class="m">${esc(x.price.book)} ${am(x.price.am)} · ${esc(x.reasons[0])}</div></div><div class="m" style="text-align:right">${SPORT[x.sport]}</div></div>`).join(''):'<div class="empty">Nothing passed over.</div>'}</div>`;
@@ -1190,6 +1201,7 @@ function route(){
  if(r==='plays'||r==='signals'||r==='vrecord'){tab='plays';html=r==='plays'?v2Plays():r==='signals'?v2Signals():v2Record()}
  else if(r==='following'){tab='plays';html=head('Sharp Accounts','Every bet the sharp accounts have open. Star one to follow it. Context only')+v2nav('following')+'<div data-following></div>'}
  else if(r==='sharps'){tab='plays';html=head('Sharps','Who holds each side on Polymarket. Context, with a suggested size from an untested rule')+v2nav('sharps')+'<div data-side-cards></div>'}
+ else if(r==='control'){tab='control';html=head('Control Room','What keeps the board and the feeds fresh, and when each last ran')+'<div data-control-room></div>'}
  else if(r.startsWith('game/')){const gk=decodeURIComponent(r.slice(5));html=gamePage(gk)+(GM[gk]?'<div data-side-card="'+gk.replace(/"/g,'&quot;')+'"></div>':'');tab='board'}
  else if(r==='models'||r.startsWith('pick/')){['nfl','cfb','sb'].forEach(k=>loadModel(k));tab='models';if(r==='models')html=modelsPage();else{const q=r.split('/');html=pickPage(q[1],decodeURIComponent(q.slice(2).join('/')))}}
  else{tab=r;html=({board,props,reads:topPage,alerts,record,edge}[r]||board)()}
@@ -1199,6 +1211,7 @@ function route(){
  if(window.VaultFollowing){const fp=sc.querySelector('[data-following]');if(fp)VaultFollowing.mountPage(fp,{skin:'new'})}
  if(window.VaultSideCards){const so={skin:'new',logo:(c,n)=>{const g=GM[c.vault&&c.vault.key];if(!g)return null;const t=[g.away,g.home].find(x=>x&&(x.name===n||x.abbr===n||String(x.name||'').endsWith(' '+n)));return t?teamUrl(g.sport,t):null}};const sp=sc.querySelector('[data-side-cards]');if(sp)VaultSideCards.mountPage(sp,so);const sg=sc.querySelector('[data-side-card]');if(sg)VaultSideCards.mountGame(sg,sg.dataset.sideCard,so)}
  if(window.VaultEdgeBoard){const eh=sc.querySelector('[data-edge-host]');if(eh)VaultEdgeBoard.mount(eh,{games:G,logo:(g,side)=>teamUrl(g.sport,g[side])})}
+ if(window.VaultControlRoom){const ch=sc.querySelector('[data-control-room]');if(ch){if(!ch._cr)ch._cr=VaultControlRoom.mount(ch,{board:D});else ch._cr.refresh({board:D})}}
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
  const cn=sc.querySelector('.chip.on[data-v2nav]');if(cn&&cn.parentElement){const pr=cn.parentElement,a=cn.getBoundingClientRect(),b=pr.getBoundingClientRect();pr.scrollLeft+=a.left-b.left-(b.width-a.width)/2}  /* keep the open Plays/Sharps/Following chip in view on a phone */
 }

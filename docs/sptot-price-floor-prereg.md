@@ -1,4 +1,4 @@
-# Spread and total price floor: pre-registration (2026-11-25, 10:10 PM CT)
+# Spread and total price floor: pre-registration (2026-11-25, 10:08 PM CT)
 
 Written before any held-out number was computed. Asked by Jacob on 2026-11-25 (PR #585): with free exchange second prices, every
 spread and total row that cleared the other gates went to Pass on the 55% price floor (`GATES.MIN_PRICE`). Does a lower floor for

@@ -47,11 +47,13 @@
   /* Take a stance: one side per market. For each prop (player, stat, line) and each game market, keep the side with the better edge and drop the other, so a
      bet never shows up as both Over and Under. Candidates on the favoured side stay (the same side can be priced at a book and at an exchange). */
   function stance(list) { return G().stance(list); }
+  /* CFB Novig's in-sample rebuild from the stored Play, Watch and Passed rows (backfill included): one function, so the Record card and the rule chip agree. */
+  function cfbRebuild(F) { return G().cfbNovigRebuild(['play', 'watch', 'pass'].map(function (t) { return rowsRaw(F, t).map(function (r) { return r.p; }); })); }
   function useBuilt(D, F) {
     var U = kit().U;
     return U.useMemo(function () {
       if (!D || !G()) return { all: [], cand: [] };
-      var b = G().build({ D: D, P: F.props, T: F.tape, E: F.edge, N: F.nba, L: F.plays, now: Date.now() / 1000 });
+      var b = G().build({ D: D, P: F.props, T: F.tape, E: F.edge, N: F.nba, L: F.plays, CR: cfbRebuild(F), now: Date.now() / 1000 });
       return { all: stance(b.all), cand: stance(b.cand) };
     }, [D && D.ts, STORE.ts]);
   }
@@ -541,6 +543,19 @@
         var cl = stat(rows.filter(function (r) { return isNbaP(r) && r.p.firstSeen < since; })), cn = stat(rows.filter(function (r) { return isNbaP(r) && r.p.firstSeen >= since; }));
         hbNote += ' NBA props before rule C (price 55%+): ' + old.w + '-' + old.l + ' ' + (old.units == null ? '+0.0u' : su(old.units)) + '. Rule C rebuilt on the same days: ' + cl.w + '-' + cl.l + ' ' + (cl.units == null ? '+0.0u' : su(cl.units)) + ', in-sample (the rule was found on these rows). Rule C live since Nov 3: ' + (cn.n ? cn.w + '-' + cn.l + ' ' + su(cn.units || 0) : 'none settled yet') + '.';
       }
+      /* Plays rules (gates.js Plays rules block): each rule's own record, from the plays that matched it. CFB Novig also shows its rebuild from the
+         Watch and Passed logs before the rule existed (in-sample: the rule was chosen on those rows). Not added to the record above. */
+      var rl = [];
+      [['nba-sig5', '5 of 5 signals', 'nba'], ['nba-aplus', 'A+ grade (PRA, RA, PA)', 'nba'], ['nba-reb-a', 'Rebounds A grades', 'nba'], ['cfb-novig', 'CFB Novig', 'cfb']].forEach(function (x) {
+        if (sport && sport !== 'all' && sport !== x[2]) return;
+        var mine = rows.filter(function (r) { return r.p.rules && r.p.rules.indexOf(x[0]) >= 0; }), t = stat(mine);
+        rl.push(x[1] + ' ' + (t.n ? t.w + '-' + t.l + ' ' + (t.units == null ? '+0.0u' : su(t.units)) : mine.length ? mine.length + ' open' : 'none yet'));
+      });
+      if (rl.length) hbNote += ' Untested Plays rules, live, each tracked on its own: ' + rl.join(' · ') + '.';
+      if (!sport || sport === 'all' || sport === 'cfb') {
+        var cfs = cfbRebuild(F);     // the same number the CFB Novig rule chip shows (gates.js cfbNovigRebuild)
+        if (cfs.n) hbNote += ' CFB Novig rebuilt from the logs before the rule: ' + cfs.w + '-' + cfs.l + ' ' + su(cfs.units) + ', ROI ' + spct(cfs.roi, 1) + ' on ' + cfs.n + ', in-sample.';
+      }
     }
     var lsu = ls.units == null ? '+0.0u' : su(ls.units);
     if (bfn) note = (TIERNOTE[tier] ? TIERNOTE[tier] + ' ' : '') + (live.length ? live.length + ' live ' + noun + (live.length === 1 ? '' : 's') + ' since ' + started + ' (' + (ls.n ? ls.w + '-' + ls.l + ', ' + lsu : '0 settled') + '), plus ' : 'No live ' + noun + 's settled yet, only ') + bfn + ' settled ' + noun + 's backfilled from the ' + ESC((F.backfill || {}).date || '') + ' slate. ' + (tier === 'play' ? 'The backfilled props were chosen with hindsight on the exchange close, so the totals read better than live play will.' : 'Rebuilt after the fact from stored prices.');
@@ -550,7 +565,7 @@
 
   /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */
   var core = {
-    STORE: STORE, rowsAll: rowsAll, openRows: openRows, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
+    STORE: STORE, cfbRebuild: cfbRebuild, rowsAll: rowsAll, openRows: openRows, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
     ensure: function () { loadAssets(); if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
     subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
   };
