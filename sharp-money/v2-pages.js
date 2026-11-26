@@ -15,7 +15,7 @@
     lag: MAIN + 'data/lead_lag.json', age: MAIN + 'data/book_age.json', sb: MAIN + 'data/model_scoreboard.json', backfill: MAIN + 'data/v2_backfill.json', kreads: MAIN + 'data/v2_nba_kalshi_reads.json', rg: MAIN + 'docs/prop-clv-regrade.json'
   };
   var CT = { timeZone: 'America/Chicago' };
-  var SPORT = { all: 'All', nfl: 'NFL', cfb: 'CFB', nba: 'NBA' };
+  var SPORT = { all: 'All', nfl: 'NFL', cfb: 'CFB', nba: 'NBA', cbb: 'CBB' };
   var kit = function () { return window.__smKit(); };
   var G = function () { return window.V2Gates; };
 
