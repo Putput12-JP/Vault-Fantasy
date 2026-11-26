@@ -6,11 +6,11 @@ name: Update Kalshi markets
 
 on:
   workflow_dispatch: {}          # run manually any time from the Actions tab
-  schedule:
-    # Hourly, year-round. Kalshi prices move through the day; the job only
-    # commits when the file actually changed, so quiet hours are free. Off the
-    # top of the hour (:37) since that slot is less congested on GitHub.
-    - cron: '37 * * * *'
+  # No schedule: here on purpose. GitHub's scheduler fired this every 4-7 hours, so the sharp-refresh Cloudflare Worker
+  # (workers/sharp-refresh/src/price-jobs.js) starts it with workflow_dispatch on the same UTC schedule: 37 * * * *
+  # Hourly, year-round. Kalshi prices move through the day; the job only
+  # commits when the file actually changed, so quiet hours are free. Off the
+  # top of the hour (:37) since that slot is less congested on GitHub.
 
 concurrency:
   group: kalshi-feed
@@ -39,5 +39,10 @@ jobs:
             git config user.email "vault-bot@users.noreply.github.com"
             git add data/prediction_markets.json
             git commit -m "kalshi: refresh NFL game markets [skip ci]"
-            git push
+            # Rebase on the latest main before pushing so overlapping jobs
+            # never fail with "fetch first" (remote moved ahead). Retry a few times.
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && break
+              echo "push race, retrying ($i)..."; sleep 3
+            done
           fi

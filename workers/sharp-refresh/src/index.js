@@ -1,7 +1,10 @@
 // Sharp Money refresh trigger. GitHub's own cron drops runs, so this Worker calls
 // workflow_dispatch on a schedule instead, and also serves the page's Refresh button.
 //   cron  -> force=false: the workflow gate skips quiet hours / off-cadence slots
+//   cron */10 also starts the price-feed workflows on their old schedules (price-jobs.js); their GitHub schedule: triggers are removed
 //   POST  -> force=true:  a person asked, after Turnstile, and the Gate object is not in its cooldown
+
+import { runPriceJobs, lineupRunsThisMonth, LINEUP_MAX_CLICK } from './price-jobs.js';
 
 const ORIGINS = ['https://vaultfantasy.com', 'https://www.vaultfantasy.com', 'http://localhost:8000', 'http://127.0.0.1:8000'];
 const COOLDOWN_S = 60;
@@ -18,6 +21,10 @@ async function maybeLineup(env) {
       const last = (await r.json()).workflow_runs?.[0];
       if (last && (Date.now() - Date.parse(last.created_at)) / 1000 < LINEUP_COOLDOWN_S) return 'recent';
     }
+    // The cron now starts this workflow on time (price-jobs.js), so the month's credits are really spent: a click stops below the cap
+    // the scheduled runs use, so clicking can never take the scheduled runs' credits.
+    const n = await lineupRunsThisMonth(env, env.LINEUP_WORKFLOW, Date.now());
+    if (n == null || n >= LINEUP_MAX_CLICK) return 'budget';
     const d = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.LINEUP_WORKFLOW}/dispatches`, { method: 'POST', headers: gh, body: JSON.stringify({ ref: env.REF }) });
     return d.status === 204 ? 'started' : 'error';
   } catch { return 'error'; }
@@ -94,6 +101,9 @@ export default {
     }
     const r = await dispatch(env, false);
     if (!r.ok) console.error('dispatch failed', r.status);
+    // Price feeds: started here, on time, instead of by GitHub's schedule: trigger (which fired them every 4-7 hours).
+    const p = await runPriceJobs(env, event.scheduledTime || Date.now());
+    if (Object.keys(p).length) console.log('price jobs', JSON.stringify(p));
   },
 
   async fetch(req, env) {

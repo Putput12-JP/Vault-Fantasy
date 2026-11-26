@@ -4,12 +4,12 @@ name: Update player props (PrizePicks)
 
 on:
   workflow_dispatch: {}          # run manually any time from the Actions tab
-  schedule:
-    # Hourly, every day, year-round — the practical max for a free cron that
-    # also rebuilds Pages on each change. Runs at :17 (top-of-hour is GitHub's
-    # most congested/most-skipped slot, so off-the-hour is more reliable).
-    # It only commits when the feed actually changed, so quiet hours are free.
-    - cron: '17 * * * *'
+  # No schedule: here on purpose. GitHub's scheduler fired this every 4-7 hours, so the sharp-refresh Cloudflare Worker
+  # (workers/sharp-refresh/src/price-jobs.js) starts it with workflow_dispatch on the same UTC schedule: 17 * * * *
+  # Hourly, every day, year-round, the practical max for a free cron that
+  # also rebuilds Pages on each change. Runs at :17 (top-of-hour is GitHub's
+  # most congested/most-skipped slot, so off-the-hour is more reliable).
+  # It only commits when the feed actually changed, so quiet hours are free.
 
 # Let a run cancel an older queued one; allow it to push to the repo.
 concurrency:
