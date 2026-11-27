@@ -78,10 +78,10 @@ _When Pinnacle's no-vig line sat half a point or more off the recreational books
 
 ```
 spread  Pinnacle    n= 89  toward  55 / away  21  avg move toward +0.36 pts ±0.10
-spread  FanDuel     n= 92  toward  53 / away  27  avg move toward +0.18 pts ±0.13
-        -> NO-GO: not ahead of the control (+0.19 pts, z +1.1)
+spread  FanDuel     n= 93  toward  53 / away  28  avg move toward +0.16 pts ±0.13
+        -> NO-GO: not ahead of the control (+0.20 pts, z +1.2)
 total   Pinnacle    n= 46  toward  27 / away  16  avg move toward +0.21 pts ±0.15
-total   FanDuel     n= 65  toward  39 / away  20  avg move toward +0.40 pts ±0.15
+total   FanDuel     n= 66  toward  40 / away  20  avg move toward +0.46 pts ±0.16
         -> too few games (46 of 50)
 props   Pinnacle    n=334  toward 169 / away  25  net share toward +0.43 ±0.05
 props   FanDuel     n= 97  toward  48 / away  11  net share toward +0.38 ±0.09
