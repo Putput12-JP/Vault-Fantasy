@@ -1,19 +1,19 @@
 {
- "generated": 1795739589,
+ "generated": 1795770176,
  "prereg": "docs/sharp-agree-prereg.md",
  "sports": {
   "nba": {
-   "derived": 179,
+   "derived": 191,
    "pending": 0,
-   "read_share": 0.95,
+   "read_share": 0.921,
    "no_verdict_data": false,
    "no_read_why": {
-    "no_market_at_line": 3,
-    "read_too_old": 6
+    "no_market_at_line": 7,
+    "read_too_old": 8
    },
    "cells": {
     "agree": {
-     "rows": 30,
+     "rows": 31,
      "plays": 1,
      "rows_clv": 18,
      "games_clv": 16,
@@ -22,7 +22,7 @@
      "roi": 0.21703
     },
     "against": {
-     "rows": 25,
+     "rows": 26,
      "plays": 1,
      "rows_clv": 16,
      "games_clv": 16,
@@ -40,7 +40,7 @@
      "roi": -0.19975
     },
     "none": {
-     "rows": 103,
+     "rows": 107,
      "plays": 0,
      "rows_clv": 29,
      "games_clv": 20,
@@ -92,9 +92,9 @@
    "note": "plays-only counts are in cells[*].plays and carry no verdict"
   },
   "nfl": {
-   "derived": 92,
+   "derived": 93,
    "pending": 0,
-   "read_share": 0.304,
+   "read_share": 0.312,
    "no_verdict_data": false,
    "no_read_why": {
     "no_market_at_line": 22,
@@ -104,11 +104,11 @@
     "agree": {
      "rows": 8,
      "plays": 0,
-     "rows_clv": 0,
-     "games_clv": 0,
-     "clv": null,
-     "rows_roi": 7,
-     "roi": 0.38157
+     "rows_clv": 1,
+     "games_clv": 1,
+     "clv": 0.006,
+     "rows_roi": 8,
+     "roi": 0.20888
     },
     "against": {
      "rows": 6,
@@ -116,11 +116,11 @@
      "rows_clv": 1,
      "games_clv": 1,
      "clv": 0.0462,
-     "rows_roi": 5,
-     "roi": -0.1412
+     "rows_roi": 6,
+     "roi": 0.03533
     },
     "mixed": {
-     "rows": 6,
+     "rows": 7,
      "plays": 0,
      "rows_clv": 0,
      "games_clv": 0,
@@ -141,13 +141,19 @@
    "tests": {
     "boost": {
      "contrast": "agree minus none",
-     "ci": null,
+     "ci": {
+      "diff": 0.006,
+      "lo": 0.006,
+      "hi": 0.006,
+      "lo95": 0.006,
+      "hi95": 0.006
+     },
      "n": [
-      0,
+      1,
       1
      ],
      "games": [
-      0,
+      1,
       1
      ],
      "verdict": "underpowered"
