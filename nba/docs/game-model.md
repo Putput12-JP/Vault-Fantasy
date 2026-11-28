@@ -145,3 +145,19 @@ Test seasons, same games, shipped then candidate:
 | Kalshi 1pm Brier, total ladder | 0.2189 | 0.2182 | 1.97 |
 
 Total MAE and the total-ladder Brier improved. Monitor closely: neither reached 2 SE, and the spread, moneyline and spread ladder moved the other way. CT at 0.2 would make `scripts/paper_bot/signals/nba_total.py` stop trading NBA totals, because that bot does not read an injury report. The candidate was not written to `game_model.json`. The paper bot's ratings and sigma stay what they are today.
+
+## Follow-ups scored 2026-11-10
+
+After the Game Picks record reached 68-85 against the spread on 153 picks. Rules were committed before each run. The parameters on this page are unchanged.
+
+**Audit: the record is right.** `nba/docs/game-picks-audit.md`: all 154 finals match the box scores, every pick regrades to the stored result and units, every pick has a stored DraftKings price, and all 126 live picks match the recorder's tape and locked inside the 4-hour window (median 3.91 hours before tip). The loss is one week (Oct 27 to Nov 2: 17-38; the other two weeks 51-47) and it is not a grade: spread grade A is 12-4 this season on 16 picks and 132-147 on its 279-pick history.
+
+**Round 2, early step and blowout cap: NO-GO.** `nba/docs/game-model-round2-results.md`. On the tune seasons no larger early rating step and no cap on a blowout's update beat the shipped model, so the registered grid chose no change.
+
+**Round 3, learn from the closing line: not shipped.** `nba/docs/game-model-round3-results.md`. Ratings that also move toward each game's closing line were closer to the final margin in all three seasons (2025-26, the test: 11.294 to 11.193, t 2.21; this season, 154 games: 11.673 to 11.421, t 2.11) and missed the 2.5 bar. Against the closing spread they are 49.7%, the same as the shipped model. Monitor closely: n = 154 this season.
+
+**Round 4, the first posted spread: NO-GO.** `nba/docs/game-model-round4-results.md`. With no injury report, the ratings were scored against ESPN's opening spread on the held-out 2025-26 season (ratings as of 36 hours before tip) and against the first DraftKings spread on this season's tape (median 24.9 hours before tip). The line moved toward the ratings in every sample (2025-26 at a 2+ gap: +0.34 points, t 3.8) and the picks still went 352-340 against the open and 38-46 on the tape. Locking earlier is not a fix.
+
+**Round 5, the line-taught model with every game out of sample: margin GO for accuracy, total NO-GO.** `nba/docs/game-model-round5-results.md`. Each lined season scored with parameters chosen on the other: margin MAE 11.101 to 10.978 on 2,641 games, t 3.91 against a bar of 3.0; this season 11.673 to 11.426 (n 154, monitor closely). Against the closing spread the line-taught margin is 1342-1299 (50.8%), the same as the shipped model: a more accurate Vault line, not an edge. The line-taught total missed its bar (t 2.10) and leans the wrong way against the closing total.
+
+**Round 5's margin GO was not shipped (decided 2026-11-10).** Replayed on this season's 154 games the line-taught ratings turn spread grade A from 12-4 on 16 picks into 4-3 on 7, and grade B from 12-23 into 9-9: more accurate, fewer strong picks, no better record. The owner declined the change on that replay. `game_model.json` stays as it was; options L and LT stay in `build_game_model.py`, off.
