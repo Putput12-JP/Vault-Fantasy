@@ -1,11 +1,11 @@
 {
- "generated": 1795830959,
+ "generated": 1795861039,
  "prereg": "docs/sharp-agree-prereg.md",
  "sports": {
   "nba": {
-   "derived": 223,
+   "derived": 227,
    "pending": 0,
-   "read_share": 0.933,
+   "read_share": 0.934,
    "no_verdict_data": false,
    "no_read_why": {
     "no_market_at_line": 7,
@@ -13,78 +13,78 @@
    },
    "cells": {
     "agree": {
-     "rows": 39,
+     "rows": 40,
      "plays": 1,
-     "rows_clv": 20,
-     "games_clv": 18,
-     "clv": 0.01046,
-     "rows_roi": 30,
-     "roi": 0.21703
+     "rows_clv": 23,
+     "games_clv": 21,
+     "clv": 0.01377,
+     "rows_roi": 39,
+     "roi": 0.034
     },
     "against": {
-     "rows": 29,
+     "rows": 30,
      "plays": 1,
-     "rows_clv": 17,
-     "games_clv": 17,
-     "clv": -0.01184,
-     "rows_roi": 25,
-     "roi": -0.07932
+     "rows_clv": 19,
+     "games_clv": 19,
+     "clv": -0.01212,
+     "rows_roi": 29,
+     "roi": 0.00128
     },
     "mixed": {
      "rows": 14,
      "plays": 1,
-     "rows_clv": 7,
-     "games_clv": 7,
-     "clv": 0.05224,
-     "rows_roi": 12,
-     "roi": -0.19975
+     "rows_clv": 9,
+     "games_clv": 8,
+     "clv": 0.03918,
+     "rows_roi": 14,
+     "roi": -0.14793
     },
     "none": {
-     "rows": 126,
+     "rows": 128,
      "plays": 0,
-     "rows_clv": 33,
-     "games_clv": 23,
-     "clv": 9e-05,
-     "rows_roi": 103,
-     "roi": -0.09638
+     "rows_clv": 37,
+     "games_clv": 26,
+     "clv": -0.00226,
+     "rows_roi": 125,
+     "roi": -0.06449
     }
    },
    "tests": {
     "boost": {
      "contrast": "agree minus none",
      "ci": {
-      "diff": 0.01037,
-      "lo": -0.04657,
-      "hi": 0.08378,
-      "lo95": -0.0355,
-      "hi95": 0.06673
+      "diff": 0.01604,
+      "lo": -0.03384,
+      "hi": 0.07935,
+      "lo95": -0.02454,
+      "hi95": 0.06351
      },
      "n": [
-      20,
-      33
+      23,
+      37
      ],
      "games": [
-      18,
-      23
+      21,
+      26
      ],
      "verdict": "underpowered"
     },
     "veto": {
      "contrast": "against minus none",
      "ci": {
-      "diff": -0.01193,
-      "lo": -0.0801,
-      "hi": 0.04232,
-      "lo95": -0.06307,
-      "hi95": 0.03195
+      "diff": -0.00986,
+      "lo": -0.06873,
+      "hi": 0.03962,
+      "lo95": -0.05558,
+      "hi95": 0.03009
      },
      "n": [
-      17,
-      33
+      19,
+      37
      ],
      "games": [
-      17,
-      23
+      19,
+      26
      ],
      "verdict": "underpowered"
     }
@@ -92,12 +92,12 @@
    "note": "plays-only counts are in cells[*].plays and carry no verdict"
   },
   "nfl": {
-   "derived": 97,
+   "derived": 98,
    "pending": 0,
-   "read_share": 0.299,
+   "read_share": 0.296,
    "no_verdict_data": false,
    "no_read_why": {
-    "no_market_at_line": 23,
+    "no_market_at_line": 24,
     "read_too_old": 45
    },
    "cells": {
