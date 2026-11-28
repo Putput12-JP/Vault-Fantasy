@@ -1,16 +1,16 @@
 {
- "generated": "2026-11-27T23:22:13.871395+00:00",
- "version": 99,
+ "generated": "2026-11-28T15:13:59.125710+00:00",
+ "version": 100,
  "method": "ridge logistic: const, logit(model), logit(market), proj gap; live rows x3",
  "weights": [
-  -0.0488,
-  0.0823,
-  0.6545,
-  0.0327
+  -0.0492,
+  0.0836,
+  0.6515,
+  0.0296
  ],
  "trained_on": {
   "replay": 14669,
-  "live": 7050,
+  "live": 7057,
   "live_weeks": [
    "2026-1",
    "2026-2",
@@ -29,33 +29,33 @@
  "walk_forward": {
   "overall": {
    "stack": {
-    "n": 6517,
-    "hit": 0.5283
+    "n": 6524,
+    "hit": 0.5281
    },
    "model_alone": {
-    "n": 6517,
-    "hit": 0.5188
+    "n": 6524,
+    "hit": 0.5187
    },
    "market_alone": {
-    "n": 6517,
+    "n": 6524,
     "hit": 0.5101
    }
   },
   "bands": [
    {
     "conf": 0.55,
-    "n": 1436,
-    "hit": 0.5773,
+    "n": 1440,
+    "hit": 0.5764,
     "predicted": 0.5854,
-    "overs": 467,
+    "overs": 470,
     "verified": true
    },
    {
     "conf": 0.6,
-    "n": 385,
-    "hit": 0.5636,
-    "predicted": 0.6288,
-    "overs": 94,
+    "n": 388,
+    "hit": 0.5619,
+    "predicted": 0.6287,
+    "overs": 96,
     "verified": false
    },
    {
@@ -109,8 +109,8 @@
     "hit": 0.5091
    },
    "12": {
-    "n": 250,
-    "hit": 0.576
+    "n": 257,
+    "hit": 0.5681
    }
   }
  },
